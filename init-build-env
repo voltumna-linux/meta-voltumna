@@ -1,0 +1,12 @@
+BASEDIR="${PWD}/`dirname ${BASH_SOURCE}`"
+
+export BITBAKEDIR="${BASEDIR}/bitbake"
+export TEMPLATECONF="${BASEDIR}/conf"
+
+export DISTRO="voltumna"
+export MACHINE
+export SDKMACHINE
+export IMAGE_VERSION=""
+export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE IMAGE_VERSION"
+
+source "${BASEDIR}/openembedded-core/oe-init-build-env" "$@"

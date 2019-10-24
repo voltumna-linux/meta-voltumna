@@ -1,0 +1,10 @@
+#!/bin/sh
+
+[ -z "$1" ] && echo "Error: should be called from udhcpc" && exit 1
+
+case "$1" in
+	deconfig) ;;
+	renew|bound) env | sed 's/\(.*\)=\(.*\)/\1="\2"/' | while read line; do echo "export ${line}"; done; ;;
+esac
+
+exit 0

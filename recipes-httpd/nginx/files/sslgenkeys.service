@@ -1,0 +1,10 @@
+[Unit]
+Description=SSL Keys Generation
+ConditionPathExists=!/etc/ssl/private.key
+ConditionPathExists=!/etc/ssl/public.pem
+
+[Service]
+ExecStart=/usr/bin/openssl req -x509 -new -newkey rsa:2048 -nodes -keyout /etc/ssl/private.key -out /etc/ssl/public.pem -batch -days 365000
+Type=oneshot
+RemainAfterExit=yes
+Nice=10
