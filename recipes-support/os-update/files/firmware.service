@@ -1,0 +1,15 @@
+[Unit]
+Description=Firmware Service
+Requires=network-online.target local-fs.target
+After=network-online.target nginx.service
+Conflicts=shutdown.target
+ConditionKernelCommandLine=!rootfstype=nfs
+JoinsNamespaceOf=nginx.service
+
+[Service]
+ExecStart=/usr/sbin/firmware
+ExecStartPost=/usr/sbin/firmware.sh
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

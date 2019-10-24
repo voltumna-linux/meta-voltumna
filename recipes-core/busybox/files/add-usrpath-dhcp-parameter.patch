@@ -1,0 +1,19 @@
+diff -ruNp busybox-1.31.1-orig/networking/udhcp/common.c busybox-1.31.1/networking/udhcp/common.c
+--- busybox-1.31.1-orig/networking/udhcp/common.c	2020-05-26 10:24:02.019994718 +0000
++++ busybox-1.31.1/networking/udhcp/common.c	2020-05-26 10:23:50.859978190 +0000
+@@ -35,6 +35,7 @@ const struct dhcp_optflag dhcp_optflags[
+ 	{ OPTION_STRING_HOST          | OPTION_REQ, 0x0f }, /* DHCP_DOMAIN_NAME   */
+ 	{ OPTION_IP                               , 0x10 }, /* DHCP_SWAP_SERVER   */
+ 	{ OPTION_STRING                           , 0x11 }, /* DHCP_ROOT_PATH     */
++	{ OPTION_STRING                           , 0x97 }, /* DHCP_USR_PATH     */
+ 	{ OPTION_U8                               , 0x17 }, /* DHCP_IP_TTL        */
+ 	{ OPTION_U16                              , 0x1a }, /* DHCP_MTU           */
+ //TODO: why do we request DHCP_BROADCAST? Can't we assume that
+@@ -109,6 +110,7 @@ const char dhcp_option_strings[] ALIGN1
+ 	"domain" "\0"           /* DHCP_DOMAIN_NAME     */
+ 	"swapsrv" "\0"          /* DHCP_SWAP_SERVER     */
+ 	"rootpath" "\0"         /* DHCP_ROOT_PATH       */
++	"usrpath" "\0"         /* DHCP_USR_PATH       */
+ 	"ipttl" "\0"            /* DHCP_IP_TTL          */
+ 	"mtu" "\0"              /* DHCP_MTU             */
+ 	"broadcast" "\0"        /* DHCP_BROADCAST       */

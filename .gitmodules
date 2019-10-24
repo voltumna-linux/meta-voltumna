@@ -1,0 +1,48 @@
+[submodule "bitbake"]
+	path = bitbake
+	url = https://git.openembedded.org/bitbake
+	branch = 1.46
+[submodule "meta-96boards"]
+	path = meta-96boards
+	url = https://github.com/96boards/meta-96boards.git
+	branch = dunfell
+[submodule "meta-artesyn"]
+	path = meta-artesyn
+	url = https://github.com/voltumna-linux/meta-artesyn.git
+	branch = dunfell
+[submodule "meta-intel"]
+	path = meta-intel
+	url = git://git.yoctoproject.org/meta-intel
+	branch = dunfell
+[submodule "meta-mingw"]
+	path = meta-mingw
+	url = git://git.yoctoproject.org/meta-mingw
+	branch = dunfell
+[submodule "meta-openembedded"]
+	path = meta-openembedded
+	url = https://git.openembedded.org/meta-openembedded
+	branch = dunfell
+[submodule "meta-ti"]
+	path = meta-ti
+	url = git://git.yoctoproject.org/meta-ti
+	branch = dunfell
+[submodule "meta-altera"]
+	path = meta-altera
+	url = https://github.com/kraj/meta-altera.git
+	branch = master
+[submodule "meta-tango"]
+	path = meta-tango
+	url = https://github.com/voltumna-linux/meta-tango.git
+	branch = dunfell
+[submodule "openembedded-core"]
+	path = openembedded-core
+	url = https://git.openembedded.org/openembedded-core
+	branch = dunfell
+[submodule "meta-dpdk"]
+	path = meta-dpdk
+	url = git://git.yoctoproject.org/meta-dpdk
+	branch = dunfell
+[submodule "meta-arm"]
+	path = meta-arm
+	url = git://git.yoctoproject.org/meta-arm
+	branch = dunfell

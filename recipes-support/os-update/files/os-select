@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -e
+# set -x
+
+ln -sfrn /.osdir/$1 /.osdir/default
+curl -s http://127.0.0.1/api/firmware/publish/default -d"$1"

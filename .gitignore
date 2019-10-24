@@ -1,0 +1,14 @@
+*.pyc
+build
+meta-*
+
+!meta-96boards
+!meta-artesyn
+!meta-intel
+!meta-mingw
+!meta-openembedded
+!meta-ti
+!meta-altera
+!meta-tango
+!meta-dpdk
+!meta-arm

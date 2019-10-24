@@ -1,0 +1,94 @@
+diff --git a/include/configs/am335x_evm.h b/include/configs/am335x_evm.h
+index ff27e461e5..cf3a6d0dc1 100644
+--- a/include/configs/am335x_evm.h
++++ b/include/configs/am335x_evm.h
+@@ -95,43 +95,12 @@
+ 
+ #define CONFIG_EXTRA_ENV_SETTINGS \
+ 	DEFAULT_LINUX_BOOT_ENV \
+-	DEFAULT_MMC_TI_ARGS \
+-	DEFAULT_FIT_TI_ARGS \
+-	"bootpart=0:2\0" \
+-	"bootdir=/boot\0" \
+-	"bootfile=zImage\0" \
++	"autoload=no\0" \
++	"bootfile=boot.scr.uimg\0" \
++	"krnfile=zImage\0" \
+ 	"fdtfile=undefined\0" \
+-	"console=ttyO0,115200n8\0" \
+-	"partitions=" \
+-		"uuid_disk=${uuid_gpt_disk};" \
+-		"name=bootloader,start=384K,size=1792K," \
+-			"uuid=${uuid_gpt_bootloader};" \
+-		"name=rootfs,start=2688K,size=-,uuid=${uuid_gpt_rootfs}\0" \
++	"setconsole=setenv console ttyS0,${baudrate}n8\0" \
+ 	"optargs=\0" \
+-	"ramroot=/dev/ram0 rw\0" \
+-	"ramrootfstype=ext2\0" \
+-	"spiroot=/dev/mtdblock4 rw\0" \
+-	"spirootfstype=jffs2\0" \
+-	"spisrcaddr=0xe0000\0" \
+-	"spiimgsize=0x362000\0" \
+-	"spibusno=0\0" \
+-	"spiargs=setenv bootargs console=${console} " \
+-		"${optargs} " \
+-		"root=${spiroot} " \
+-		"rootfstype=${spirootfstype}\0" \
+-	"ramargs=setenv bootargs console=${console} " \
+-		"${optargs} " \
+-		"root=${ramroot} " \
+-		"rootfstype=${ramrootfstype}\0" \
+-	"loadramdisk=load mmc ${mmcdev} ${rdaddr} ramdisk.gz\0" \
+-	"spiboot=echo Booting from spi ...; " \
+-		"run spiargs; " \
+-		"sf probe ${spibusno}:0; " \
+-		"sf read ${loadaddr} ${spisrcaddr} ${spiimgsize}; " \
+-		"bootz ${loadaddr}\0" \
+-	"ramboot=echo Booting from ramdisk ...; " \
+-		"run ramargs; " \
+-		"bootz ${loadaddr} ${rdaddr} ${fdtaddr}\0" \
+ 	"findfdt="\
+ 		"if test $board_name = A335BONE; then " \
+ 			"setenv fdtfile am335x-bone.dtb; fi; " \
+@@ -159,16 +128,10 @@
+ 			"setenv fdtfile am335x-icev2-prueth.dtb; fi; " \
+ 		"if test $fdtfile = undefined; then " \
+ 			"echo WARNING: Could not determine device tree to use; fi; \0" \
+-	"init_console=" \
+-		"if test $board_name = A335_ICE; then "\
+-			"setenv console ttyO3,115200n8;" \
+-		"else " \
+-			"setenv console ttyO0,115200n8;" \
+-		"fi;\0" \
+-	NANDARGS \
+-	NETARGS \
+-	DFUARGS \
+-	BOOTENV
++	"boot_targets=usb sd\0" \
++	"loadscript_dhcp=dhcp; if tftp ${scriptaddr} ${bootfile}; then source ${scriptaddr}; run bootcmd_dhcp; fi;\0" \
++	"loadscript_sd=mmc rescan; if load mmc 0:1 ${scriptaddr} ${bootfile}; then source ${scriptaddr}; run bootcmd_sd; fi;\0" \
++	"loadscript_usb=usb start; if load usb 0:1 ${scriptaddr} ${bootfile}; then source ${scriptaddr}; run bootcmd_usb; fi;\0"
+ #endif
+ 
+ /* NS16550 Configuration */
+diff --git a/include/configs/ti_armv7_common.h b/include/configs/ti_armv7_common.h
+index e6edb31bed..0850c96135 100644
+--- a/include/configs/ti_armv7_common.h
++++ b/include/configs/ti_armv7_common.h
+@@ -40,15 +40,8 @@
+  */
+ #define DEFAULT_LINUX_BOOT_ENV \
+ 	"loadaddr=0x82000000\0" \
+-	"kernel_addr_r=0x82000000\0" \
+ 	"fdtaddr=0x88000000\0" \
+-	"fdt_addr_r=0x88000000\0" \
+-	"rdaddr=0x88080000\0" \
+-	"ramdisk_addr_r=0x88080000\0" \
+-	"scriptaddr=0x80000000\0" \
+-	"pxefile_addr_r=0x80100000\0" \
+-	"bootm_size=0x10000000\0" \
+-	"boot_fdt=try\0"
++	"scriptaddr=0x80000000\0"
+ 
+ #define DEFAULT_FIT_TI_ARGS \
+ 	"boot_fit=0\0" \

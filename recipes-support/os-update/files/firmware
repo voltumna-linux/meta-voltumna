@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import logging
+import os
+import email
+import subprocess
+from sys import argv
+
+def nothing(self):
+    return subprocess.CompletedProcess(args='', returncode=0)
+
+def reboot(self):
+    os.system('reboot')
+
+def install_updatefile(self):
+    content_length = int(self.headers['Content-Length'])
+    post_data = self.rfile.read(content_length)
+    msg = email.message_from_string(str(self.headers) + str(post_data.decode('utf-8')))
+    for part in msg.walk():
+        if part.get_content_type() == 'text/plain':
+            updatefile = part.get_payload()
+    return subprocess.run(["/usr/sbin/os-upgrade", updatefile])
+
+def set_default(self):
+    content_length = int(self.headers['Content-Length'])
+    post_data = self.rfile.read(content_length)
+    return subprocess.run(["/usr/sbin/os-select", str(post_data.decode('utf-8'))])
+
+class Server(BaseHTTPRequestHandler):
+    def do_POST(self):
+        logging.info("POST request,\nPath: %s\nHeaders:\n%s\n",
+                str(self.path), str(self.headers))
+
+        switcher = {
+            "/api/firmware/default": [set_default, nothing],
+            "/api/firmware/upgrade": [install_updatefile, reboot],
+            "/api/firmware/reboot": [nothing, reboot]
+        }
+        action = switcher.get(str(self.path), [nothing, nothing])
+
+        # Execute pre function
+        complproc = action[0](self)
+
+        if complproc.returncode != 0:
+            self.send_response(500)
+            self.end_headers()
+        else:
+            self.send_response(200)
+            self.end_headers()
+
+            # Execute post function
+            action[1](self)
+
+def run(server_class=HTTPServer, handler_class=Server, port=9200):
+    logging.basicConfig(level=logging.INFO)
+    
+    logging.info('Starting httpd...\n')
+    server_address = ('127.0.0.1', port)
+    httpd = server_class(server_address, handler_class)
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    httpd.server_close()
+    logging.info('Stopping httpd...\n')
+
+if __name__ == '__main__':
+    if len(argv) == 2:
+        run(port=int(argv[1]))
+    else:
+        run()

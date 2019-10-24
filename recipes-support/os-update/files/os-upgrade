@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -e
+# set -x
+
+WORKDIR=`pwd`
+
+. /etc/os-release
+
+FROM="${VARIANT_ID}-${MACHINE}-${VERSION_ID}"
+
+cp -al /.osdir/${FROM} /.osdir/staging
+rsync -azchHEADX --delete --timeout=60 --read-batch=$1 /.osdir/staging
+
+# cd /.osdir/staging/; md5sum --status -c .MD5SUM.txt
+
+cd ${WORKDIR}
+
+. /.osdir/staging/lib/os-release
+
+TO="${VARIANT_ID}-${MACHINE}-${VERSION_ID}"
+
+if [ ${FROM} == ${TO} ]; then
+	rm -fr /.osdir/staging
+	exit 1
+fi
+
+mv /.osdir/staging /.osdir/${TO}
+
+os-select ${TO}
