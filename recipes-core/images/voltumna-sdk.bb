@@ -7,17 +7,18 @@ SDKIMAGE_FEATURES += "dev-pkgs doc-pkgs dbg-pkgs tools-sdk tools-debug tools-pro
 SDK_ARCHIVE_TYPE = "tar.xz"
 SDK_ARCHIVE_TYPE_sdkmingw32 = "zip"
 
-install_adjustps1_into_sdk() {
-	mkdir -p ${SDK_OUTPUT}${SDKPATHNATIVE}/environment-setup.d/
-	cat <<-__EOF__ > ${SDK_OUTPUT}${SDKPATHNATIVE}/environment-setup.d/adjust-ps1.sh
-	export debian_chroot=\$(echo \${BASH_SOURCE[1]} | sed 's/.*environment-setup-\(.*\)-voltumna-linux.*/\1/')
+install_adjust_debian_chroot_into_sdk() {
+	TEXT=`basename ${SDKTARGETSYSROOT} | sed 's,\(.*\)-voltumna-linux.*,\1,'`
+	mkdir -p ${SDK_OUTPUT}${SDKTARGETSYSROOT}/environment-setup.d/
+	cat <<-__EOF__ > ${SDK_OUTPUT}${SDKTARGETSYSROOT}/environment-setup.d/adjust-debian-chroot.sh
+	export debian_chroot=${TEXT}
 	__EOF__
 }
 
-install_adjustps1_into_sdk_sdkmingw32() {
+install_adjust_debian_chroot_into_sdk_sdkmingw32() {
 	true
 }
 
-POPULATE_SDK_POST_TARGET_COMMAND += " install_adjustps1_into_sdk;"
+POPULATE_SDK_POST_TARGET_COMMAND += " install_adjust_debian_chroot_into_sdk;"
 
 #SDK_POST_INSTALL_COMMAND_append += '$SUDO_EXEC sh -c ". $target_sdk_dir/environment-setup-@REAL_MULTIMACH_TARGET_SYS@ && cd $target_sdk_dir/sysroots/@REAL_MULTIMACH_TARGET_SYS@/usr/src/kernel/ && make prepare scripts >/dev/null 2>&1"'

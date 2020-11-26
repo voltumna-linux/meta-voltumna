@@ -27,3 +27,5 @@ KERNEL_CONFIG_FRAGMENTS_append += " \
 	${WORKDIR}/remove_martian_source_warning.cfg \
 	${WORKDIR}/enable_ebpf_xpd.cfg \
 	"
+
+RDEPENDS_${KERNEL_PACKAGE_NAME}-base_remove_ti33x = " prueth-fw pruhsr-fw pruprp-fw"
