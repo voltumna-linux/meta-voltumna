@@ -13,6 +13,9 @@ SRC_URI_append += " \
 	file://remove_martian_source_warning.cfg \
 	file://enable_ebpf_xpd.cfg \
 	file://numa.cfg \
+	file://dpdk.cfg \
+	file://hpet.cfg \
+	file://vtd.cfg \
 	"
 
 # COMPATIBLE_MACHINE_append = "|nu93-2930"

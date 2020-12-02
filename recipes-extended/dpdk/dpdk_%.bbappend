@@ -1,3 +1,10 @@
+PACKAGECONFIG = " numa"
+
+do_configure_prepend () {
+	# Enable HPET
+	echo "CONFIG_RTE_LIBEAL_USE_HPET=y" >> ${S}/config/defconfig_${RTE_TARGET}
+}
+
 do_install () {
 	oe_runmake O=${RTE_OUTPUT} T= install-runtime DESTDIR=${D}
 #	oe_runmake O=${RTE_OUTPUT} T= install-kmod DESTDIR=${D} kerneldir=${MODULE_DIR}

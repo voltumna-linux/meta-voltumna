@@ -1,5 +1,8 @@
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
+#	file://use_the_right_compatible_string.patch \
+#
+
 SRC_URI_append += " \
 	file://fpgamgr-debug.cfg \
 	file://initrd.cfg \
