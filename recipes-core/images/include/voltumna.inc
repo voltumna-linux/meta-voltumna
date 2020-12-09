@@ -6,7 +6,8 @@ EXTRA_IMAGE_FEATURES = "ssh-server-openssh"
 WIC_CREATE_EXTRA_ARGS += " --no-fstab-update"
 
 DEPENDS += "virtual/kernel"
-DEPENDS_append_x86-64 += "syslinux"
+DEPENDS_append_x86 += "grub-efi"
+DEPENDS_append_x86-64 += "grub-efi"
 
 IMAGE_CLASSES += "extrausers"
 EXTRA_USERS_PARAMS = "\

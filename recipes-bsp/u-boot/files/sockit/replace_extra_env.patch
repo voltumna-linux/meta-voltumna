@@ -1,8 +1,8 @@
 diff --git a/include/configs/socfpga_common.h b/include/configs/socfpga_common.h
-index 2fc4a12841..ffe3d75c1b 100644
+index 2fc4a12841..a6bf3af81b 100644
 --- a/include/configs/socfpga_common.h
 +++ b/include/configs/socfpga_common.h
-@@ -257,21 +257,24 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
+@@ -257,21 +257,25 @@ unsigned int cm_get_qspi_controller_clk_hz(void);
  
  #ifndef CONFIG_EXTRA_ENV_SETTINGS
  #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -20,7 +20,7 @@ index 2fc4a12841..ffe3d75c1b 100644
 -			"then source ${scriptaddr}; fi\0" \
 -	"pxefile_addr_r=0x02200000\0" \
 -	"ramdisk_addr_r=0x02300000\0" \
--	"socfpga_legacy_reset_compat=1\0" \
+ 	"socfpga_legacy_reset_compat=1\0" \
 -	"prog_core=if load mmc 0:1 ${loadaddr} fit_spl_fpga.itb;" \
 -		   "then fpga loadmk 0 ${loadaddr}:fpga-core-1; fi\0" \
 +	"krnfile=zImage\0" \
