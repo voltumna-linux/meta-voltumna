@@ -14,6 +14,7 @@ SRC_URI_append += " \
 	file://enable_ebpf_xpd.cfg \
 	file://numa.cfg \
 	file://dpdk.cfg \
+	file://vfio.cfg \
 	file://hpet.cfg \
 	file://vtd.cfg \
 	"

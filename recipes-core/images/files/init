@@ -129,6 +129,13 @@ case $rootfstype in
 				do_umount_and_reboot
 			fi
 		done
+		# Check rootfs filesystem
+		fsck.ext4 -n ${rootpath} 1>/dev/null 2>&1
+		case "$?" in
+			0|1) ;;
+			2) do_umount_and_reboot	;;
+			*) fsck.ext4 -p ${rootpath}; do_umount_and_reboot ;;
+		esac
 		mount -t ${rootfstype} ${rootpath} /mnt/rootfs -o noatime,ro;;
 esac
 if [ "$?" -ne 0 ]; then

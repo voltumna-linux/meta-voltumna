@@ -7,7 +7,7 @@ SRC_URI += "file://init"
 PV = "1.0"
 
 # Avoid (R)DEPENDS which add other dependencies
-PACKAGE_INSTALL = "busybox busybox-udhcpc"
+PACKAGE_INSTALL = "busybox busybox-udhcpc e2fsprogs-e2fsck"
 
 # Use dynamic /dev population
 USE_DEVFS = "1"

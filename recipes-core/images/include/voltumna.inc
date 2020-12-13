@@ -6,8 +6,7 @@ EXTRA_IMAGE_FEATURES = "ssh-server-openssh"
 WIC_CREATE_EXTRA_ARGS += " --no-fstab-update"
 
 DEPENDS += "virtual/kernel"
-DEPENDS_append_x86 += "grub-efi"
-DEPENDS_append_x86-64 += "grub-efi"
+DEPENDS_append_x86-64_class-target += "grub-efi"
 
 IMAGE_CLASSES += "extrausers"
 EXTRA_USERS_PARAMS = "\
@@ -20,6 +19,10 @@ IMAGE_INSTALL_append += "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMME
 	findutils file nano debianutils 96boards-tools dosfstools nfs-utils-client \
 	openssh-sftp-server os-update iproute2 ethtool inetutils-ping inetutils-telnet \
 	net-tools"
+
+python __anonymous () {
+    d.appendVarFlag('do_install', 'depends', ' ${INITRAMFS_IMAGE}:do_image_complete')
+}
 
 copy_etc_into_factory() {
 	# Use systemd's nsswitch.conf file instead of the base-files's one

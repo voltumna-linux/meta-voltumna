@@ -2,11 +2,11 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 require u-boot-ti.inc
 
-PR = "r24"
+PR = "r27"
 
 BRANCH = "ti-u-boot-2020.01"
 
-SRCREV = "4bd43879837910eaf0bf45af7ec5ddfaca203ff4"
+SRCREV = "7b6b1a17bfdae5e4f6fd13f208c36814803f3ba7"
 
 PROVIDES = "${BPN}"
 PKG_${PN} = "${BPN}"
@@ -39,4 +39,8 @@ do_install_append () {
 	mv ${D}/boot/MLO-mmc1-* ${D}/boot/u-boot* ${D}${datadir}/${BPN}
 	mv ${D}/boot/MLO-mmc1 ${D}${datadir}/${BPN}/MLO
 	rm -fr ${D}${sysconfdir} ${D}/boot
+}
+
+do_deploy() {
+	true
 }
