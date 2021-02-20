@@ -2,11 +2,11 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 require u-boot-ti.inc
 
-PR = "r30"
+PR = "r33"
 
 BRANCH = "ti-u-boot-2020.01"
 
-SRCREV = "84b608fd3489c8dd93d8eb20e7f005d967b88402"
+SRCREV = "6b5b982e98dde63832b3a68c84f990e63f732584"
 
 PROVIDES = "${BPN}"
 PKG_${PN} = "${BPN}"
