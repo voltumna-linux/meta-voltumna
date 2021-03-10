@@ -3,8 +3,6 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 #	file://use_the_right_compatible_string.patch \
 #
 
-SRCREV = "495c4b3595bb150b7a8320c89501ae7b33576898"
-
 SRC_URI_append += " \
 	file://fpgamgr-debug.cfg \
 	file://initrd.cfg \
