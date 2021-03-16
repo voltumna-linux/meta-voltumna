@@ -70,7 +70,7 @@ IMAGE_CMD_tar_append_arm() {
 	TEMPORARYDIR=$(mktemp -d)
 	mkdir -p ${TEMPORARYDIR}/tftpboot
 	install -m 644 ${DEPLOY_DIR_IMAGE}/boot.scr.uimg ${TEMPORARYDIR}/tftpboot
-	install -m 644 ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.uEnv.txt ${TEMPORARYDIR}/tftpboot/uEnv.txt
+	install -m 644 ${DEPLOY_DIR_IMAGE}/uEnv.txt ${TEMPORARYDIR}/tftpboot/uEnv.txt
 	sed -i -e "s,\.osdir/,,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/uEnv.txt
 	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${TEMPORARYDIR}/ tftpboot || [ $? -eq 1 ]
 	rm -fr ${TEMPORARYDIR}
@@ -80,7 +80,7 @@ IMAGE_CMD_tar_append_x86-64() {
 	TEMPORARYDIR=$(mktemp -d)
 	mkdir -p ${TEMPORARYDIR}/tftpboot/EFI/BOOT
 	install -m 644 ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ${TEMPORARYDIR}/tftpboot/EFI/BOOT/bootx64.efi
-	install -m 644 ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.grub.cfg ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
+	install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
 	sed -i -e "s,default=localboot,default=netboot,g" ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
 	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${TEMPORARYDIR}/ tftpboot || [ $? -eq 1 ]
 	rm -fr ${TEMPORARYDIR}

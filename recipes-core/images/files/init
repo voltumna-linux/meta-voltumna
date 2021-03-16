@@ -154,7 +154,10 @@ if [ "$?" -ne 0 ]; then
 fi
 
 # Remount usrpath
-mount /mnt/rootfs/usr -o remount,${usrflags};
+case `sed -n 's,VARIANT_ID=".*-\(.*\)",\1,p' /mnt/rootfs/etc/os-release` in
+	sde) mount /mnt/rootfs/usr -o remount,${usrflags},rw;;
+	sre) mount /mnt/rootfs/usr -o remount,${usrflags},ro;;
+esac
 if [ "$?" -ne 0 ]; then
 	echo -n "Fail to remount usr(path) with user defined flags! "
 	do_umount_and_reboot
