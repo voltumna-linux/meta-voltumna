@@ -12,6 +12,7 @@ SRC_URI_append += " \
 	file://disable_ptp.cfg \
 	file://remove_martian_source_warning.cfg \
 	file://enable_ebpf_xpd.cfg \
+	file://Update-beagleboneai-dts.patch \
 	"
 
 KERNEL_CONFIG_FRAGMENTS_append += " \
