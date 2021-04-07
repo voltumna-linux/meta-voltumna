@@ -10,12 +10,10 @@ SRC_URI_append += " \
 
 UBOOT_SCRIPT = "boot"
 
-do_deploy_append() {
+do_install_prepend() {
 	install -d ${DEPLOY_DIR_IMAGE}
 
 	install -m 0644 ${WORKDIR}/uEnv.txt ${DEPLOY_DIR_IMAGE}
 	sed -i -e "s,@IMAGE_NAME@,default,g" -e "s,@USR@,mount.usr=/.osdir/\$image,g" \
 		${DEPLOY_DIR_IMAGE}/uEnv.txt
 }
-
-inherit deploy
