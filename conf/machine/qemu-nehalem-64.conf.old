@@ -14,3 +14,5 @@ IMAGE_INSTALL_remove = "kernel-image kernel-devicetree kernel-modules linux-firm
 PREFERRED_PROVIDER_zlib = "zlib-intel"
 
 PRIMARY_NETIF = "eth0 eth0"
+
+OPENBLAS_TARGET = "NEHALEM"

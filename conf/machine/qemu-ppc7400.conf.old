@@ -24,3 +24,5 @@ QB_TAP_OPT = "-netdev tap,id=net0,ifname=@TAP@,script=no,downscript=no"
 MACHINEOVERRIDES =. "qemuppc:"
 PREFERRED_PROVIDER_virtual/kernel = "linux-dummy"
 IMAGE_INSTALL_remove ="kernel-image kernel-devicetree"
+
+# OPENBLAS_TARGET = ""

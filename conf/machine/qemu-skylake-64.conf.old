@@ -12,3 +12,5 @@ PREFERRED_PROVIDER_virtual/kernel = "linux-dummy"
 IMAGE_INSTALL_remove ="kernel-image kernel-devicetree"
 
 PREFERRED_PROVIDER_zlib = "zlib-intel"
+
+OPENBLAS_TARGET = "SKYLAKEX"

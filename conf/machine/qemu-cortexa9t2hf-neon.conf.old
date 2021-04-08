@@ -38,3 +38,5 @@ KMACHINE_qemuarm = "qemuarma9"
 MACHINEOVERRIDES =. "qemuarm:"
 PREFERRED_PROVIDER_virtual/kernel = "linux-dummy"
 IMAGE_INSTALL_remove ="kernel-image kernel-devicetree"
+
+OPENBLAS_TARGET = "CORTEXA9"
