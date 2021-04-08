@@ -3,4 +3,4 @@ RDEPENDS_${PN}_remove = " \
     ${PN}-rpmsg-echo \
 "
 
-COMPATIBLE_MACHINE_append = "|qemu-cortexa8t2hf-neon"
+# COMPATIBLE_MACHINE_append = "|qemu-cortexa8t2hf-neon"
