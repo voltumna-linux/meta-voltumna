@@ -3,15 +3,14 @@ require include/voltumna.inc
 # IMAGE_INSTALL_append += "kernel-devsrc"
 TOOLCHAIN_HOST_TASK_append_arm += "nativesdk-dtc"
 
-SDKIMAGE_FEATURES += "dev-pkgs doc-pkgs dbg-pkgs tools-sdk tools-debug tools-profile"
+SDKIMAGE_FEATURES += "dev-pkgs bash-completion-pkgs doc-pkgs dbg-pkgs tools-sdk tools-debug tools-profile"
 SDK_ARCHIVE_TYPE = "tar.xz"
 SDK_ARCHIVE_TYPE_sdkmingw32 = "zip"
 
 install_adjust_debian_chroot_into_sdk() {
-	TEXT=`basename ${SDKTARGETSYSROOT} | sed 's,\(.*\)-voltumna-linux.*,\1,'`
 	mkdir -p ${SDK_OUTPUT}${SDKTARGETSYSROOT}/environment-setup.d/
 	cat <<-__EOF__ > ${SDK_OUTPUT}${SDKTARGETSYSROOT}/environment-setup.d/adjust-debian-chroot.sh
-	export debian_chroot="${SDK_NAME_PREFIX} ${TUNE_PKGARCH} ${SDK_VERSION}"
+	export debian_chroot="${SDK_NAME_PREFIX} ${MACHINE} ${SDK_VERSION}"
 	__EOF__
 }
 

@@ -14,12 +14,10 @@ EXTRA_USERS_PARAMS = "\
 "
 
 IMAGE_INSTALL_append += "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMENDS} \
-	bash bash-completion systemd-bash-completion coreutils util-linux \
-	util-linux-bash-completion util-linux-sfdisk glibc-utils less \
-	procps psmisc tzdata tzdata-europe polkit socat stress-ng sed tar xz grep \
-	findutils file nano debianutils 96boards-tools dosfstools nfs-utils-client \
-	openssh-sftp-server os-update iproute2 iproute2-bash-completion \
-	ethtool ethtool-bash-completion inetutils-ping inetutils-telnet net-tools"
+	bash coreutils util-linux util-linux-sfdisk glibc-utils less procps psmisc \
+	tzdata tzdata-europe polkit socat stress-ng sed tar xz grep findutils file \
+	nano debianutils 96boards-tools dosfstools nfs-utils-client openssh-sftp-server \
+	os-update iproute2 ethtool inetutils-ping inetutils-telnet net-tools"
 
 #python __anonymous () {
 #    d.appendVarFlag('do_install', 'depends', ' ${INITRAMFS_IMAGE}:do_image_complete')
