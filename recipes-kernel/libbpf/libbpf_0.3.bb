@@ -19,7 +19,7 @@ SRCREV = "051a4009f94d5633a8f734ca4235f0a78ee90469"
 SRC_URI += "file://0001-install-don-t-preserve-file-owner.patch"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
-COMPATIBLE_HOST = "(x86_64.*|i.86.*|aarch64).*-linux"
+COMPATIBLE_HOST = "(x86_64.*|i.86.*|aarch64|arm).*-linux"
 
 S = "${WORKDIR}/git/src"
 
