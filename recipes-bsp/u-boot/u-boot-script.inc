@@ -22,11 +22,7 @@ do_install_append() {
 	if [ "x${UBOOT_SCRIPT}" != "x" ]; then
 	        install -m 644 ${WORKDIR}/${UBOOT_SCRIPT_BINARY} ${D}/boot/${UBOOT_SCRIPT_IMAGE}
         	lnr ${UBOOT_SCRIPT_IMAGE} ${D}/boot/${UBOOT_SCRIPT_BINARY}
-	fi
-}
 
-do_deploy_append() {
-	if [ "x${UBOOT_SCRIPT}" != "x" ]; then
 		install -d ${DEPLOYDIR}
 		install -m 644 ${WORKDIR}/${UBOOT_SCRIPT_BINARY} ${DEPLOYDIR}/${UBOOT_SCRIPT_IMAGE}
 	        rm -f ${DEPLOYDIR}/${UBOOT_SCRIPT_BINARY} ${DEPLOYDIR}/${UBOOT_SCRIPT_SYMLINK}
