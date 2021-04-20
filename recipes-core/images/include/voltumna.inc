@@ -28,7 +28,7 @@ copy_etc_into_factory() {
 	mv ${IMAGE_ROOTFS}${datadir}/factory/etc/nsswitch.conf ${IMAGE_ROOTFS}${sysconfdir}
 
 	# Copy files in factory/etc e create entries accordingly
-	#cp -r ${IMAGE_ROOTFS}${sysconfdir} ${IMAGE_ROOTFS}${datadir}/factory/
+	cp -r ${IMAGE_ROOTFS}${sysconfdir} ${IMAGE_ROOTFS}${datadir}/factory/
 }
 
 use_initramfs_bundled_kernel() {

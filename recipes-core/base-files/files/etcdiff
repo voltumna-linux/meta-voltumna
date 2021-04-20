@@ -1,0 +1,3 @@
+#!/bin/sh
+
+diff -r --no-dereference --suppress-common-lines -a -N  /usr/share/factory/etc /etc

@@ -1,6 +1,10 @@
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
-SRC_URI += "file://fstab"
+SRC_URI += " \
+	file://fstab \
+	file://factory-reset \
+	file://etcdiff \
+	"
 
 FILES_${PN} += "${sysconfdir}/profile.d/environment-setup.sh"
 
@@ -53,4 +57,8 @@ do_install_append() {
 	cat <<-__EOF__ > ${D}${sysconfdir}/issue
 	\S{NAME} \S{VERSION_ID} \S{MACHINE} \4{eth0} \l
 	__EOF__
+
+	# Add two scripts
+	install -m 755 ${WORKDIR}/factory-reset ${D}/usr/sbin
+	install -m 755 ${WORKDIR}/etcdiff ${D}/usr/bin
 }
