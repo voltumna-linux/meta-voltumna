@@ -22,9 +22,9 @@ DESCRIPTION_nchan = "Nchan is a scalable, flexible pub/sub server for the modern
 HOMEPAGE_nchan = "http://nchan.io/"
 LICENSE_nchan = "MIT"
 LIC_FILES_CHKSUM_nchan = "file://LICENCE;md5=c3ab23ddd6df351c3410c3aa31f6675f"
-SRCREV_nchan = "82abfccf9ca5545b2e90af2ac8156ac7da0ce203"
-SRC_URI_append += "git://github.com/abogani/nchan.git;protocol=https;branch=master;name=nchan;destsuffix=nchan-1.2.7"
-PACKAGECONFIG[nchan] = "--add-module=${WORKDIR}/nchan-1.2.7,,"
+SRCREV_nchan = "8bbff16dc0abeaebb9a0c0c865504f87f0f93430"
+SRC_URI_append += "git://github.com/abogani/nchan.git;protocol=https;branch=master;name=nchan;destsuffix=nchan-1.2.8"
+PACKAGECONFIG[nchan] = "--add-module=${WORKDIR}/nchan-1.2.8,,"
 
 DESCRIPTION_auth-pam = "Nginx module to use PAM for simple http authentication"
 HOMEPAGE_auth-pam = "https://github.com/sto/ngx_http_auth_pam_module"
