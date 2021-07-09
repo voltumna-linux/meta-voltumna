@@ -29,6 +29,43 @@ copy_etc_into_factory() {
 
 	# Copy files in factory/etc e create entries accordingly
 	cp -r ${IMAGE_ROOTFS}${sysconfdir} ${IMAGE_ROOTFS}${datadir}/factory/
+
+#	rm -f ${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/default.target \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/basic.target.wants/resize-helper.service
+
+#	mkdir -p ${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/
+#	ln -s /usr/lib/systemd/system/reboot.target \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/ctrl-alt-del.target
+#	ln -s /usr/lib/systemd/system/systemd-networkd.service \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/dbus-org.freedesktop.network1.service
+#	ln -s /usr/lib/systemd/system/systemd-resolved.service \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/dbus-org.freedesktop.resolve1.service
+#	ln -s /usr/lib/systemd/system/systemd-timesyncd.service \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/dbus-org.freedesktop.timesync1.service
+
+#	mkdir -p ${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/multi-user.target.wants/
+#	ln -s /usr/lib/systemd/system/systemd-networkd.service \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/multi-user.target.wants/systemd-networkd.service
+#	ln -s /usr/lib/systemd/system/systemd-resolved.service \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/multi-user.target.wants/systemd-resolved.service
+#	ln -s /usr/lib/systemd/system/remote-fs.target \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/multi-user.target.wants/remote-fs.target
+
+#	mkdir -p ${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/sysinit.target.wants/
+#	ln -s /usr/lib/systemd/system/systemd-timesyncd.service \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/sysinit.target.wants/systemd-timesyncd.service
+	
+#	mkdir -p ${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/getty.target.wants/
+#	ln -s /usr/lib/systemd/system/getty@.service \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/getty.target.wants/getty@tty1.service
+
+#	mkdir -p ${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/network-online.target.wants/
+#	ln -s /usr/lib/systemd/system/systemd-networkd-wait-online.service \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/network-online.target.wants/systemd-networkd-wait-online.service
+
+#	mkdir -p ${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/sockets.target.wants/
+#	ln -s /usr/lib/systemd/system/systemd-networkd.socket \
+#		${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/sockets.target.wants/systemd-networkd.socket
 }
 
 use_initramfs_bundled_kernel() {

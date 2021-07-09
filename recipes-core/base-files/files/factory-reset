@@ -1,4 +1,4 @@
 #!/bin/sh
 
-rsync -av --delete /usr/share/factory/etc/ /etc
+rsync -a --delete /usr/share/factory/etc/ /etc
 systemctl preset-all
