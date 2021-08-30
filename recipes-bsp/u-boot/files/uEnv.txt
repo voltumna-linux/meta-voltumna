@@ -1,0 +1,6 @@
+# krnfile=zImage
+# fdtfile=am335x-bone.dtb
+image=@IMAGE_NAME@
+optargs=@USR@ quiet
+
+uenvcmd=mmc dev 1; mmc erase 0 512; reset

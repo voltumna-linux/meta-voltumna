@@ -1,0 +1,46 @@
+#!/bin/sh
+
+export PATH=/usr/bin:/usr/sbin:/bin:/sbin
+
+IMAGE_URL=http://www.elettra.eu/images/Documents/Voltumna/public
+IMAGE_SUFFIX=img.xz
+DISK=/dev/sda
+
+echo "Installation in progress..."
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t tmpfs tmpfs /run
+mount -t tmpfs tmpfs /tmp
+
+# Parse command line...
+for arg in $(cat /proc/cmdline)
+do
+	case $arg in
+		image_url=*)	IMAGE_URL="${arg//image_url=}";;
+		image_suffix=*)	IMAGE_SUFFIX="${arg//image_suffix=}";;
+		disk=*)		DISK="${arg//disk=}";;
+	esac
+done
+
+if [ ! -f /etc/resolv.conf ]; then
+	# Configure a basic resolv.conf
+	mkdir -p /run/systemd/resolve
+	touch /run/systemd/resolve/resolv.conf
+
+	for ns in $(sed -ne 's/^nameserver \(.*\)/\1/p' /proc/net/pnp)
+	do
+		echo "nameserver $ns" >> /run/systemd/resolve/resolv.conf
+	done
+fi
+
+bmaptool copy ${IMAGE_URL}/$(ls -d usr-* | sed -e 's/usr-\(.*\)/\1/').${IMAGE_SUFFIX} ${DISK}
+
+umount /tmp
+partprobe ${DISK}
+
+rm -fr /run/*
+
+mount ${DISK}2 /mnt
+exec switch_root /mnt /sbin/init
+/bin/sh

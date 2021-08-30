@@ -1,0 +1,19 @@
+[Match]
+Name=@ETH@
+KernelCommandLine=rootfstype=nfs
+
+[Network]
+DHCP=ipv4
+# LinkLocalAddressing=ipv4-fallback
+# MulticastDNS=true
+# LLDP=true
+# EmitLLDP=true
+
+[DHCPv4]
+# MaxAttempts=3
+RouteMetric=10
+ClientIdentifier=mac
+UseMTU=true
+UseDomains=true
+UseTimezone=true
+CriticalConnection=true

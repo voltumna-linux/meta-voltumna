@@ -1,0 +1,3 @@
+part /boot --source bootimg-efi-wo-kernel --sourceparams="loader=grub-efi" --ondisk sda --label boot --active --align 1024 --fixed-size 32
+part / --source rootfs --ondisk sda --fstype=ext4 --label root --align 1024
+bootloader --ptable gpt --configfile="${DEPLOY_DIR_IMAGE}/grub.cfg"

@@ -1,0 +1,142 @@
+# dmesg | grep -i numa
+[    0.006835] NUMA: Initialized distance table, cnt=2
+[    0.006837] NUMA: Node 0 [mem 0x00000000-0x7fffffff] + [mem 0x100000000-0x303fffffff] -> [mem 0x00000000-0x303fffffff]
+[    2.040003] mempolicy: Enabling automatic NUMA balancing. Configure with numa_balancing= or the kernel.numa_balancing sysctl
+[    2.964378] pci_bus 0000:00: on NUMA node 0
+[    2.969961] pci_bus 0000:17: on NUMA node 0
+[    2.973018] pci_bus 0000:3a: on NUMA node 0
+[    2.974895] pci_bus 0000:5d: on NUMA node 0
+[    2.976358] pci_bus 0000:80: on NUMA node 1
+[    2.980527] pci_bus 0000:85: on NUMA node 1
+[    2.983841] pci_bus 0000:ae: on NUMA node 1
+[    2.985470] pci_bus 0000:d7: on NUMA node 1
+
+# numactl --hardware
+available: 2 nodes (0-1)
+node 0 cpus: 0 1 2 3 4 5 6 7 16 17 18 19 20 21 22 23
+node 0 size: 192162 MB
+node 0 free: 174700 MB
+node 1 cpus: 8 9 10 11 12 13 14 15 24 25 26 27 28 29 30 31
+node 1 size: 193532 MB
+node 1 free: 176913 MB
+node distances:
+node   0   1 
+  0:  10  21 
+  1:  21  10 
+
+# /usr/share/dpdk/usertools/cpu_layout.py
+======================================================================
+Core and Socket Information (as reported by '/sys/devices/system/cpu')
+======================================================================
+
+cores =  [24, 2, 9, 11, 20, 1, 26, 27, 4, 8, 18, 19, 25]
+sockets =  [0, 1]
+
+        Socket 0        Socket 1       
+        --------        --------       
+Core 24 [0, 21]                        
+Core 2  [1, 17]         [9, 25]        
+Core 9  [2, 18]                        
+Core 11 [3, 19]                        
+Core 20 [4, 20]                        
+Core 1  [5, 16]         [8, 24]        
+Core 26 [6, 22]                        
+Core 27 [7, 23]         [15, 31]       
+Core 4                  [10, 26]       
+Core 8                  [11, 27]       
+Core 18                 [12, 28]       
+Core 19                 [13, 29]       
+Core 25                 [14, 30]       
+
+lstopo-no-graphics 
+Machine (377GB total)
+  NUMANode L#0 (P#0 188GB)
+    Package L#0 + L3 L#0 (25MB)
+      L2 L#0 (1024KB) + L1d L#0 (32KB) + L1i L#0 (32KB) + Core L#0
+        PU L#0 (P#0)
+        PU L#1 (P#21)
+      L2 L#1 (1024KB) + L1d L#1 (32KB) + L1i L#1 (32KB) + Core L#1
+        PU L#2 (P#1)
+        PU L#3 (P#17)
+      L2 L#2 (1024KB) + L1d L#2 (32KB) + L1i L#2 (32KB) + Core L#2
+        PU L#4 (P#2)
+        PU L#5 (P#18)
+      L2 L#3 (1024KB) + L1d L#3 (32KB) + L1i L#3 (32KB) + Core L#3
+        PU L#6 (P#3)
+        PU L#7 (P#19)
+      L2 L#4 (1024KB) + L1d L#4 (32KB) + L1i L#4 (32KB) + Core L#4
+        PU L#8 (P#4)
+        PU L#9 (P#20)
+      L2 L#5 (1024KB) + L1d L#5 (32KB) + L1i L#5 (32KB) + Core L#5
+        PU L#10 (P#5)
+        PU L#11 (P#16)
+      L2 L#6 (1024KB) + L1d L#6 (32KB) + L1i L#6 (32KB) + Core L#6
+        PU L#12 (P#6)
+        PU L#13 (P#22)
+      L2 L#7 (1024KB) + L1d L#7 (32KB) + L1i L#7 (32KB) + Core L#7
+        PU L#14 (P#7)
+        PU L#15 (P#23)
+    HostBridge L#0
+      PCI 8086:a1d2
+        Block(Disk) L#0 "sdb"
+        Block(Disk) L#1 "sda"
+      PCI 8086:a182
+      PCIBridge
+        PCIBridge
+          PCI 1a03:2000
+    HostBridge L#3
+      PCIBridge
+        PCIBridge
+          PCIBridge
+            PCI 8086:37d2
+              Net L#2 "enp26s0f0"
+            PCI 8086:37d2
+    HostBridge L#7
+      PCIBridge
+        PCI 8086:1589
+          Net L#3 "enp59s0f0"
+        PCI 8086:1589
+          Net L#4 "enp59s0f1"
+        PCI 8086:1589
+          Net L#5 "enp59s0f2"
+        PCI 8086:1589
+          Net L#6 "enp59s0f3"
+    HostBridge L#9
+      PCIBridge
+        PCI 1000:005d
+  NUMANode L#1 (P#1 189GB)
+    Package L#1 + L3 L#1 (25MB)
+      L2 L#8 (1024KB) + L1d L#8 (32KB) + L1i L#8 (32KB) + Core L#8
+        PU L#16 (P#8)
+        PU L#17 (P#24)
+      L2 L#9 (1024KB) + L1d L#9 (32KB) + L1i L#9 (32KB) + Core L#9
+        PU L#18 (P#9)
+        PU L#19 (P#25)
+      L2 L#10 (1024KB) + L1d L#10 (32KB) + L1i L#10 (32KB) + Core L#10
+        PU L#20 (P#10)
+        PU L#21 (P#26)
+      L2 L#11 (1024KB) + L1d L#11 (32KB) + L1i L#11 (32KB) + Core L#11
+        PU L#22 (P#11)
+        PU L#23 (P#27)
+      L2 L#12 (1024KB) + L1d L#12 (32KB) + L1i L#12 (32KB) + Core L#12
+        PU L#24 (P#12)
+        PU L#25 (P#28)
+      L2 L#13 (1024KB) + L1d L#13 (32KB) + L1i L#13 (32KB) + Core L#13
+        PU L#26 (P#13)
+        PU L#27 (P#29)
+      L2 L#14 (1024KB) + L1d L#14 (32KB) + L1i L#14 (32KB) + Core L#14
+        PU L#28 (P#14)
+        PU L#29 (P#30)
+      L2 L#15 (1024KB) + L1d L#15 (32KB) + L1i L#15 (32KB) + Core L#15
+        PU L#30 (P#15)
+        PU L#31 (P#31)
+    HostBridge L#11
+      PCIBridge
+        PCI 8086:1589
+          Net L#7 "enp175s0f0"
+        PCI 8086:1589
+          Net L#8 "enp175s0f1"
+        PCI 8086:1589
+          Net L#9 "enp175s0f2"
+        PCI 8086:1589
+          Net L#10 "enp175s0f3"
