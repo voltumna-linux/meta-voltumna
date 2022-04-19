@@ -11,5 +11,5 @@
 OriginalName=*
 
 [Link]
-NamePolicy=keep kernel
+NamePolicy=keep kernel path
 MACAddressPolicy=persistent

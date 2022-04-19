@@ -80,16 +80,42 @@ if [ "${break}" = "top" ]; then
 fi
 
 # Rename network interfaces
+NETDB=""
 SYSCLASSNET=/sys/class/net/
 for NIC in $(ls $SYSCLASSNET)
 do
-	readlink $SYSCLASSNET$NIC | grep "devices/pci"
+	readlink $SYSCLASSNET$NIC | grep "devices/pci" >/dev/null
 	if [ "$?" -ne 0 ]; then
 		continue
 	fi
 	DEV=$(basename `readlink $SYSCLASSNET$NIC/device`)
 	PCI=${DEV#"0000:"}
-	NAME=$(printf 'enp%ds%df%d' $((16#${PCI:0:2})) $((16#${PCI:3:2})) $((16#${PCI:6:1})))
+	PORTSLOT=${PCI:0:5}
+	FUNC=${PCI:6:1}
+	if [ -d $SYSCLASSNET$NIC/wireless ]; then
+		PREFIX=wl
+	else
+		PREFIX=en
+	fi
+	if [ "$NETDB"x != x ]; then
+		NETDB="${PORTSLOT} ${FUNC} ${NIC} ${PREFIX}\n${NETDB}"
+	else
+		NETDB="${PORTSLOT} ${FUNC} ${NIC} ${PREFIX}"
+	fi
+done
+
+echo -e "$NETDB" | while IFS= read -r line; do
+	PORTSLOT=$(echo $line | cut -d" " -f1 -)
+	PORT=${PORTSLOT:0:2}
+	SLOT=${PORTSLOT:3:2}
+	FUNC=$(echo $line | cut -d" " -f2 -)
+	NIC=$(echo $line | cut -d" " -f3 -)
+	PREFIX=$(echo $line | cut -d" " -f4 -)
+	if [ $(echo -e "$NETDB" | grep -c ^${PORTSLOT}) -eq 1 ] && [ ${FUNC} -eq 0 ]; then
+		NAME=$(printf '%sp%ds%d' ${PREFIX} $((16#${PORT})) $((16#${SLOT})))
+	else
+		NAME=$(printf '%sp%ds%df%d' ${PREFIX} $((16#${PORT})) $((16#${SLOT})) $((16#${FUNC})))
+	fi
 	ip link set $NIC name $NAME
 done
 
