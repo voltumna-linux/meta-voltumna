@@ -19,7 +19,7 @@ COMPATIBLE_HOST = "x86_64.*-linux"
 PACKAGES = "${BPN}"
 
 do_extract_data() {
-	unzip ${WORKDIR}/*.zip -d ${WORKDIR}/
+	unzip ${WORKDIR}/BIOS*.zip -d ${WORKDIR}/
 }
 
 python do_unpack_append_ssg-6039p-e1cr16h() {
@@ -29,5 +29,11 @@ python do_unpack_append_ssg-6039p-e1cr16h() {
 do_install() {
 	install -m 0755 -d ${D}${datadir}/${BPN}
 	install -m 0644 ${WORKDIR}/bios_configuration.bin ${WORKDIR}/BIOS*/* \
+		${D}${datadir}/${BPN}
+}
+
+do_install_up-whl01() {
+	install -m 0755 -d ${D}${datadir}/${BPN}
+	install -m 0644 ${WORKDIR}/bios_configuration.bin ${WORKDIR}/UP*/* \
 		${D}${datadir}/${BPN}
 }
