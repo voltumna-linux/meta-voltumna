@@ -3,16 +3,10 @@
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 
 do_reboot() {
-	if [ -z "${debug}" ]; then
-		echo -n "Rebooting in 10 sec. "
-		sleep 10
-		reboot -f
-	fi
-}
-
-do_umount_and_reboot() {
 	umount -a 2>/dev/null
-	do_reboot
+	echo -n "Rebooting in 10 sec. "
+	sleep 10
+	reboot -f
 }
 
 # Mounting proc filesystem
@@ -22,10 +16,10 @@ mount -n -t proc none /proc || do_reboot
 ln -s /proc/self/mounts /etc/mtab
 
 # Mounting dev filesystem
-mount -t devtmpfs none /dev || do_umount_and_reboot
+mount -t devtmpfs none /dev || do_reboot
 
 # Mounting sys filesystem
-mount -t sysfs none /sys || do_umount_and_reboot
+mount -t sysfs none /sys || do_reboot
 
 # Defaults
 rootflags=noatime,async
@@ -104,20 +98,22 @@ do
 	fi
 done
 
-echo -e "$NETDB" | while IFS= read -r line; do
-	PORTSLOT=$(echo $line | cut -d" " -f1 -)
-	PORT=${PORTSLOT:0:2}
-	SLOT=${PORTSLOT:3:2}
-	FUNC=$(echo $line | cut -d" " -f2 -)
-	NIC=$(echo $line | cut -d" " -f3 -)
-	PREFIX=$(echo $line | cut -d" " -f4 -)
-	if [ $(echo -e "$NETDB" | grep -c ^${PORTSLOT}) -eq 1 ] && [ ${FUNC} -eq 0 ]; then
-		NAME=$(printf '%sp%ds%d' ${PREFIX} $((16#${PORT})) $((16#${SLOT})))
-	else
-		NAME=$(printf '%sp%ds%df%d' ${PREFIX} $((16#${PORT})) $((16#${SLOT})) $((16#${FUNC})))
-	fi
-	ip link set $NIC name $NAME
-done
+if [ -n "${NETDB}" ]; then
+	echo -e "$NETDB" | while IFS= read -r line; do
+		PORTSLOT=$(echo $line | cut -d" " -f1 -)
+		PORT=${PORTSLOT:0:2}
+		SLOT=${PORTSLOT:3:2}
+		FUNC=$(echo $line | cut -d" " -f2 -)
+		NIC=$(echo $line | cut -d" " -f3 -)
+		PREFIX=$(echo $line | cut -d" " -f4 -)
+		if [ $(echo -e "$NETDB" | grep -c ^${PORTSLOT}) -eq 1 ] && [ ${FUNC} -eq 0 ]; then
+			NAME=$(printf '%sp%ds%d' ${PREFIX} $((16#${PORT})) $((16#${SLOT})))
+		else
+			NAME=$(printf '%sp%ds%df%d' ${PREFIX} $((16#${PORT})) $((16#${SLOT})) $((16#${FUNC})))
+		fi
+		ip link set $NIC name $NAME
+	done
+fi
 
 # Retrieve parameters from network if it is the case...
 if [ -n "${network}" ]; then
@@ -134,7 +130,7 @@ if [ -n "${network}" ]; then
 		sleep 1
 		if [ "$counter" -gt 60 ]; then
 			echo -n "Fail to bring up interface! "
-			do_umount_and_reboot
+			do_reboot
 		fi
 	done
 
@@ -157,7 +153,7 @@ fi
 
 # Check mandatory parameters...
 if [ -z "${rootfstype}" -o -z "${rootpath}" -o -z "${usrpath}" ]; then
-	echo -n "Missing rootfstype and/or root(path) parameters! "; do_umount_and_reboot
+	echo -n "Missing rootfstype and/or root(path) parameters! "; do_reboot
 fi
 
 # Mount rootpath...
@@ -169,15 +165,15 @@ case $rootfstype in
 			sleep 1
 			if [ "$counter" -gt 60 ]; then
 				echo -n "Fail to wait root! "
-				do_umount_and_reboot
+				do_reboot
 			fi
 		done
 		# Check rootfs filesystem
 		fsck.ext4 -n ${rootpath} 1>/dev/null 2>&1
 		case "$?" in
 			0|1) ;;
-			2) do_umount_and_reboot	;;
-			*) fsck.ext4 -p ${rootpath}; do_umount_and_reboot ;;
+			2) do_reboot	;;
+			*) fsck.ext4 -p ${rootpath}; do_reboot ;;
 		esac
 		mount -t ${rootfstype} ${rootpath} /mnt/rootfs -o ${rootflags},ro;;
 esac
@@ -193,7 +189,7 @@ case $usrfstype in
 esac
 if [ "$?" -ne 0 ]; then
 	echo -n "Fail to mount usr(path)! "
-	do_umount_and_reboot
+	do_reboot
 fi
 
 # Remount usrpath
@@ -203,14 +199,14 @@ case `sed -n 's,VARIANT_ID=".*-\(.*\)",\1,p' /mnt/rootfs/etc/os-release` in
 esac
 if [ "$?" -ne 0 ]; then
 	echo -n "Fail to remount usr(path) with user defined flags! "
-	do_umount_and_reboot
+	do_reboot
 fi
 
 # Remount rootpath
 mount /mnt/rootfs/ -o remount,rw;
 if [ "$?" -ne 0 ]; then
 	echo -n "Fail to remount root(path) with user defined flags! "
-	do_umount_and_reboot
+	do_reboot
 fi
 
 # Drop into a shell...

@@ -74,6 +74,16 @@ IMAGE_CMD_tar_append_arm() {
 	rm -fr ${TEMPORARYDIR}
 }
 
+IMAGE_CMD_tar_append_e500v2() {
+	TEMPORARYDIR=$(mktemp -d)
+	mkdir -p ${TEMPORARYDIR}/tftpboot
+	install -m 644 ${DEPLOY_DIR_IMAGE}/boot.scr.uimg ${TEMPORARYDIR}/tftpboot
+	install -m 644 ${DEPLOY_DIR_IMAGE}/uEnv.txt ${TEMPORARYDIR}/tftpboot/uEnv.txt
+	sed -i -e "s,\.osdir,voltumna,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/uEnv.txt
+	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${TEMPORARYDIR}/ tftpboot || [ $? -eq 1 ]
+	rm -fr ${TEMPORARYDIR}
+}
+
 IMAGE_CMD_tar_append_x86-64() {
 	TEMPORARYDIR=$(mktemp -d)
 	mkdir -p ${TEMPORARYDIR}/tftpboot/EFI/BOOT
