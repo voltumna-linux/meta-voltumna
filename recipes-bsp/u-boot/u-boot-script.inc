@@ -17,14 +17,14 @@ do_compile_append() {
 	fi
 }
 
-do_install_append() {
-	if [ "x${UBOOT_SCRIPT}" != "x" ]; then
-		install -d ${D}/boot
-		install -m 644 ${WORKDIR}/${UBOOT_SCRIPT_BINARY} ${D}/boot/${UBOOT_SCRIPT_IMAGE}
-		ln -sfrn ${D}/boot/${UBOOT_SCRIPT_IMAGE} ${D}/boot/${UBOOT_SCRIPT_BINARY}
-		ln -sfrn ${D}/boot/${UBOOT_SCRIPT_IMAGE} ${D}/boot/${UBOOT_SCRIPT_BINARY}-${MACHINE}
-	fi
-}
+#do_install_append() {
+#	if [ "x${UBOOT_SCRIPT}" != "x" ]; then
+#		install -d ${D}/boot
+#		install -m 644 ${WORKDIR}/${UBOOT_SCRIPT_BINARY} ${D}/boot/${UBOOT_SCRIPT_IMAGE}
+#		ln -sfrn ${D}/boot/${UBOOT_SCRIPT_IMAGE} ${D}/boot/${UBOOT_SCRIPT_BINARY}
+#		ln -sfrn ${D}/boot/${UBOOT_SCRIPT_IMAGE} ${D}/boot/${UBOOT_SCRIPT_BINARY}-${MACHINE}
+#	fi
+#}
 
 do_deploy_append() {
 	if [ "x${UBOOT_SCRIPT}" != "x" ]; then
