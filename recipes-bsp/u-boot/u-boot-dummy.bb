@@ -26,6 +26,7 @@ PR = "r1"
 S = "${WORKDIR}"
 
 INHIBIT_DEFAULT_DEPS = "1"
+ALLOW_EMPTY_${PN} = "1"
 
 do_configure() {
 	:
