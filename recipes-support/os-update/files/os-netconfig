@@ -73,6 +73,8 @@ for line in lines[1:]:
 # Cleanup the values
 a = data["address"][0].split(' ')
 address = a[0]
+a = data["hw address"][0].split(' ')
+macaddress = a[0]
 dhcp = False
 if len(a) == 2:
     dhcp = True if a[1] == '(DHCP4)' else False
@@ -82,6 +84,6 @@ dnss = data["dns"] if data.get('dns') else []
 searchdomains = data["search domains"] if data.get('search domains') else []
 
 # Convert to json
-j = json.dumps({'dhcp': dhcp, 'address': address, 'gateway': gateway, 'ntp': ntp,
+j = json.dumps({'dhcp': dhcp, 'macaddress': macaddress, 'address': address, 'gateway': gateway, 'ntp': ntp,
     'dns': dnss, 'search_domains': searchdomains })
 print(j)
