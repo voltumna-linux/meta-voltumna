@@ -71,10 +71,10 @@ for line in lines[1:]:
 #print(data)
 
 # Cleanup the values
-a = data["address"][0].split(' ')
-address = a[0]
 a = data["hw address"][0].split(' ')
 macaddress = a[0]
+a = data["address"][0].split(' ')
+address = a[0]
 dhcp = False
 if len(a) == 2:
     dhcp = True if a[1] == '(DHCP4)' else False
