@@ -25,10 +25,10 @@ cleanup_exit() {
 trap cleanup_exit 1 2 3 6
 
 tar xf "$1" -C $TEMPDIR
-FROMVER=$(sed -ne 's,VERSION_ID=\(.*\),\1,p' $TEMPDIR/*/lib/os-release)
+FROMVER=$(sed -ne 's,VERSION_ID=\(.*\),\1,p' $TEMPDIR/*/usr/lib/os-release)
 
 tar xf "$2" -C $TEMPDIR
-TOVER=$(sed -ne 's,VERSION_ID=\(.*\),\1,p' $TEMPDIR/*/lib/os-release | grep -v ${FROMVER}$)
+TOVER=$(sed -ne 's,VERSION_ID=\(.*\),\1,p' $TEMPDIR/*/usr/lib/os-release | grep -v ${FROMVER}$)
 
 FROMBASEIMAGE=$(echo $(basename $1) | sed "s/\(.*\)-${FROMVER}.os.tar/\1/")
 TOBASEIMAGE=$(echo $(basename $2) | sed "s/\(.*\)-${TOVER}.os.tar/\1/")
