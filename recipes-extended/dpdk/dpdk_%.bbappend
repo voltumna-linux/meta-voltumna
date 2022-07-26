@@ -1,4 +1,4 @@
-PACKAGECONFIG_ssg-6039p-e1cr16h = " numa"
+PACKAGECONFIG_x11dph-t = " numa"
 
 FILES_${PN} += "${sysconfdir}/profile.d/dpdk.sh"
 
