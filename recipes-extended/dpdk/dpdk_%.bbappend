@@ -1,7 +1,8 @@
 PACKAGECONFIG_ssg-6039p-e1cr16h = " numa"
-PACKAGECONFIG_sys-5019p-wtr = " numa"
 
 FILES_${PN} += "${sysconfdir}/profile.d/dpdk.sh"
+
+DEPENDS += "python3-pyelftools"
 
 do_configure_prepend () {
 	# Enable HPET
