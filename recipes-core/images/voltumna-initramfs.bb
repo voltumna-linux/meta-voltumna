@@ -25,8 +25,6 @@ LDCONFIGDEPEND = ""
 install() {
 	cp ${FILE_DIRNAME}/files/init ${IMAGE_ROOTFS}
 	chmod 744 ${IMAGE_ROOTFS}/init
-	sed -i "s,@ETH@,${@d.getVar('PRIMARY_NETIF')},g" \
-		${IMAGE_ROOTFS}/init
 
 	mkdir -p ${IMAGE_ROOTFS}/dev ${IMAGE_ROOTFS}/proc \
 		${IMAGE_ROOTFS}/sys ${IMAGE_ROOTFS}/mnt/rootfs 
