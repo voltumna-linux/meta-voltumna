@@ -2,13 +2,13 @@ require gcc-common.inc
 
 # Third digit in PV should be incremented after a minor release
 
-PV = "9.4.0"
+PV = "9.5.0"
 
 # BINV should be incremented to a revision after a minor gcc release
 
-BINV = "9.4.0"
+BINV = "9.5.0"
 
-FILESEXTRAPATHS =. "${FILE_DIRNAME}/gcc-9.4:${FILE_DIRNAME}/gcc-9.4/backport:"
+FILESEXTRAPATHS =. "${FILE_DIRNAME}/gcc-9.5:${FILE_DIRNAME}/gcc-9.5/backport:"
 
 DEPENDS =+ "mpfr gmp libmpc zlib flex-native"
 NATIVEDEPS = "mpfr-native gmp-native libmpc-native zlib-native flex-native"
@@ -71,7 +71,7 @@ SRC_URI = "\
            file://0039-process_alt_operands-Don-t-match-user-defined-regs-o.patch \
 "
 S = "${TMPDIR}/work-shared/gcc-${PV}-${PR}/gcc-${PV}"
-SRC_URI[sha256sum] = "c95da32f440378d7751dd95533186f7fc05ceb4fb65eb5b85234e6299eb9838e"
+SRC_URI[sha256sum] = "27769f64ef1d4cd5e2be8682c0c93f9887983e6cfd1a927ce5a0a2915a95cf8f"
 # For dev release snapshotting
 #S = "${TMPDIR}/work-shared/gcc-${PV}-${PR}/official-gcc-${RELEASE}"
 #B = "${WORKDIR}/gcc-${PV}/build.${HOST_SYS}.${TARGET_SYS}"
