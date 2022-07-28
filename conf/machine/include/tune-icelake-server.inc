@@ -48,7 +48,5 @@ QEMU_UNAVAILABLE_ISA = " \
 -mno-avx512vbmi2 \
 -mno-avx512vnni \
 -mno-avx512bitalg \
--mno-avx512ifma \
--mno-avx512vpopcntdq \
 "
 
