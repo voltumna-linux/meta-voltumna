@@ -21,4 +21,6 @@ SRC_URI_append += " \
 	file://static_intel_drivers.cfg \
 	"
 
+KERNEL_FEATURES_remove = " features/security/security.scc"
+
 # COMPATIBLE_MACHINE_append = "|nu93-2930"

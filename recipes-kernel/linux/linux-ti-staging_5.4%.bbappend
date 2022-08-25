@@ -32,4 +32,6 @@ KERNEL_CONFIG_FRAGMENTS_append += " \
 	${WORKDIR}/zram.cfg \
 	"
 
+KERNEL_FEATURES_remove = " features/security/security.scc"
+
 RDEPENDS_${KERNEL_PACKAGE_NAME}-base_remove_ti33x = " prueth-fw pruhsr-fw pruprp-fw"

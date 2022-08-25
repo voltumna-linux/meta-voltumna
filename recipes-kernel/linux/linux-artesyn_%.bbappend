@@ -22,3 +22,5 @@ SRC_URI_append_mvme7100 += " \
 	file://cmdline.cfg \
 	"
 
+KERNEL_FEATURES_remove = " features/security/security.scc"
+

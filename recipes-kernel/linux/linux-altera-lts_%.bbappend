@@ -14,3 +14,6 @@ SRC_URI_append += " \
 	file://uio.cfg \
 	file://fpgamgr-debug.cfg \
 	"
+
+KERNEL_FEATURES_remove = " features/security/security.scc"
+
