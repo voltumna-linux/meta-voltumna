@@ -11,5 +11,6 @@
 OriginalName=*
 
 [Link]
-NamePolicy=keep kernel path
+# NamePolicy=keep kernel database onboard slot path
+NamePolicy=keep kernel onboard path
 MACAddressPolicy=persistent

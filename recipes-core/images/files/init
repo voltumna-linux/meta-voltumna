@@ -74,46 +74,19 @@ if [ "${break}" = "top" ]; then
 fi
 
 # Rename network interfaces
-NETDB=""
 SYSCLASSNET=/sys/class/net/
-for NIC in $(ls $SYSCLASSNET)
+for NIC in $(ls ${SYSCLASSNET})
 do
-	readlink $SYSCLASSNET$NIC | grep "devices/pci" >/dev/null
-	if [ "$?" -ne 0 ]; then
-		continue
+	UDEVADM_OUTPUT=$(udevadm test-builtin net_id ${SYSCLASSNET}${NIC} 2>/dev/null)
+	ID_NET_NAME_ONBOARD=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_ONBOARD=\(.*\)/\1/p')
+	if [ -n "${ID_NET_NAME_ONBOARD}" ]; then
+		ip link set ${NIC} name ${ID_NET_NAME_ONBOARD}
 	fi
-	DEV=$(basename `readlink $SYSCLASSNET$NIC/device`)
-	PCI=${DEV#"0000:"}
-	PORTSLOT=${PCI:0:5}
-	FUNC=${PCI:6:1}
-	if [ -d $SYSCLASSNET$NIC/wireless ]; then
-		PREFIX=wl
-	else
-		PREFIX=en
-	fi
-	if [ "$NETDB"x != x ]; then
-		NETDB="${PORTSLOT} ${FUNC} ${NIC} ${PREFIX}\n${NETDB}"
-	else
-		NETDB="${PORTSLOT} ${FUNC} ${NIC} ${PREFIX}"
+	ID_NET_NAME_PATH=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_PATH=\(.*\)/\1/p')
+	if [ -n "${ID_NET_NAME_PATH}" ]; then
+		ip link set ${NIC} name ${ID_NET_NAME_PATH}
 	fi
 done
-
-if [ -n "${NETDB}" ]; then
-	echo -e "$NETDB" | while IFS= read -r line; do
-		PORTSLOT=$(echo $line | cut -d" " -f1 -)
-		PORT=${PORTSLOT:0:2}
-		SLOT=${PORTSLOT:3:2}
-		FUNC=$(echo $line | cut -d" " -f2 -)
-		NIC=$(echo $line | cut -d" " -f3 -)
-		PREFIX=$(echo $line | cut -d" " -f4 -)
-		if [ $(echo -e "$NETDB" | grep -c ^${PORTSLOT}) -eq 1 ] && [ ${FUNC} -eq 0 ]; then
-			NAME=$(printf '%sp%ds%d' ${PREFIX} $((16#${PORT})) $((16#${SLOT})))
-		else
-			NAME=$(printf '%sp%ds%df%d' ${PREFIX} $((16#${PORT})) $((16#${SLOT})) $((16#${FUNC})))
-		fi
-		ip link set $NIC name $NAME
-	done
-fi
 
 # Retrieve parameters from network if it is the case...
 if [ -n "${network}" ]; then
