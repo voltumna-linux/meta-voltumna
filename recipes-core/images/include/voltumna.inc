@@ -61,7 +61,7 @@ inherit core-image
 
 IMAGE_CMD_tar() {
 	${IMAGE_CMD_TAR} --numeric-owner --exclude='.osdir*' -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar --transform "s;^rootfs;nfsroot;" -C ${IMAGE_ROOTFS}/.. rootfs || [ $? -eq 1 ]
-	${IMAGE_CMD_TAR} --numeric-owner -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.os.tar --transform "s;${IMAGE_NAME};${IMAGE_NAME}/usr;" -C ${IMAGE_ROOTFS}/.osdir ${IMAGE_NAME} || [ $? -eq 1 ]
+	${IMAGE_CMD_TAR} --numeric-owner -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.os.tar -C ${IMAGE_ROOTFS}/.osdir ${IMAGE_NAME} || [ $? -eq 1 ]
 }
 
 IMAGE_CMD_tar_append_arm() {
@@ -89,7 +89,7 @@ IMAGE_CMD_tar_append_x86-64() {
 	mkdir -p ${TEMPORARYDIR}/tftpboot/EFI/BOOT
 	install -m 644 ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ${TEMPORARYDIR}/tftpboot/EFI/BOOT/bootx64.efi
 	install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
-	sed -i -e "s,default=localboot,default=netboot,g" -e "s,image=default/usr,image=${IMAGE_NAME}/usr,g" ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
+	sed -i -e "s,default=localboot,default=netboot,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
 	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${TEMPORARYDIR}/ tftpboot || [ $? -eq 1 ]
 	rm -fr ${TEMPORARYDIR}
 }
