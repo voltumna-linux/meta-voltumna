@@ -1,6 +1,7 @@
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 SRC_URI_append += " \
+	file://log.cfg \
 	file://zram.cfg \
 	file://initrd.cfg \
 	file://disable_ip_nfsroot.cfg \
