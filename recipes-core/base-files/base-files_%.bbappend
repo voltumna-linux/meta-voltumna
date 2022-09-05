@@ -18,6 +18,11 @@ hostname = ""
 
 inherit siteinfo
 
+# Avoid to install default version of the issue and issue.net files
+do_install_basefilesissue () {
+	:
+}
+
 do_install_append() {
 	# Make compilation consistent between SDE and SDK
 	install -d ${D}${sysconfdir}/profile.d
@@ -49,11 +54,7 @@ do_install_append() {
 	# Add an additional link to lib
 	lnr ${D}/lib ${D}/lib${SITEINFO_BITS}
 
-	# Remove issue.net (ssh doesn't support \S{VARIABLE} 
-	# and it isn't even enabled by default via Banner)
-	rm -f ${D}/${sysconfdir}/issue.net
-
-	# Replace issue
+	# Install issue
 	cat <<-__EOF__ > ${D}${sysconfdir}/issue
 	\S{NAME} \S{VERSION_ID} \S{MACHINE} \4{${@d.getVar('PRIMARY_NETIF')}} \l
 	__EOF__

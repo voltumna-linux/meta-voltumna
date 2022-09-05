@@ -6,6 +6,7 @@ SRC_URI += " \
 	"
 
 RDEPENDS_${PN}_remove = "volatile-binds"
+RRECOMMENDS_${PN}_remove = "os-release"
 
 PACKAGECONFIG_remove = " \
 	firstboot \

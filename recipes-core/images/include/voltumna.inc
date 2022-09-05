@@ -6,9 +6,9 @@ EXTRA_IMAGE_FEATURES = "ssh-server-openssh"
 WIC_CREATE_EXTRA_ARGS += " --no-fstab-update"
 
 IMAGE_INSTALL_append += "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMENDS} \
-	bash coreutils util-linux util-linux-sfdisk glibc-utils less procps psmisc ldd \
-	tzdata tzdata-europe polkit socat stress-ng sed tar xz grep findutils file nano \
-	vim debianutils 96boards-tools dosfstools nfs-utils-client openssh-sftp-server \
+	os-release bash coreutils util-linux util-linux-sfdisk glibc-utils procps psmisc \
+	ldd less tzdata tzdata-europe polkit socat stress-ng sed tar xz grep findutils file \
+	nano vim debianutils 96boards-tools dosfstools nfs-utils-client openssh-sftp-server \
 	iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve"
 
 copy_etc_into_factory() {
