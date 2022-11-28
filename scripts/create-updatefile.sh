@@ -6,7 +6,7 @@ if [ "$USER" != "root" ]; then
 fi
 
 if [ "$#" -ne 2 ]; then
-	echo "Usage: $0 FROM.tar TO.tar"
+	echo "Usage: $0 FROM.os.tar.xz TO.os.tar.xz"
 	exit 1
 fi
 
@@ -24,14 +24,14 @@ cleanup_exit() {
 	
 trap cleanup_exit 1 2 3 6
 
-tar xf "$1" -C $TEMPDIR
+tar Jxf "$1" -C $TEMPDIR
 FROMVER=$(sed -ne 's,VERSION_ID=\(.*\),\1,p' $TEMPDIR/*/lib/os-release)
 
-tar xf "$2" -C $TEMPDIR
+tar Jxf "$2" -C $TEMPDIR
 TOVER=$(sed -ne 's,VERSION_ID=\(.*\),\1,p' $TEMPDIR/*/lib/os-release | grep -v ${FROMVER}$)
 
-FROMBASEIMAGE=$(echo $(basename $1) | sed "s/\(.*\)-${FROMVER}.os.tar/\1/")
-TOBASEIMAGE=$(echo $(basename $2) | sed "s/\(.*\)-${TOVER}.os.tar/\1/")
+FROMBASEIMAGE=$(echo $(basename $1) | sed "s/\(.*\)-${FROMVER}.os.tar.xz/\1/")
+TOBASEIMAGE=$(echo $(basename $2) | sed "s/\(.*\)-${TOVER}.os.tar.xz/\1/")
 
 if [ "${FROMBASEIMAGE}" != "${TOBASEIMAGE}" ]; then
 	cleanup
@@ -56,6 +56,8 @@ cd $ORIGDIR
 if [ -n "${SUDO_USER}" ]; then
 	chown ${SUDO_USER}: ${INCRUPDATE} ${FULLUPDATE}
 fi
+
+chmod 644 ${INCRUPDATE} ${FULLUPDATE}
 
 mv $INCRUPDATE $INCRUPDATE.incr.upd
 mv $FULLUPDATE $FULLUPDATE.full.upd
