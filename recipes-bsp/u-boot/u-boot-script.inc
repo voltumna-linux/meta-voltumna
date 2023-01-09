@@ -6,7 +6,7 @@ UBOOT_SCRIPT_BINARY ?= "${UBOOT_SCRIPT_SOURCE}.uimg"
 UBOOT_SCRIPT_IMAGE ?= "${UBOOT_SCRIPT}-${MACHINE}-${PV}-${PR}.${UBOOT_SCRIPT_SUFFIX}.uimg"
 UBOOT_SCRIPT_SYMLINK ?= "${UBOOT_SCRIPT}-${MACHINE}.${UBOOT_SCRIPT_SUFFIX}.uimg"
 
-do_compile_append() {
+do_compile:append() {
 	if [ "x${UBOOT_SCRIPT}" != "x" ]; then
 		sed -i -e "s,@ROOT@,${ROOT},g" -e "s,@ROOTUSB@,${ROOTUSB},g" \
 			-e "s,@ETH@,${@d.getVar('PRIMARY_NETIF')},g" \
@@ -17,7 +17,7 @@ do_compile_append() {
 	fi
 }
 
-#do_install_append() {
+#do_install:append() {
 #	if [ "x${UBOOT_SCRIPT}" != "x" ]; then
 #		install -d ${D}/boot
 #		install -m 644 ${WORKDIR}/${UBOOT_SCRIPT_BINARY} ${D}/boot/${UBOOT_SCRIPT_IMAGE}
@@ -26,10 +26,12 @@ do_compile_append() {
 #	fi
 #}
 
-do_deploy_append() {
+do_deploy:append() {
 	if [ "x${UBOOT_SCRIPT}" != "x" ]; then
 		install -d ${DEPLOYDIR}
 		install -m 644 ${WORKDIR}/${UBOOT_SCRIPT_BINARY} ${DEPLOYDIR}/${UBOOT_SCRIPT_IMAGE}
+#		ln -sfrn ${UBOOT_SCRIPT_IMAGE} ${DEPLOYDIR}/${UBOOT_SCRIPT_BINARY}
+#		ln -sfrn ${UBOOT_SCRIPT_IMAGE} ${DEPLOYDIR}/${UBOOT_SCRIPT_SYMLINK}-${MACHINE}
 		ln -sfrn ${DEPLOYDIR}/${UBOOT_SCRIPT_IMAGE} ${DEPLOYDIR}/${UBOOT_SCRIPT_BINARY}
 		ln -sfrn ${DEPLOYDIR}/${UBOOT_SCRIPT_IMAGE} ${DEPLOYDIR}/${UBOOT_SCRIPT_SYMLINK}-${MACHINE}
 	fi

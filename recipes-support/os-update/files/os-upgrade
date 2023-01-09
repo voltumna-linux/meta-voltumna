@@ -9,7 +9,6 @@ WORKDIR=`pwd`
 
 FROM="${VARIANT_ID}-${MACHINE}-${VERSION_ID}"
 
-
 rm -fr /.osdir/staging
 cp -al /.osdir/${FROM} /.osdir/staging
 rsync -azchHEADXK --delete --timeout=60 --read-batch=$1 /.osdir/staging

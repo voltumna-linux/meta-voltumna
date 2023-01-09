@@ -1,14 +1,14 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI += " \
+SRC_URI:append = " \
 	file://99-default.link \
 	file://sulogin-force.conf \
 	"
 
-RDEPENDS_${PN}_remove = "volatile-binds"
-RRECOMMENDS_${PN}_remove = "os-release"
+RDEPENDS:${PN}:remove = "volatile-binds"
+RRECOMMENDS:${PN}:remove = "os-release"
 
-PACKAGECONFIG_remove = " \
+PACKAGECONFIG:remove = " \
 	firstboot \
 	hibernate \
 	ima \
@@ -16,13 +16,28 @@ PACKAGECONFIG_remove = " \
 	sysvinit \
 "
 
-PACKAGECONFIG_append = " \
+PACKAGECONFIG:append = " \
 	coredump \
 	elfutils \
 	serial-getty-generator \
 "
 
-do_install_append() {
+EXTRA_OEMESON += "-Dnobody-user=nobody \
+                  -Dnobody-group=nogroup \
+                  "
+
+USERADD_PARAM:${PN} += " \
+	--uid 10000 --user-group --groups dialout --no-create-home \
+	--home-dir / --shell /bin/nologin controls; \
+	"
+
+do_install:append() {
+	# Disable parsing of the ip kernel command line parameter
+	sed -i 's/enable systemd-network-generator.service/disable systemd-network-generator.service/' \
+		${D}${systemd_unitdir}/system-preset/90-systemd.preset
+	sed -i 's/Also=systemd-network-generator.service/#Also=systemd-network-generator.service/'  \
+		${D}${systemd_unitdir}/system/systemd-networkd.service
+
 	# Copy file to set NamePolicy for network interfaces
 	install -m 0644 ${WORKDIR}/99-default.link ${D}${systemd_unitdir}/network/
 

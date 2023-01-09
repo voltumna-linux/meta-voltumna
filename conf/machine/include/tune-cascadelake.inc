@@ -10,7 +10,7 @@
 DEFAULTTUNE ?= "cascadelake-64"
 
 # Include the previous tune to pull in PACKAGE_EXTRA_ARCHS
-require conf/machine/include/tune-corei7.inc
+require conf/machine/include/x86/tune-corei7.inc
 
 # Extra tune features
 TUNEVALID[cascadelake] = "Enable cascadelake specific processor optimizations"
@@ -19,15 +19,15 @@ TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'cascadelake', ' -march=ca
 # Extra tune selections
 
 AVAILTUNES += "cascadelake-64"
-TUNE_FEATURES_tune-cascadelake-64 = "${TUNE_FEATURES_tune-x86-64} cascadelake"
-BASE_LIB_tune-cascadelake-64 = "lib64"
-TUNE_PKGARCH_tune-cascadelake-64 = "cascadelake-64"
-PACKAGE_EXTRA_ARCHS_tune-cascadelake-64 = "${PACKAGE_EXTRA_ARCHS_tune-core2-64} cascadelake-64"
+TUNE_FEATURES:tune-cascadelake-64 = "${TUNE_FEATURES:tune-x86-64} cascadelake"
+BASE_LIB:tune-cascadelake-64 = "lib64"
+TUNE_PKGARCH:tune-cascadelake-64 = "cascadelake-64"
+PACKAGE_EXTRA_ARCHS:tune-cascadelake-64 = "${PACKAGE_EXTRA_ARCHS:tune-corei7-64} cascadelake-64"
 QEMU_EXTRAOPTIONS_cascadelake-64 = " -cpu Cascadelake-Server"
 
 
 # Disable QEMU usermode by default (get avx2)
-MACHINE_FEATURES_remove = "qemu-usermode"
+MACHINE_FEATURES:remove = "qemu-usermode"
 
 CASCADELAKE_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' ${QEMU_UNAVAILABLE_ISA}', '-mavx2', d)}"
 

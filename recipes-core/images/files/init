@@ -13,7 +13,7 @@ do_reboot() {
 mount -n -t proc none /proc || do_reboot
 
 # Symlinking mtab to make "umount -a" works
-ln -s /proc/self/mounts /etc/mtab
+ln -s /proc/self/mounts /etc/mtab >/dev/null 2>&1
 
 # Mounting dev filesystem
 mount -t devtmpfs none /dev || do_reboot
@@ -80,11 +80,11 @@ do
 	UDEVADM_OUTPUT=$(udevadm test-builtin net_id ${SYSCLASSNET}${NIC} 2>/dev/null)
 	ID_NET_NAME_ONBOARD=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_ONBOARD=\(.*\)/\1/p')
 	if [ -n "${ID_NET_NAME_ONBOARD}" ]; then
-		ip link set ${NIC} name ${ID_NET_NAME_ONBOARD}
+		ip link set ${NIC} name ${ID_NET_NAME_ONBOARD} >/dev/null 2>&1
 	fi
 	ID_NET_NAME_PATH=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_PATH=\(.*\)/\1/p')
 	if [ -n "${ID_NET_NAME_PATH}" ]; then
-		ip link set ${NIC} name ${ID_NET_NAME_PATH}
+		ip link set ${NIC} name ${ID_NET_NAME_PATH} >/dev/null 2>&1
 	fi
 done
 
@@ -92,10 +92,10 @@ done
 if [ -n "${network}" ]; then
 	if [ -z "${interface}" ]; then
 		echo -n "Fail to retrieve interface! "
-		do_umount_reboot
+		do_reboot
 	fi
 
-	ip link set "${interface}" up
+	ip link set "${interface}" up >/dev/null 2>&1
 	counter=0
 	while [ "$(cat /sys/class/net/${interface}/operstate)" != "up" ]
 	do
@@ -108,15 +108,15 @@ if [ -n "${network}" ]; then
 	done
 
 	if [ "${autoconf}" = "dhcp" ]; then
-		eval $(udhcpc -n -q -i ${interface} -O rootpath -O usrpath -s /etc/udhcpc.d/60elettra 2>/dev/null)
+		eval $(udhcpc -n -q -i ${interface} -O rootpath -s /etc/udhcpc.d/60voltumna 2>/dev/null)
 	fi
 
-	ip addr add ${ip}/${mask} dev ${interface}
+	ip addr add ${ip}/${mask} dev ${interface} >/dev/null 2>&1
 	if [ "$?" -ne 0 ]; then
 		echo -n "Fail to configure interface! "
-		do_umount_reboot
+		do_reboot
 	fi
-	ip route add default via ${router} dev ${interface}
+	ip route add default via ${router} dev ${interface} >/dev/null 2>&1
 fi
 
 # Drop into a shell...
@@ -152,7 +152,7 @@ case $rootfstype in
 esac
 if [ "$?" -ne 0 ]; then
 	echo -n "Fail to mount root(path)! "
-	do_umount_reboot
+	do_reboot
 fi
 
 # Mount usrpath (if necessary)...

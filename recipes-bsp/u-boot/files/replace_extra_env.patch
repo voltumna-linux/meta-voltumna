@@ -1,26 +1,27 @@
 diff --git a/configs/am335x_evm_defconfig b/configs/am335x_evm_defconfig
-index fcdd5d1563..d5493a8851 100644
+index 9a61a04af9..38a25d4abf 100644
 --- a/configs/am335x_evm_defconfig
 +++ b/configs/am335x_evm_defconfig
-@@ -7,7 +7,7 @@ CONFIG_SPL=y
- CONFIG_DISTRO_DEFAULTS=y
+@@ -9,7 +9,7 @@ CONFIG_DISTRO_DEFAULTS=y
  CONFIG_SPL_LOAD_FIT=y
+ # CONFIG_USE_SPL_FIT_GENERATOR is not set
  CONFIG_OF_BOARD_SETUP=y
--CONFIG_BOOTCOMMAND="if test ${boot_fit} -eq 1; then run update_to_fit; fi; run findfdt; run init_console; run envboot; run distro_bootcmd"
+-CONFIG_BOOTCOMMAND="if test ${boot_fit} -eq 1; then run update_to_fit; fi; run findfdt; run init_console; run envboot; run finduuid; run distro_bootcmd"
 +CONFIG_BOOTCOMMAND="run setconsole; run findfdt; for target in ${boot_targets}; do run loadscript_${target}; done; sleep 10; reset"
  CONFIG_LOGLEVEL=3
  CONFIG_SYS_CONSOLE_INFO_QUIET=y
- CONFIG_VERSION_VARIABLE=y
+ CONFIG_ARCH_MISC_INIT=y
 diff --git a/include/configs/am335x_evm.h b/include/configs/am335x_evm.h
-index 4eb35e6066..28f97cf0a3 100644
+index 7d8e30db1a..bed9a605a9 100644
 --- a/include/configs/am335x_evm.h
 +++ b/include/configs/am335x_evm.h
-@@ -95,43 +95,12 @@
+@@ -102,44 +102,12 @@
  
  #define CONFIG_EXTRA_ENV_SETTINGS \
  	DEFAULT_LINUX_BOOT_ENV \
 -	DEFAULT_MMC_TI_ARGS \
 -	DEFAULT_FIT_TI_ARGS \
+-	"boot=mmc\0" \
 -	"bootpart=0:2\0" \
 -	"bootdir=/boot\0" \
 -	"bootfile=zImage\0" \
@@ -63,7 +64,7 @@ index 4eb35e6066..28f97cf0a3 100644
  	"findfdt="\
  		"if test $board_name = A335BONE; then " \
  			"setenv fdtfile am335x-bone.dtb; fi; " \
-@@ -159,16 +128,10 @@
+@@ -167,16 +135,10 @@
  			"setenv fdtfile am335x-icev2-prueth.dtb; fi; " \
  		"if test $fdtfile = undefined; then " \
  			"echo WARNING: Could not determine device tree to use; fi; \0" \
@@ -85,10 +86,10 @@ index 4eb35e6066..28f97cf0a3 100644
  
  /* NS16550 Configuration */
 diff --git a/include/configs/ti_armv7_common.h b/include/configs/ti_armv7_common.h
-index 08829781e3..8554f57120 100644
+index c48c4c2398..faff81b872 100644
 --- a/include/configs/ti_armv7_common.h
 +++ b/include/configs/ti_armv7_common.h
-@@ -46,16 +46,9 @@
+@@ -46,17 +46,9 @@
   */
  #define DEFAULT_LINUX_BOOT_ENV \
  	"loadaddr=0x82000000\0" \
@@ -100,13 +101,14 @@ index 08829781e3..8554f57120 100644
 -	"ramdisk_addr_r=0x88080000\0" \
  	"scriptaddr=0x80000000\0" \
 -	"pxefile_addr_r=0x80100000\0" \
+-	"fdtoverlay_addr_r=0x80200000\0" \
 -	"bootm_size=0x10000000\0" \
 -	"boot_fdt=try\0"
 +	"bootm_size=0x10000000\0"
  
  #define DEFAULT_FIT_TI_ARGS \
  	"boot_fit=0\0" \
-@@ -67,7 +60,7 @@
+@@ -68,7 +60,7 @@
  		"do;" \
  		"setenv overlaystring ${overlaystring}'#'${overlay};" \
  		"done;\0" \
@@ -138,10 +140,10 @@ index de0a6af2fd..9e1edbd1fe 100644
  /*
   * SPL related defines.  The Public RAM memory map the ROM defines the
 diff --git a/include/environment/ti/boot.h b/include/environment/ti/boot.h
-index 9300ec4975..566d9336c7 100644
+index a598607ead..2d6baa0639 100644
 --- a/include/environment/ti/boot.h
 +++ b/include/environment/ti/boot.h
-@@ -103,65 +103,12 @@
+@@ -132,69 +132,12 @@
  	"fastboot " __stringify(CONFIG_FASTBOOT_USB_DEV) "; "
  
  #define DEFAULT_COMMON_BOOT_TI_ARGS \
@@ -150,6 +152,7 @@ index 9300ec4975..566d9336c7 100644
 +	"bootfile=boot.scr.uimg\0" \
 +	"krnfile=zImage\0" \
  	"fdtfile=undefined\0" \
+-	"boot=mmc\0" \
 -	"bootpart=0:2\0" \
 -	"bootdir=/boot\0" \
 -	"bootfile=zImage\0" \
@@ -165,54 +168,57 @@ index 9300ec4975..566d9336c7 100644
 -		"setenv bootpart 1:2; " \
 -		"setenv mmcroot /dev/mmcblk0p2 rw; " \
 -		"run mmcboot;\0" \
--	"emmc_android_boot=" \
+-	"emmc_android_bcb_load=" \
 -		"if bcb load " __stringify(CONFIG_FASTBOOT_FLASH_MMC_DEV) " " \
 -		CONTROL_PARTITION "; then " \
+-			"setenv ardaddr -; " \
 -			"if bcb test command = bootonce-bootloader; then " \
--				"echo BCB: Bootloader boot...; " \
+-				"echo Android: Bootloader boot...; " \
 -				"bcb clear command; bcb store; " \
 -				FASTBOOT_CMD \
+-				"exit; " \
 -			"elif bcb test command = boot-recovery; then " \
--				"echo BCB: Recovery boot...; " \
--				"echo Warning: recovery is not implemented; " \
--				"echo Performing normal boot for now...; " \
--				"bcb clear command; bcb store; " \
--				"run emmc_android_normal_boot; " \
+-				"echo Android: Recovery boot...; " \
+-				"setenv ardaddr $loadaddr;" \
+-				"setenv apart recovery; " \
 -			"else " \
--				"echo BCB: Normal boot requested...; " \
--				"run emmc_android_normal_boot; " \
+-				"echo Android: Normal boot...; " \
+-				"setenv ardaddr $loadaddr; " \
+-				"setenv apart boot${slot_suffix}; " \
 -			"fi; " \
 -		"else " \
 -			"echo Warning: BCB is corrupted or does not exist; " \
--			"echo Performing normal boot...; " \
--			"run emmc_android_normal_boot; " \
+-			"echo Android: Normal boot...; " \
 -		"fi;\0" \
--	"emmc_android_normal_boot=" \
--		"echo Trying to boot Android from eMMC ...; " \
--		"run update_to_fit; " \
--		"setenv eval_bootargs setenv bootargs $bootargs; " \
--		"run eval_bootargs; " \
+-	PREPARE_FDT \
+-	"emmc_android_bootm=" \
+-		"if part start mmc $mmcdev $apart boot_start; then " \
+-			"part size mmc $mmcdev $apart boot_size; " \
+-			"mmc read $loadaddr $boot_start $boot_size; " \
+-			"run prepare_fdt; " \
+-			"bootm $loadaddr $ardaddr $fdtaddr; " \
+-		"else " \
+-			"echo $apart partition not found; " \
+-			"exit; " \
+-		"fi;\0" \
+-	"emmc_android_boot=" \
 -		"setenv mmcdev 1; " \
--		"setenv machid fe6; " \
 -		"mmc dev $mmcdev; " \
 -		"mmc rescan; " \
+-		AB_SELECT_SLOT \
+-		"run emmc_android_bcb_load; " \
+-		"setenv eval_bootargs setenv bootargs $bootargs; " \
+-		"run eval_bootargs; " \
+-		"setenv machid fe6; " \
 -		AVB_VERIFY_CHECK \
--		AB_SELECT \
--		"if part start mmc ${mmcdev} boot${slot_suffix} boot_start; " \
--		"then " \
--			"part size mmc ${mmcdev} boot${slot_suffix} " \
--				"boot_size; " \
--			"mmc read ${loadaddr} ${boot_start} ${boot_size}; " \
--			"bootm ${loadaddr}#${fdtfile}; " \
--		"else " \
--			"echo boot${slot_suffix} partition not found; " \
--		"fi;\0"
+-		AB_SELECT_ARGS \
+-		"run emmc_android_bootm;\0" \
 +	"setconsole=setenv console ttyS0,${baudrate}n8\0" \
 +	"optargs=\0"
  
  #ifdef CONFIG_OMAP54XX
  
-@@ -213,20 +160,13 @@
+@@ -251,20 +194,13 @@
  			"echo WARNING: Could not determine device tree to use; fi; \0"
  
  #define CONFIG_BOOTCOMMAND \

@@ -8,7 +8,7 @@ meta-*
 !meta-mingw
 !meta-openembedded
 !meta-ti
-!meta-altera
+!meta-intel-fpga
 !meta-tango
 !meta-dpdk
 !meta-arm

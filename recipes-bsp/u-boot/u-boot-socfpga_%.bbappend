@@ -1,8 +1,8 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 require u-boot-script.inc
 
-SRC_URI_append += " \
+SRC_URI:append = " \
 	file://${UBOOT_SCRIPT_SOURCE} \
 	file://uEnv.txt \
 	file://replace_extra_env.patch \
@@ -10,11 +10,16 @@ SRC_URI_append += " \
 
 UBOOT_SCRIPT = "boot"
 
-do_deploy_append() {
+do_install:append() {
 	sed -i -e "s,@IMAGE_NAME@,default,g" \
 		-e "s,@USR@,mount.usr=/.osdir/\$image,g" \
 		${WORKDIR}/uEnv.txt
-	install -d ${DEPLOY_DIR_IMAGE}
-	install -m 0644 ${WORKDIR}/uEnv.txt ${DEPLOY_DIR_IMAGE}
 }
 
+do_deploy:append() {
+	install -m 0644 ${WORKDIR}/uEnv.txt ${DEPLOYDIR}
+}
+
+addtask deploy after do_install before do_build
+
+inherit deploy

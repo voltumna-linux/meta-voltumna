@@ -1,6 +1,6 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI_append += " \
+SRC_URI:append = " \
 	file://log.cfg \
 	file://zram.cfg \
 	file://initrd.cfg \
@@ -11,6 +11,7 @@ SRC_URI_append += " \
 	file://disable_ptp.cfg \
 	file://remove_martian_source_warning.cfg \
 	file://enable_ebpf_xpd.cfg \
+	file://disable_lttng.cfg \
 	\
 	file://numa.cfg \
 	file://dpdk.cfg \
@@ -20,8 +21,7 @@ SRC_URI_append += " \
 	file://vtd.cfg \
 	file://serial_console.cfg \
 	file://static_intel_drivers.cfg \
+	file://ipmi.cfg \
 	"
 
-KERNEL_FEATURES_remove = " features/security/security.scc"
-
-# COMPATIBLE_MACHINE_append = "|nu93-2930"
+KERNEL_FEATURES:remove = " features/security/security.scc"

@@ -2,7 +2,7 @@ DESCRIPTION = "Small image capable of mounting all parts of the final system."
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-SRC_URI += "file://init"
+SRC_URI:append = "file://init"
 
 PV = "1.0"
 
@@ -38,7 +38,7 @@ remove_var() {
 	rm -fr ${IMAGE_ROOTFS}${localstatedir}
 }
 
-IMAGE_PREPROCESS_COMMAND_append += " remove_var;"
+IMAGE_PREPROCESS_COMMAND:append = " remove_var;"
 
-BAD_RECOMMENDATIONS += "busybox-syslog"
+BAD_RECOMMENDATIONS:append = "busybox-syslog"
 inherit image

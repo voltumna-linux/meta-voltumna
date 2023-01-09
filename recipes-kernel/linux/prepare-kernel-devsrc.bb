@@ -6,9 +6,9 @@ SRC_URI = " \
 	file://prepare-kernel-devsrc.service \
 	"
 
-SYSTEMD_SERVICE_${PN} = "prepare-kernel-devsrc.service"
+SYSTEMD_SERVICE:${PN} = "prepare-kernel-devsrc.service"
 
-FILES_${PN} += "${systemd_unitdir}/system"
+FILES:${PN} += "${systemd_unitdir}/system"
 
 do_install() {
 	install -d ${D}${systemd_system_unitdir}

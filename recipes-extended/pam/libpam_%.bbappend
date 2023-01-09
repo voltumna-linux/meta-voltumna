@@ -1,1 +1,1 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/libpam:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/libpam:"
