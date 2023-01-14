@@ -21,6 +21,10 @@ copy_etc_into_factory() {
 	cp -r ${IMAGE_ROOTFS}${sysconfdir} ${IMAGE_ROOTFS}${datadir}/factory/
 }
 
+remove_useless() {
+	rm -f ${IMAGE_ROOTFS}/usr/bin/su ${IMAGE_ROOTFS}/usr/bin/su.*
+}
+
 use_initramfs_bundled_kernel() {
 	rm -f ${IMAGE_ROOTFS}/usr/boot/${KERNEL_IMAGETYPE}-*
 	cp -r ${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE}-initramfs-${MACHINE}-* \
@@ -53,7 +57,7 @@ append_to_osrelease() {
 	__EOF__
 }
 
-ROOTFS_POSTPROCESS_COMMAND_append += " append_to_osrelease;"
+ROOTFS_POSTPROCESS_COMMAND_append += " remove_useless; append_to_osrelease;"
 IMAGE_PREPROCESS_COMMAND_append += " use_initramfs_bundled_kernel; copy_etc_into_factory; compute_sum; move_usr_into_osdir;"
 
 BAD_RECOMMENDATIONS += "busybox-syslog grub-common"
