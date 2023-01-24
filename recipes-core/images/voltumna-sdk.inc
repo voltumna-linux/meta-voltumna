@@ -1,6 +1,6 @@
 require include/voltumna.inc
 
-# IMAGE_INSTALL:append = " kernel-devsrc"
+IMAGE_INSTALL:append = " man-pages"
 TOOLCHAIN_HOST_TASK:append:arm = " nativesdk-dtc"
 
 SDKIMAGE_FEATURES:append = "dev-pkgs bash-completion-pkgs doc-pkgs dbg-pkgs tools-sdk tools-debug tools-profile"

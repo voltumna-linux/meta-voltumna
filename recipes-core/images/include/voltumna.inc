@@ -13,6 +13,7 @@ IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMEN
 	less tzdata tzdata-europe polkit socat stress-ng sed tar xz grep findutils file \
 	nano vim debianutils 96boards-tools dosfstools openssh-sftp-server nfs-utils-mount \
 	iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve"
+IMAGE_INSTALL:append:x86-64 = " thermald"
 
 append_to_osrelease() {
 	cat <<-__EOF__ >> ${IMAGE_ROOTFS}/etc/os-release
