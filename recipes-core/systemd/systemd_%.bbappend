@@ -3,6 +3,7 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 SRC_URI += " \
 	file://99-default.link \
 	file://sulogin-force.conf \
+	file://nsswitch.conf \
 	"
 
 RDEPENDS_${PN}_remove = "volatile-binds"
@@ -64,4 +65,7 @@ do_install_append() {
 		${D}${datadir}/factory/etc/pam.d/other \
 		${D}${datadir}/factory/etc/pam.d/system-auth
 	rmdir ${D}${datadir}/factory/etc/pam.d
+
+	# Overwrite nsswitch.conf
+	cp ${WORKDIR}/nsswitch.conf ${D}${datadir}/factory/etc/
 }
