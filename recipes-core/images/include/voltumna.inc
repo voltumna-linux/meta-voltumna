@@ -78,7 +78,7 @@ IMAGE_CMD_tar_append_arm() {
 	rm -fr ${TEMPORARYDIR}
 }
 
-IMAGE_CMD_tar_append_e500v2() {
+IMAGE_CMD_tar_append_ppce500v2() {
 	TEMPORARYDIR=$(mktemp -d)
 	mkdir -p ${TEMPORARYDIR}/tftpboot
 	install -m 644 ${DEPLOY_DIR_IMAGE}/boot.scr.uimg ${TEMPORARYDIR}/tftpboot
