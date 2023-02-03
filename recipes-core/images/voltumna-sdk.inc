@@ -1,23 +1,40 @@
 require include/voltumna.inc
 
-IMAGE_INSTALL:append = " man-pages"
+SDKIMAGE_FEATURES = "${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
+
+IMAGE_INSTALL:append += " info man-pages"
+
+# To keep in sync with SDE
+TOOLCHAIN_HOST_TASK:append = " nativesdk-binutils nativesdk-cpp nativesdk-gcc nativesdk-libgcc-dev \
+       nativesdk-g++ nativesdk-libstdc++-dev nativesdk-libgomp-dev"
 TOOLCHAIN_HOST_TASK:append:arm = " nativesdk-dtc"
 
-SDKIMAGE_FEATURES:append = "dev-pkgs bash-completion-pkgs doc-pkgs dbg-pkgs tools-sdk tools-debug tools-profile"
 SDK_ARCHIVE_TYPE = "tar.xz"
 SDK_ARCHIVE_TYPE:sdkmingw32 = "zip"
 
+kernel_related_stuff_cleanup() {
+       rm -fr ${SDK_OUTPUT}${SDKTARGETSYSROOT}/usr/src/kernel  \
+               ${SDK_OUTPUT}${SDKTARGETSYSROOT}/usr/boot/*     \
+               ${SDK_OUTPUT}${SDKTARGETSYSROOT}/lib/modules/*
+}
+
+POPULATE_SDK_POST_TARGET_COMMAND += " kernel_related_stuff_cleanup;"
+
 install_man_sh() {
-	mkdir -p ${SDK_OUTPUT}/${SDKTARGETSYSROOT}/environment-setup.d/
-	cat <<-__EOF__ >> ${SDK_OUTPUT}${SDKTARGETSYSROOT}/environment-setup.d/man.sh
+	mkdir -p ${SDK_OUTPUT}/${SDKPATHNATIVE}/environment-setup.d/
+	cat <<-__EOF__ >> ${SDK_OUTPUT}${SDKPATHNATIVE}/environment-setup.d/man.sh
 	export MANPATH=\$SDKTARGETSYSROOT/usr/share/man
 	export INFOPATH=\$SDKTARGETSYSROOT/usr/share/info
 	alias info='info -vinfopath-no-defaults=On'
 	__EOF__
 }
 
-install_man_sh:sdkmingw32() {
-	:
+fix_linker_scripts() {
+       for f in libm libc; do
+               f=${SDK_OUTPUT}${SDKPATHNATIVE}${libdir_nativesdk}/${f}.so
+               test -f $f || continue
+               sed -i "s#${SDKPATHNATIVE}##g" ${f}
+       done
 }
 
-POPULATE_SDK_POST_TARGET_COMMAND:append = " install_man_sh;"
+POPULATE_SDK_POST_TARGET_COMMAND:append = " install_man_sh; fix_linker_scripts;"
