@@ -1,43 +1,40 @@
 require include/voltumna.inc
 
-IMAGE_INSTALL_append = " man-pages"
+SDKIMAGE_FEATURES = "${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
+
+IMAGE_INSTALL_append += " info man-pages"
+
+# To keep in sync with SDE
+TOOLCHAIN_HOST_TASK_append = " nativesdk-binutils nativesdk-cpp nativesdk-gcc nativesdk-libgcc-dev \
+	nativesdk-g++ nativesdk-libstdc++-dev nativesdk-libgomp-dev"
 TOOLCHAIN_HOST_TASK_append_arm += "nativesdk-dtc"
 
-SDKIMAGE_FEATURES += "dev-pkgs bash-completion-pkgs doc-pkgs dbg-pkgs tools-sdk tools-debug tools-profile"
 SDK_ARCHIVE_TYPE = "tar.xz"
 SDK_ARCHIVE_TYPE_sdkmingw32 = "zip"
 
+kernel_related_stuff_cleanup() {
+	rm -fr ${SDK_OUTPUT}${SDKTARGETSYSROOT}/usr/src/kernel	\
+		${SDK_OUTPUT}${SDKTARGETSYSROOT}/usr/boot/*	\
+		${SDK_OUTPUT}${SDKTARGETSYSROOT}/lib/modules/*
+}
+
+POPULATE_SDK_POST_TARGET_COMMAND += " kernel_related_stuff_cleanup;"
+
 install_man_sh() {
-	mkdir -p ${SDK_OUTPUT}/${SDKTARGETSYSROOT}/environment-setup.d/
-	cat <<-__EOF__ >> ${SDK_OUTPUT}${SDKTARGETSYSROOT}/environment-setup.d/man.sh
+	mkdir -p ${SDK_OUTPUT}/${SDKPATHNATIVE}/environment-setup.d/
+	cat <<-__EOF__ >> ${SDK_OUTPUT}${SDKPATHNATIVE}/environment-setup.d/man.sh
 	export MANPATH=\$SDKTARGETSYSROOT/usr/share/man
 	export INFOPATH=\$SDKTARGETSYSROOT/usr/share/info
 	alias info='info -vinfopath-no-defaults=On'
 	__EOF__
 }
 
-install_man_sh_sdkmingw32() {
-	:
+fix_linker_scripts() {
+	for f in libm libc; do
+		f=${SDK_OUTPUT}${SDKPATHNATIVE}${libdir_nativesdk}/${f}.so
+		test -f $f || continue
+		sed -i "s#${SDKPATHNATIVE}##g" ${f}
+	done
 }
 
-install_adjust_debian_chroot_into_sdk() {
-	mkdir -p ${SDK_OUTPUT}${SDKTARGETSYSROOT}/environment-setup.d/
-	cat <<-__EOF__ > ${SDK_OUTPUT}${SDKTARGETSYSROOT}/environment-setup.d/adjust-debian-chroot.sh
-	export debian_chroot="${SDK_NAME_PREFIX} ${MACHINE} ${SDK_VERSION}"
-	__EOF__
-}
-
-install_adjust_debian_chroot_into_sdk_sdkmingw32() {
-	true
-}
-
-kernel_related_stuff_cleanup() {
-	rm -fr ${SDK_OUTPUT}${SDKTARGETSYSROOT}/usr/src/kernel	\
-		${SDK_OUTPUT}${SDKTARGETSYSROOT}/usr/boot/*	\
-		${SDK_OUTPUT}${SDKTARGETSYSROOT}/lib/modules/*
-	
-}
-
-POPULATE_SDK_POST_TARGET_COMMAND += " install_adjust_debian_chroot_into_sdk; kernel_related_stuff_cleanup; install_man_sh;"
-
-#SDK_POST_INSTALL_COMMAND_append += '$SUDO_EXEC sh -c ". $target_sdk_dir/environment-setup-@REAL_MULTIMACH_TARGET_SYS@ && cd $target_sdk_dir/sysroots/@REAL_MULTIMACH_TARGET_SYS@/usr/src/kernel/ && make prepare scripts >/dev/null 2>&1"'
+POPULATE_SDK_POST_HOST_COMMAND_append += " install_man_sh; fix_linker_scripts;"
