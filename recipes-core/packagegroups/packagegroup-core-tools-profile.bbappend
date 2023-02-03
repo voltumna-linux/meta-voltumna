@@ -1,4 +1,0 @@
-RDEPENDS:${PN}:remove = "\
-    ${LTTNGTOOLS} \
-    "
-
