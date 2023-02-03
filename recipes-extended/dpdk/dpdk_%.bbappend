@@ -3,7 +3,9 @@ PACKAGECONFIG_06v45n = " numa"
 
 FILES_${PN} += "${sysconfdir}/profile.d/dpdk.sh"
 
-DEPENDS += "python3-pyelftools"
+DEPENDS_class-target += "python3-pyelftools"
+RDEPENDS_${PN}_class-target += "bash"
+RDEPENDS_${PN}_class-nativesdk = "python3-core"
 
 do_configure_prepend () {
 	# Enable HPET
@@ -49,3 +51,4 @@ do_install () {
 	__EOF__
 }
 
+BBCLASSEXTEND = "native nativesdk"
