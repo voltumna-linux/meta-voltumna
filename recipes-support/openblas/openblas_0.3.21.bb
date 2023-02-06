@@ -37,3 +37,5 @@ do_install() {
 
 FILES:${PN}     = "${libdir}/*"
 FILES:${PN}-dev = "${includedir} ${libdir}/lib${PN}.so ${libdir}/pkgconfig ${libdir}/cmake"
+
+BBCLASSEXTEND = "native nativesdk"
