@@ -1,6 +1,6 @@
 *.pyc
-build
-meta-*
+build*/
+meta-*/
 
 !meta-96boards
 !meta-artesyn
