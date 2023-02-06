@@ -43,13 +43,13 @@ do_install:append(){
     rm -rf ${D}/${INSTALL_PATH}/examples/*
 
     # Install examples
-#    install -m 0755 -d ${D}/${INSTALL_PATH}/examples/
-#    for dirname in ${B}/examples/dpdk-*
-#    do
-#        if [ ! -d ${dirname} ] && [ -x ${dirname} ]; then
-#            install -m 0755 ${dirname} ${D}/${INSTALL_PATH}/examples/
-#        fi
-#    done
+    install -m 0755 -d ${D}/${INSTALL_PATH}/examples/
+    for dirname in ${B}/examples/dpdk-*
+    do
+        if [ ! -d ${dirname} ] && [ -x ${dirname} ]; then
+            install -m 0755 ${dirname} ${D}/${INSTALL_PATH}/examples/
+        fi
+    done
 
 }
 
