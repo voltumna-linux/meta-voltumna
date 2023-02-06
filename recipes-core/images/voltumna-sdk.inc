@@ -2,7 +2,7 @@ require include/voltumna.inc
 
 SDKIMAGE_FEATURES = "${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
 
-IMAGE_INSTALL:append += " info man-pages"
+IMAGE_INSTALL:append = " info man-pages"
 
 # To keep in sync with SDE
 TOOLCHAIN_HOST_TASK:append = " nativesdk-binutils nativesdk-cpp nativesdk-gcc nativesdk-libgcc-dev \
@@ -18,7 +18,7 @@ kernel_related_stuff_cleanup() {
                ${SDK_OUTPUT}${SDKTARGETSYSROOT}/lib/modules/*
 }
 
-POPULATE_SDK_POST_TARGET_COMMAND += " kernel_related_stuff_cleanup;"
+POPULATE_SDK_POST_TARGET_COMMAND:append = " kernel_related_stuff_cleanup;"
 
 install_man_sh() {
 	mkdir -p ${SDK_OUTPUT}/${SDKPATHNATIVE}/environment-setup.d/
@@ -32,9 +32,9 @@ install_man_sh() {
 fix_linker_scripts() {
        for f in libm libc; do
                f=${SDK_OUTPUT}${SDKPATHNATIVE}${libdir_nativesdk}/${f}.so
-               test -f $f || continue
+	      test -f $f || continue
                sed -i "s#${SDKPATHNATIVE}##g" ${f}
        done
 }
 
-POPULATE_SDK_POST_TARGET_COMMAND:append = " install_man_sh; fix_linker_scripts;"
+POPULATE_SDK_POST_HOST_COMMAND:append = " install_man_sh; fix_linker_scripts;"

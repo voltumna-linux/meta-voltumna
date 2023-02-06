@@ -16,10 +16,10 @@ IMAGE_INSTALL:append = " binutils-symlinks cpp-symlinks gcc-symlinks g++-symlink
        perf powertop strace gdb gdbserver valgrind"
 
 install_sdk_sh() {
-       install -d ${IMAGE_ROOTFS}${sysconfdir}/profile.d
-       cat <<-__EOF__ >> ${IMAGE_ROOTFS}${sysconfdir}/profile.d/sdk.sh
-       export MAKEFLAGS=-j\`getconf _NPROCESSORS_ONLN\`
-       __EOF__
+	install -d ${IMAGE_ROOTFS}${sysconfdir}/profile.d
+	cat <<-__EOF__ >> ${IMAGE_ROOTFS}${sysconfdir}/profile.d/sdk.sh
+	export MAKEFLAGS=-j\`getconf _NPROCESSORS_ONLN\`
+	__EOF__
 }
 
 install_environment_setup_sh() {
@@ -47,10 +47,10 @@ install_environment_setup_sh() {
 #      export LDFLAGS="${TARGET_LDFLAGS}"
 #      export CPPFLAGS="${TARGET_CPPFLAGS}"
 
-       install -d ${IMAGE_ROOTFS}${sysconfdir}/profile.d
-       cat <<-__EOF__ >> ${IMAGE_ROOTFS}${sysconfdir}/profile.d/environment-setup.sh
-       export SDKTARGETSYSROOT=""
-       __EOF__
+	install -d ${IMAGE_ROOTFS}${sysconfdir}/profile.d
+	cat <<-__EOF__ >> ${IMAGE_ROOTFS}${sysconfdir}/profile.d/environment-setup.sh
+	export SDKTARGETSYSROOT=""
+	__EOF__
 }
 
-ROOTFS_POSTPROCESS_COMMAND += " install_sdk_sh; install_environment_setup_sh;"
+ROOTFS_POSTPROCESS_COMMAND:append = " install_sdk_sh; install_environment_setup_sh;"
