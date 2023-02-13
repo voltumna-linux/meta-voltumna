@@ -30,7 +30,7 @@ do_install:append() {
 	# Install issue
 	install -d ${D}${sysconfdir}
 	cat <<-__EOF__ > ${D}${sysconfdir}/issue
-	\S{NAME} \S{VERSION_ID} \S{MACHINE} \4{${@d.getVar('PRIMARY_NETIF')}} \l
+	\S{NAME} \S{VERSION_ID} \S{MACHINE} \4{${@d.getVar('PRIMARY_NETIF')}}
 	__EOF__
 
 	# Add two scripts
