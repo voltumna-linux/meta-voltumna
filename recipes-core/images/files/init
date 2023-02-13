@@ -68,11 +68,6 @@ if [ -z "${usrflags}" ]; then
 	usrflags=${rootflags}
 fi
 
-# Drop into a shell...
-if [ "${break}" = "top" ]; then
-	sh
-fi
-
 # Rename network interfaces
 SYSCLASSNET=/sys/class/net/
 for NIC in $(ls ${SYSCLASSNET})
@@ -87,6 +82,11 @@ do
 		ip link set ${NIC} name ${ID_NET_NAME_PATH}
 	fi
 done
+
+# Drop into a shell...
+if [ "${break}" = "top" ]; then
+	sh
+fi
 
 # Retrieve parameters from network if it is the case...
 if [ -n "${network}" ]; then
