@@ -108,7 +108,7 @@ if [ -n "${network}" ]; then
 	done
 
 	if [ "${autoconf}" = "dhcp" ]; then
-		eval $(udhcpc -n -q -i ${interface} -O rootpath -s /etc/udhcpc.d/60voltumna 2>/dev/null)
+		eval $(udhcpc -n -q -i ${interface} -O rootpath -O usrpath -O runtimepath -O homepath -s /etc/udhcpc.d/60voltumna 2>/dev/null)
 	fi
 
 	ip addr add ${ip}/${mask} dev ${interface} >/dev/null 2>&1
@@ -117,6 +117,13 @@ if [ -n "${network}" ]; then
 		do_reboot
 	fi
 	ip route add default via ${router} dev ${interface} >/dev/null 2>&1
+fi
+
+# Set hostname
+if [ -z "$hostname" ]; then
+	hostname localhost
+else
+	hostname $(echo $hostname | cut -d"." -f1)
 fi
 
 # Drop into a shell...
@@ -155,7 +162,7 @@ if [ "$?" -ne 0 ]; then
 	do_reboot
 fi
 
-# Mount usrpath (if necessary)...
+# Mount usrpath...
 case $usrfstype in
 	nfs)	mount -t ${usrfstype} ${siaddr}:${usrpath} /mnt/rootfs/usr -o nfsvers=4,${usrflags},ro,nolock;;
 	*)	mount -t ${usrfstype} /mnt/rootfs/${usrpath} /mnt/rootfs/usr -o ${usrflags},ro,bind;;
@@ -164,6 +171,26 @@ if [ "$?" -ne 0 ]; then
 	echo -n "Fail to mount usr(path)! "
 	do_reboot
 fi
+
+#### Mount homepath...
+###case $rootfstype in
+###	nfs)	mount -t ${rootfstype} ${siaddr}:${homepath} /mnt/rootfs/home -o nfsvers=4,${rootflags},rw,nolock;;
+###esac
+###if [ "$?" -ne 0 ]; then
+###	echo -n "Fail to mount home(path)! "
+###	do_reboot
+###fi
+###
+#### Mount runtimepath...
+###case $rootfstype in
+###	nfs)	mount -t ${rootfstype} ${siaddr}:${runtimepath} /mnt/rootfs/runtime -o nfsvers=4,${rootflags},ro,nolock;;
+###esac
+###if [ "$?" -ne 0 ]; then
+###	echo -n "Fail to mount runtime(path)! "
+###	do_reboot
+###fi
+###
+###mount -t ${rootfstype} ${siaddr}:${runtimepath}/site/`hostname -s` /mnt/rootfs/runtime/site/`hostname -s` -o nfsvers=4,${rootflags},rw,nolock 1>/dev/null 2>&1
 
 # Remount usrpath
 case `sed -n 's,VARIANT_ID=".*-\(.*\)",\1,p' /mnt/rootfs/etc/os-release` in

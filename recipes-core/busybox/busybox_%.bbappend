@@ -1,6 +1,7 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI:append = " \
+	file://add-elettra-specific-dhcp-parameters.patch \
 	file://60voltumna \
 	"
 
