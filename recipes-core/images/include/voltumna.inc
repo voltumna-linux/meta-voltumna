@@ -8,7 +8,7 @@ WIC_CREATE_EXTRA_ARGS += " --no-fstab-update"
 
 IMAGE_INSTALL_append += "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMENDS} \
 	os-release bash coreutils util-linux util-linux-sfdisk glibc-utils procps psmisc \
-	ldd less tzdata tzdata-europe polkit socat stress-ng sed tar xz grep findutils file \
+	ldd less tzdata tzdata-europe polkit socat stress-ng sed tar xz grep gawk findutils file \
 	nano vim debianutils 96boards-tools dosfstools nfs-utils-client openssh-sftp-server \
 	iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve"
 
