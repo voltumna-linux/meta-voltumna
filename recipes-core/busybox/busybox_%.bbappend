@@ -1,7 +1,7 @@
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 SRC_URI += " \
-	file://add-usrpath-dhcp-parameter.patch \
+	file://add-elettra-specific-dhcp-parameters.patch \
 	file://60elettra \
 	"
 
