@@ -48,3 +48,7 @@ IMAGE_BOOT_FILES ?= " \
 	"
 
 WKS_FILE ?= "sdimage-cyclone5-arria5.wks"
+
+# The follow line makes initramfs build fails.
+# This is the reason why we duplicate cyclone5.conf file.
+# IMAGE_FSTYPES:append = " wic"
