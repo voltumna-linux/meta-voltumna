@@ -13,7 +13,7 @@ do_reboot() {
 mount -n -t proc none /proc || do_reboot
 
 # Symlinking mtab to make "umount -a" works
-ln -s /proc/self/mounts /etc/mtab
+ln -s /proc/self/mounts /etc/mtab >/dev/null 2>&1
 
 # Mounting dev filesystem
 mount -t devtmpfs none /dev || do_reboot
@@ -75,11 +75,11 @@ do
 	UDEVADM_OUTPUT=$(udevadm test-builtin net_id ${SYSCLASSNET}${NIC} 2>/dev/null)
 	ID_NET_NAME_ONBOARD=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_ONBOARD=\(.*\)/\1/p')
 	if [ -n "${ID_NET_NAME_ONBOARD}" ]; then
-		ip link set ${NIC} name ${ID_NET_NAME_ONBOARD}
+		ip link set ${NIC} name ${ID_NET_NAME_ONBOARD} >/dev/null 2>&1
 	fi
 	ID_NET_NAME_PATH=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_PATH=\(.*\)/\1/p')
 	if [ -n "${ID_NET_NAME_PATH}" ]; then
-		ip link set ${NIC} name ${ID_NET_NAME_PATH}
+		ip link set ${NIC} name ${ID_NET_NAME_PATH} >/dev/null 2>&1
 	fi
 done
 
@@ -95,7 +95,7 @@ if [ -n "${network}" ]; then
 		do_reboot
 	fi
 
-	ip link set "${interface}" up
+	ip link set "${interface}" up >/dev/null 2>&1
 	counter=0
 	while [ "$(cat /sys/class/net/${interface}/operstate)" != "up" ]
 	do
@@ -111,12 +111,12 @@ if [ -n "${network}" ]; then
 		eval $(udhcpc -n -q -i ${interface} -O rootpath -O usrpath -O runtimepath -O homepath -s /etc/udhcpc.d/60elettra 2>/dev/null)
 	fi
 
-	ip addr add ${ip}/${mask} dev ${interface}
+	ip addr add ${ip}/${mask} dev ${interface} >/dev/null 2>&1
 	if [ "$?" -ne 0 ]; then
 		echo -n "Fail to configure interface! "
 		do_reboot
 	fi
-	ip route add default via ${router} dev ${interface}
+	ip route add default via ${router} dev ${interface} >/dev/null 2>&1
 fi
 
 # Set hostname
@@ -138,7 +138,7 @@ fi
 
 # Mount rootpath...
 case $rootfstype in
-	nfs)	mount -t ${rootfstype} ${siaddr}:${rootpath} /mnt/rootfs -o nfsvers=4,${rootflags},ro,nolock;;
+	nfs)	mount -t ${rootfstype} ${siaddr}:${rootpath} /mnt/rootfs -o nfsvers=3,${rootflags},ro,nolock;;
 	*)	counter=0
 		while [ ! -b "${rootpath}" ]; do
 			counter=$(($counter+1))
@@ -164,7 +164,7 @@ fi
 
 # Mount usrpath...
 case $usrfstype in
-	nfs)	mount -t ${usrfstype} ${siaddr}:${usrpath} /mnt/rootfs/usr -o nfsvers=4,${usrflags},ro,nolock;;
+	nfs)	mount -t ${usrfstype} ${siaddr}:${usrpath} /mnt/rootfs/usr -o nfsvers=3,${usrflags},ro,nolock;;
 	*)	mount -t ${usrfstype} /mnt/rootfs/${usrpath} /mnt/rootfs/usr -o ${usrflags},ro,bind;;
 esac
 if [ "$?" -ne 0 ]; then
