@@ -138,7 +138,7 @@ fi
 
 # Mount rootpath...
 case $rootfstype in
-	nfs)	mount -t ${rootfstype} ${siaddr}:${rootpath} /mnt/rootfs -o nfsvers=4,${rootflags},ro,nolock;;
+	nfs)	mount -t ${rootfstype} ${siaddr}:${rootpath} /mnt/rootfs -o nfsvers=3,${rootflags},ro,nolock;;
 	*)	counter=0
 		while [ ! -b "${rootpath}" ]; do
 			counter=$(($counter+1))
@@ -164,7 +164,7 @@ fi
 
 # Mount usrpath...
 case $usrfstype in
-	nfs)	mount -t ${usrfstype} ${siaddr}:${usrpath} /mnt/rootfs/usr -o nfsvers=4,${usrflags},ro,nolock;;
+	nfs)	mount -t ${usrfstype} ${siaddr}:${usrpath} /mnt/rootfs/usr -o nfsvers=3,${usrflags},ro,nolock;;
 	*)	mount -t ${usrfstype} /mnt/rootfs/${usrpath} /mnt/rootfs/usr -o ${usrflags},ro,bind;;
 esac
 if [ "$?" -ne 0 ]; then
