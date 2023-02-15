@@ -98,10 +98,18 @@ IMAGE_CMD:tar:append_ppce500v2() {
 
 IMAGE_CMD:tar:append:x86-64() {
 	TEMPORARYDIR=$(mktemp -d)
-	mkdir -p ${TEMPORARYDIR}/tftpboot/EFI/BOOT
-	install -m 644 ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ${TEMPORARYDIR}/tftpboot/EFI/BOOT/bootx64.efi
-	install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
-	sed -i -e "s,default=localboot,default=netboot,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
+	if [ -f ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ]; then
+		mkdir -p ${TEMPORARYDIR}/tftpboot/EFI/BOOT
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ${TEMPORARYDIR}/tftpboot/EFI/BOOT/bootx64.efi
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
+		sed -i -e "s,default=localboot,default=netboot,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
+	fi
+	if [ -f ${DEPLOY_DIR_IMAGE}/grub-bootx86.pxe ]; then
+		mkdir -p ${TEMPORARYDIR}/tftpboot/BOOT
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub-bootx86.pxe ${TEMPORARYDIR}/tftpboot/BOOT/bootx86.pxe
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${TEMPORARYDIR}/tftpboot/BOOT/grub.cfg
+		sed -i -e "s,default=localboot,default=netboot,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/BOOT/grub.cfg
+	fi
 	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${TEMPORARYDIR}/ tftpboot || [ $? -eq 1 ]
 	rm -fr ${TEMPORARYDIR}
 }
