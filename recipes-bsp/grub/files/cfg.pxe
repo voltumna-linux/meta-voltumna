@@ -1,0 +1,2 @@
+search.file ($cmdpath)/BOOT/grub.cfg root
+set prefix=($root)/BOOT
