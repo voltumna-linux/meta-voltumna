@@ -41,7 +41,7 @@ create_sdk_files:append() {
 	echo '    return 1' >> $script
 	echo 'fi' >> $script
 
-	echo "${EXPORT_SDK_PS1}" >> $script
+	echo "${EXPORT_SDK_PS1}" | sed "s/${MACHINE}/x86_64/" >> $script
 	echo 'export SDKTARGETSYSROOT='"$sysroot" >> $script
 	echo "export PATH=$sdkpathnative$bindir:$sdkpathnative$sbindir:$sdkpathnative$base_bindir:$sdkpathnative$base_sbindir:$sdkpathnative$bindir/../${HOST_SYS}/bin"':$PATH' >> $script
 	echo 'export PKG_CONFIG_SYSROOT_DIR=$SDKTARGETSYSROOT' >> $script
