@@ -81,7 +81,6 @@ create_sdk_files:append() {
 	echo 'export OECORE_SDK_VERSION="${SDK_VERSION}"' >> $script
 	echo 'export ARCH=${ARCH}' >> $script
 	echo 'export CROSS_COMPILE='${sdk_target_prefix} >> $script
-	echo 'export OECORE_TUNE_CCARGS="${TUNE_CCARGS}"' >> $script
 
     cat >> $script <<EOF
 
