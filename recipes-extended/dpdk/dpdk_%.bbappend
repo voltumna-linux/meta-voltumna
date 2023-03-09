@@ -51,4 +51,4 @@ do_install () {
 	__EOF__
 }
 
-BBCLASSEXTEND = "native nativesdk"
+BBCLASSEXTEND = "nativesdk"
