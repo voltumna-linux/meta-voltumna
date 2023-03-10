@@ -1,6 +1,6 @@
 SYSTEMD_SERVICE:${PN} = ""
 
-PACKAGECONFIG:append = "nfsv4"
+PACKAGECONFIG:append = "nfsv4 nfsv41"
 
 do_install:append() {
 	rm ${D}${systemd_unitdir}/system/sysinit.target.wants/proc-fs-nfsd.mount
