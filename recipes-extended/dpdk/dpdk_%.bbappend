@@ -5,4 +5,9 @@ SRC_URI:append:d-e5462-x7dwu = " \
 	file://0001-Remove-SSE4.2-code.patch \
 	"
 
-BBCLASSEXTEND = "native nativesdk"
+do_configure:prepend() {
+	sed -i 's,.*RTE_LIBRTE_I40E_16BYTE_RX_DESC.*,#define RTE_LIBRTE_I40E_16BYTE_RX_DESC 1,g' \
+		${S}/config/rte_config.h
+}
+
+BBCLASSEXTEND = "nativesdk"
