@@ -12,7 +12,7 @@ DEPENDS = "virtual/bootloader virtual/kernel"
 IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMENDS} \
 	os-release bash coreutils util-linux util-linux-sfdisk glibc-utils procps psmisc ldd \
 	less tzdata tzdata-europe polkit socat stress-ng sed tar xz grep gawk findutils file \
-	nano vim debianutils 96boards-tools dosfstools openssh-sftp-server nfs-utils-mount \
+	nano vim debianutils 96boards-tools dosfstools openssh-sftp-server nfs-utils-client \
 	iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve"
 IMAGE_INSTALL:append:x86-64 = " thermald"
 
