@@ -50,7 +50,3 @@
 	path = meta-clang
 	url = https://github.com/kraj/meta-clang.git
 	branch = kirkstone
-[submodule "meta-cross-toolchain"]
-	path = meta-cross-toolchain
-	url = https://github.com/kanavin/meta-cross-toolchain.git
-	branch = master
