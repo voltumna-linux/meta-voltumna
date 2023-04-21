@@ -1,0 +1,55 @@
+From 883a6434803d0ab7c54e4fbf1e92d74b284036f9 Mon Sep 17 00:00:00 2001
+From: Gabriele <gabriele.brajnik@elettra.eu>
+Date: Thu, 10 Nov 2022 10:58:42 +0100
+Subject: [PATCH 05/10] modified skew values for dinet eth
+
+---
+ arch/arm/dts/socfpga_cyclone5_dinet.dts | 32 ++++++++++++++++++-------
+ 1 file changed, 23 insertions(+), 9 deletions(-)
+
+diff --git a/arch/arm/dts/socfpga_cyclone5_dinet.dts b/arch/arm/dts/socfpga_cyclone5_dinet.dts
+index cb0d56ee10..b9108cc61e 100644
+--- a/arch/arm/dts/socfpga_cyclone5_dinet.dts
++++ b/arch/arm/dts/socfpga_cyclone5_dinet.dts
+@@ -75,15 +75,29 @@
+ 	status = "okay";
+ 	phy-mode = "rgmii";
+ 
+-	rxd0-skew-ps = <420>;
+-	rxd1-skew-ps = <420>;
+-	rxd2-skew-ps = <420>;
+-	rxd3-skew-ps = <420>;
+-	txen-skew-ps = <0>;
+-	txc-skew-ps = <1860>;
+-	rxdv-skew-ps = <420>;
+-	rxc-skew-ps = <1680>;
+-
++	/*
++	 * All skews are offset since hardware skew values for the ksz9031
++	 * range from a negative skew to a positive skew.
++	 * See the micrel-ksz90x1.txt Documentation file for details.
++	 */
++
++	txd0-skew-ps = <420>; /* 0ps */
++	txd1-skew-ps = <420>; /* 0ps */
++	txd2-skew-ps = <420>; /* 0ps */
++	txd3-skew-ps = <420>; /* 0ps */
++
++	rxd0-skew-ps = <420>; /* 0ps */
++	rxd1-skew-ps = <420>; /* 0ps */
++	rxd2-skew-ps = <420>; /* 0ps */
++	rxd3-skew-ps = <420>; /* 0ps */
++
++	txen-skew-ps = <420>; /* 0ps */
++	rxdv-skew-ps = <420>; /* 0ps */
++	 
++	rxc-skew-ps = <900>; /* 0ps */
++	txc-skew-ps = <900>; /* 0ps */
++
++	max-frame-size = <3800>;
+ };
+ 
+ &gpio0 {	/* GPIO 0..29 */
+-- 
+2.34.1
+

@@ -1,0 +1,57 @@
+From 5f0d23316aea35838ef4f7c367c42da2a0ef4d09 Mon Sep 17 00:00:00 2001
+From: Gabriele <gabriele.brajnik@elettra.eu>
+Date: Thu, 10 Nov 2022 09:43:06 +0100
+Subject: [PATCH 04/10] modified .its files for DAQ board
+
+---
+ board/elettrast/daq/fit_spl_fpga.its             | 4 ++--
+ board/elettrast/daq/fit_spl_fpga_periph_only.its | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/board/elettrast/daq/fit_spl_fpga.its b/board/elettrast/daq/fit_spl_fpga.its
+index adae997213..9216bd1e29 100644
+--- a/board/elettrast/daq/fit_spl_fpga.its
++++ b/board/elettrast/daq/fit_spl_fpga.its
+@@ -13,7 +13,7 @@
+ 	images {
+ 		fpga-periph-1 {
+ 			description = "FPGA peripheral bitstream";
+-			data = /incbin/("../../../ghrd_10as066n2.periph.rbf");
++			data = /incbin/("../../../Arria10SX_DAQ.periph.rbf");
+ 			type = "fpga";
+ 			arch = "arm";
+ 			compression = "none";
+@@ -21,7 +21,7 @@
+ 
+ 		fpga-core-1 {
+ 			description = "FPGA core bitstream";
+-			data = /incbin/("../../../ghrd_10as066n2.core.rbf");
++			data = /incbin/("../../../Arria10SX_DAQ.core.rbf");
+ 			type = "fpga";
+ 			arch = "arm";
+ 			compression = "none";
+diff --git a/board/elettrast/daq/fit_spl_fpga_periph_only.its b/board/elettrast/daq/fit_spl_fpga_periph_only.its
+index 06ba032847..32b241dcac 100644
+--- a/board/elettrast/daq/fit_spl_fpga_periph_only.its
++++ b/board/elettrast/daq/fit_spl_fpga_periph_only.its
+@@ -13,7 +13,7 @@
+ 	images {
+ 		fpga-periph-1 {
+ 			description = "FPGA peripheral bitstream";
+-			data = /incbin/("../../../ghrd_10as066n2.periph.rbf");
++			data = /incbin/("../../../Arria10SX_DAQ.periph.rbf");
+ 			type = "fpga";
+ 			arch = "arm";
+ 			compression = "none";
+@@ -21,7 +21,7 @@
+ 
+ 		fpga-core-1 {
+ 			description = "FPGA core bitstream";
+-			data = /incbin/("../../../ghrd_10as066n2.core.rbf");
++			data = /incbin/("../../../Arria10SX_DAQ.core.rbf");
+ 			type = "fpga";
+ 			arch = "arm";
+ 			compression = "none";
+-- 
+2.34.1
+

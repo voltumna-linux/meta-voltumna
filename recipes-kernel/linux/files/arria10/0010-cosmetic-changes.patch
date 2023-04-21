@@ -1,0 +1,56 @@
+From ffc2e12fa85b60baee113bd82b5cd34235eba7b6 Mon Sep 17 00:00:00 2001
+From: Gabriele <gabriele.brajnik@elettra.eu>
+Date: Tue, 20 Dec 2022 16:31:17 +0100
+Subject: [PATCH 10/10] cosmetic changes
+
+---
+ arch/arm/boot/dts/socfpga_arria10_daq.dtsi | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm/boot/dts/socfpga_arria10_daq.dtsi b/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
+index d19444144bd2..ccd6826a8841 100644
+--- a/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
++++ b/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
+@@ -16,6 +16,7 @@
+ #define GPIO_ACTIVE_HIGH 0
+ #define GPIO_ACTIVE_LOW 1
+ 
++#define REV_CLOCK_x100		115660000
+ 
+ / {
+ 	model = "ElettraST DAQ";
+@@ -243,13 +244,13 @@ i2c_vcxo_a@3 {
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+ 
+-			si571_a: clock-generator@5d { /* VCXO on FMC A */
++			si571_a: si571_a@55 { /* VCXO on FMC A */
+ 				#clock-cells = <0>;
+ 				compatible = "silabs,si571";
+ 				reg = <0x55>;
+ 				temperature-stability = <50>; 
+ 				factory-fout = <27000000>;
+-				clock-frequency = <115600000>;
++				clock-frequency = <REV_CLOCK_x100>;
+ 				clock-output-names = "si571_a";
+ 			};
+ 
+@@ -260,13 +261,13 @@ i2c_vcxo_b@4 {
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+ 
+-			si571_b: clock-generator@5d { /* VCXO on FMC B */
++			si571_b: si571_b@55 { /* VCXO on FMC B */
+ 				#clock-cells = <0>;
+ 				compatible = "silabs,si571";
+ 				reg = <0x55>;
+ 				temperature-stability = <50>; 
+ 				factory-fout = <27000000>;
+-				clock-frequency = <115600000>;
++				clock-frequency = <REV_CLOCK_x100>;
+ 				clock-output-names = "si571_b";
+ 			};
+ 
+-- 
+2.34.1
+

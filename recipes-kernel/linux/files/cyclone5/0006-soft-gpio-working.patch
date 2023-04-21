@@ -1,0 +1,65 @@
+From 934be6edcc3a0d67e767f04df5ece2df4e5b9598 Mon Sep 17 00:00:00 2001
+From: Gabriele <gabriele.brajnik@elettra.eu>
+Date: Mon, 5 Dec 2022 17:43:52 +0100
+Subject: [PATCH 06/10] soft gpio working
+
+---
+ arch/arm/boot/dts/socfpga_arria10_daq.dtsi | 28 ++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
+
+diff --git a/arch/arm/boot/dts/socfpga_arria10_daq.dtsi b/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
+index ad9098afa6a6..cfdb31ce8eff 100644
+--- a/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
++++ b/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
+@@ -4,6 +4,17 @@
+  */
+ #include "socfpga_arria10.dtsi"
+ 
++/*
++ * Redefine the macros from qsys_top.h into shorter macros and more useful
++ * values that we can use directly in the devicetree definition.
++ */
++
++#define I2C_SPI_SEL_BASE            0xff200000
++#define I2C_SPI_SEL_SPAN            16
++#define I2C_SPI_SEL_DWIDTH          8
++
++
++
+ / {
+ 	model = "ElettraST DAQ";
+ 	compatible = "elettrast,socfpga-arria10-daq","altr,socfpga-arria10", "altr,socfpga";
+@@ -64,6 +75,19 @@ osc1 {
+ 				};
+ 			};
+ 		};
++		base_fpga_region {
++
++			ranges;
++
++			i2csel: i2csel@ff200000 { /*soft gpios on LW bus */
++				compatible = "altr,pio-1.0";
++				reg = <I2C_SPI_SEL_BASE I2C_SPI_SEL_SPAN>;
++				altr,ngpio = <I2C_SPI_SEL_DWIDTH>;
++				#gpio-cells = <2>;
++				gpio-controller;
++			};
++
++		};
+ 	};
+ };
+ 
+@@ -107,6 +131,10 @@ &spi1 {
+ 	status = "okay";
+ };
+ 
++&spi0 { /* routed through FPGA pins */
++	status = "okay";
++};
++
+ &i2c0 { /* routed through FPGA pins */
+ 	status = "okay";
+ 	clock-frequency = <100000>;
+-- 
+2.34.1
+

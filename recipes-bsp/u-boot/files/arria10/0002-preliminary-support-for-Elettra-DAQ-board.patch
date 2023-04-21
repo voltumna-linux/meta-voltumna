@@ -1,0 +1,1060 @@
+From 875b61db8a4565dbcbc7398dc9b6b04ab373cb76 Mon Sep 17 00:00:00 2001
+From: Gabriele <gabriele.brajnik@elettra.eu>
+Date: Wed, 9 Nov 2022 17:20:58 +0100
+Subject: [PATCH 02/10] preliminary support for Elettra DAQ board
+
+---
+ arch/arm/dts/Makefile                         |   1 +
+ arch/arm/dts/socfpga_arria10_daq-u-boot.dtsi  |  26 ++
+ arch/arm/dts/socfpga_arria10_daq.dtsi         | 178 ++++++++++
+ .../dts/socfpga_arria10_daq_sdmmc-u-boot.dtsi |  47 +++
+ arch/arm/dts/socfpga_arria10_daq_sdmmc.dts    |  28 ++
+ .../dts/socfpga_arria10_daq_sdmmc_handoff.h   | 305 ++++++++++++++++++
+ arch/arm/mach-socfpga/Kconfig                 |   7 +
+ board/elettrast/daq/Kconfig                   |  18 ++
+ board/elettrast/daq/MAINTAINERS               |   6 +
+ board/elettrast/daq/Makefile                  |   5 +
+ board/elettrast/daq/fit_spl_fpga.its          |  38 +++
+ .../daq/fit_spl_fpga_periph_only.its          |  38 +++
+ board/elettrast/daq/fit_uboot.its             |  43 +++
+ board/elettrast/daq/socfpga.c                 |   6 +
+ configs/socfpga_daq_defconfig                 |  68 ++++
+ include/configs/socfpga_arria10_daq.h         |  78 +++++
+ 16 files changed, 892 insertions(+)
+ create mode 100644 arch/arm/dts/socfpga_arria10_daq-u-boot.dtsi
+ create mode 100644 arch/arm/dts/socfpga_arria10_daq.dtsi
+ create mode 100644 arch/arm/dts/socfpga_arria10_daq_sdmmc-u-boot.dtsi
+ create mode 100644 arch/arm/dts/socfpga_arria10_daq_sdmmc.dts
+ create mode 100644 arch/arm/dts/socfpga_arria10_daq_sdmmc_handoff.h
+ create mode 100644 board/elettrast/daq/Kconfig
+ create mode 100644 board/elettrast/daq/MAINTAINERS
+ create mode 100644 board/elettrast/daq/Makefile
+ create mode 100644 board/elettrast/daq/fit_spl_fpga.its
+ create mode 100644 board/elettrast/daq/fit_spl_fpga_periph_only.its
+ create mode 100644 board/elettrast/daq/fit_uboot.its
+ create mode 100644 board/elettrast/daq/socfpga.c
+ create mode 100644 configs/socfpga_daq_defconfig
+ create mode 100644 include/configs/socfpga_arria10_daq.h
+
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index 21654e011d..4910fdbbaf 100644
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -415,6 +415,7 @@ dtb-$(CONFIG_ARCH_SOCFPGA) +=				\
+ 	socfpga_arria10_socdk_nand.dtb			\
+ 	socfpga_arria10_socdk_qspi.dtb			\
+ 	socfpga_arria10_socdk_sdmmc.dtb			\
++	socfpga_arria10_daq_sdmmc.dtb			\
+ 	socfpga_cyclone5_mcvevk.dtb			\
+ 	socfpga_cyclone5_is1.dtb			\
+ 	socfpga_cyclone5_socdk.dtb			\
+diff --git a/arch/arm/dts/socfpga_arria10_daq-u-boot.dtsi b/arch/arm/dts/socfpga_arria10_daq-u-boot.dtsi
+new file mode 100644
+index 0000000000..9fe64499f4
+--- /dev/null
++++ b/arch/arm/dts/socfpga_arria10_daq-u-boot.dtsi
+@@ -0,0 +1,26 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (C) 2015-2021 Intel. All rights reserved.
++ */
++
++#include "socfpga_arria10-u-boot.dtsi"
++
++/ {
++	aliases {
++		bootargs = "console=ttyS0,115200";
++		i2c0 = &i2c1;
++	};
++};
++
++&i2c1 {
++	/* Max value set according to HW spec */
++	i2c-scl-falling-time-ns = <300>;
++};
++
++&uart1 {
++	u-boot,dm-pre-reloc;
++};
++
++&watchdog1 {
++        u-boot,dm-pre-reloc;
++};
+diff --git a/arch/arm/dts/socfpga_arria10_daq.dtsi b/arch/arm/dts/socfpga_arria10_daq.dtsi
+new file mode 100644
+index 0000000000..0efbeccc5c
+--- /dev/null
++++ b/arch/arm/dts/socfpga_arria10_daq.dtsi
+@@ -0,0 +1,178 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Copyright (C) 2015 Altera Corporation <www.altera.com>
++ */
++#include "socfpga_arria10.dtsi"
++
++/ {
++	model = "Altera SOCFPGA Arria 10";
++	compatible = "altr,socfpga-arria10", "altr,socfpga";
++
++	aliases {
++		ethernet0 = &gmac0;
++		serial0 = &uart1;
++	};
++
++	chosen {
++		bootargs = "earlyprintk";
++		stdout-path = "serial0:115200n8";
++	};
++
++	memory@0 {
++		name = "memory";
++		device_type = "memory";
++		reg = <0x0 0x40000000>; /* 1GB */
++	};
++
++	a10leds {
++		compatible = "gpio-leds";
++
++		a10sr_led0 {
++			label = "a10sr-led0";
++			gpios = <&a10sr_gpio 0 1>;
++		};
++
++		a10sr_led1 {
++			label = "a10sr-led1";
++			gpios = <&a10sr_gpio 1 1>;
++		};
++
++		a10sr_led2 {
++			label = "a10sr-led2";
++			gpios = <&a10sr_gpio 2 1>;
++		};
++
++		a10sr_led3 {
++			label = "a10sr-led3";
++			gpios = <&a10sr_gpio 3 1>;
++		};
++	};
++
++	ref_033v: 033-v-ref {
++		compatible = "regulator-fixed";
++		regulator-name = "0.33V";
++		regulator-min-microvolt = <330000>;
++		regulator-max-microvolt = <330000>;
++	};
++
++	soc {
++		clkmgr@ffd04000 {
++			clocks {
++				osc1 {
++					clock-frequency = <25000000>;
++				};
++			};
++		};
++	};
++};
++
++&gmac0 {
++	phy-mode = "rgmii";
++	phy-addr = <0xffffffff>; /* probe for phy addr */
++
++	/*
++	 * These skews assume the user's FPGA design is adding 600ps of delay
++	 * for TX_CLK on Arria 10.
++	 *
++	 * All skews are offset since hardware skew values for the ksz9031
++	 * range from a negative skew to a positive skew.
++	 * See the micrel-ksz90x1.txt Documentation file for details.
++	 */
++	txd0-skew-ps = <0>; /* -420ps */
++	txd1-skew-ps = <0>; /* -420ps */
++	txd2-skew-ps = <0>; /* -420ps */
++	txd3-skew-ps = <0>; /* -420ps */
++	rxd0-skew-ps = <420>; /* 0ps */
++	rxd1-skew-ps = <420>; /* 0ps */
++	rxd2-skew-ps = <420>; /* 0ps */
++	rxd3-skew-ps = <420>; /* 0ps */
++	txen-skew-ps = <0>; /* -420ps */
++	txc-skew-ps = <1860>; /* 960ps */
++	rxdv-skew-ps = <420>; /* 0ps */
++	rxc-skew-ps = <1680>; /* 780ps */
++	max-frame-size = <3800>;
++	status = "okay";
++};
++
++&gpio1 {
++	status = "okay";
++};
++
++&spi1 {
++	status = "okay";
++
++	resource-manager@0 {
++		compatible = "altr,a10sr";
++		reg = <0>;
++		spi-max-frequency = <100000>;
++		/* low-level active IRQ at GPIO1_5 */
++		interrupt-parent = <&portb>;
++		interrupts = <5 IRQ_TYPE_LEVEL_LOW>;
++		interrupt-controller;
++		#interrupt-cells = <2>;
++
++		a10sr_gpio: gpio-controller {
++			compatible = "altr,a10sr-gpio";
++			gpio-controller;
++			#gpio-cells = <2>;
++		};
++
++		a10sr_rst: reset-controller {
++			compatible = "altr,a10sr-reset";
++			#reset-cells = <1>;
++		};
++	};
++};
++
++&i2c1 {
++	status = "okay";
++
++	/*
++	 * adjust the falling times to decrease the i2c frequency to 50Khz
++	 * because the LCD module does not work at the standard 100Khz
++	 */
++	clock-frequency = <100000>;
++	i2c-sda-falling-time-ns = <6000>;
++	i2c-scl-falling-time-ns = <6000>;
++
++	adc@14 {
++		compatible = "lltc,ltc2497";
++		reg = <0x14>;
++		vref-supply = <&ref_033v>;
++	};
++
++	adc@16 {
++		compatible = "lltc,ltc2497";
++		reg = <0x16>;
++		vref-supply = <&ref_033v>;
++	};
++
++	eeprom@51 {
++		compatible = "atmel,24c32";
++		reg = <0x51>;
++		pagesize = <32>;
++	};
++
++	rtc@68 {
++		compatible = "dallas,ds1339";
++		reg = <0x68>;
++	};
++
++	ltc@5c {
++		compatible = "ltc2977";
++		reg = <0x5c>;
++	};
++};
++
++&uart1 {
++	status = "okay";
++};
++
++&usb0 {
++	status = "okay";
++	disable-over-current;
++};
++
++&watchdog1 {
++	status = "okay";
++};
+diff --git a/arch/arm/dts/socfpga_arria10_daq_sdmmc-u-boot.dtsi b/arch/arm/dts/socfpga_arria10_daq_sdmmc-u-boot.dtsi
+new file mode 100644
+index 0000000000..e7a79b252f
+--- /dev/null
++++ b/arch/arm/dts/socfpga_arria10_daq_sdmmc-u-boot.dtsi
+@@ -0,0 +1,47 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (C) 2014-2015, 2020 Intel. All rights reserved.
++ */
++
++#include "socfpga_arria10_daq_sdmmc_handoff.h"
++#include "socfpga_arria10-handoff.dtsi"
++#include "socfpga_arria10_handoff_u-boot.dtsi"
++#include "socfpga_arria10_daq-u-boot.dtsi"
++
++/ {
++	chosen {
++		firmware-loader = <&fs_loader0>;
++	};
++
++	fs_loader0: fs-loader {
++		u-boot,dm-pre-reloc;
++		compatible = "u-boot,fs-loader";
++		phandlepart = <&mmc 1>;
++	};
++};
++
++&fpga_mgr {
++	u-boot,dm-pre-reloc;
++	altr,bitstream = "fit_spl_fpga.itb";
++};
++
++&mmc {
++	u-boot,dm-pre-reloc;
++};
++
++/* Clock available early */
++&main_sdmmc_clk {
++	u-boot,dm-pre-reloc;
++};
++
++&peri_sdmmc_clk {
++	u-boot,dm-pre-reloc;
++};
++
++&sdmmc_free_clk {
++	u-boot,dm-pre-reloc;
++};
++
++&sdmmc_clk {
++	u-boot,dm-pre-reloc;
++};
+diff --git a/arch/arm/dts/socfpga_arria10_daq_sdmmc.dts b/arch/arm/dts/socfpga_arria10_daq_sdmmc.dts
+new file mode 100644
+index 0000000000..84c4166bab
+--- /dev/null
++++ b/arch/arm/dts/socfpga_arria10_daq_sdmmc.dts
+@@ -0,0 +1,28 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Copyright (C) 2014-2021 Altera Corporation <www.altera.com>
++ */
++
++/dts-v1/;
++#include "socfpga_arria10_daq.dtsi"
++#include "socfpga_arria10_daq-u-boot.dtsi"
++
++&mmc {
++	status = "okay";
++	cap-sd-highspeed;
++	cap-mmc-highspeed;
++	broken-cd;
++	bus-width = <4>;
++};
++
++&eccmgr {
++	sdmmca-ecc@ff8c2c00 {
++		compatible = "altr,socfpga-sdmmc-ecc";
++		reg = <0xff8c2c00 0x400>;
++		altr,ecc-parent = <&mmc>;
++		interrupts = <15 IRQ_TYPE_LEVEL_HIGH>,
++			     <47 IRQ_TYPE_LEVEL_HIGH>,
++			     <16 IRQ_TYPE_LEVEL_HIGH>,
++			     <48 IRQ_TYPE_LEVEL_HIGH>;
++	};
++};
+diff --git a/arch/arm/dts/socfpga_arria10_daq_sdmmc_handoff.h b/arch/arm/dts/socfpga_arria10_daq_sdmmc_handoff.h
+new file mode 100644
+index 0000000000..7980e0e7f9
+--- /dev/null
++++ b/arch/arm/dts/socfpga_arria10_daq_sdmmc_handoff.h
+@@ -0,0 +1,305 @@
++// SPDX-License-Identifier: BSD-3-Clause
++/*
++ * Intel Arria 10 SoCFPGA configuration
++ */
++
++#ifndef __SOCFPGA_ARRIA10_CONFIG_H__
++#define __SOCFPGA_ARRIA10_CONFIG_H__
++
++/* Clocks */
++#define CB_INTOSC_LS_CLK_HZ 60000000
++#define EMAC0_CLK_HZ 250000000
++#define EMAC1_CLK_HZ 250000000
++#define EMAC2_CLK_HZ 250000000
++#define EOSC1_CLK_HZ 25000000
++#define F2H_FREE_CLK_HZ 200000000
++#define H2F_USER0_CLK_HZ 400000000
++#define H2F_USER1_CLK_HZ 400000000
++#define L3_MAIN_FREE_CLK_HZ 200000000
++#define SDMMC_CLK_HZ 200000000
++#define TPIU_CLK_HZ 100000000
++#define MAINPLLGRP_CNTR15CLK_CNT 900
++#define MAINPLLGRP_CNTR2CLK_CNT 900
++#define MAINPLLGRP_CNTR3CLK_CNT 900
++#define MAINPLLGRP_CNTR4CLK_CNT 900
++#define MAINPLLGRP_CNTR5CLK_CNT 900
++#define MAINPLLGRP_CNTR6CLK_CNT 900
++#define MAINPLLGRP_CNTR7CLK_CNT 900
++#define MAINPLLGRP_CNTR7CLK_SRC 0
++#define MAINPLLGRP_CNTR8CLK_CNT 900
++#define MAINPLLGRP_CNTR9CLK_CNT 900
++#define MAINPLLGRP_CNTR9CLK_SRC 0
++#define MAINPLLGRP_MPUCLK_CNT 0
++#define MAINPLLGRP_MPUCLK_SRC 0
++#define MAINPLLGRP_NOCCLK_CNT 0
++#define MAINPLLGRP_NOCCLK_SRC 0
++#define MAINPLLGRP_NOCDIV_CSATCLK 0
++#define MAINPLLGRP_NOCDIV_CSPDBGCLK 1
++#define MAINPLLGRP_NOCDIV_CSTRACECLK 1
++#define MAINPLLGRP_NOCDIV_L4MAINCLK 0
++#define MAINPLLGRP_NOCDIV_L4MPCLK 0
++#define MAINPLLGRP_NOCDIV_L4SPCLK 2
++#define MAINPLLGRP_VCO0_PSRC 0
++#define MAINPLLGRP_VCO1_DENOM 1
++#define MAINPLLGRP_VCO1_NUMER 127
++#define PERPLLGRP_CNTR2CLK_CNT 5
++#define PERPLLGRP_CNTR2CLK_SRC 1
++#define PERPLLGRP_CNTR3CLK_CNT 900
++#define PERPLLGRP_CNTR3CLK_SRC 1
++#define PERPLLGRP_CNTR4CLK_CNT 14
++#define PERPLLGRP_CNTR4CLK_SRC 1
++#define PERPLLGRP_CNTR5CLK_CNT 374
++#define PERPLLGRP_CNTR5CLK_SRC 1
++#define PERPLLGRP_CNTR6CLK_CNT 7
++#define PERPLLGRP_CNTR6CLK_SRC 1
++#define PERPLLGRP_CNTR7CLK_CNT 900
++#define PERPLLGRP_CNTR8CLK_CNT 900
++#define PERPLLGRP_CNTR8CLK_SRC 0
++#define PERPLLGRP_CNTR9CLK_CNT 900
++#define PERPLLGRP_EMACCTL_EMAC0SEL 0
++#define PERPLLGRP_EMACCTL_EMAC1SEL 0
++#define PERPLLGRP_EMACCTL_EMAC2SEL 0
++#define PERPLLGRP_GPIODIV_GPIODBCLK 32000
++#define PERPLLGRP_VCO0_PSRC 0
++#define PERPLLGRP_VCO1_DENOM 1
++#define PERPLLGRP_VCO1_NUMER 119
++#define CLKMGR_TESTIOCTRL_DEBUGCLKSEL 16
++#define CLKMGR_TESTIOCTRL_MAINCLKSEL 8
++#define CLKMGR_TESTIOCTRL_PERICLKSEL 8
++#define ALTERAGRP_MPUCLK_MAINCNT 1
++#define ALTERAGRP_MPUCLK_PERICNT 900
++#define ALTERAGRP_NOCCLK_MAINCNT 7
++#define ALTERAGRP_NOCCLK_PERICNT 900
++#define ALTERAGRP_MPUCLK ((ALTERAGRP_MPUCLK_PERICNT << 16) | \
++	(ALTERAGRP_MPUCLK_MAINCNT))
++#define ALTERAGRP_NOCCLK ((ALTERAGRP_NOCCLK_PERICNT << 16) | \
++	(ALTERAGRP_NOCCLK_MAINCNT))
++
++/* Pin Mux Configuration */
++#define CONFIG_IO_10_INPUT_BUF_EN 0
++#define CONFIG_IO_10_PD_DRV_STRG 0
++#define CONFIG_IO_10_PD_SLW_RT 0
++#define CONFIG_IO_10_PU_DRV_STRG 0
++#define CONFIG_IO_10_PU_SLW_RT 0
++#define CONFIG_IO_10_RTRIM 1
++#define CONFIG_IO_10_WK_PU_EN 1
++#define CONFIG_IO_11_INPUT_BUF_EN 0
++#define CONFIG_IO_11_PD_DRV_STRG 0
++#define CONFIG_IO_11_PD_SLW_RT 0
++#define CONFIG_IO_11_PU_DRV_STRG 0
++#define CONFIG_IO_11_PU_SLW_RT 0
++#define CONFIG_IO_11_RTRIM 1
++#define CONFIG_IO_11_WK_PU_EN 1
++#define CONFIG_IO_12_INPUT_BUF_EN 0
++#define CONFIG_IO_12_PD_DRV_STRG 0
++#define CONFIG_IO_12_PD_SLW_RT 0
++#define CONFIG_IO_12_PU_DRV_STRG 0
++#define CONFIG_IO_12_PU_SLW_RT 0
++#define CONFIG_IO_12_RTRIM 1
++#define CONFIG_IO_12_WK_PU_EN 1
++#define CONFIG_IO_13_INPUT_BUF_EN 0
++#define CONFIG_IO_13_PD_DRV_STRG 0
++#define CONFIG_IO_13_PD_SLW_RT 0
++#define CONFIG_IO_13_PU_DRV_STRG 0
++#define CONFIG_IO_13_PU_SLW_RT 0
++#define CONFIG_IO_13_RTRIM 1
++#define CONFIG_IO_13_WK_PU_EN 1
++#define CONFIG_IO_14_INPUT_BUF_EN 0
++#define CONFIG_IO_14_PD_DRV_STRG 0
++#define CONFIG_IO_14_PD_SLW_RT 0
++#define CONFIG_IO_14_PU_DRV_STRG 0
++#define CONFIG_IO_14_PU_SLW_RT 0
++#define CONFIG_IO_14_RTRIM 1
++#define CONFIG_IO_14_WK_PU_EN 1
++#define CONFIG_IO_15_INPUT_BUF_EN 0
++#define CONFIG_IO_15_PD_DRV_STRG 0
++#define CONFIG_IO_15_PD_SLW_RT 0
++#define CONFIG_IO_15_PU_DRV_STRG 0
++#define CONFIG_IO_15_PU_SLW_RT 0
++#define CONFIG_IO_15_RTRIM 1
++#define CONFIG_IO_15_WK_PU_EN 1
++#define CONFIG_IO_16_INPUT_BUF_EN 0
++#define CONFIG_IO_16_PD_DRV_STRG 10
++#define CONFIG_IO_16_PD_SLW_RT 1
++#define CONFIG_IO_16_PU_DRV_STRG 8
++#define CONFIG_IO_16_PU_SLW_RT 1
++#define CONFIG_IO_16_RTRIM 1
++#define CONFIG_IO_16_WK_PU_EN 0
++#define CONFIG_IO_17_INPUT_BUF_EN 1
++#define CONFIG_IO_17_PD_DRV_STRG 10
++#define CONFIG_IO_17_PD_SLW_RT 1
++#define CONFIG_IO_17_PU_DRV_STRG 8
++#define CONFIG_IO_17_PU_SLW_RT 1
++#define CONFIG_IO_17_RTRIM 1
++#define CONFIG_IO_17_WK_PU_EN 0
++#define CONFIG_IO_1_INPUT_BUF_EN 1
++#define CONFIG_IO_1_PD_DRV_STRG 10
++#define CONFIG_IO_1_PD_SLW_RT 0
++#define CONFIG_IO_1_PU_DRV_STRG 8
++#define CONFIG_IO_1_PU_SLW_RT 0
++#define CONFIG_IO_1_RTRIM 1
++#define CONFIG_IO_1_WK_PU_EN 1
++#define CONFIG_IO_2_INPUT_BUF_EN 1
++#define CONFIG_IO_2_PD_DRV_STRG 10
++#define CONFIG_IO_2_PD_SLW_RT 0
++#define CONFIG_IO_2_PU_DRV_STRG 8
++#define CONFIG_IO_2_PU_SLW_RT 0
++#define CONFIG_IO_2_RTRIM 1
++#define CONFIG_IO_2_WK_PU_EN 1
++#define CONFIG_IO_3_INPUT_BUF_EN 1
++#define CONFIG_IO_3_PD_DRV_STRG 10
++#define CONFIG_IO_3_PD_SLW_RT 0
++#define CONFIG_IO_3_PU_DRV_STRG 8
++#define CONFIG_IO_3_PU_SLW_RT 0
++#define CONFIG_IO_3_RTRIM 1
++#define CONFIG_IO_3_WK_PU_EN 1
++#define CONFIG_IO_4_INPUT_BUF_EN 1
++#define CONFIG_IO_4_PD_DRV_STRG 10
++#define CONFIG_IO_4_PD_SLW_RT 1
++#define CONFIG_IO_4_PU_DRV_STRG 8
++#define CONFIG_IO_4_PU_SLW_RT 1
++#define CONFIG_IO_4_RTRIM 1
++#define CONFIG_IO_4_WK_PU_EN 0
++#define CONFIG_IO_5_INPUT_BUF_EN 1
++#define CONFIG_IO_5_PD_DRV_STRG 10
++#define CONFIG_IO_5_PD_SLW_RT 1
++#define CONFIG_IO_5_PU_DRV_STRG 8
++#define CONFIG_IO_5_PU_SLW_RT 1
++#define CONFIG_IO_5_RTRIM 1
++#define CONFIG_IO_5_WK_PU_EN 0
++#define CONFIG_IO_6_INPUT_BUF_EN 0
++#define CONFIG_IO_6_PD_DRV_STRG 10
++#define CONFIG_IO_6_PD_SLW_RT 1
++#define CONFIG_IO_6_PU_DRV_STRG 8
++#define CONFIG_IO_6_PU_SLW_RT 1
++#define CONFIG_IO_6_RTRIM 1
++#define CONFIG_IO_6_WK_PU_EN 0
++#define CONFIG_IO_7_INPUT_BUF_EN 1
++#define CONFIG_IO_7_PD_DRV_STRG 10
++#define CONFIG_IO_7_PD_SLW_RT 1
++#define CONFIG_IO_7_PU_DRV_STRG 8
++#define CONFIG_IO_7_PU_SLW_RT 1
++#define CONFIG_IO_7_RTRIM 1
++#define CONFIG_IO_7_WK_PU_EN 0
++#define CONFIG_IO_8_INPUT_BUF_EN 1
++#define CONFIG_IO_8_PD_DRV_STRG 10
++#define CONFIG_IO_8_PD_SLW_RT 1
++#define CONFIG_IO_8_PU_DRV_STRG 8
++#define CONFIG_IO_8_PU_SLW_RT 1
++#define CONFIG_IO_8_RTRIM 1
++#define CONFIG_IO_8_WK_PU_EN 0
++#define CONFIG_IO_9_INPUT_BUF_EN 1
++#define CONFIG_IO_9_PD_DRV_STRG 10
++#define CONFIG_IO_9_PD_SLW_RT 1
++#define CONFIG_IO_9_PU_DRV_STRG 8
++#define CONFIG_IO_9_PU_SLW_RT 1
++#define CONFIG_IO_9_RTRIM 1
++#define CONFIG_IO_9_WK_PU_EN 0
++#define CONFIG_IO_BANK_VOLTAGE_SEL_CLKRST_IO 1
++#define CONFIG_IO_BANK_VOLTAGE_SEL_PERI_IO 1
++#define PINMUX_DEDICATED_IO_10_SEL 10
++#define PINMUX_DEDICATED_IO_11_SEL 10
++#define PINMUX_DEDICATED_IO_12_SEL 10
++#define PINMUX_DEDICATED_IO_13_SEL 10
++#define PINMUX_DEDICATED_IO_14_SEL 10
++#define PINMUX_DEDICATED_IO_15_SEL 10
++#define PINMUX_DEDICATED_IO_16_SEL 13
++#define PINMUX_DEDICATED_IO_17_SEL 13
++#define PINMUX_DEDICATED_IO_4_SEL 8
++#define PINMUX_DEDICATED_IO_5_SEL 8
++#define PINMUX_DEDICATED_IO_6_SEL 8
++#define PINMUX_DEDICATED_IO_7_SEL 8
++#define PINMUX_DEDICATED_IO_8_SEL 8
++#define PINMUX_DEDICATED_IO_9_SEL 8
++#define PINMUX_I2C0_USEFPGA_SEL 1
++#define PINMUX_I2C1_USEFPGA_SEL 0
++#define PINMUX_I2CEMAC0_USEFPGA_SEL 0
++#define PINMUX_I2CEMAC1_USEFPGA_SEL 0
++#define PINMUX_I2CEMAC2_USEFPGA_SEL 0
++#define PINMUX_NAND_USEFPGA_SEL 0
++#define PINMUX_PLL_CLOCK_OUT_USEFPGA_SEL 0
++#define PINMUX_QSPI_USEFPGA_SEL 0
++#define PINMUX_RGMII0_USEFPGA_SEL 0
++#define PINMUX_RGMII1_USEFPGA_SEL 0
++#define PINMUX_RGMII2_USEFPGA_SEL 0
++#define PINMUX_SDMMC_USEFPGA_SEL 0
++#define PINMUX_SHARED_IO_Q1_10_SEL 8
++#define PINMUX_SHARED_IO_Q1_11_SEL 8
++#define PINMUX_SHARED_IO_Q1_12_SEL 8
++#define PINMUX_SHARED_IO_Q1_1_SEL 8
++#define PINMUX_SHARED_IO_Q1_2_SEL 8
++#define PINMUX_SHARED_IO_Q1_3_SEL 8
++#define PINMUX_SHARED_IO_Q1_4_SEL 8
++#define PINMUX_SHARED_IO_Q1_5_SEL 8
++#define PINMUX_SHARED_IO_Q1_6_SEL 8
++#define PINMUX_SHARED_IO_Q1_7_SEL 8
++#define PINMUX_SHARED_IO_Q1_8_SEL 8
++#define PINMUX_SHARED_IO_Q1_9_SEL 8
++#define PINMUX_SHARED_IO_Q2_10_SEL 4
++#define PINMUX_SHARED_IO_Q2_11_SEL 4
++#define PINMUX_SHARED_IO_Q2_12_SEL 4
++#define PINMUX_SHARED_IO_Q2_1_SEL 4
++#define PINMUX_SHARED_IO_Q2_2_SEL 4
++#define PINMUX_SHARED_IO_Q2_3_SEL 4
++#define PINMUX_SHARED_IO_Q2_4_SEL 4
++#define PINMUX_SHARED_IO_Q2_5_SEL 4
++#define PINMUX_SHARED_IO_Q2_6_SEL 4
++#define PINMUX_SHARED_IO_Q2_7_SEL 4
++#define PINMUX_SHARED_IO_Q2_8_SEL 4
++#define PINMUX_SHARED_IO_Q2_9_SEL 4
++#define PINMUX_SHARED_IO_Q3_10_SEL 10
++#define PINMUX_SHARED_IO_Q3_11_SEL 1
++#define PINMUX_SHARED_IO_Q3_12_SEL 1
++#define PINMUX_SHARED_IO_Q3_1_SEL 3
++#define PINMUX_SHARED_IO_Q3_2_SEL 3
++#define PINMUX_SHARED_IO_Q3_3_SEL 3
++#define PINMUX_SHARED_IO_Q3_4_SEL 3
++#define PINMUX_SHARED_IO_Q3_5_SEL 3
++#define PINMUX_SHARED_IO_Q3_6_SEL 15
++#define PINMUX_SHARED_IO_Q3_7_SEL 15
++#define PINMUX_SHARED_IO_Q3_8_SEL 15
++#define PINMUX_SHARED_IO_Q3_9_SEL 10
++#define PINMUX_SHARED_IO_Q4_10_SEL 15
++#define PINMUX_SHARED_IO_Q4_11_SEL 15
++#define PINMUX_SHARED_IO_Q4_12_SEL 15
++#define PINMUX_SHARED_IO_Q4_1_SEL 0
++#define PINMUX_SHARED_IO_Q4_2_SEL 0
++#define PINMUX_SHARED_IO_Q4_3_SEL 15
++#define PINMUX_SHARED_IO_Q4_4_SEL 15
++#define PINMUX_SHARED_IO_Q4_5_SEL 15
++#define PINMUX_SHARED_IO_Q4_6_SEL 15
++#define PINMUX_SHARED_IO_Q4_7_SEL 15
++#define PINMUX_SHARED_IO_Q4_8_SEL 15
++#define PINMUX_SHARED_IO_Q4_9_SEL 15
++#define PINMUX_SPIM0_USEFPGA_SEL 0
++#define PINMUX_SPIM1_USEFPGA_SEL 0
++#define PINMUX_SPIS0_USEFPGA_SEL 0
++#define PINMUX_SPIS1_USEFPGA_SEL 0
++#define PINMUX_UART0_USEFPGA_SEL 0
++#define PINMUX_UART1_USEFPGA_SEL 0
++#define PINMUX_USB0_USEFPGA_SEL 0
++#define PINMUX_USB1_USEFPGA_SEL 0
++
++/* Bridge Configuration */
++#define F2H_AXI_SLAVE 0
++#define F2SDRAM0_AXI_SLAVE 0
++#define F2SDRAM1_AXI_SLAVE 0
++#define F2SDRAM2_AXI_SLAVE 0
++#define H2F_AXI_MASTER 1
++#define LWH2F_AXI_MASTER 1
++
++/* Voltage Select for Config IO */
++#define CONFIG_IO_BANK_VSEL \
++	(((CONFIG_IO_BANK_VOLTAGE_SEL_CLKRST_IO & 0x3) << 8) | \
++	(CONFIG_IO_BANK_VOLTAGE_SEL_PERI_IO & 0x3))
++
++/* Macro for Config IO bit mapping */
++#define CONFIG_IO_MACRO(NAME) (((NAME ## _RTRIM & 0x7) << 19) | \
++	((NAME ## _INPUT_BUF_EN & 0x3) << 17) | \
++	((NAME ## _WK_PU_EN & 0x1) << 16) | \
++	((NAME ## _PU_SLW_RT & 0x1) << 13) | \
++	((NAME ## _PU_DRV_STRG & 0x1f) << 8) | \
++	((NAME ## _PD_SLW_RT & 0x1) << 5) | \
++	(NAME ## _PD_DRV_STRG & 0x1f))
++
++#endif /* __SOCFPGA_ARRIA10_CONFIG_H__ */
+diff --git a/arch/arm/mach-socfpga/Kconfig b/arch/arm/mach-socfpga/Kconfig
+index 5d407b6f11..53807d2cdb 100644
+--- a/arch/arm/mach-socfpga/Kconfig
++++ b/arch/arm/mach-socfpga/Kconfig
+@@ -227,6 +227,10 @@ config TARGET_SOCFPGA_ELETTRAST_DINET
+ 	bool "ElettraST Dinet (Cyclone V)"
+ 	select TARGET_SOCFPGA_CYCLONE5
+ 
++config TARGET_SOCFPGA_ELETTRAST_DAQ
++	bool "ElettraST DAQ (Arria 10)"
++	select TARGET_SOCFPGA_ARRIA10
++
+ endchoice
+ 
+ config SYS_BOARD
+@@ -250,6 +254,7 @@ config SYS_BOARD
+ 	default "stratix10-socdk" if TARGET_SOCFPGA_STRATIX10_SOCDK
+ 	default "vining_fpga" if TARGET_SOCFPGA_SOFTING_VINING_FPGA
+ 	default "dinet" if TARGET_SOCFPGA_ELETTRAST_DINET
++	default "daq" if TARGET_SOCFPGA_ELETTRAST_DAQ
+ 
+ config SYS_VENDOR
+ 	default "intel" if TARGET_SOCFPGA_AGILEX_N6010
+@@ -269,6 +274,7 @@ config SYS_VENDOR
+ 	default "terasic" if TARGET_SOCFPGA_TERASIC_DE10_NANO
+ 	default "terasic" if TARGET_SOCFPGA_TERASIC_SOCKIT
+ 	default "elettrast" if TARGET_SOCFPGA_ELETTRAST_DINET
++	default "elettrast" if TARGET_SOCFPGA_ELETTRAST_DAQ
+ 
+ config SYS_SOC
+ 	default "socfpga"
+@@ -294,6 +300,7 @@ config SYS_CONFIG_NAME
+ 	default "socfpga_stratix10_socdk" if TARGET_SOCFPGA_STRATIX10_SOCDK
+ 	default "socfpga_vining_fpga" if TARGET_SOCFPGA_SOFTING_VINING_FPGA
+ 	default "socfpga_dinet" if TARGET_SOCFPGA_ELETTRAST_DINET
++	default "socfpga_daq" if TARGET_SOCFPGA_ELETTRAST_DAQ
+ 
+ source "board/keymile/Kconfig"
+ 
+diff --git a/board/elettrast/daq/Kconfig b/board/elettrast/daq/Kconfig
+new file mode 100644
+index 0000000000..f68ccc4394
+--- /dev/null
++++ b/board/elettrast/daq/Kconfig
+@@ -0,0 +1,18 @@
++if TARGET_SOCFPGA_ELETTRAST_DAQ
++
++config SYS_CPU
++	default "armv7"
++
++config SYS_BOARD
++	default "daq"
++
++config SYS_VENDOR
++	default "elettrast"
++
++config SYS_SOC
++	default "socfpga_arria10"
++
++config SYS_CONFIG_NAME
++	default "socfpga_daq"
++
++endif
+diff --git a/board/elettrast/daq/MAINTAINERS b/board/elettrast/daq/MAINTAINERS
+new file mode 100644
+index 0000000000..e7579a7a09
+--- /dev/null
++++ b/board/elettrast/daq/MAINTAINERS
+@@ -0,0 +1,6 @@
++DAQ BOARD
++M:	Gabriele Brajnik <gabriele.brajnik@elettra.eu>
++S:	Maintained
++F:	board/elettrast/daq/
++F:	include/configs/socfpga_arria10_daq.h
++F:	configs/socfpga_daq_defconfig
+diff --git a/board/elettrast/daq/Makefile b/board/elettrast/daq/Makefile
+new file mode 100644
+index 0000000000..80d0004346
+--- /dev/null
++++ b/board/elettrast/daq/Makefile
+@@ -0,0 +1,5 @@
++# SPDX-License-Identifier: GPL-2.0
++#
++# Copyright (C) 2015 Altera Corporation <www.altera.com>
++
++obj-y	:= socfpga.o
+diff --git a/board/elettrast/daq/fit_spl_fpga.its b/board/elettrast/daq/fit_spl_fpga.its
+new file mode 100644
+index 0000000000..adae997213
+--- /dev/null
++++ b/board/elettrast/daq/fit_spl_fpga.its
+@@ -0,0 +1,38 @@
++// SPDX-License-Identifier: GPL-2.0
++ /*
++ * Copyright (C) 2019 Intel Corporation <www.intel.com>
++ *
++ */
++
++/dts-v1/;
++
++/ {
++	description = "FIT image with FPGA bistream";
++	#address-cells = <1>;
++
++	images {
++		fpga-periph-1 {
++			description = "FPGA peripheral bitstream";
++			data = /incbin/("../../../ghrd_10as066n2.periph.rbf");
++			type = "fpga";
++			arch = "arm";
++			compression = "none";
++		};
++
++		fpga-core-1 {
++			description = "FPGA core bitstream";
++			data = /incbin/("../../../ghrd_10as066n2.core.rbf");
++			type = "fpga";
++			arch = "arm";
++			compression = "none";
++		};
++	};
++
++	configurations {
++		default = "config-1";
++		config-1 {
++			description = "Boot with FPGA early IO release config";
++			fpga = "fpga-periph-1", "fpga-core-1";
++		};
++	};
++};
+diff --git a/board/elettrast/daq/fit_spl_fpga_periph_only.its b/board/elettrast/daq/fit_spl_fpga_periph_only.its
+new file mode 100644
+index 0000000000..06ba032847
+--- /dev/null
++++ b/board/elettrast/daq/fit_spl_fpga_periph_only.its
+@@ -0,0 +1,38 @@
++// SPDX-License-Identifier: GPL-2.0
++ /*
++ * Copyright (C) 2020 Intel Corporation <www.intel.com>
++ *
++ */
++
++/dts-v1/;
++
++/ {
++	description = "FIT image with FPGA bistream";
++	#address-cells = <1>;
++
++	images {
++		fpga-periph-1 {
++			description = "FPGA peripheral bitstream";
++			data = /incbin/("../../../ghrd_10as066n2.periph.rbf");
++			type = "fpga";
++			arch = "arm";
++			compression = "none";
++		};
++
++		fpga-core-1 {
++			description = "FPGA core bitstream";
++			data = /incbin/("../../../ghrd_10as066n2.core.rbf");
++			type = "fpga";
++			arch = "arm";
++			compression = "none";
++		};
++	};
++
++	configurations {
++		default = "config-1";
++		config-1 {
++			description = "Boot with FPGA early IO release config";
++			fpga = "fpga-periph-1";
++		};
++	};
++};
+diff --git a/board/elettrast/daq/fit_uboot.its b/board/elettrast/daq/fit_uboot.its
+new file mode 100644
+index 0000000000..aa80e8e278
+--- /dev/null
++++ b/board/elettrast/daq/fit_uboot.its
+@@ -0,0 +1,43 @@
++// SPDX-License-Identifier: GPL-2.0
++ /*
++ * Copyright (C) 2019 Intel Corporation <www.intel.com>
++ *
++ */
++
++/dts-v1/;
++
++/ {
++	description = "FIT image with boot binaries";
++	#address-cells = <1>;
++
++	images {
++		uboot {
++			description = "U-Boot (32-bit)";
++			data = /incbin/("../../../u-boot-nodtb.bin");
++			type = "standalone";
++			os = "U-Boot";
++			arch = "arm";
++			compression = "none";
++			load = <0x01000040>;
++			entry = <0x01000040>;
++		};
++
++		fdt {
++			description = "U-Boot DTB";
++			data = /incbin/("../../../u-boot.dtb");
++			type = "flat_dt";
++			os = "U-Boot";
++			arch = "arm";
++			compression = "none";
++		};
++	};
++
++	configurations {
++		default = "conf";
++		conf {
++			description = "Intel Arria10 SoCDK";
++			loadables = "uboot";
++			fdt = "fdt";
++		};
++	};
++};
+diff --git a/board/elettrast/daq/socfpga.c b/board/elettrast/daq/socfpga.c
+new file mode 100644
+index 0000000000..4c466cb944
+--- /dev/null
++++ b/board/elettrast/daq/socfpga.c
+@@ -0,0 +1,6 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (C) 2015 Altera Corporation <www.altera.com>
++ */
++
++#include <common.h>
+diff --git a/configs/socfpga_daq_defconfig b/configs/socfpga_daq_defconfig
+new file mode 100644
+index 0000000000..052a370913
+--- /dev/null
++++ b/configs/socfpga_daq_defconfig
+@@ -0,0 +1,68 @@
++CONFIG_ARM=y
++CONFIG_ARCH_SOCFPGA=y
++CONFIG_SYS_MALLOC_LEN=0x4000000
++CONFIG_ENV_SIZE=0x2000
++CONFIG_ENV_OFFSET=0x4400
++CONFIG_DM_GPIO=y
++CONFIG_DEFAULT_DEVICE_TREE="socfpga_arria10_daq_sdmmc"
++CONFIG_SYS_LOAD_ADDR=0x01000000
++CONFIG_SPL_TEXT_BASE=0xFFE00000
++CONFIG_SPL_DRIVERS_MISC=y
++CONFIG_TARGET_SOCFPGA_ARRIA10_SOCDK=y
++CONFIG_IDENT_STRING="socfpga_arria10"
++CONFIG_SPL_FS_FAT=y
++CONFIG_DISTRO_DEFAULTS=y
++CONFIG_FIT=y
++CONFIG_TIMESTAMP=y
++CONFIG_SPL_FIT=y
++# CONFIG_USE_SPL_FIT_GENERATOR is not set
++CONFIG_USE_BOOTARGS=y
++CONFIG_BOOTARGS="console=ttyS0,115200"
++CONFIG_BOOTCOMMAND="run fatscript;run prog_core;bridge enable;run distro_bootcmd"
++CONFIG_DEFAULT_FDT_FILE="socfpga_arria10_daq_sdmmc.dtb"
++CONFIG_SYS_CONSOLE_IS_IN_ENV=y
++CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE=y
++CONFIG_SYS_CONSOLE_ENV_OVERWRITE=y
++CONFIG_DISPLAY_BOARDINFO_LATE=y
++CONFIG_SPL_ENV_SUPPORT=y
++CONFIG_SPL_FPGA=y
++CONFIG_CMD_ASKENV=y
++CONFIG_CMD_GREPENV=y
++# CONFIG_CMD_FLASH is not set
++CONFIG_CMD_FPGA_LOADMK=y
++CONFIG_CMD_GPIO=y
++CONFIG_CMD_MMC=y
++CONFIG_CMD_USB=y
++CONFIG_CMD_CACHE=y
++CONFIG_CMD_EXT4_WRITE=y
++CONFIG_MTDIDS_DEFAULT="nor0=ff705000.spi.0"
++CONFIG_OF_SPL_REMOVE_PROPS="interrupts interrupt-parent dmas dma-names"
++CONFIG_ENV_IS_IN_MMC=y
++CONFIG_SYS_RELOC_GD_ENV_ADDR=y
++CONFIG_VERSION_VARIABLE=y
++CONFIG_SPL_DM_SEQ_ALIAS=y
++CONFIG_DWAPB_GPIO=y
++CONFIG_FS_LOADER=y
++CONFIG_SPL_FS_LOADER=y
++CONFIG_MMC_DW=y
++CONFIG_MTD=y
++CONFIG_PHY_MICREL=y
++CONFIG_PHY_MICREL_KSZ90X1=y
++CONFIG_DM_ETH=y
++CONFIG_ETH_DESIGNWARE=y
++CONFIG_MII=y
++CONFIG_NET_RANDOM_ETHADDR=y
++CONFIG_SPI=y
++CONFIG_TIMER=y
++CONFIG_SPL_TIMER=y
++CONFIG_DESIGNWARE_APB_TIMER=y
++CONFIG_USB=y
++CONFIG_USB_DWC2=y
++# CONFIG_SPL_WDT is not set
++CONFIG_USB=y
++CONFIG_DM_USB=y
++CONFIG_USB_DWC2=y
++# CONFIG_USE_TINY_PRINTF is not set
++CONFIG_DM_I2C=y
++CONFIG_SYS_I2C_DW=y
++CONFIG_CMD_I2C=y
+diff --git a/include/configs/socfpga_arria10_daq.h b/include/configs/socfpga_arria10_daq.h
+new file mode 100644
+index 0000000000..f17729cd9c
+--- /dev/null
++++ b/include/configs/socfpga_arria10_daq.h
+@@ -0,0 +1,78 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ *  Copyright (C) 2015-2019 Altera Corporation <www.altera.com>
++ */
++
++#ifndef __CONFIG_ELETTRAST_DAQ_H__
++#define __CONFIG_ELETTRAST_DAQ_H__
++
++#include <asm/arch/base_addr_a10.h>
++
++#define CONFIG_SYS_BOOTM_LEN	(32 * 1024 * 1024)
++
++/*
++ * U-Boot general configurations
++ */
++
++/* Memory configurations  */
++#define PHYS_SDRAM_1_SIZE		0x40000000
++
++/*
++ * Serial / UART configurations
++ */
++#define CONFIG_SYS_NS16550_MEM32
++#define CONFIG_SYS_BAUDRATE_TABLE {4800, 9600, 19200, 38400, 57600, 115200}
++#define CONFIG_SYS_NAND_U_BOOT_OFFS	0x100000
++
++/*
++ * L4 OSC1 Timer 0
++ */
++/* reload value when timer count to zero */
++#define TIMER_LOAD_VAL			0xFFFFFFFF
++
++/*
++ * Flash configurations
++ */
++
++/* SPL memory allocation configuration, this is for FAT implementation */
++#define CONFIG_SYS_SPL_MALLOC_SIZE	0x00015000
++
++#if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_NAND_BOOT)
++#define CONFIG_EXTRA_ENV_SETTINGS \
++	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0" \
++	"bootm_size=0xa000000\0" \
++	"kernel_addr_r="__stringify(CONFIG_SYS_LOAD_ADDR)"\0" \
++	"fdt_addr_r=0x02000000\0" \
++	"scriptaddr=0x02100000\0" \
++	"pxefile_addr_r=0x02200000\0" \
++	"ramdisk_addr_r=0x02300000\0" \
++	"socfpga_legacy_reset_compat=1\0" \
++	"kernelfit_addr=0x1200000\0" \
++	"fitimagesize=0x5F0000\0" \
++	"qspiroot=/dev/mtdblock1\0" \
++	"qspirootfstype=jffs2\0" \
++	"qspiload=sf probe; sf read ${scriptaddr} ${kernelfit_addr}\0" \
++	"qspiboot=setenv bootargs " CONFIG_BOOTARGS \
++			"root=${qspiroot} rw rootfstype=${qspirootfstype}; " \
++			"bootm ${scriptaddr}\0" \
++	"nandroot=/dev/mtdblock1\0" \
++	"nandrootfstype=jffs2\0" \
++	"nandload=nand read ${scriptaddr} ${kernelfit_addr}\0" \
++	"nandboot=setenv bootargs " CONFIG_BOOTARGS \
++			"root=${nandroot} rw rootfstype=${nandrootfstype}; " \
++			"bootm ${scriptaddr}\0" \
++
++#endif
++
++/* The rest of the configuration is shared */
++#include <configs/socfpga_common.h>
++
++/*
++ * L4 Watchdog
++ */
++#ifdef CONFIG_HW_WATCHDOG
++#undef CONFIG_DW_WDT_BASE
++#define CONFIG_DW_WDT_BASE		SOCFPGA_L4WD1_ADDRESS
++#endif
++
++#endif	/* __CONFIG_ELETTRAST_DAQ_H__ */
+-- 
+2.34.1
+

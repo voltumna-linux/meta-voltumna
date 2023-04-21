@@ -1,0 +1,294 @@
+From 27b76c986f2ce9496252ee160021a58255264780 Mon Sep 17 00:00:00 2001
+From: Gabriele <gabriele.brajnik@elettra.eu>
+Date: Mon, 12 Dec 2022 18:18:02 +0100
+Subject: [PATCH 08/10] added clocks in device tree
+
+---
+ arch/arm/boot/dts/socfpga_arria10_daq.dtsi | 201 ++++++++++++++++++++-
+ arch/arm/configs/socfpga_defconfig         |   9 +
+ 2 files changed, 205 insertions(+), 5 deletions(-)
+
+diff --git a/arch/arm/boot/dts/socfpga_arria10_daq.dtsi b/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
+index 8e2b3173726e..ee4e543b3546 100644
+--- a/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
++++ b/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
+@@ -13,6 +13,8 @@
+ #define I2C_SPI_SEL_SPAN            16
+ #define I2C_SPI_SEL_DWIDTH          8
+ 
++#define GPIO_ACTIVE_HIGH 0
++#define GPIO_ACTIVE_LOW 1
+ 
+ 
+ / {
+@@ -40,13 +42,13 @@ leds {
+ 
+ 		hps_led0 {
+ 			label = "hps_led0";
+-			gpios = <&portb 15 0>;	/* HPS_GPIO1_15 */
++			gpios = <&portb 15 GPIO_ACTIVE_HIGH>;	/* HPS_GPIO1_15 */
+ 			linux,default-trigger = "heartbeat";
+ 		};
+ 
+ 		hps_led1 {
+ 			label = "hps_led1";
+-			gpios = <&portb 14 0>;	/* HPS_GPIO1_14 */
++			gpios = <&portb 14 GPIO_ACTIVE_HIGH>;	/* HPS_GPIO1_14 */
+ 			linux,default-trigger = "heartbeat";
+ 		};
+ 	};
+@@ -56,13 +58,13 @@ gpio-keys {
+ 
+ 		hps_sw0 {
+ 			label = "hps_sw0";
+-			gpios = <&portb 17 0>;	/* HPS_GPIO1_17 */
++			gpios = <&portb 17 GPIO_ACTIVE_LOW>;	/* HPS_GPIO1_17 */
+ 			linux,input-type = <5>;	/* EV_SW */
+ 		};
+ 
+ 		hps_sw1 {
+ 			label = "hps_sw1";
+-			gpios = <&portb 16 0>;	/* HPS_GPIO1_16 */
++			gpios = <&portb 16 GPIO_ACTIVE_LOW>;	/* HPS_GPIO1_16 */
+ 			linux,input-type = <5>;	/* EV_SW */
+ 		};
+ 	};
+@@ -77,7 +79,7 @@ osc1 {
+ 		};
+ 		base_fpga_region {
+ 
+-			ranges;
++			ranges; /*fundamental to map the address */
+ 
+ 			i2csel: i2csel@ff200000 { /*soft gpios on LW bus */
+ 				compatible = "altr,pio-1.0";
+@@ -89,6 +91,194 @@ i2csel: i2csel@ff200000 { /*soft gpios on LW bus */
+ 
+ 		};
+ 	};
++
++	regulator_3_3v: 3-3-v-regulator {
++		compatible = "regulator-fixed";
++		regulator-name = "3.3V";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-always-on;
++	};
++
++	regulator_1_8v: 1-8-v-regulator {
++		compatible = "regulator-fixed";
++		regulator-name = "1.8V";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		regulator-always-on;
++	};
++
++	/* 48MHz reference crystal for Si5340 */
++	ref48MHz: ref48MHz {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <48000000>;
++	};
++
++
++	i2cmux {
++		compatible = "i2c-mux-gpio";
++		#address-cells = <1>;
++		#size-cells = <0>;
++		mux-gpios = <&i2csel 0 GPIO_ACTIVE_HIGH
++					&i2csel 1 GPIO_ACTIVE_HIGH
++					&i2csel 2 GPIO_ACTIVE_HIGH>;
++		i2c-parent = <&i2c0>;
++
++		i2c_board@0 {
++			reg = <0>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			at24c64: eeprom@50 {
++				compatible = "atmel,24c64";
++				reg = <0x50>;
++				pagesize = <32>;
++				vcc-supply = <&regulator_3_3v>;
++			};
++
++
++			/* Programmable clock */
++			si5340: si5340@77 {
++				reg = <0x77>;
++				compatible = "silabs,si5340";
++				#clock-cells = <2>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++				clocks = <&ref48MHz>;
++				clock-names = "xtal";
++
++				silabs,pll-m-num = <141796875>; /* PLL at 14.1796875 GHz */
++				silabs,pll-m-den = <480000>; /* M is 295.41015625 */
++				silabs,reprogram; /* Chips are not programmed, always reset */
++
++				vddo0-supply = <&regulator_1_8v>;
++				vddo1-supply = <&regulator_1_8v>;
++				vddo2-supply = <&regulator_1_8v>;
++				vddo3-supply = <&regulator_1_8v>;
++
++				assigned-clocks = <&si5340 1 0>,  	/* synth 0 */
++								<&si5340 1 1>,		/* synth 1 */
++								<&si5340 1 2>,		/* synth 2 */
++								<&si5340 1 3>,		/* synth 3 */
++								<&si5340 0 0>,		/* out 0 */
++								<&si5340 0 1>,		/* out 1 */
++								<&si5340 0 2>,		/* out 2 */
++								<&si5340 0 3>;		/* out 3 */
++				assigned-clock-parents = <0>, 
++								<0>, 
++								<0>, 
++								<0>, /* synths do not have parents */ 
++								<&si5340 1 1>,     	/* out 0 is parent of synth 1*/
++								<&si5340 1 0>,		/* out 1 is parent of synth 0*/
++								<&si5340 1 1>,		/* out 2 is parent of synth 1*/
++								<&si5340 1 2>;		/* out 3 is parent of synth 2*/
++				assigned-clock-rates =  <644531250>, 	/* synth 0 - 644.53125 MHz */
++								<1000000000>, 			/* synth 1 - 1 GHz */
++								<333334000>, 			/* synth 2 - 333.334 MHz */
++								<0>, 					/* synth 3 - unused */
++								<125000000>, 	/* out 0 - 125 MHz */
++								<322265625>, 	/* out 1 - 322.265625 MHz */
++								<100000000>, 	/* out 2 - 100 MHz */
++								<166667000>; 	/* out 3 - 166.667 MHz */
++				sfp0_125@0 {
++					/* SFP_1G_REF_CLK (125 MHz) */
++					reg = <0>;
++					silabs,format = <1>; /* LVDS 1v8 */
++					silabs,common-mode = <13>;
++					silabs,amplitude = <3>;
++					silabs,synth-master;            
++					always-on; /* assigned-clocks does not enable, so do it here */
++				};
++
++				sfp1_322@1 {
++					/* SFP_10G_REF_CLK (322.26562 Hz) */
++					reg = <1>;
++					silabs,format = <1>; /* LVDS 1v8 */
++					silabs,common-mode = <13>;
++					silabs,amplitude = <3>;
++					silabs,synth-master;
++					always-on;
++				};
++
++				aux_100@2 {
++					/* AUX_CLK (100 MHz) */
++					reg = <2>;
++					silabs,format = <1>; /* LVDS 1v8 */
++					silabs,common-mode = <13>;
++					silabs,amplitude = <3>;
++					always-on;
++				};
++
++				ddr3_166@3 {
++					/* DDR3_REF_CLK (166.667 MHz) */
++					reg = <3>;
++					silabs,format = <1>; /* LVDS 1v8 */
++					silabs,common-mode = <13>;
++					silabs,amplitude = <3>;
++					silabs,synth-master;
++					always-on;
++				};
++			};
++		};
++
++		i2c_fmc_lpc@1 {
++			reg = <1>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++		};
++				
++		i2c_fmc_hpc@2 {
++			reg = <2>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++		};
++
++		i2c_vcxo_a@3 {
++			reg = <3>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			si571_a: clock-generator@5d { /* VCXO on FMC A */
++				#clock-cells = <0>;
++				compatible = "silabs,si571";
++				reg = <0x55>;
++				temperature-stability = <50>; 
++				factory-fout = <27000000>;
++				clock-frequency = <115600000>;
++				clock-output-names = "si571_a";
++			};
++
++		};
++
++		i2c_vcxo_b@4 {
++			reg = <4>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			si571_b: clock-generator@5d { /* VCXO on FMC B */
++				#clock-cells = <0>;
++				compatible = "silabs,si571";
++				reg = <0x55>;
++				temperature-stability = <50>; 
++				factory-fout = <27000000>;
++				clock-frequency = <115600000>;
++				clock-output-names = "si571_b";
++			};
++
++
++		};
++
++		i2c_ddr_sodimm@5 {
++			reg = <5>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++		};
++	};
++
+ };
+ 
+ &gmac0 {
+@@ -163,6 +353,7 @@ eeprom@57 {
+ 		compatible = "atmel,24c64";
+ 		reg = <0x57>;
+ 		pagesize = <32>;
++		vcc-supply = <&regulator_3_3v>;
+ 	};
+ 
+ 	rtc@51 {
+diff --git a/arch/arm/configs/socfpga_defconfig b/arch/arm/configs/socfpga_defconfig
+index 67d2b55630fa..3ec9ea248fb9 100644
+--- a/arch/arm/configs/socfpga_defconfig
++++ b/arch/arm/configs/socfpga_defconfig
+@@ -95,6 +95,10 @@ CONFIG_SERIAL_8250_DW=y
+ CONFIG_I2C=y
+ CONFIG_I2C_CHARDEV=y
+ CONFIG_I2C_DESIGNWARE_PLATFORM=y
++CONFIG_I2C_MUX=y
++CONFIG_I2C_ARB_GPIO_CHALLENGE=y
++CONFIG_I2C_MUX_GPIO=y
++CONFIG_I2C_MUX_GPMUX=y
+ CONFIG_SPI=y
+ CONFIG_SPI_DESIGNWARE=y
+ CONFIG_SPI_DW_MMIO=y
+@@ -178,3 +182,8 @@ CONFIG_DETECT_HUNG_TASK=y
+ # CONFIG_SCHED_DEBUG is not set
+ CONFIG_FUNCTION_TRACER=y
+ CONFIG_DEBUG_USER=y
++CONFIG_HAVE_CLK=y
++CONFIG_HAVE_CLK_PREPARE=y
++CONFIG_COMMON_CLK=y
++CONFIG_COMMON_CLK_SI5341=y
++CONFIG_COMMON_CLK_SI570=y
+-- 
+2.34.1
+

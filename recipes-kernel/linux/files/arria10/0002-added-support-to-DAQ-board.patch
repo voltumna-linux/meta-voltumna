@@ -1,0 +1,210 @@
+From 173fba96101428a1f47b129071b87d63eb2bdd48 Mon Sep 17 00:00:00 2001
+From: Gabriele <gabriele.brajnik@elettra.eu>
+Date: Thu, 10 Nov 2022 11:35:16 +0100
+Subject: [PATCH 02/10] added support to DAQ board
+
+---
+ arch/arm/boot/dts/Makefile                    |   1 +
+ arch/arm/boot/dts/socfpga_arria10_daq.dtsi    | 143 ++++++++++++++++++
+ .../boot/dts/socfpga_arria10_daq_sdmmc.dts    |  27 ++++
+ 3 files changed, 171 insertions(+)
+ create mode 100644 arch/arm/boot/dts/socfpga_arria10_daq.dtsi
+ create mode 100644 arch/arm/boot/dts/socfpga_arria10_daq_sdmmc.dts
+
+diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
+index ed498d2dde9e..917c20c75951 100644
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -1079,6 +1079,7 @@ dtb-$(CONFIG_ARCH_INTEL_SOCFPGA) += \
+ 	socfpga_arria10_socdk_nand.dtb \
+ 	socfpga_arria10_socdk_qspi.dtb \
+ 	socfpga_arria10_socdk_sdmmc.dtb \
++	socfpga_arria10_daq_sdmmc.dtb \
+ 	socfpga_cyclone5_chameleon96.dtb \
+ 	socfpga_cyclone5_mcvevk.dtb \
+ 	socfpga_cyclone5_socdk.dtb \
+diff --git a/arch/arm/boot/dts/socfpga_arria10_daq.dtsi b/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
+new file mode 100644
+index 000000000000..7022099cccc4
+--- /dev/null
++++ b/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
+@@ -0,0 +1,143 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Copyright (C) 2015 Altera Corporation <www.altera.com>
++ */
++#include "socfpga_arria10.dtsi"
++
++/ {
++	model = "ElettraST DAQ";
++	compatible = "elettrast,socfpga-arria10-daq","altr,socfpga-arria10", "altr,socfpga";
++
++	aliases {
++		ethernet0 = &gmac0;
++		serial0 = &uart1;
++	};
++
++	chosen {
++		bootargs = "earlyprintk";
++		stdout-path = "serial0:115200n8";
++	};
++
++	memory@0 {
++		name = "memory";
++		device_type = "memory";
++		reg = <0x0 0x40000000>; /* 1GB */
++	};
++
++	leds {
++		compatible = "gpio-leds";
++
++		hps_led0 {
++			label = "hps_led0";
++			gpios = <&portb 15 0>;	/* HPS_GPIO1_15 */
++			linux,default-trigger = "heartbeat";
++		};
++
++		hps_led1 {
++			label = "hps_led1";
++			gpios = <&portb 14 0>;	/* HPS_GPIO1_14 */
++			linux,default-trigger = "heartbeat";
++		};
++	};
++
++	gpio-keys {
++		compatible = "gpio-keys";
++
++		hps_sw0 {
++			label = "hps_sw0";
++			gpios = <&portb 17 0>;	/* HPS_GPIO1_17 */
++			linux,input-type = <5>;	/* EV_SW */
++		};
++
++		hps_sw1 {
++			label = "hps_sw1";
++			gpios = <&portb 16 0>;	/* HPS_GPIO1_16 */
++			linux,input-type = <5>;	/* EV_SW */
++		};
++	};
++	
++	soc {
++		clkmgr@ffd04000 {
++			clocks {
++				osc1 {
++					clock-frequency = <25000000>;
++				};
++			};
++		};
++	};
++};
++
++&gmac0 {
++	phy-mode = "rgmii";
++	phy-addr = <0xffffffff>; /* probe for phy addr */
++
++	/*
++	 * These skews assume the user's FPGA design is adding 600ps of delay
++	 * for TX_CLK on Arria 10.
++	 *
++	 * All skews are offset since hardware skew values for the ksz9031
++	 * range from a negative skew to a positive skew.
++	 * See the micrel-ksz90x1.txt Documentation file for details.
++	 */
++	txd0-skew-ps = <420>; /* 0ps */
++	txd1-skew-ps = <420>; /* 0ps */
++	txd2-skew-ps = <420>; /* 0ps */
++	txd3-skew-ps = <420>; /* 0ps */
++
++	rxd0-skew-ps = <420>; /* 0ps */
++	rxd1-skew-ps = <420>; /* 0ps */
++	rxd2-skew-ps = <420>; /* 0ps */
++	rxd3-skew-ps = <420>; /* 0ps */
++
++	txen-skew-ps = <420>; /* 0ps */
++	rxdv-skew-ps = <420>; /* 0ps */
++
++	rxc-skew-ps = <900>; /* 0ps */
++	txc-skew-ps = <900>; /* 0ps */
++
++	max-frame-size = <3800>;
++	status = "okay";
++};
++
++&gpio1 {
++	status = "okay";
++};
++
++&spi1 {
++	status = "okay";
++};
++
++&i2c1 {
++	status = "okay";
++
++	clock-frequency = <100000>;
++
++	eeprom@57 {
++		compatible = "atmel,24c64";
++		reg = <0x57>;
++		pagesize = <64>;
++	};
++
++	rtc@51 {
++		compatible = "nxp,pcf85363";
++		reg = <0x51>;
++	};
++
++	fans@5c {
++		compatible = "adt7470";
++		reg = <0x58>;
++	};
++};
++
++&uart1 {
++	status = "okay";
++};
++
++&usb0 {
++	status = "okay";
++	disable-over-current;
++};
++
++&watchdog1 {
++	status = "okay";
++};
+diff --git a/arch/arm/boot/dts/socfpga_arria10_daq_sdmmc.dts b/arch/arm/boot/dts/socfpga_arria10_daq_sdmmc.dts
+new file mode 100644
+index 000000000000..0f260597709a
+--- /dev/null
++++ b/arch/arm/boot/dts/socfpga_arria10_daq_sdmmc.dts
+@@ -0,0 +1,27 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Copyright (C) 2014-2021 Altera Corporation <www.altera.com>
++ */
++
++/dts-v1/;
++#include "socfpga_arria10_daq.dtsi"
++
++&mmc {
++	status = "okay";
++	cap-sd-highspeed;
++	cap-mmc-highspeed;
++	broken-cd;
++	bus-width = <4>;
++};
++
++&eccmgr {
++	sdmmca-ecc@ff8c2c00 {
++		compatible = "altr,socfpga-sdmmc-ecc";
++		reg = <0xff8c2c00 0x400>;
++		altr,ecc-parent = <&mmc>;
++		interrupts = <15 IRQ_TYPE_LEVEL_HIGH>,
++			     <47 IRQ_TYPE_LEVEL_HIGH>,
++			     <16 IRQ_TYPE_LEVEL_HIGH>,
++			     <48 IRQ_TYPE_LEVEL_HIGH>;
++	};
++};
+-- 
+2.34.1
+

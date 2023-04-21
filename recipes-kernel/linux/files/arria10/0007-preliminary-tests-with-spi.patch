@@ -1,0 +1,54 @@
+From 20167192d9c33c1366a832614669fc4988f947df Mon Sep 17 00:00:00 2001
+From: Gabriele <gabriele.brajnik@elettra.eu>
+Date: Tue, 6 Dec 2022 14:31:26 +0100
+Subject: [PATCH 07/10] preliminary tests with spi
+
+---
+ arch/arm/boot/dts/socfpga_arria10_daq.dtsi | 14 ++++++++++++++
+ arch/arm/configs/socfpga_defconfig         |  1 +
+ 2 files changed, 15 insertions(+)
+
+diff --git a/arch/arm/boot/dts/socfpga_arria10_daq.dtsi b/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
+index cfdb31ce8eff..8e2b3173726e 100644
+--- a/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
++++ b/arch/arm/boot/dts/socfpga_arria10_daq.dtsi
+@@ -129,10 +129,24 @@ &gpio1 {
+ 
+ &spi1 {
+ 	status = "okay";
++
++	spidev@0{
++		compatible = "spidev";
++		reg = <0>;
++		spi-max-frequency = <10000000>;
++	};
++
+ };
+ 
+ &spi0 { /* routed through FPGA pins */
+ 	status = "okay";
++
++	spidev@0{
++		compatible = "spidev";
++		reg = <0>;
++		spi-max-frequency = <10000000>;
++	};
++
+ };
+ 
+ &i2c0 { /* routed through FPGA pins */
+diff --git a/arch/arm/configs/socfpga_defconfig b/arch/arm/configs/socfpga_defconfig
+index 855891791d3a..67d2b55630fa 100644
+--- a/arch/arm/configs/socfpga_defconfig
++++ b/arch/arm/configs/socfpga_defconfig
+@@ -99,6 +99,7 @@ CONFIG_SPI=y
+ CONFIG_SPI_DESIGNWARE=y
+ CONFIG_SPI_DW_MMIO=y
+ CONFIG_SPI_SPIDEV=y
++CONFIG_SPI_MASTER=y
+ CONFIG_GPIOLIB=y
+ CONFIG_GPIO_SYSFS=y
+ CONFIG_GPIO_ALTERA=y
+-- 
+2.34.1
+

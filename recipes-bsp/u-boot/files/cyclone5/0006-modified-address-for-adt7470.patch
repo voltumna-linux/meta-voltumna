@@ -1,0 +1,34 @@
+From 126de00165fd2dec01cfb8d60e1340418da35e0e Mon Sep 17 00:00:00 2001
+From: Gabriele <gabriele.brajnik@elettra.eu>
+Date: Thu, 10 Nov 2022 15:18:36 +0100
+Subject: [PATCH 06/10] modified address for adt7470
+
+---
+ arch/arm/dts/socfpga_arria10_daq.dtsi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/dts/socfpga_arria10_daq.dtsi b/arch/arm/dts/socfpga_arria10_daq.dtsi
+index 7022099ccc..9da5654936 100644
+--- a/arch/arm/dts/socfpga_arria10_daq.dtsi
++++ b/arch/arm/dts/socfpga_arria10_daq.dtsi
+@@ -115,7 +115,7 @@
+ 	eeprom@57 {
+ 		compatible = "atmel,24c64";
+ 		reg = <0x57>;
+-		pagesize = <64>;
++		pagesize = <32>;
+ 	};
+ 
+ 	rtc@51 {
+@@ -125,7 +125,7 @@
+ 
+ 	fans@5c {
+ 		compatible = "adt7470";
+-		reg = <0x58>;
++		reg = <0x2C>;
+ 	};
+ };
+ 
+-- 
+2.34.1
+

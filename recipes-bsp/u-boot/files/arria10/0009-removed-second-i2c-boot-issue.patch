@@ -1,0 +1,27 @@
+From d2f6a72c2bc0a818cb3782350e14fb633b042b12 Mon Sep 17 00:00:00 2001
+From: Gabriele <gabriele.brajnik@elettra.eu>
+Date: Wed, 23 Nov 2022 16:43:40 +0100
+Subject: [PATCH 09/10] removed second i2c - boot issue
+
+---
+ arch/arm/dts/socfpga_arria10_daq.dtsi | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/arch/arm/dts/socfpga_arria10_daq.dtsi b/arch/arm/dts/socfpga_arria10_daq.dtsi
+index b6ad2a071a..350f779d50 100644
+--- a/arch/arm/dts/socfpga_arria10_daq.dtsi
++++ b/arch/arm/dts/socfpga_arria10_daq.dtsi
+@@ -107,10 +107,6 @@
+ 	status = "okay";
+ };
+ 
+-&i2c0 { /* rounted through FPGA pins */
+-	status = "okay";
+-	clock-frequency = <100000>;
+-};
+ 
+ &i2c1 {
+ 	status = "okay";
+-- 
+2.34.1
+
