@@ -20,8 +20,13 @@ SRC_URI:append = " \
 	file://hpet.cfg \
 	file://vtd.cfg \
 	file://serial_console.cfg \
-	file://static_intel_drivers.cfg \
 	file://ipmi.cfg \
+	\
+	file://static_intel_drivers.cfg \
+	"
+
+SRC_URI:append:kvm = " \
+	file://virtualization.cfg \
 	"
 
 KERNEL_FEATURES:remove = " features/security/security.scc"
