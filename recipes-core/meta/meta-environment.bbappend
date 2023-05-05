@@ -51,8 +51,8 @@ create_sdk_files_append() {
 	echo 'export OECORE_TARGET_SYSROOT="$SDKTARGETSYSROOT"' >> $script
 	echo "export OECORE_ACLOCAL_OPTS=\"-I $sdkpathnative/usr/share/aclocal\"" >> $script
 	echo 'export OECORE_BASELIB="${baselib}"' >> $script
-	echo 'export OECORE_TARGET_ARCH="${TARGET_ARCH}"' >>$script
-	echo 'export OECORE_TARGET_OS="${TARGET_OS}"' >>$script
+	echo 'export OECORE_TARGET_ARCH="x86_64"' >>$script
+	echo 'export OECORE_TARGET_OS="linux"' >>$script
 
 	echo 'unset command_not_found_handle' >> $script
 
@@ -79,7 +79,7 @@ create_sdk_files_append() {
 	echo 'export KCFLAGS="--sysroot=$SDKTARGETSYSROOT"' >> $script
 	echo 'export OECORE_DISTRO_VERSION="${DISTRO_VERSION}"' >> $script
 	echo 'export OECORE_SDK_VERSION="${SDK_VERSION}"' >> $script
-	echo 'export ARCH=${ARCH}' >> $script
+	echo 'export ARCH=x86' >> $script
 	echo 'export CROSS_COMPILE='${sdk_target_prefix} >> $script
 
     cat >> $script <<EOF
