@@ -13,3 +13,4 @@ meta-*/
 !meta-dpdk
 !meta-arm
 !meta-clang
+!meta-amd

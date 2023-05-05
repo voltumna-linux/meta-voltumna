@@ -50,3 +50,7 @@
 	path = meta-clang
 	url = https://github.com/kraj/meta-clang.git
 	branch = kirkstone
+[submodule "meta-amd"]
+	path = meta-amd
+	url = git://git.yoctoproject.org/meta-amd
+	branch = kirkstone
