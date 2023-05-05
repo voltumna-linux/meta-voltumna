@@ -7,7 +7,6 @@ RDEPENDS:${PN} = "grub-common virtual-grub-bootconf"
 
 SRC_URI += " \
            file://cfg.pxe \
-	   file://0001-Disable-bmi-as-well-when-SSE-and-mfpmath-sse-are-disabled.patch \
           "
 
 S = "${WORKDIR}/grub-${PV}"
