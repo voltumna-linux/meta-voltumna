@@ -1,5 +1,5 @@
 #Supermicro Update Manager 2.10.0 (2022/12/09)
-#File generated at 2023-03-03_10:56:02
+#File generated at 2023-03-30_16:23:23
 #Please refer to SUM User's guide 'Format of BIOS Settings Text File' for usage.
 
 [Advanced|Boot Feature]
@@ -25,14 +25,14 @@ Adjacent Cache Prefetch=01              // *01 (Enable), 00 (Disable)
 DCU Streamer Prefetcher=01              // *01 (Enable), 00 (Disable)        
 DCU IP Prefetcher=01                    // *01 (Enable), 00 (Disable)        
 Direct Cache Access (DCA)=02            // 00 (Disable), 01 (Enable), *02 (Auto)        
-X2APIC=01                               // *00 (Disable), 01 (Enable)        
+X2APIC=00                               // *00 (Disable), 01 (Enable)        
 AES-NI=01                               // 00 (Disable), *01 (Enable)        
 Intel Virtualization Technology=01      // 00 (Disable), *01 (Enable)        
 
 [Advanced|CPU Configuration|Advanced Power Management Configuration]
-Power Technology=01                     // 00 (Disable), *01 (Energy Efficient), 02 (Custom), 04 (Processor Clocking Control)        
+Power Technology=02                     // 00 (Disable), *01 (Energy Efficient), 02 (Custom), 04 (Processor Clocking Control)        
 Energy Performance Tuning=00            // 00 (Enable), *01 (Disable)        
-Energy Performance BIAS setting.=00     // 00 (Performance), *07 (Balanced Performance), 08 (Balanced Power), 0F (Power)        
+Energy Performance BIAS setting.=07     // 00 (Performance), *07 (Balanced Performance), 08 (Balanced Power), 0F (Power)        
 Energy Efficient Turbo=00               // *00 (Enable), 01 (Disable)        
 
 [Advanced|CPU Configuration|Advanced Power Management Configuration|CPU P State Control]
