@@ -20,6 +20,8 @@ SRC_URI:append = " \
 SRC_URI[sha256sum] = "f282d4d33ee9f3d679dd1e6c8290236b395ddda051346bb10e71e50c6bab2e7e"
 
 KERNEL_CONFIG_FRAGMENTS:append = " \
+	${WORKDIR}/log.cfg \
+	${WORKDIR}/zram.cfg \
 	${WORKDIR}/initrd.cfg \
 	${WORKDIR}/disable_ip_nfsroot.cfg \
 	${WORKDIR}/optimization.cfg \
@@ -28,9 +30,9 @@ KERNEL_CONFIG_FRAGMENTS:append = " \
 	${WORKDIR}/disable_ptp.cfg \
 	${WORKDIR}/remove_martian_source_warning.cfg \
 	${WORKDIR}/enable_ebpf_xpd.cfg \
+	${WORKDIR}/disable_lttng.cfg \
 	${WORKDIR}/serial_console.cfg \
 	${WORKDIR}/static_usb_support.cfg \
-	${WORKDIR}/zram.cfg \
 	"
 
 KERNEL_FEATURES:remove = " features/security/security.scc"
