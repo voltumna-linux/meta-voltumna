@@ -26,7 +26,7 @@ XSERVER ?= "${XSERVER_X86_BASE} \
            "
 
 IMAGE_FSTYPES += "wic"
-WKS_FILE ?= "grub-bootdisk-microcode.wks"
+WKS_FILE ?= "grub-bootdisk.wks"
 WKS_FILE_DEPENDS:append = " intel-microcode"
 
 KMACHINE = "intel-corei7-64"
