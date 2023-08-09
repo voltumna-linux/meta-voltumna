@@ -65,7 +65,7 @@ do_install() {
 # To include all available modules, add 'all' to GRUB_BUILDIN
 GRUB_BUILDIN ?= "boot linux ext2 fat serial part_msdos part_gpt normal \
                  iso9660 configfile search loadenv test reboot echo net \
-		pxe tftp"
+		 chain pxe tftp biosdisk"
 
 do_deploy() {
 	install -m 644 ${B}/${GRUB_IMAGE_PREFIX}${GRUB_IMAGE} ${DEPLOYDIR}
