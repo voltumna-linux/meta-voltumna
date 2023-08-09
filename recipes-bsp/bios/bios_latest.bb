@@ -5,12 +5,15 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 COMPATIBLE_HOST = "x86_64.*-linux"
 
 RDEPENDS:${PN}:append:x10dru-iplus = "sum"
+RDEPENDS:${PN}:append:x10drw-i = "sum"
 RDEPENDS:${PN}:append:x11dph-t = "sum"
 RDEPENDS:${PN}:append:x11spw-tf = "sum"
 
 SRC_URI = " file://bios_configuration.bin"
 SRC_URI:append:x10dru-iplus = " https://www.supermicro.com/Bios/softfiles/15575/X10DRU2.427.zip;subdir=${BPN};name=bios-x10dru-iplus \
 		https://www.supermicro.com/Bios/softfiles/14879/BMC_X10AST2400-C001MS_20211001_03.94_STD.zip;subdir=${BPN};name=bmc-x10dru-iplus"
+SRC_URI:append:x10drw-i = " https://www.supermicro.com/Bios/softfiles/10581/X10DRW9_B22.zip;subdir=${BPN};name=bios-x10drw-i \
+		https://www.supermicro.com/Bios/softfiles/12112/REDFISH_X10_389_20200623_unsigned.zip;subdir=${BPN};name=bmc-x10drw-i"
 SRC_URI:append:x11dph-t = " https://www.supermicro.com/Bios/softfiles/17249/X11DPH-I,T,Tq_3.8b_AS1.74.11_SUM2.10.0.zip;name=bios-x11dph-t"
 SRC_URI:append:x11spw-tf = " https://www.supermicro.com/Bios/softfiles/16571/BIOS_X11SPW-0953_20221028_3.8a_STD.zip;subdir=${BPN};name=bios-x11spw-tf \
 		https://www.supermicro.com/Bios/softfiles/16574/BMC_X11AST2500-4101MS_20221027_01.74.11_STDsp.zip;subdir=${BPN};name=bmc-x11spw-tf"
@@ -18,6 +21,8 @@ SRC_URI:append:x11spw-tf = " https://www.supermicro.com/Bios/softfiles/16571/BIO
 
 SRC_URI[bios-x10dru-iplus.sha256sum] = "d24b8f6b7f4ed186bbca662751b7d80ae6efd014d1ba71b47d9c4370eaa39fb4"
 SRC_URI[bmc-x10dru-iplus.sha256sum] = "80fcf01d2073cabe81118140a8494c8a65431dd5d20460c12272db110b5f8d21"
+SRC_URI[bios-x10drw-i.sha256sum] = "7379177cc6d30283c2b178d33f360d5522eb8e3a1badf9a6ab1cf837802dadeb"
+SRC_URI[bmc-x10drw-i.sha256sum] = "d07982d5f684e6458c80c069f762245ab38163620a31c2c9b60a7c2edc4c0f4e"
 SRC_URI[bios-x11dph-t.sha256sum] = "70128f4e6a76c2c5e863d99eace18034301c8a8a68d4216c93376bb869a90ed9"
 SRC_URI[bios-x11spw-tf.sha256sum] = "cc423035daa05a7eb90f39829bee55b59fd407b7503a4c6516b74aaee806db1e"
 SRC_URI[bmc-x11spw-tf.sha256sum] = "9c9e2469c97c312dc35b07bd822f1d66c487bb4c1ca7e0296d3f119991372a03"
@@ -43,7 +48,13 @@ do_install() {
 
 do_install:append:x10dru-iplus() {
 	install -d ${D}${datadir}/${BPN}
-	install -m 0444 ${S}/X10DRU2.427/DOS/X10DRU2.427 ${S}/BMC*/BMC*.bin \
+	install -m 0444 ${S}/X10DRU*/DOS/X10DRU2.427 ${S}/BMC*/BMC*.bin \
+		${D}${datadir}/${BPN}
+}
+
+do_install:append:x10drw-i() {
+	install -d ${D}${datadir}/${BPN}
+	install -m 0444 ${S}/DOS/X10DRW9.B22 ${S}/REDFISH*.bin \
 		${D}${datadir}/${BPN}
 }
 
