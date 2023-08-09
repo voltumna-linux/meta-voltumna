@@ -13,7 +13,7 @@ IMAGE_INSTALL:append:arm = " dtc"
 IMAGE_INSTALL:append = " binutils-symlinks cpp-symlinks gcc-symlinks g++-symlinks \
        autoconf automake gettext libtool pkgconfig diffutils quilt git make cmake meson \
        devmem2 gzip kernel-devsrc prepare-kernel-devsrc glib-2.0-utils \
-       perf powertop strace gdb gdbserver valgrind"
+       perf powertop gdb gdbserver valgrind"
 
 install_sdk_sh() {
 	install -d ${IMAGE_ROOTFS}${sysconfdir}/profile.d
