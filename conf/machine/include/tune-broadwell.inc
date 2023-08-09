@@ -22,7 +22,7 @@ TUNE_FEATURES:tune-broadwell-64 = "${TUNE_FEATURES:tune-x86-64} broadwell"
 BASE_LIB:tune-broadwell-64 = "lib64"
 TUNE_PKGARCH:tune-broadwell-64 = "broadwell-64"
 PACKAGE_EXTRA_ARCHS:tune-broadwell-64 = "${PACKAGE_EXTRA_ARCHS:tune-corei7-64} broadwell-64"
-QEMU_EXTRAOPTIONS_broadwell-64 = " -cpu broadwell"
+QEMU_EXTRAOPTIONS_broadwell-64 = " -cpu Broadwell"
 
 
 # Disable QEMU usermode by default (get avx2)
