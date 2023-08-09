@@ -23,6 +23,7 @@ SRC_URI:append = " \
 	file://ipmi.cfg \
 	\
 	file://static_intel_drivers.cfg \
+	file://0001-igb-Stop-PTP-related-workqueues-if-aren-t-necessary.patch \
 	"
 
 SRC_URI:append:kvm = " \
