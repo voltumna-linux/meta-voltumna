@@ -6,7 +6,8 @@ IMAGE_INSTALL_append += " info man-pages"
 
 # To keep in sync with SDE
 TOOLCHAIN_HOST_TASK_append = " nativesdk-binutils nativesdk-cpp nativesdk-gcc nativesdk-libgcc-dev \
-	nativesdk-g++ nativesdk-libstdc++-dev nativesdk-libgomp-dev"
+	nativesdk-g++ nativesdk-libstdc++-dev nativesdk-libgomp-dev \
+	nativesdk-libasan-dev nativesdk-libubsan-dev"
 TOOLCHAIN_HOST_TASK_append_arm += "nativesdk-dtc"
 
 SDK_ARCHIVE_TYPE = "tar.xz"
