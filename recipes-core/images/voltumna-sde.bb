@@ -6,7 +6,7 @@ IMAGE_FEATURES:append = " debug-tweaks bash-completion-pkgs \
 IMAGE_INSTALL:append = " info man-pages"
 
 # To keep in sync with SDK
-IMAGE_INSTALL:append = " binutils cpp gcc libgcc-dev g++ libstdc++-dev libgomp-dev"
+IMAGE_INSTALL:append = " binutils cpp gcc libgcc-dev g++ libstdc++-dev libgomp-dev libasan-dev libubsan-dev"
 IMAGE_INSTALL:append:arm = " dtc"
 
 # Specific to SDE
