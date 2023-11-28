@@ -3,7 +3,7 @@
 set -e
 
 DISK=/dev/mmcblk1
-DIR=/usr/share/u-boot-ti-staging-mmc1
+DIR=/usr/share/u-boot-bb.org-mmc1
 
 sfdisk -q ${DISK} <<-__EOF__
 ,32MiB,0xC,*
