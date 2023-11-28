@@ -10,6 +10,9 @@ inherit kernel
 require recipes-kernel/linux/setup-defconfig.inc
 require recipes-kernel/linux/ti-kernel.inc
 
+# BB.org hasn't switched to "vendored" DTB layout by default yet
+KERNEL_DTBVENDORED = "0"
+
 DEPENDS += "gmp-native libmpc-native"
 
 KERNEL_EXTRA_ARGS += "LOADADDR=${UBOOT_ENTRYPOINT} ${EXTRA_DTC_ARGS}"
