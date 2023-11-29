@@ -25,10 +25,6 @@ TUNE_PKGARCH_tune-cascadelake-64 = "cascadelake-64"
 PACKAGE_EXTRA_ARCHS_tune-cascadelake-64 = "${PACKAGE_EXTRA_ARCHS_tune-core2-64} cascadelake-64"
 QEMU_EXTRAOPTIONS_cascadelake-64 = " -cpu Cascadelake-Server"
 
-
-# Disable QEMU usermode by default (get avx2)
-MACHINE_FEATURES_remove = "qemu-usermode"
-
 CASCADELAKE_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' ${QEMU_UNAVAILABLE_ISA}', '-mavx2', d)}"
 
 QEMU_UNAVAILABLE_ISA = " \

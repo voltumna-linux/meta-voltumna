@@ -6,4 +6,4 @@ SRC_URI_append = " \
 	file://0001-Disable-bmi-as-well-when-SSE-and-mfpmath-sse-are-disabled.patch \
 	"
 
-DEPENDS += "grub-bootconf"
+DEPENDS_class-target += "grub-bootconf"

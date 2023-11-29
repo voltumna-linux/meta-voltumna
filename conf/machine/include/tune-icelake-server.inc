@@ -27,10 +27,6 @@ TUNE_PKGARCH_tune-icelake-server-64 = "icelake-server-64"
 PACKAGE_EXTRA_ARCHS_tune-icelake-server-64 = "${PACKAGE_EXTRA_ARCHS_tune-core2-64} icelake-server-64"
 QEMU_EXTRAOPTIONS_icelake-server-64 = " -cpu Icelake-Server"
 
-
-# Disable QEMU usermode by default (get avx2)
-MACHINE_FEATURES_remove = "qemu-usermode"
-
 ICELAKESERVER_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' ${QEMU_UNAVAILABLE_ISA}', '-mavx2', d)}"
 
 QEMU_UNAVAILABLE_ISA = " \
