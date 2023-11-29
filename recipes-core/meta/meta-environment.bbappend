@@ -81,6 +81,7 @@ create_sdk_files_append() {
 	echo 'export OECORE_SDK_VERSION="${SDK_VERSION}"' >> $script
 	echo 'export ARCH=x86' >> $script
 	echo 'export CROSS_COMPILE='${sdk_target_prefix} >> $script
+	echo 'export HOSTCC="${SDK_PREFIX}gcc --sysroot=$OECORE_NATIVE_SYSROOT"' >> $script
 
     cat >> $script <<EOF
 
