@@ -1,6 +1,6 @@
 require include/voltumna.inc
 
-IMAGE_FEATURES += "debug-tweaks bash-completion-pkgs \
+IMAGE_FEATURES += "debug-tweaks \
 	${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
 
 IMAGE_INSTALL_append += " info man-pages"

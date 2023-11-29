@@ -2,7 +2,7 @@ LICENSE = "MIT"
 IMAGE_LINGUAS = "en-us"
 IMAGE_BOOT_FILES_remove = "${KERNEL_IMAGETYPE} ${KERNEL_DEVICETREE}"
 
-IMAGE_FEATURES = "ssh-server-openssh"
+IMAGE_FEATURES = "bash-completion-pkgs ssh-server-openssh"
 
 WIC_CREATE_EXTRA_ARGS += " --no-fstab-update"
 
