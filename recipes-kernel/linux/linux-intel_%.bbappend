@@ -24,6 +24,7 @@ SRC_URI:append = " \
 	\
 	file://static_intel_drivers.cfg \
 	file://0001-igb-Stop-PTP-related-workqueues-if-aren-t-necessary.patch \
+	file://disable_trace_printk.patch \
 	"
 
 SRC_URI:append:kvm = " \
