@@ -6,13 +6,15 @@ UBOOT_SCRIPT_BINARY ?= "${UBOOT_SCRIPT_SOURCE}.uimg"
 UBOOT_SCRIPT_IMAGE ?= "${UBOOT_SCRIPT}-${MACHINE}-${PV}-${PR}.${UBOOT_SCRIPT_SUFFIX}.uimg"
 UBOOT_SCRIPT_SYMLINK ?= "${UBOOT_SCRIPT}-${MACHINE}.${UBOOT_SCRIPT_SUFFIX}.uimg"
 
+do_compile[vardeps] += "PRIMARY_NETIF"
 do_compile:append() {
 	if [ "x${UBOOT_SCRIPT}" != "x" ]; then
+		cp ${WORKDIR}/${UBOOT_SCRIPT_SOURCE} ${WORKDIR}/${UBOOT_SCRIPT_SOURCE}.filled
 		sed -i -e "s,@ROOT@,${ROOT},g" -e "s,@ROOTUSB@,${ROOTUSB},g" \
 			-e "s,@ETH@,${@d.getVar('PRIMARY_NETIF')},g" \
-			${WORKDIR}/${UBOOT_SCRIPT_SOURCE}
+			${WORKDIR}/${UBOOT_SCRIPT_SOURCE}.filled
 
-		mkimage -T script -C none -d ${WORKDIR}/${UBOOT_SCRIPT_SOURCE} \
+		mkimage -T script -C none -d ${WORKDIR}/${UBOOT_SCRIPT_SOURCE}.filled \
 			${WORKDIR}/${UBOOT_SCRIPT_BINARY}
 	fi
 }

@@ -23,6 +23,7 @@ do_install_basefilesissue () {
 	:
 }
 
+do_install[vardeps] += "PRIMARY_NETIF"
 do_install:append() {
 	# Add an additional link to lib
 	ln -sr ${D}/lib ${D}/lib${SITEINFO_BITS}
