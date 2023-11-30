@@ -7,6 +7,10 @@ DEPENDS_class-target += "python3-pyelftools"
 RDEPENDS_${PN}_class-target += "bash"
 RDEPENDS_${PN}_class-nativesdk = "python3-core"
 
+SRC_URI_append += " \
+       file://reduce-queue-itr-interval-default-on-intel-nics.patch \
+       "
+
 do_configure_prepend () {
 	# Enable HPET
 	echo "CONFIG_RTE_LIBEAL_USE_HPET=y" >> ${S}/config/defconfig_${RTE_TARGET}

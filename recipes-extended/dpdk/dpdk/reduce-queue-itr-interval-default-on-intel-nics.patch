@@ -1,0 +1,81 @@
+diff --git a/drivers/net/i40e/i40e_ethdev.h b/drivers/net/i40e/i40e_ethdev.h
+index 9b806d130e..dc015a14d1 100644
+--- a/drivers/net/i40e/i40e_ethdev.h
++++ b/drivers/net/i40e/i40e_ethdev.h
+@@ -193,9 +193,9 @@ enum i40e_flxpld_layer_idx {
+ /* Default queue interrupt throttling time in microseconds */
+ #define I40E_ITR_INDEX_DEFAULT          0
+ #define I40E_ITR_INDEX_NONE             3
+-#define I40E_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
++#define I40E_QUEUE_ITR_INTERVAL_DEFAULT 0 /* 32 us */
+ #define I40E_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
+-#define I40E_VF_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
++#define I40E_VF_QUEUE_ITR_INTERVAL_DEFAULT 0 /* 32 us */
+ /* Special FW support this floating VEB feature */
+ #define FLOATING_VEB_SUPPORTED_FW_MAJ 5
+ #define FLOATING_VEB_SUPPORTED_FW_MIN 0
+diff --git a/drivers/net/iavf/iavf.h b/drivers/net/iavf/iavf.h
+index aa18650ffa..3cd8d7f155 100644
+--- a/drivers/net/iavf/iavf.h
++++ b/drivers/net/iavf/iavf.h
+@@ -70,7 +70,7 @@
+ 
+ /* Default queue interrupt throttling time in microseconds */
+ #define IAVF_ITR_INDEX_DEFAULT          0
+-#define IAVF_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
++#define IAVF_QUEUE_ITR_INTERVAL_DEFAULT 0 /* 32 us */
+ #define IAVF_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
+ 
+ #define IAVF_ALARM_INTERVAL 50000 /* us */
+diff --git a/drivers/net/ice/ice_dcf_ethdev.c b/drivers/net/ice/ice_dcf_ethdev.c
+index 7304ea721c..bf8132826a 100644
+--- a/drivers/net/ice/ice_dcf_ethdev.c
++++ b/drivers/net/ice/ice_dcf_ethdev.c
+@@ -167,7 +167,7 @@ ice_dcf_init_rx_queues(struct rte_eth_dev *dev)
+ #define IAVF_RX_VEC_START               RTE_INTR_VEC_RXTX_OFFSET
+ 
+ #define IAVF_ITR_INDEX_DEFAULT          0
+-#define IAVF_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
++#define IAVF_QUEUE_ITR_INTERVAL_DEFAULT 0 /* 32 us */
+ #define IAVF_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
+ 
+ static inline uint16_t
+diff --git a/drivers/net/ixgbe/ixgbe_ethdev.h b/drivers/net/ixgbe/ixgbe_ethdev.h
+index 48290af512..39348fc0ef 100644
+--- a/drivers/net/ixgbe/ixgbe_ethdev.h
++++ b/drivers/net/ixgbe/ixgbe_ethdev.h
+@@ -62,7 +62,7 @@
+ 	(((us) * 1000 / IXGBE_EITR_INTERVAL_UNIT_NS << IXGBE_EITR_ITR_INT_SHIFT) & \
+ 		IXGBE_EITR_ITR_INT_MASK)
+ 
+-#define IXGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
++#define IXGBE_QUEUE_ITR_INTERVAL_DEFAULT	0 /* 500us */
+ 
+ /* Loopback operation modes */
+ #define IXGBE_LPBK_NONE   0x0 /* Default value. Loopback is disabled. */
+diff --git a/drivers/net/ngbe/ngbe_ethdev.h b/drivers/net/ngbe/ngbe_ethdev.h
+index bb96f6a5e7..46b0cf7c43 100644
+--- a/drivers/net/ngbe/ngbe_ethdev.h
++++ b/drivers/net/ngbe/ngbe_ethdev.h
+@@ -29,7 +29,7 @@
+ #define NGBE_HWSTRIP_BITMAP_SIZE \
+ 	(NGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
+ 
+-#define NGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
++#define NGBE_QUEUE_ITR_INTERVAL_DEFAULT	0 /* 500us */
+ 
+ /* The overhead from MTU to max frame size. */
+ #define NGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
+diff --git a/drivers/net/txgbe/txgbe_ethdev.h b/drivers/net/txgbe/txgbe_ethdev.h
+index b8a39204e2..3d93861e61 100644
+--- a/drivers/net/txgbe/txgbe_ethdev.h
++++ b/drivers/net/txgbe/txgbe_ethdev.h
+@@ -47,7 +47,7 @@
+ #define TXGBE_HWSTRIP_BITMAP_SIZE \
+ 	(TXGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
+ 
+-#define TXGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
++#define TXGBE_QUEUE_ITR_INTERVAL_DEFAULT	0 /* 500us */
+ 
+ #define TXGBE_MAX_QUEUE_NUM_PER_VF  8
+ 
