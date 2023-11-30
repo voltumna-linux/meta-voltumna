@@ -1,0 +1,12 @@
+[Unit]
+Description=Set ENERGY_PERF_BIAS to performance
+Before=basic.target
+After=local-fs.target sysinit.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=energy_perf_bias
+
+[Install]
+WantedBy=basic.target

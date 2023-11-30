@@ -3,6 +3,8 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI:append = " \
 	file://99-default.link \
 	file://sulogin-force.conf \
+	file://energy_perf_bias \
+	file://energy_perf_bias.service \
 	"
 
 RDEPENDS:${PN}:remove = "volatile-binds"
@@ -30,6 +32,8 @@ USERADD_PARAM:${PN} += " \
 	--uid 10000 --user-group --groups dialout --no-create-home \
 	--home-dir / --shell /bin/nologin controls; \
 	"
+
+FILES:${PN}:append = " ${base_sbindir}/energy_perf_bias"
 
 do_install:append() {
 	# Disable parsing of the ip kernel command line parameter
@@ -70,4 +74,16 @@ do_install:append() {
 		${D}${datadir}/factory/etc/pam.d/other \
 		${D}${datadir}/factory/etc/pam.d/system-auth
 	rmdir ${D}${datadir}/factory/etc/pam.d
+
+	# Add script energy_perf_bias
+	install -d ${D}${base_sbindir}
+	install -m 0755 ${WORKDIR}/energy_perf_bias \
+		${D}${base_sbindir}
+	install -d ${D}${systemd_unitdir}/system \
+		${D}${sysconfdir}/systemd/system/multi-user.target.wants
+	install -m 0644 ${WORKDIR}/energy_perf_bias.service \
+		${D}${systemd_unitdir}/system
+	ln -sf ${systemd_unitdir}/system/energy_perf_bias.service \
+		${D}${sysconfdir}/systemd/system/multi-user.target.wants/energy_perf_bias.service
+
 }
