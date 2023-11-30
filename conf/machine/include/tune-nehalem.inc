@@ -22,7 +22,3 @@ BASE_LIB:tune-nehalem-64 = "lib64"
 TUNE_PKGARCH:tune-nehalem-64 = "nehalem-64"
 PACKAGE_EXTRA_ARCHS:tune-nehalem-64 = "${PACKAGE_EXTRA_ARCHS:tune-core2-64} nehalem-64"
 QEMU_EXTRAOPTIONS_nehalem-64 = " -cpu Nehalem"
-
-
-# Disable QEMU usermode by default
-MACHINE_FEATURES:remove = "qemu-usermode"

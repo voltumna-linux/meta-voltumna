@@ -24,9 +24,5 @@ TUNE_PKGARCH:tune-broadwell-64 = "broadwell-64"
 PACKAGE_EXTRA_ARCHS:tune-broadwell-64 = "${PACKAGE_EXTRA_ARCHS:tune-corei7-64} broadwell-64"
 QEMU_EXTRAOPTIONS_broadwell-64 = " -cpu Broadwell"
 
-
-# Disable QEMU usermode by default (get avx2)
-MACHINE_FEATURES:remove = "qemu-usermode"
-
 # If qemu-usermode is enabled, we have to disable avx2 ISA extensions, but we can keep mtune as broadwell vs generic
 BROADWELL_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' -mtune=broadwell', '-mtune=generic -mavx2', d)}"

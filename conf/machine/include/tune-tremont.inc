@@ -23,7 +23,3 @@ BASE_LIB:tune-tremont-64 = "lib64"
 TUNE_PKGARCH:tune-tremont-64 = "tremont-64"
 PACKAGE_EXTRA_ARCHS:tune-tremont-64 = "${PACKAGE_EXTRA_ARCHS:tune-core2-64} tremont-64"
 QEMU_EXTRAOPTIONS_tremont-64 = " -cpu Tremont"
-
-
-# Disable QEMU usermode by default
-MACHINE_FEATURES:remove = "qemu-usermode"

@@ -21,7 +21,3 @@ BASE_LIB:tune-penryn-64 = "lib64"
 TUNE_PKGARCH:tune-penryn-64 = "penryn-64"
 PACKAGE_EXTRA_ARCHS:tune-penryn-64 = "${PACKAGE_EXTRA_ARCHS:tune-core2-64} penryn-64"
 QEMU_EXTRAOPTIONS_penryn-64 = " -cpu Penryn"
-
-
-# Disable QEMU usermode by default
-MACHINE_FEATURES:remove = "qemu-usermode"

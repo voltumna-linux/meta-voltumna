@@ -23,10 +23,6 @@ TUNE_PKGARCH:tune-skylake-64 = "skylake-64"
 PACKAGE_EXTRA_ARCHS:tune-skylake-64 = "${PACKAGE_EXTRA_ARCHS:tune-corei7-64} skylake-64"
 QEMU_EXTRAOPTIONS_skylake-64 = " -cpu Skylake-Client"
 
-
-# Disable QEMU usermode by default (get avx2)
-MACHINE_FEATURES:remove = "qemu-usermode"
-
 # If qemu-usermode is enabled, we have to disable avx2 ISA extensions, but we can keep mtune as skylake vs generic
 SKYLAKE_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' -mtune=skylake ${QEMU_UNAVAILABLE_ISA}', '-mtune=generic -mavx2', d)}"
 

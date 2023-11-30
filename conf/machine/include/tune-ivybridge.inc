@@ -21,7 +21,3 @@ BASE_LIB:tune-ivybridge-64 = "lib64"
 TUNE_PKGARCH:tune-ivybridge-64 = "ivybridge-64"
 PACKAGE_EXTRA_ARCHS:tune-ivybridge-64 = "${PACKAGE_EXTRA_ARCHS:tune-core2-64} ivybridge-64"
 QEMU_EXTRAOPTIONS_ivybridge-64 = " -cpu IvyBridge"
-
-
-# Disable QEMU usermode by default
-MACHINE_FEATURES:remove = "qemu-usermode"
