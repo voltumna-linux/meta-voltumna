@@ -4,6 +4,8 @@ SRC_URI += " \
 	file://99-default.link \
 	file://sulogin-force.conf \
 	file://nsswitch.conf \
+        file://energy_perf_bias \
+        file://energy_perf_bias.service \
 	"
 
 RDEPENDS_${PN}_remove = "volatile-binds"
@@ -31,6 +33,8 @@ USERADD_PARAM:${PN} += " \
 	--uid 10000 --user-group --groups dialout --no-create-home \
 	--home-dir / --shell /bin/nologin controls; \
 	"
+
+FILES_${PN}_append = " ${base_sbindir}/energy_perf_bias"
 
 do_install_append() {
 	# Copy file to set NamePolicy for network interfaces
@@ -68,4 +72,15 @@ do_install_append() {
 
 	# Overwrite nsswitch.conf
 	cp ${WORKDIR}/nsswitch.conf ${D}${datadir}/factory/etc/
+
+        # Add script energy_perf_bias
+        install -d ${D}${base_sbindir}
+        install -m 0755 ${WORKDIR}/energy_perf_bias \
+                ${D}${base_sbindir}
+        install -d ${D}${systemd_unitdir}/system \
+                ${D}${sysconfdir}/systemd/system/multi-user.target.wants
+        install -m 0644 ${WORKDIR}/energy_perf_bias.service \
+                ${D}${systemd_unitdir}/system
+        ln -sf ${systemd_unitdir}/system/energy_perf_bias.service \
+                ${D}${sysconfdir}/systemd/system/multi-user.target.wants/energy_perf_bias.service
 }

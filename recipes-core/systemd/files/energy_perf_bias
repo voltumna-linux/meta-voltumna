@@ -1,0 +1,6 @@
+#!/bin/sh
+
+for f in $(ls /sys/devices/system/cpu/cpu*/power/energy_perf_bias)
+do
+	echo performance > $f
+done
