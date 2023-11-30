@@ -17,6 +17,7 @@ SRC_URI = " \
 SYSTEMD_SERVICE_${PN} = "firmware.service"
 SYSTEMD_AUTO_ENABLE = "enable"
 
+do_install[vardeps] += "PRIMARY_NETIF"
 do_install() {
 	install -d ${D}${base_sbindir}
 	install -m 0755 ${WORKDIR}/firmware ${WORKDIR}/firmware.sh \

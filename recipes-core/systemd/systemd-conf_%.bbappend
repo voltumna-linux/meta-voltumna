@@ -6,16 +6,17 @@ SRC_URI_append += "file://80-diskless.network \
 
 FILES_${PN} += "${systemd_unitdir}"
 
+do_install[vardeps] += "PRIMARY_NETIF"
 do_install_append() {
 	rm -f ${D}${systemd_unitdir}/network/80-wired.network
 
+        install -d ${D}${systemd_unitdir}/network       
+        install -D -m 0644 ${WORKDIR}/80-standalone.network \
+                ${WORKDIR}/80-diskless.network ${D}${systemd_unitdir}/network/
+
 	sed -i "s,@ETH@,${@d.getVar('PRIMARY_NETIF')},g" \
-		${WORKDIR}/80-diskless.network
+		${D}${systemd_unitdir}/network/80-diskless.network
 	
 	sed -i "s,@ETH@,${@d.getVar('PRIMARY_NETIF')},g" \
-		${WORKDIR}/80-standalone.network
-
-	install -d ${D}${systemd_unitdir}/network	
-	install	-D -m 0644 ${WORKDIR}/80-standalone.network \
-		${WORKDIR}/80-diskless.network ${D}${systemd_unitdir}/network/
+		${D}${systemd_unitdir}/network/80-standalone.network
 }
