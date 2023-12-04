@@ -25,4 +25,21 @@ PACKAGE_EXTRA_ARCHS:tune-broadwell-64 = "${PACKAGE_EXTRA_ARCHS:tune-corei7-64} b
 QEMU_EXTRAOPTIONS_broadwell-64 = " -cpu Broadwell"
 
 # If qemu-usermode is enabled, we have to disable avx2 ISA extensions, but we can keep mtune as broadwell vs generic
-BROADWELL_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' -mtune=broadwell', '-mtune=generic -mavx2', d)}"
+BROADWELL_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' ${QEMU_UNAVAILABLE_ISA}', '-mtune=generic -mavx2', d)}"
+
+QEMU_UNAVAILABLE_ISA = " \
+-mno-avx \
+-mno-avx2 \
+-mno-avx512f \
+-mno-avx512er \
+-mno-avx512cd \
+-mno-avx512pf \
+-mno-avx512dq \
+-mno-avx512bw \
+-mno-avx512vl \
+-mno-avx512ifma \
+-mno-avx512vbmi \
+-mno-avx512vbmi2 \
+-mno-avx512vnni \
+-mno-avx512bitalg \
+"

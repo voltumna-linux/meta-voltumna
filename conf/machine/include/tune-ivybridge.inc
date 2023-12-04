@@ -12,7 +12,7 @@ require conf/machine/include/x86/tune-core2.inc
 
 # Extra tune features
 TUNEVALID[ivybridge] = "Enable ivybridge specific processor optimizations"
-TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'ivybridge', ' -march=ivybridge -mfpmath=sse -msse4.2', '', d)}"
+TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'ivybridge', ' -march=ivybridge ${QEMU_UNAVAILABLE_ISA} -mfpmath=sse', '', d)}"
 
 # Extra tune selections
 AVAILTUNES += "ivybridge-64"
@@ -21,3 +21,22 @@ BASE_LIB:tune-ivybridge-64 = "lib64"
 TUNE_PKGARCH:tune-ivybridge-64 = "ivybridge-64"
 PACKAGE_EXTRA_ARCHS:tune-ivybridge-64 = "${PACKAGE_EXTRA_ARCHS:tune-core2-64} ivybridge-64"
 QEMU_EXTRAOPTIONS_ivybridge-64 = " -cpu IvyBridge"
+
+IVYBRIDGE_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' ${QEMU_UNAVAILABLE_ISA}', '-mtune=generic -mavx', d)}"
+
+QEMU_UNAVAILABLE_ISA = " \
+-mno-avx \
+-mno-avx2 \
+-mno-avx512f \
+-mno-avx512er \
+-mno-avx512cd \
+-mno-avx512pf \
+-mno-avx512dq \
+-mno-avx512bw \
+-mno-avx512vl \
+-mno-avx512ifma \
+-mno-avx512vbmi \
+-mno-avx512vbmi2 \
+-mno-avx512vnni \
+-mno-avx512bitalg \
+"
