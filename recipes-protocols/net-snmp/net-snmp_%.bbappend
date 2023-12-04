@@ -1,3 +1,5 @@
+DEPENDS:class-nativesdk = "openssl libnl"
+
 PERLPROG:class-nativesdk = "${USRBINPATH}/env perl"
 
 RDEPENDS_${PN}-libs = " ${PN}-lib-netsnmp \
@@ -6,3 +8,6 @@ RDEPENDS_${PN}-libs = " ${PN}-lib-netsnmp \
                         ${PN}-lib-mibs \
 "
 BBCLASSEXTEND = "nativesdk"
+
+SYSTEMD_AUTO_ENABLE:${PN}-server-snmpd = "disable"
+SYSTEMD_AUTO_ENABLE:${PN}-server-snmptrapd =  "disable"
