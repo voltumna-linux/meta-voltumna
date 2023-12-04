@@ -8,3 +8,6 @@ RDEPENDS_${PN}-libs = " ${PN}-lib-netsnmp \
                         ${PN}-lib-mibs \
 "
 BBCLASSEXTEND = "nativesdk"
+
+SYSTEMD_AUTO_ENABLE_${PN}-server-snmpd = "disable"
+SYSTEMD_AUTO_ENABLE_${PN}-server-snmptrapd =  "disable"
