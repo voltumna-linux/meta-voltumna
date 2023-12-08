@@ -12,7 +12,6 @@ do_deploy() {
 		${DEPLOYDIR}/grub.cfg
 }
 
-# addtask deploy after do_install before do_build
 addtask deploy after do_install
 
 inherit deploy
