@@ -1,7 +1,9 @@
 # Settings for the GCC(1) cpu-type "skylake":
 #
-#     Intel Skylake CPU with 64-bit extensions, MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1,
-#     SSE4.2, AVX, AVX2 and POPCNT instruction set support.
+#     Intel Skylake CPU with 64-bit extensions, MOVBE, MMX, SSE, SSE2, SSE3, SSSE3,
+#     SSE4.1, SSE4.2, POPCNT, AVX, AVX2, AES, PCLMUL, FSGSBASE, RDRND, FMA, BMI,
+#     BMI2, F16C, RDSEED, ADCX, PREFETCHW, CLFLUSHOPT, XSAVEC and XSAVES
+#     instruction set support.
 #
 # This tune is recommended for Intel Skylake CPU (and beyond).
 #
