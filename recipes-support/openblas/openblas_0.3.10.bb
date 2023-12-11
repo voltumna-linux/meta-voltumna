@@ -5,6 +5,8 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=5adf4792c949a00013ce25d476a2abc0"
 
 inherit siteinfo
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 RDEPENDS_${PN} += "libgomp"
 
 SRCREV = "63b03efc2af332c88b86d4fd8079d00f4b439adf"
