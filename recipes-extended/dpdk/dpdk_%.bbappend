@@ -19,3 +19,4 @@ do_configure:prepend() {
 }
 
 BBCLASSEXTEND = "nativesdk"
+MACHINE_FEATURES:remove = "qemu-usermode"
