@@ -56,3 +56,4 @@ do_install () {
 }
 
 BBCLASSEXTEND = "nativesdk"
+MACHINE_FEATURES:remove = "qemu-usermode"
