@@ -33,7 +33,7 @@ USERADD_PARAM:${PN} += " \
 	--home-dir / --shell /bin/nologin controls; \
 	"
 
-FILES:${PN}:append = " ${base_sbindir}/energy_perf_bias"
+FILES:${PN}:append = " ${sbindir} ${systemd_unitdir}/system"
 
 do_install:append() {
 	# Disable parsing of the ip kernel command line parameter
@@ -76,9 +76,9 @@ do_install:append() {
 	rmdir ${D}${datadir}/factory/etc/pam.d
 
 	# Add script energy_perf_bias
-	install -d ${D}${base_sbindir}
+	install -d ${D}${sbindir}
 	install -m 0755 ${WORKDIR}/energy_perf_bias \
-		${D}${base_sbindir}
+		${D}${sbindir}
 	install -d ${D}${systemd_unitdir}/system \
 		${D}${sysconfdir}/systemd/system/multi-user.target.wants
 	install -m 0644 ${WORKDIR}/energy_perf_bias.service \
