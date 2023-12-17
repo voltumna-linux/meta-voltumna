@@ -29,12 +29,12 @@ EXTRA_OEMESON += "-Dnobody-user=nobody \
                   -Dnobody-group=nogroup \
                   "
 
-USERADD_PARAM:${PN} += " \
+USERADD_PARAM_${PN} += " \
 	--uid 10000 --user-group --groups dialout --no-create-home \
 	--home-dir / --shell /bin/nologin controls; \
 	"
 
-FILES_${PN}_append = " ${base_sbindir}/energy_perf_bias"
+FILES_${PN} += " ${sbindir} ${systemd_unitdir}/system"
 
 do_install_append() {
 	# Copy file to set NamePolicy for network interfaces
@@ -74,9 +74,9 @@ do_install_append() {
 	cp ${WORKDIR}/nsswitch.conf ${D}${datadir}/factory/etc/
 
         # Add script energy_perf_bias
-        install -d ${D}${base_sbindir}
+        install -d ${D}${sbindir}
         install -m 0755 ${WORKDIR}/energy_perf_bias \
-                ${D}${base_sbindir}
+                ${D}${sbindir}
         install -d ${D}${systemd_unitdir}/system \
                 ${D}${sysconfdir}/systemd/system/multi-user.target.wants
         install -m 0644 ${WORKDIR}/energy_perf_bias.service \
