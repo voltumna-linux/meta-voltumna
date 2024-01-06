@@ -9,6 +9,7 @@ TOOLCHAIN_HOST_TASK:append = " nativesdk-make nativesdk-binutils nativesdk-cpp n
 	nativesdk-libgcc-dev nativesdk-g++ nativesdk-libstdc++-dev nativesdk-libgomp-dev \
 	nativesdk-libasan-dev nativesdk-libubsan-dev"
 TOOLCHAIN_HOST_TASK:append:arm = " nativesdk-dtc"
+TOOLCHAIN_HOST_TASK:append:x86-64 = " nativesdk-liblsan-dev nativesdk-libtsan-dev"
 
 SDK_ARCHIVE_TYPE = "tar.xz"
 SDK_ARCHIVE_TYPE:sdkmingw32 = "zip"

@@ -15,7 +15,7 @@ IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMEN
 	nano vim debianutils 96boards-tools dosfstools openssh-sftp-server nfs-utils-client \
 	iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve \
 	strace libasan libubsan"
-IMAGE_INSTALL:append:x86-64 = " thermald"
+IMAGE_INSTALL:append:x86-64 = " thermald liblsan libtsan"
 
 append_to_osrelease() {
 	cat <<-__EOF__ >> ${IMAGE_ROOTFS}/etc/os-release
