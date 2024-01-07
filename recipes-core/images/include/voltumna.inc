@@ -11,7 +11,7 @@ IMAGE_INSTALL_append += "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMME
 	ldd less tzdata tzdata-europe polkit socat stress-ng sed tar xz grep gawk findutils file \
 	nano vim debianutils 96boards-tools dosfstools nfs-utils-client openssh-sftp-server \
 	iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve libasan libubsan"
-IMAGE_INSTALL:append:x86-64 = " thermald"
+IMAGE_INSTALL:append:x86-64 = " thermald liblsan libtsan"
 
 copy_etc_into_factory() {
 	# Use systemd's nsswitch.conf file instead of the base-files's one
