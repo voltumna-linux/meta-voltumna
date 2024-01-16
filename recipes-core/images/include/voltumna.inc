@@ -7,9 +7,9 @@ IMAGE_FEATURES = "bash-completion-pkgs ssh-server-openssh"
 WIC_CREATE_EXTRA_ARGS += " --no-fstab-update"
 
 IMAGE_INSTALL_append += "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMENDS} \
-	os-release bash coreutils util-linux util-linux-sfdisk glibc-utils procps psmisc \
-	ldd less tzdata tzdata-europe polkit socat stress-ng sed tar xz grep gawk findutils file \
-	nano vim debianutils 96boards-tools dosfstools nfs-utils-client openssh-sftp-server \
+	os-release systemd-journal-upload bash coreutils util-linux util-linux-sfdisk glibc-utils \
+	procps psmisc ldd less tzdata tzdata-europe polkit socat stress-ng sed tar xz grep gawk \
+	findutils file nano vim debianutils 96boards-tools dosfstools nfs-utils-client openssh-sftp-server \
 	iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve libasan libubsan"
 IMAGE_INSTALL:append:x86-64 = " thermald liblsan libtsan"
 
@@ -25,6 +25,10 @@ copy_etc_into_factory() {
 
 remove_useless() {
 	rm -f ${IMAGE_ROOTFS}/usr/bin/su ${IMAGE_ROOTFS}/usr/bin/su.*
+}
+
+disable_upload() {
+        rm -f ${IMAGE_ROOTFS}${sysconfdir}/systemd/system/multi-user.target.wants/systemd-journal-upload.service
 }
 
 use_initramfs_bundled_kernel() {
@@ -59,7 +63,7 @@ append_to_osrelease() {
 	__EOF__
 }
 
-ROOTFS_POSTPROCESS_COMMAND_append += " remove_useless; append_to_osrelease;"
+ROOTFS_POSTPROCESS_COMMAND_append += " remove_useless; disable_upload; append_to_osrelease;"
 IMAGE_PREPROCESS_COMMAND_append += " use_initramfs_bundled_kernel; copy_etc_into_factory; compute_sum; move_usr_into_osdir;"
 
 BAD_RECOMMENDATIONS += "busybox-syslog grub-common"
