@@ -53,9 +53,6 @@ do_install:append() {
 	install -m 0644 ${WORKDIR}/sulogin-force.conf \
 		${D}${systemd_unitdir}/system/emergency.service.d
 
-	# Make journal volatile
-	rmdir ${D}/var/log/journal
-
 	# Remove volatile directories creation
 	rm -f ${D}${sysconfdir}/tmpfiles.d/00-create-volatile.conf
 
