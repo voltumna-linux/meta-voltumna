@@ -3,6 +3,8 @@ require include/voltumna.inc
 SDKIMAGE_FEATURES = "${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
 
 IMAGE_INSTALL_append += " info man-pages kernel-devsrc"
+IMAGE_INSTALL_append += " libasan-dev libubsan-dev"
+IMAGE_INSTALL_append_x86-64 += " liblsan-dev libtsan-dev"
 
 # To keep in sync with SDE
 TOOLCHAIN_HOST_TASK_append = " nativesdk-binutils nativesdk-cpp nativesdk-gcc nativesdk-libgcc-dev \
