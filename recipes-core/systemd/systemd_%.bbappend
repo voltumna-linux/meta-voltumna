@@ -5,8 +5,10 @@ SRC_URI:append = " \
 	file://sulogin-force.conf \
 	file://energy_perf_bias \
 	file://energy_perf_bias.service \
+	file://systemd-journal-upload.service \
 	"
 
+DEPENDS:append = " curl"
 RDEPENDS:${PN}:remove = "volatile-binds"
 RRECOMMENDS:${PN}:remove = "os-release"
 
@@ -22,6 +24,7 @@ PACKAGECONFIG:append = " \
 	coredump \
 	elfutils \
 	serial-getty-generator \
+	journal-upload \
 "
 
 EXTRA_OEMESON += "-Dnobody-user=nobody \
@@ -60,6 +63,9 @@ do_install:append() {
 	sed -i -e 's/.*Storage.*/Storage=none/g' -e 's/.*ProcessSizeMax.*/ProcessSizeMax=0/g' \
 		${D}${sysconfdir}/systemd/coredump.conf
 
+	# Make logs volatile
+	sed -i -e 's/.*Storage.*/Storage=volatile/g' ${D}${sysconfdir}/systemd/journald.conf
+
 	# Adjust shadow files
 	echo 'Z /etc/{g,}shadow 0640 root shadow - -' >>${D}${exec_prefix}/lib/tmpfiles.d/etc.conf
 	
@@ -83,4 +89,7 @@ do_install:append() {
 	ln -sf ${systemd_unitdir}/system/energy_perf_bias.service \
 		${D}${sysconfdir}/systemd/system/multi-user.target.wants/energy_perf_bias.service
 
+	# Replace systemd-journal-upload.service 
+	install -m 0644 ${WORKDIR}/systemd-journal-upload.service \
+		${D}${systemd_unitdir}/system
 }

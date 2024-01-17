@@ -10,10 +10,10 @@ do_rootfs[depends] += "virtual/bootloader:do_deploy virtual/kernel:do_bundle_ini
 DEPENDS = "virtual/bootloader virtual/kernel"
 
 IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMENDS} \
-	os-release bash coreutils util-linux util-linux-sfdisk glibc-utils procps psmisc ldd \
-	less tzdata tzdata-europe polkit socat stress-ng sed tar xz grep gawk findutils file \
-	nano vim debianutils 96boards-tools dosfstools openssh-sftp-server nfs-utils-client \
-	iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve \
+	os-release systemd-journal-upload bash coreutils util-linux util-linux-sfdisk glibc-utils \
+	procps psmisc ldd less tzdata tzdata-europe polkit socat stress-ng sed tar xz grep gawk \
+	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server \
+	nfs-utils-client iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve \
 	strace libasan libubsan"
 IMAGE_INSTALL:append:x86-64 = " thermald liblsan libtsan"
 
@@ -27,6 +27,10 @@ append_to_osrelease() {
 
 remove_useless() {
 	rm -f ${IMAGE_ROOTFS}/usr/bin/su ${IMAGE_ROOTFS}/usr/bin/su.*
+}
+
+disable_upload() {
+	rm -f ${IMAGE_ROOTFS}${sysconfdir}/systemd/system/multi-user.target.wants/systemd-journal-upload.service
 }
 
 use_initramfs_bundled_kernel() {
@@ -66,7 +70,7 @@ move_usr_into_osdir() {
 	ln -sr ${IMAGE_ROOTFS}/.osdir/${IMAGE_NAME}/ ${IMAGE_ROOTFS}/.osdir/default
 }
 
-ROOTFS_POSTPROCESS_COMMAND:append = " remove_useless; append_to_osrelease;"
+ROOTFS_POSTPROCESS_COMMAND:append = " remove_useless; disable_upload; append_to_osrelease;"
 IMAGE_PREPROCESS_COMMAND:append = " use_initramfs_bundled_kernel; copy_etc_into_factory; compute_sum; move_usr_into_osdir;"
 
 BAD_RECOMMENDATIONS += "busybox-syslog grub-common"
