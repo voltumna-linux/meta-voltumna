@@ -1,6 +1,8 @@
 RDEPENDS:${PN}:class-nativesdk += "python3-core"
 DEPENDS:class-nativesdk = "python3-pyelftools-native"
 
+EXTRA_OEMESON:append = " -Duse_hpet=true"
+
 SRC_URI:append = " \
 	file://reduce-queue-itr-interval-default-on-intel-nics.patch \
 	"
