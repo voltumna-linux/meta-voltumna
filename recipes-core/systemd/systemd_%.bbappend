@@ -69,6 +69,9 @@ do_install:append() {
 	# Adjust shadow files
 	echo 'Z /etc/{g,}shadow 0640 root shadow - -' >>${D}${exec_prefix}/lib/tmpfiles.d/etc.conf
 	
+	# Enforce /run/lock creation
+	echo 'd /run/lock 0755 root root - -' >>${D}${exec_prefix}/lib/tmpfiles.d/tmp.conf
+
 	# Set the right permission
 	chmod 755 ${D}${datadir}/polkit-1/rules.d
 
