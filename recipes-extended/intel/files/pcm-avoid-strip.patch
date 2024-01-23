@@ -1,0 +1,13 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 107136e..6672f92 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -15,7 +15,7 @@ endif()
+ 
+ if(UNIX)  # LINUX, FREE_BSD, APPLE
+     if (NOT APPLE)
+-      set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS} -s")  # --strip-unneeded for packaging
++      set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS}")
+       list(APPEND PROJECT_NAMES pcm-sensor-server)
+     endif()
+     list(APPEND PROJECT_NAMES pcm-sensor)
