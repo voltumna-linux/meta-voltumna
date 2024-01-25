@@ -2,7 +2,7 @@ require include/voltumna.inc
 
 SDKIMAGE_FEATURES = "${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
 
-IMAGE_INSTALL_append += " info man-pages kernel-devsrc"
+IMAGE_INSTALL_append += " info man-pages"
 IMAGE_INSTALL_append += " libasan-dev libubsan-dev"
 IMAGE_INSTALL_append_x86-64 += " liblsan-dev libtsan-dev"
 
@@ -16,12 +16,13 @@ TOOLCHAIN_HOST_TASK_append_x86-64 += " nativesdk-liblsan-dev nativesdk-libtsan-d
 SDK_ARCHIVE_TYPE = "tar.xz"
 SDK_ARCHIVE_TYPE_sdkmingw32 = "zip"
 
-install_kernel_sh() {
-	mkdir -p ${SDK_OUTPUT}/${SDKPATHNATIVE}/environment-setup.d/
-	cat <<-__EOF__ >> ${SDK_OUTPUT}${SDKPATHNATIVE}/environment-setup.d/kernel.sh
-	export KERNEL_SRC=\$SDKTARGETSYSROOT/usr/src/kernel
-	__EOF__
+kernel_related_stuff_cleanup() {
+	rm -fr ${SDK_OUTPUT}${SDKTARGETSYSROOT}/usr/src/kernel	\
+		${SDK_OUTPUT}${SDKTARGETSYSROOT}/usr/boot/*	\
+		${SDK_OUTPUT}${SDKTARGETSYSROOT}/lib/modules/*
 }
+
+POPULATE_SDK_POST_TARGET_COMMAND += " kernel_related_stuff_cleanup;"
 
 install_man_sh() {
 	mkdir -p ${SDK_OUTPUT}/${SDKPATHNATIVE}/environment-setup.d/
@@ -40,4 +41,4 @@ fix_linker_scripts() {
 	done
 }
 
-POPULATE_SDK_POST_HOST_COMMAND_append = " install_man_sh; install_kernel_sh; fix_linker_scripts;"
+POPULATE_SDK_POST_HOST_COMMAND_append += " install_man_sh; fix_linker_scripts;"
