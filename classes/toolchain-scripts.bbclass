@@ -113,7 +113,6 @@ toolchain_shared_env_script () {
 	echo 'export ARCH=${ARCH}' >> $script
 	echo 'export CROSS_COMPILE=${TARGET_PREFIX}' >> $script
 	echo 'export OECORE_TUNE_CCARGS="${TUNE_CCARGS}"' >> $script
-	echo 'export HOSTCC="${SDK_PREFIX}gcc --sysroot=$OECORE_NATIVE_SYSROOT"' >> $script
 
     cat >> $script <<EOF
 
