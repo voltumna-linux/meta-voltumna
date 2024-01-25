@@ -11,7 +11,7 @@ DEPENDS = "virtual/bootloader virtual/kernel"
 
 IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMENDS} \
 	os-release systemd-journal-upload bash coreutils util-linux util-linux-sfdisk glibc-utils \
-	procps psmisc ldd less tzdata tzdata-europe polkit socat stress-ng sed tar xz grep gawk \
+	procps psmisc ldd less tzdata tzdata-europe polkit lsof socat stress-ng sed tar xz grep gawk \
 	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server \
 	nfs-utils-client iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve \
 	strace libasan libubsan"
