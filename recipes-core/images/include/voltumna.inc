@@ -45,9 +45,6 @@ use_initramfs_bundled_kernel() {
 }
 
 copy_etc_into_factory() {
-	# Use systemd's nsswitch.conf file instead of the base-files's one
-	cp ${IMAGE_ROOTFS}${datadir}/factory/etc/nsswitch.conf ${IMAGE_ROOTFS}${sysconfdir}
-
 	rm -f ${IMAGE_ROOTFS}${sysconfdir}/ld.so.cache
 
 	# Copy files in factory/etc e create entries accordingly
