@@ -16,7 +16,7 @@ SRC_URI:append:x10dru-iplus = " https://www.supermicro.com/Bios/softfiles/15575/
 		https://www.supermicro.com/Bios/softfiles/14879/BMC_X10AST2400-C001MS_20211001_03.94_STD.zip;subdir=${BPN};name=bmc-x10dru-iplus"
 SRC_URI:append:x10drw-i = " https://www.supermicro.com/Bios/softfiles/10581/X10DRW9_B22.zip;subdir=${BPN};name=bios-x10drw-i \
 		https://www.supermicro.com/Bios/softfiles/12112/REDFISH_X10_389_20200623_unsigned.zip;subdir=${BPN};name=bmc-x10drw-i"
-SRC_URI:append:x11dph-t = " https://www.supermicro.com/Bios/softfiles/17249/X11DPH-I,T,Tq_3.8b_AS1.74.11_SUM2.10.0.zip;name=bios-x11dph-t"
+SRC_URI:append:x11dph-t = " https://www.supermicro.com/Bios/softfiles/20072/X11DPH-I,T,Tq_4.2_AS1.74.14_SUM2.13.0.zip;name=bios-x11dph-t"
 SRC_URI:append:x11spw-tf = " https://www.supermicro.com/Bios/softfiles/16571/BIOS_X11SPW-0953_20221028_3.8a_STD.zip;subdir=${BPN};name=bios-x11spw-tf \
 		https://www.supermicro.com/Bios/softfiles/16574/BMC_X11AST2500-4101MS_20221027_01.74.11_STDsp.zip;subdir=${BPN};name=bmc-x11spw-tf"
 #SRC_URI:append:up-whl01 = " file://UPW1AM19.zip;name=bios-up"
@@ -28,7 +28,7 @@ SRC_URI[bios-x10dru-iplus.sha256sum] = "d24b8f6b7f4ed186bbca662751b7d80ae6efd014
 SRC_URI[bmc-x10dru-iplus.sha256sum] = "80fcf01d2073cabe81118140a8494c8a65431dd5d20460c12272db110b5f8d21"
 SRC_URI[bios-x10drw-i.sha256sum] = "7379177cc6d30283c2b178d33f360d5522eb8e3a1badf9a6ab1cf837802dadeb"
 SRC_URI[bmc-x10drw-i.sha256sum] = "d07982d5f684e6458c80c069f762245ab38163620a31c2c9b60a7c2edc4c0f4e"
-SRC_URI[bios-x11dph-t.sha256sum] = "70128f4e6a76c2c5e863d99eace18034301c8a8a68d4216c93376bb869a90ed9"
+SRC_URI[bios-x11dph-t.sha256sum] = "a9001de1d15a702530df15f5778d2dd8909094d1eefd1dd0f2990eff295ad155"
 SRC_URI[bios-x11spw-tf.sha256sum] = "cc423035daa05a7eb90f39829bee55b59fd407b7503a4c6516b74aaee806db1e"
 SRC_URI[bmc-x11spw-tf.sha256sum] = "9c9e2469c97c312dc35b07bd822f1d66c487bb4c1ca7e0296d3f119991372a03"
 #SRC_URI[bios-up.sha256sum] = "ae36f0a560ab4fb0d60a1e45988e4989f6ee274d2d5ccacd9e0221e80dd3d3de"
