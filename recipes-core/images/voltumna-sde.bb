@@ -14,7 +14,7 @@ IMAGE_INSTALL:append:x86-64 = " liblsan-dev libtsan-dev"
 IMAGE_INSTALL:append = " binutils-symlinks cpp-symlinks gcc-symlinks g++-symlinks \
        autoconf automake gettext libtool pkgconfig diffutils quilt git make cmake meson \
        devmem2 gzip kernel-devsrc prepare-kernel-devsrc glib-2.0-utils \
-       powertop gdb gdbserver valgrind"
+       powertop gdbserver valgrind"
 
 install_sdk_sh() {
 	install -d ${IMAGE_ROOTFS}${sysconfdir}/profile.d

@@ -14,7 +14,7 @@ IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMEN
 	procps psmisc ldd less tzdata tzdata-europe polkit lsof socat stress-ng sed tar xz grep gawk \
 	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server \
 	nfs-utils-client iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve \
-	strace libasan libubsan"
+	strace gdb libasan libubsan"
 IMAGE_INSTALL:append:x86-64 = " thermald liblsan libtsan"
 
 append_to_osrelease() {
