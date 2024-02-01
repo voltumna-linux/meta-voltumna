@@ -59,7 +59,7 @@ move_usr_into_osdir() {
 append_to_osrelease() {
 	cat <<-__EOF__ >> ${IMAGE_ROOTFS}/etc/os-release
 	VARIANT_ID="${BPN}"
-	VARIANT="Voltumna (Development)"
+	VARIANT="${VARIANT}"
 	MACHINE="${MACHINE}"
 	__EOF__
 }

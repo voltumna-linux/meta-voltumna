@@ -1,4 +1,5 @@
 require include/voltumna.inc
+VARIANT = "Voltumna (Development)"
 
 IMAGE_FEATURES += "debug-tweaks \
 	${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
