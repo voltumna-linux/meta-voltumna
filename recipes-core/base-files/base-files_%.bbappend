@@ -38,3 +38,5 @@ do_install_append() {
 	install -m 755 ${WORKDIR}/factory-reset ${D}/usr/sbin
 	install -m 755 ${WORKDIR}/etcdiff ${D}/usr/bin
 }
+
+PACKAGE_ARCH = "${TUNE_PKGARCH}"

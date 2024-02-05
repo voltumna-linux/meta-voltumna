@@ -8,4 +8,4 @@ do_install_append() {
     install -m 0644 ${S}/lib/src/rpmsg_lib/gen/rpmsg_lib.lib ${D}${libdir}
 }
 
-# COMPATIBLE_MACHINE_append = "|qemu-cortexa8t2hf-neon"
+PACKAGE_ARCH = "${TUNE_PKGARCH}"
