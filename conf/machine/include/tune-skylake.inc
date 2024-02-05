@@ -44,3 +44,5 @@ QEMU_UNAVAILABLE_ISA = " \
 -mno-avx512vnni \
 -mno-avx512bitalg \
 "
+
+OPENBLAS_TARGET = "HASWELL"

@@ -36,3 +36,5 @@ BASE_LIB_tune-nehalem-64-x32 = "libx32"
 TUNE_PKGARCH_tune-nehalem-64-x32 = "nehalem-64-x32"
 PACKAGE_EXTRA_ARCHS_tune-nehalem-64-x32 = "${PACKAGE_EXTRA_ARCHS_tune-core2-64-x32} nehalem-64-x32"
 QEMU_EXTRAOPTIONS_nehalem-64-x32 = " -cpu Nehalem,check=false"
+
+OPENBLAS_TARGET = "NEHALEM"

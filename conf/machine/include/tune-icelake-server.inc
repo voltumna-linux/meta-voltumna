@@ -46,3 +46,4 @@ QEMU_UNAVAILABLE_ISA = " \
 -mno-avx512bitalg \
 "
 
+OPENBLAS_TARGET = "SKYLAKEX"
