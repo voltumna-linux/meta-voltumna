@@ -8,7 +8,7 @@ SRC_URI = " \
 	git://github.com/intel/pcm;protocol=https;branch=master \
 	file://pcm-avoid-strip.patch \
 	"
-SRCREV = "dd02c99bb273ebfa11ee149a3f237d82d03af22d"
+SRCREV = "2612158f452469c59fe72e79e4cdf9f71d46a4b5"
 
 S = "${WORKDIR}/git"
 
