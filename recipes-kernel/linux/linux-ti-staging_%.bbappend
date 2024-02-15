@@ -15,6 +15,7 @@ SRC_URI_append += " \
 	file://0001-arm-Makefile-Fix-systemtap.patch \
 	file://serial_console.cfg \
 	file://static_usb_support.cfg \
+	file://0001-GPIO-PHY-reset-on-Rev-C3-boards.patch \
 	"
 
 SRC_URI[sha256sum] = "f282d4d33ee9f3d679dd1e6c8290236b395ddda051346bb10e71e50c6bab2e7e"
