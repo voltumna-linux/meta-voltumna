@@ -1,6 +1,5 @@
 require conf/machine/include/meta-intel.inc
 require conf/machine/include/x86-base.inc
-require conf/machine/include/intel-common-pkgarch.inc
 
 MACHINE_FEATURES += "efi"
 # MACHINE_FEATURES += "wifi 3g nfc"
