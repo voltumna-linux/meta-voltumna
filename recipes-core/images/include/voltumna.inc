@@ -48,6 +48,7 @@ copy_etc_into_factory() {
 	rm -f ${IMAGE_ROOTFS}${sysconfdir}/ld.so.cache
 
 	# Copy files in factory/etc e create entries accordingly
+	install -d ${IMAGE_ROOTFS}${datadir}/factory/
 	cp -r ${IMAGE_ROOTFS}${sysconfdir} ${IMAGE_ROOTFS}${datadir}/factory/
 }
 
