@@ -26,6 +26,7 @@ SRC_URI:append = " \
 	file://0001-igb-Stop-PTP-related-workqueues-if-aren-t-necessary.patch \
 	file://disable_trace_printk.patch \
 	file://intel-rdt.cfg \
+	file://0001-sched-core-Fix-arch_scale_freq_tick-on-tickless-syst.patch \
 	"
 
 SRC_URI:append:kvm = " \
