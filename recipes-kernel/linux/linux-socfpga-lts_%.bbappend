@@ -1,5 +1,11 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
+LINUX_VERSION_PREFIX = "elettra-"
+KERNEL_REPO = "git://gitlab.elettra.eu/intel_socfpga/linux-socfpga.git"
+SRCREV = "dccc6abe878f2e787d081027a84b8a79606e8d2e"
+LINUX_VERSION = "5.15.60"
+PREFERRED_VERSION_linux-socfpga-lts = "5.15"
+
 SRC_URI:append = " \
 	file://log.cfg \
 	file://zram.cfg \
@@ -16,19 +22,6 @@ SRC_URI:append = " \
 	\
 	file://uio.cfg \
 	file://fpgamgr-debug.cfg \
-	file://0001-Revert-bpf-Introduce-MEM_RDONLY-flag.patch \
-	file://0002-Revert-bpf-Replace-PTR_TO_XXX_OR_NULL-with-PTR_TO_XX.patch \
-	file://0003-Revert-bpf-Introduce-composable-reg-ret-and-arg-type.patch \
-	file://0001-added-support-to-dinet-board.patch \
-	file://0002-added-support-to-DAQ-board.patch \
-	file://0003-changed-adt-address-enabled-driver-in-defconfig.patch \
-	file://0004-enabled-second-i2c-routed-through-FPGA-pins.patch \
-	file://0005-corrected-i2c-address-of-fan-controller.patch \
-	file://0006-soft-gpio-working.patch \
-	file://0007-preliminary-tests-with-spi.patch \
-	file://0008-added-clocks-in-device-tree.patch \
-	file://0009-enabled-regulators-always-on-and-present-at-boot.patch \
-	file://0010-cosmetic-changes.patch \
 	"
 
 KERNEL_FEATURES:remove = " features/security/security.scc"
