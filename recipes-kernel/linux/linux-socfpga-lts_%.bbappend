@@ -18,7 +18,6 @@ SRC_URI:append = " \
 	file://remove_martian_source_warning.cfg \
 	file://enable_ebpf_xpd.cfg \
 	file://disable_lttng.cfg \
-	file://disable_gpiolib.cfg \
 	\
 	file://uio.cfg \
 	file://fpgamgr-debug.cfg \
