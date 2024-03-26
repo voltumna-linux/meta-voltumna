@@ -7,6 +7,7 @@ COMPATIBLE_MACHINE = "beagle.*"
 
 inherit kernel
 
+DEFCONFIG_BUILDER = "${S}/ti_config_fragments/defconfig_builder.sh"
 require recipes-kernel/linux/setup-defconfig.inc
 require recipes-kernel/linux/ti-kernel.inc
 
