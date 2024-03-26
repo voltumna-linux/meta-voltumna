@@ -15,7 +15,7 @@ IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMEN
 	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server \
 	nfs-utils-client iproute2 ethtool inetutils-ping inetutils-telnet net-tools libnss-resolve \
 	strace gdb libasan libubsan"
-IMAGE_INSTALL:append:x86-64 = " thermald liblsan libtsan"
+IMAGE_INSTALL:append:intel-x86-common = " thermald liblsan libtsan linux-firmware-ice"
 
 append_to_osrelease() {
 	cat <<-__EOF__ >> ${IMAGE_ROOTFS}/etc/os-release
@@ -99,7 +99,7 @@ IMAGE_CMD:tar:append_ppce500v2() {
 	rm -fr ${TEMPORARYDIR}
 }
 
-IMAGE_CMD:tar:append:x86-64() {
+IMAGE_CMD:tar:append:intel-x86-common() {
 	TEMPORARYDIR=$(mktemp -d)
 	if [ -f ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ]; then
 		mkdir -p ${TEMPORARYDIR}/tftpboot/EFI/BOOT
