@@ -20,7 +20,7 @@ SRC_URI:append:x11dph-t = " https://www.supermicro.com/Bios/softfiles/20072/X11D
 SRC_URI:append:x11spw-tf = " https://www.supermicro.com/Bios/softfiles/16571/BIOS_X11SPW-0953_20221028_3.8a_STD.zip;subdir=${BPN};name=bios-x11spw-tf \
 		https://www.supermicro.com/Bios/softfiles/16574/BMC_X11AST2500-4101MS_20221027_01.74.11_STDsp.zip;subdir=${BPN};name=bmc-x11spw-tf"
 #SRC_URI:append:up-whl01 = " file://UPW1AM19.zip;name=bios-up"
-SRC_URI:append:x12sdv-4c-sp6f = " https://www.supermicro.com/Bios/softfiles/19913/BIOS_X12SDV-xC-SP6F-1C18_20231130_1.6_STDsp.zip;subdir=${BPN};name=bios-x12sdv-4c-sp6f \
+SRC_URI:append:x12sdv-4c-sp6f = " https://www.supermicro.com/Bios/softfiles/20489/BIOS_X12SDV-xC-SP6F-1C18_20240119_1.6a_STDsp.zip;subdir=${BPN};name=bios-x12sdv-4c-sp6f \
 		https://www.supermicro.com/Bios/softfiles/19916/BMC_X12AST2600-F201MS_20231121_01.00.01_STDsp.zip;subdir=${BPN};name=bmc-x12sdv-4c-sp6f"
 SRC_URI:append:a3sev-4c-ln4 = " https://www.supermicro.com/Bios/softfiles/18174/BIOS_A3SEV-1C2A_20230808_1.3_STDsp.zip;subdir=${BPN};name=bios-a3sev-4c-ln4"
 
@@ -32,7 +32,7 @@ SRC_URI[bios-x11dph-t.sha256sum] = "a9001de1d15a702530df15f5778d2dd8909094d1eefd
 SRC_URI[bios-x11spw-tf.sha256sum] = "cc423035daa05a7eb90f39829bee55b59fd407b7503a4c6516b74aaee806db1e"
 SRC_URI[bmc-x11spw-tf.sha256sum] = "9c9e2469c97c312dc35b07bd822f1d66c487bb4c1ca7e0296d3f119991372a03"
 #SRC_URI[bios-up.sha256sum] = "ae36f0a560ab4fb0d60a1e45988e4989f6ee274d2d5ccacd9e0221e80dd3d3de"
-SRC_URI[bios-x12sdv-4c-sp6f.sha256sum] = "5ad59338b43762fe37869654212acb08ee4c3c1754190b336a1a63b485930099"
+SRC_URI[bios-x12sdv-4c-sp6f.sha256sum] = "77a3fc2952952fea67295022ca3bc8e762d8736613ab3d3b62f4ef20ba55edb9"
 SRC_URI[bmc-x12sdv-4c-sp6f.sha256sum] = "71bf3125a864130d103fae28e5a031ce149624f3526498cf9341595d09ce3936"
 SRC_URI[bios-a3sev-4c-ln4.sha256sum] = "d262f8dcd3b9ff85f09a2cb0025f2ab701b7ea63abb20a60bd792a1d1fce43e7"
 
