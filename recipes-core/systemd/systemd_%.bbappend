@@ -31,11 +31,6 @@ EXTRA_OEMESON += "-Dnobody-user=nobody \
                   -Dnobody-group=nogroup \
                   "
 
-USERADD_PARAM:${PN} += " \
-	--uid 10000 --user-group --groups dialout --no-create-home \
-	--home-dir / --shell /bin/nologin controls; \
-	"
-
 FILES:${PN}:append = " ${sbindir} ${systemd_unitdir}/system"
 
 do_install:append() {
