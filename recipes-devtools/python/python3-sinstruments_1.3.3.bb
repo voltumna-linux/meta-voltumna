@@ -11,7 +11,7 @@ SRCREV = "2662f9f60babbed581d149554da030f25508b838"
 S = "${WORKDIR}/git"
 
 DEPENDS += "${PYTHON_PN}-pytest-runner-native"
-RDEPENDS:${PN} += "\
+RDEPENDS_${PN} += "\
 	${PYTHON_PN}-gevent \
 	${PYTHON_PN}-pyyaml \
 	${PYTHON_PN}-click \
