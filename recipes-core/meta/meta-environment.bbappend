@@ -21,10 +21,10 @@ create_sdk_files:append() {
 	prefix=${6:-${prefix_nativesdk}}
 	bindir=${5:-${bindir_nativesdk}}
 	libdir=${4:-${libdir}}
-	multimach_target_sys="x86_64-voltumnasdk-linux"
-	sdk_target_prefix="$multimach_target_sys-"
 	sysroot=${SDKPATHNATIVE}
+	multimach_target_sys="x86_64-voltumnasdk-linux"
 	script=${1:-${SDK_OUTPUT}/${SDKPATH}/environment-setup-x86_64}
+	sdk_target_prefix="$multimach_target_sys-"
 	rm -f $script
 	touch $script
 
@@ -44,7 +44,10 @@ create_sdk_files:append() {
 
 	echo "${EXPORT_SDK_PS1}" | sed "s/${MACHINE}/x86_64/" >> $script
 	echo 'export SDKTARGETSYSROOT='"$sysroot" >> $script
-	echo "export PATH=$sdkpathnative$bindir:$sdkpathnative$sbindir:$sdkpathnative$base_bindir:$sdkpathnative$base_sbindir:$sdkpathnative$bindir/../${HOST_SYS}/bin"':$PATH' >> $script
+	echo 'if [ -z "$ORIGPATH" ]; then' >> $script
+	echo '	export ORIGPATH="$PATH"' >> $script
+	echo 'fi' >> $script
+	echo "export PATH=$sdkpathnative$bindir:$sdkpathnative$sbindir:$sdkpathnative$base_bindir:$sdkpathnative$base_sbindir:$sdkpathnative$bindir/../${HOST_SYS}/bin"':$ORIGPATH' >> $script
 	echo 'export PKG_CONFIG_SYSROOT_DIR=$SDKTARGETSYSROOT' >> $script
 	echo 'export PKG_CONFIG_PATH=$SDKTARGETSYSROOT'"$libdir"'/pkgconfig:$SDKTARGETSYSROOT'"$prefix"'/share/pkgconfig' >> $script
 	echo '' >> $script

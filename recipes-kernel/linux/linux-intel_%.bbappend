@@ -23,11 +23,8 @@ SRC_URI:append = " \
 	file://ipmi.cfg \
 	\
 	file://static_intel_drivers.cfg \
-	file://0001-igb-Stop-PTP-related-workqueues-if-aren-t-necessary.patch \
 	file://disable_trace_printk.patch \
 	file://intel-rdt.cfg \
-	file://0001-sched-core-Fix-arch_scale_freq_tick-on-tickless-syst.patch \
-	file://0001-hugetlbfs-extend-the-definition-of-hugepages-paramet.patch \
 	"
 
 SRC_URI:append:kvm = " \

@@ -1,14 +1,17 @@
+Supermicro Update Manager (for UEFI BIOS) 2.10.0 (2022/12/09) (x86_64)
+Copyright(C) 2013-2022 Super Micro Computer, Inc. All rights reserved.
+
 <?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <!--Supermicro Update Manager 2.10.0 (2022/12/09)-->
-  <!--File generated at 2023-03-30_15:13:28-->
+  <!--File generated at 2024-06-16_20:56:19-->
   <Menu name="Main">
     <Information />
     <Subtitle></Subtitle>
     <Subtitle></Subtitle>
     <Subtitle>Supermicro X11DPH-T</Subtitle>
-    <Text>BIOS Version(3.8b)</Text>
-    <Text>Build Date(01/06/2023)</Text>
+    <Text>BIOS Version(4.2)</Text>
+    <Text>Build Date(12/15/2023)</Text>
     <Text>CPLD Version(02.B6.04)</Text>
     <Subtitle></Subtitle>
     <Subtitle>Memory Information</Subtitle>
@@ -149,7 +152,7 @@ Last State: System returns to previous state before AC lost.]]></Help>
       <Text>Processor Frequency(3.600GHz  |  3.600GHz)</Text>
       <Text>Processor Max Ratio(     24H  |  24H)</Text>
       <Text>Processor Min Ratio(     0CH  |  0CH)</Text>
-      <Text>Microcode Revision(05003303  |  05003303)</Text>
+      <Text>Microcode Revision(05003605  |  05003605)</Text>
       <Text>L1 Cache RAM(    64KB  |      64KB)</Text>
       <Text>L2 Cache RAM(  1024KB  |    1024KB)</Text>
       <Text>L3 Cache RAM( 25344KB  |   25344KB)</Text>
@@ -268,7 +271,7 @@ Last State: System returns to previous state before AC lost.]]></Help>
           <Help><![CDATA[If this feature is set to Enable, LLC (hardware cache) prefetching on all threads will be supported.]]></Help>
         </Information>
       </Setting>
-      <Setting name="Extended APIC" selectedOption="Disable" type="Option">
+      <Setting name="Extended APIC" selectedOption="Enable" type="Option">
         <Information>
           <AvailableOptions>
             <Option value="0">Disable</Option>
@@ -1200,9 +1203,9 @@ If set to Out of Band Mode, hardware autonomously choose a P-state without OS gu
                   <Help><![CDATA[Choose Link Speed for this PCIe port]]></Help>
                 </Information>
               </Setting>
-              <Text>PCI-E Port Link Status(Link Did Not Train)</Text>
+              <Text>PCI-E Port Link Status(Linked as x8)</Text>
               <Text>PCI-E Port Link Max(Max Width x8)</Text>
-              <Text>PCI-E Port Link Speed(Link Did Not Train)</Text>
+              <Text>PCI-E Port Link Speed(Gen 3 (8.0 GT/s))</Text>
               <Setting name="PCI-E Port Max Payload Size" order="6" selectedOption="Auto" type="Option">
                 <Information>
                   <AvailableOptions>
@@ -1234,9 +1237,9 @@ If set to Out of Band Mode, hardware autonomously choose a P-state without OS gu
                   <Help><![CDATA[Choose Link Speed for this PCIe port]]></Help>
                 </Information>
               </Setting>
-              <Text>PCI-E Port Link Status(Linked as x8)</Text>
+              <Text>PCI-E Port Link Status(Link Did Not Train)</Text>
               <Text>PCI-E Port Link Max(Max Width x8)</Text>
-              <Text>PCI-E Port Link Speed(Gen 3 (8.0 GT/s))</Text>
+              <Text>PCI-E Port Link Speed(Link Did Not Train)</Text>
               <Setting name="PCI-E Port Max Payload Size" order="7" selectedOption="Auto" type="Option">
                 <Information>
                   <AvailableOptions>
@@ -1349,9 +1352,9 @@ If set to Out of Band Mode, hardware autonomously choose a P-state without OS gu
                   <Help><![CDATA[Choose Link Speed for this PCIe port]]></Help>
                 </Information>
               </Setting>
-              <Text>PCI-E Port Link Status(Linked as x8)</Text>
+              <Text>PCI-E Port Link Status(Link Did Not Train)</Text>
               <Text>PCI-E Port Link Max(Max Width x16)</Text>
-              <Text>PCI-E Port Link Speed(Gen 1 (2.5 GT/s))</Text>
+              <Text>PCI-E Port Link Speed(Link Did Not Train)</Text>
               <Setting name="PCI-E Port Max Payload Size" order="9" selectedOption="Auto" type="Option">
                 <Information>
                   <AvailableOptions>
@@ -1383,9 +1386,9 @@ If set to Out of Band Mode, hardware autonomously choose a P-state without OS gu
                   <Help><![CDATA[Choose Link Speed for this PCIe port]]></Help>
                 </Information>
               </Setting>
-              <Text>PCI-E Port Link Status(Linked as x16)</Text>
+              <Text>PCI-E Port Link Status(Link Did Not Train)</Text>
               <Text>PCI-E Port Link Max(Max Width x16)</Text>
-              <Text>PCI-E Port Link Speed(Gen 3 (8.0 GT/s))</Text>
+              <Text>PCI-E Port Link Speed(Link Did Not Train)</Text>
               <Setting name="PCI-E Port Max Payload Size" order="10" selectedOption="Auto" type="Option">
                 <Information>
                   <AvailableOptions>
@@ -1417,9 +1420,9 @@ If set to Out of Band Mode, hardware autonomously choose a P-state without OS gu
                   <Help><![CDATA[Choose Link Speed for this PCIe port]]></Help>
                 </Information>
               </Setting>
-              <Text>PCI-E Port Link Status(Linked as x8)</Text>
+              <Text>PCI-E Port Link Status(Link Did Not Train)</Text>
               <Text>PCI-E Port Link Max(Max Width x16)</Text>
-              <Text>PCI-E Port Link Speed(Gen 3 (8.0 GT/s))</Text>
+              <Text>PCI-E Port Link Speed(Link Did Not Train)</Text>
               <Setting name="PCI-E Port Max Payload Size" order="11" selectedOption="Auto" type="Option">
                 <Information>
                   <AvailableOptions>
@@ -2023,7 +2026,7 @@ Note: In order to create NVMe RAID, you must have a VROC key installed on the pl
         <Text>USB Module Version(21)</Text>
         <Subtitle></Subtitle>
         <Text>USB Devices:()</Text>
-        <Subtitle>      2 Keyboards, 2 Mice, 1 Hub</Subtitle>
+        <Subtitle>      1 Keyboard, 1 Mouse, 1 Hub</Subtitle>
         <Subtitle></Subtitle>
         <Setting name="Legacy USB Support" selectedOption="Enabled" type="Option">
           <Information>
@@ -2073,11 +2076,11 @@ Note: In order to create NVMe RAID, you must have a VROC key installed on the pl
         <Help><![CDATA[Configure Server ME Technology Parameters]]></Help>
       </Information>
       <Subtitle>General ME Configuration</Subtitle>
-      <Text>Oper. Firmware Version(4.1.4.901)</Text>
+      <Text>Oper. Firmware Version(4.1.5.2)</Text>
       <Text>Backup Firmware Version(N/A)</Text>
-      <Text>Recovery Firmware Version(4.1.4.901)</Text>
-      <Text>ME Firmware Status #1(0x002F0255)</Text>
-      <Text>ME Firmware Status #2(0x88110026)</Text>
+      <Text>Recovery Firmware Version(4.1.5.2)</Text>
+      <Text>ME Firmware Status #1(0x000F0255)</Text>
+      <Text>ME Firmware Status #2(0x88118026)</Text>
       <Text>  Current State(Operational)</Text>
       <Text>  Error Code(No Error)</Text>
       <?ReadOnly 
@@ -2568,7 +2571,7 @@ Note: In order to create NVMe RAID, you must have a VROC key installed on the pl
           <Help><![CDATA[Enables or Disables 64bit capable Devices to be Decoded in Above 4G Address Space (Only if System Supports 64 bit PCI Decoding).]]></Help>
         </Information>
       </Setting>
-      <Setting name="SR-IOV Support" selectedOption="Disabled" type="Option">
+      <Setting name="SR-IOV Support" selectedOption="Enabled" type="Option">
         <Information>
           <AvailableOptions>
             <Option value="0">Disabled</Option>
@@ -4529,7 +4532,7 @@ Discard or Save changes option in setup does not have any impact on HDD when pas
         <WorkIf><![CDATA[ ( Boot mode select is not in [ 0, 1, 3, 4, 5 ] ) ]]></WorkIf>
       </Information>
     </Setting>
-    <Setting name="Boot Option #10" order="1" selectedOption="UEFI CD/DVD" type="Option">
+    <Setting name="Boot Option #10" selectedOption="UEFI CD/DVD" type="Option">
       <Information>
         <AvailableOptions>
           <Option value="0">Hard Disk: INTEL SSDSC2KB240G8 </Option>
@@ -4556,7 +4559,7 @@ Discard or Save changes option in setup does not have any impact on HDD when pas
         <WorkIf><![CDATA[ ( Boot mode select is not in [ 0, 1, 3, 4, 5 ] ) ]]></WorkIf>
       </Information>
     </Setting>
-    <Setting name="Boot Option #11" order="1" selectedOption="UEFI USB Hard Disk" type="Option">
+    <Setting name="Boot Option #11" selectedOption="UEFI USB Hard Disk" type="Option">
       <Information>
         <AvailableOptions>
           <Option value="0">Hard Disk: INTEL SSDSC2KB240G8 </Option>
@@ -4583,7 +4586,7 @@ Discard or Save changes option in setup does not have any impact on HDD when pas
         <WorkIf><![CDATA[ ( Boot mode select is not in [ 0, 1, 3, 4, 5 ] ) ]]></WorkIf>
       </Information>
     </Setting>
-    <Setting name="Boot Option #12" order="1" selectedOption="UEFI USB CD/DVD" type="Option">
+    <Setting name="Boot Option #12" selectedOption="UEFI USB CD/DVD" type="Option">
       <Information>
         <AvailableOptions>
           <Option value="0">Hard Disk: INTEL SSDSC2KB240G8 </Option>
@@ -4757,16 +4760,10 @@ Discard or Save changes option in setup does not have any impact on HDD when pas
           <AvailableOptions>
             <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
             <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
+            <Option value="2">(B59/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
+            <Option value="3">(B59/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
+            <Option value="4">(B59/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
+            <Option value="5">(B59/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
             <Option value="38">Disabled</Option>
           </AvailableOptions>
           <DefaultOption>(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</DefaultOption>
@@ -4778,229 +4775,73 @@ Discard or Save changes option in setup does not have any impact on HDD when pas
           <AvailableOptions>
             <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
             <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
+            <Option value="2">(B59/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
+            <Option value="3">(B59/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
+            <Option value="4">(B59/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
+            <Option value="5">(B59/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
             <Option value="38">Disabled</Option>
           </AvailableOptions>
           <DefaultOption>(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</DefaultOption>
           <Help><![CDATA[Sets the system boot order]]></Help>
         </Information>
       </Setting>
-      <Setting name="Boot Option #3" order="4" selectedOption="(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)" type="Option">
+      <Setting name="Boot Option #3" order="4" selectedOption="(B59/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)" type="Option">
         <Information>
           <AvailableOptions>
             <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
             <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
+            <Option value="2">(B59/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
+            <Option value="3">(B59/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
+            <Option value="4">(B59/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
+            <Option value="5">(B59/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
             <Option value="38">Disabled</Option>
           </AvailableOptions>
-          <DefaultOption>(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</DefaultOption>
+          <DefaultOption>(B59/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</DefaultOption>
           <Help><![CDATA[Sets the system boot order]]></Help>
         </Information>
       </Setting>
-      <Setting name="Boot Option #4" order="4" selectedOption="(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)" type="Option">
+      <Setting name="Boot Option #4" order="4" selectedOption="(B59/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)" type="Option">
         <Information>
           <AvailableOptions>
             <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
             <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
+            <Option value="2">(B59/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
+            <Option value="3">(B59/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
+            <Option value="4">(B59/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
+            <Option value="5">(B59/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
             <Option value="38">Disabled</Option>
           </AvailableOptions>
-          <DefaultOption>(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</DefaultOption>
+          <DefaultOption>(B59/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</DefaultOption>
           <Help><![CDATA[Sets the system boot order]]></Help>
         </Information>
       </Setting>
-      <Setting name="Boot Option #5" order="4" selectedOption="(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)" type="Option">
+      <Setting name="Boot Option #5" order="4" selectedOption="(B59/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)" type="Option">
         <Information>
           <AvailableOptions>
             <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
             <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
+            <Option value="2">(B59/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
+            <Option value="3">(B59/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
+            <Option value="4">(B59/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
+            <Option value="5">(B59/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
             <Option value="38">Disabled</Option>
           </AvailableOptions>
-          <DefaultOption>(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</DefaultOption>
+          <DefaultOption>(B59/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</DefaultOption>
           <Help><![CDATA[Sets the system boot order]]></Help>
         </Information>
       </Setting>
-      <Setting name="Boot Option #6" order="4" selectedOption="(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)" type="Option">
+      <Setting name="Boot Option #6" order="4" selectedOption="(B59/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)" type="Option">
         <Information>
           <AvailableOptions>
             <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
             <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
+            <Option value="2">(B59/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
+            <Option value="3">(B59/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
+            <Option value="4">(B59/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
+            <Option value="5">(B59/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
             <Option value="38">Disabled</Option>
           </AvailableOptions>
-          <DefaultOption>(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</DefaultOption>
-          <Help><![CDATA[Sets the system boot order]]></Help>
-        </Information>
-      </Setting>
-      <Setting name="Boot Option #7" order="4" selectedOption="(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)" type="Option">
-        <Information>
-          <AvailableOptions>
-            <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
-            <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
-            <Option value="38">Disabled</Option>
-          </AvailableOptions>
-          <DefaultOption>(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</DefaultOption>
-          <Help><![CDATA[Sets the system boot order]]></Help>
-        </Information>
-      </Setting>
-      <Setting name="Boot Option #8" order="4" selectedOption="(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)" type="Option">
-        <Information>
-          <AvailableOptions>
-            <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
-            <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
-            <Option value="38">Disabled</Option>
-          </AvailableOptions>
-          <DefaultOption>(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</DefaultOption>
-          <Help><![CDATA[Sets the system boot order]]></Help>
-        </Information>
-      </Setting>
-      <Setting name="Boot Option #9" order="3" selectedOption="(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)" type="Option">
-        <Information>
-          <AvailableOptions>
-            <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
-            <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
-            <Option value="38">Disabled</Option>
-          </AvailableOptions>
-          <DefaultOption>(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</DefaultOption>
-          <Help><![CDATA[Sets the system boot order]]></Help>
-        </Information>
-      </Setting>
-      <Setting name="Boot Option #10" order="2" selectedOption="(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)" type="Option">
-        <Information>
-          <AvailableOptions>
-            <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
-            <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
-            <Option value="38">Disabled</Option>
-          </AvailableOptions>
-          <DefaultOption>(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</DefaultOption>
-          <Help><![CDATA[Sets the system boot order]]></Help>
-        </Information>
-      </Setting>
-      <Setting name="Boot Option #11" order="2" selectedOption="(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)" type="Option">
-        <Information>
-          <AvailableOptions>
-            <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
-            <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
-            <Option value="38">Disabled</Option>
-          </AvailableOptions>
-          <DefaultOption>(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</DefaultOption>
-          <Help><![CDATA[Sets the system boot order]]></Help>
-        </Information>
-      </Setting>
-      <Setting name="Boot Option #12" order="2" selectedOption="(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)" type="Option">
-        <Information>
-          <AvailableOptions>
-            <Option value="0">(B26/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741be)</Option>
-            <Option value="1">(B26/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Connection X722 for 10GBASE-T(MAC:ac1f6b7741bf)</Option>
-            <Option value="2">(B94/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T4(MAC:3cfdfe8e0a20)</Option>
-            <Option value="3">(B94/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a21)</Option>
-            <Option value="4">(B94/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a22)</Option>
-            <Option value="5">(B94/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</Option>
-            <Option value="6">(B175/D0/F0) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3E(MAC:ac1f6bcf253e)</Option>
-            <Option value="7">(B175/D0/F1) UEFI PXE IPv4: Mellanox Network Adapter - AC:1F:6B:CF:25:3F(MAC:ac1f6bcf253f)</Option>
-            <Option value="8">(B216/D0/F0) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-4(MAC:40a6b78201a0)</Option>
-            <Option value="9">(B216/D0/F1) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a1)</Option>
-            <Option value="10">(B216/D0/F2) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a2)</Option>
-            <Option value="11">(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</Option>
-            <Option value="38">Disabled</Option>
-          </AvailableOptions>
-          <DefaultOption>(B216/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710(MAC:40a6b78201a3)</DefaultOption>
+          <DefaultOption>(B59/D0/F3) UEFI PXE IPv4: Intel(R) Ethernet Converged Network Adapter X710-T(MAC:3cfdfe8e0a23)</DefaultOption>
           <Help><![CDATA[Sets the system boot order]]></Help>
         </Information>
       </Setting>

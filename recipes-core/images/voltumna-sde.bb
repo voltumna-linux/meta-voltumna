@@ -66,4 +66,3 @@ install_environment_setup_sh() {
 }
 
 ROOTFS_POSTPROCESS_COMMAND:append = " install_sdk_sh; install_environment_setup_sh;"
-MACHINE_FEATURES:remove = "qemu-usermode"
