@@ -9,7 +9,7 @@
 [submodule "meta-artesyn"]
 	path = meta-artesyn
 	url = https://github.com/voltumna-linux/meta-artesyn.git
-	branch = kirkstone
+	branch = master
 [submodule "meta-intel"]
 	path = meta-intel
 	url = git://git.yoctoproject.org/meta-intel
@@ -29,7 +29,7 @@
 [submodule "meta-tango"]
 	path = meta-tango
 	url = https://github.com/voltumna-linux/meta-tango.git
-	branch = kirkstone
+	branch = master
 [submodule "openembedded-core"]
 	path = openembedded-core
 	url = https://git.openembedded.org/openembedded-core
