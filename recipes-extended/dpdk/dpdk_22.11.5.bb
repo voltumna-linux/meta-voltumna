@@ -1,9 +1,10 @@
 include dpdk.inc
 
-SRC_URI = "git://dpdk.org/git/dpdk-stable;branch=${BRANCH};protocol=https \
-           file://0001-meson.build-march-and-mcpu-already-passed-by-Yocto-21.11.patch \
+SRC_URI += "git://dpdk.org/git/dpdk${STABLE};branch=${BRANCH};protocol=https \
+            file://0001-meson.build-march-and-mcpu-already-passed-by-Yocto-21.11.patch \
 "
 
+STABLE = "-stable"
 BRANCH = "22.11"
 SRCREV = "dbd8f39c7c0fc66dfb49d2c6459bba20545c45d8"
 S = "${WORKDIR}/git"
@@ -58,7 +59,7 @@ PACKAGES =+ "${PN}-examples ${PN}-tools"
 FILES:${PN} += " ${bindir}/dpdk-testpmd \
 		 ${bindir}/dpdk-proc-info \
 		 ${libdir}/*.so* \
-		 ${libdir}/dpdk/pmds-22.0/*.so* \
+		 ${libdir}/dpdk/pmds-23.0/*.so* \
 		 "
 FILES:${PN}-examples = " \
 	${prefix}/share/dpdk/examples/* \
