@@ -45,7 +45,7 @@
 [submodule "meta-intel-fpga"]
 	path = meta-intel-fpga
 	url = https://git.yoctoproject.org/meta-intel-fpga
-	branch = master
+	branch = scarthgap
 [submodule "meta-clang"]
 	path = meta-clang
 	url = https://github.com/kraj/meta-clang.git
