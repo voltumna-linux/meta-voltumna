@@ -53,4 +53,4 @@
 [submodule "meta-amd"]
 	path = meta-amd
 	url = git://git.yoctoproject.org/meta-amd
-	branch = master
+	branch = scarthgap
