@@ -61,6 +61,7 @@ append_to_osrelease() {
 	VARIANT_ID="${BPN}"
 	VARIANT="${VARIANT}"
 	MACHINE="${MACHINE}"
+	ARCHITECTURE="${DEFAULTTUNE}"
 	__EOF__
 }
 
