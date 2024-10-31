@@ -21,6 +21,7 @@ SRC_URI:append = " \
 	file://vtd.cfg \
 	file://serial_console.cfg \
 	file://ipmi.cfg \
+	file://osnoise.cfg \
 	\
 	file://static_intel_drivers.cfg \
 	file://disable_trace_printk.patch \
