@@ -6,7 +6,7 @@ SRC_URI += "git://dpdk.org/git/dpdk${STABLE};branch=${BRANCH};protocol=https \
 
 STABLE = "-stable"
 BRANCH = "22.11"
-SRCREV = "dbd8f39c7c0fc66dfb49d2c6459bba20545c45d8"
+SRCREV = "ff4d4839f9c2a6d05dca0a25ed6b1549402e1682"
 S = "${WORKDIR}/git"
 
 # CVE-2021-3839 has been fixed by commit 4c40d30d2b in 21.11.1
