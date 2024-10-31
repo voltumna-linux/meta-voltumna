@@ -4,9 +4,10 @@ LICENSE = "CLOSED"
 
 PV_MAJOR = "${@d.getVar('PV').split('.')[0]}"
 PV_MINOR = "${@d.getVar('PV').split('.')[1]}"
-NUM = "822494"
+NUM = "832157"
 SRC_URI = "https://downloadmirror.intel.com/${NUM}/E810_NVMUpdatePackage_v${PV_MAJOR}_${PV_MINOR}.zip"
-SRC_URI[sha256sum] = "ac26e7f39f0a599fc62f756a41e039542191d6b75fe328aee85592856f8c9e15"
+SRC_URI[sha256sum] = "805f79673fdf95b0fdea5d558a58828b6ced62a52d1f99edb9bd0727cc4ad822"
+
 COMPATIBLE_HOST = "x86_64.*-linux"
 
 PACKAGES = "${BPN}"
@@ -14,7 +15,7 @@ PACKAGES = "${BPN}"
 INSANE_SKIP:${PN} = "already-stripped"
 
 do_extract_data() {
-	tar zxf ${WORKDIR}/*_Linux.tar.gz -C "${S}"
+	tar zxf ${WORKDIR}/E810_NVMUpdatePackage_v${PV_MAJOR}_${PV_MINOR}_Linux.tar.gz -C "${S}"
 }
 
 python do_unpack:append() {
