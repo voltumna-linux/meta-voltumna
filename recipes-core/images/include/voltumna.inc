@@ -54,6 +54,7 @@ copy_etc_into_factory() {
 }
 
 compute_sum() {
+	rm -f ${IMAGE_ROOTFS}/usr/.MD5SUM.txt*
 	MD5SUM=$(cd ${IMAGE_ROOTFS}/usr && find -type f -exec md5sum {} \;)
 	echo "$MD5SUM" >> ${IMAGE_ROOTFS}/usr/.MD5SUM.txt
 	gzip ${IMAGE_ROOTFS}/usr/.MD5SUM.txt
@@ -61,6 +62,7 @@ compute_sum() {
 
 # This must be the latest!
 move_usr_into_osdir() {
+	rm -fr ${IMAGE_ROOTFS}/.osdir
 	mkdir ${IMAGE_ROOTFS}/.osdir
 	mv ${IMAGE_ROOTFS}/usr ${IMAGE_ROOTFS}/.osdir/${IMAGE_NAME}
 	mkdir ${IMAGE_ROOTFS}/usr
