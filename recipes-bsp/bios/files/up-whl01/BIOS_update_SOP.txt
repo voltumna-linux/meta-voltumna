@@ -1,0 +1,11 @@
+BIOS update SOP 
+Step 1: Put files from BIOS package into UEFI bootable USB drive
+Step 2:  Power onboard with the USB drive attached
+Step 3: Enter BIOS Setup by Administrator Mode (Password : “upassw0rd”)
+Step 4: Change Option ; “Me FW Re-Flash” from Disabled to Enabled
+(which is located at Main -> CRB Setup -> CRB Advanced -> PCH-FW Configuration -> Firmware Update Configuration)
+Step 5: Save & Reset (Press F4), and boot to uEFI Shell directly
+Step 6: Move operating directory to USB drive (fs0 or other labels)
+SHELL> fs0:
+Step 7: Excute the batch file ; GO_Entire.nsh
+Step 8: After all process completed, the system must power off to have the changes take effect!
