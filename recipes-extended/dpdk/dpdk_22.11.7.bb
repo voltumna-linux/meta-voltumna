@@ -1,12 +1,12 @@
 include dpdk.inc
 
-SRC_URI += "git://dpdk.org/git/dpdk${STABLE};branch=${BRANCH};protocol=https \
+SRC_URI += " \
             file://0001-meson.build-march-and-mcpu-already-passed-by-Yocto-21.11.patch \
 "
 
 STABLE = "-stable"
 BRANCH = "22.11"
-SRCREV = "ff4d4839f9c2a6d05dca0a25ed6b1549402e1682"
+SRCREV = "077a7044cc5b2533410f691c8db6fb4f6667b1ca"
 S = "${WORKDIR}/git"
 
 # CVE-2021-3839 has been fixed by commit 4c40d30d2b in 21.11.1
