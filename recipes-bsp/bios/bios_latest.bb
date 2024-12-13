@@ -38,6 +38,10 @@ S = "${WORKDIR}/${BPN}"
 PACKAGES = "${BPN}"
 INSANE_SKIP:${PN} += "already-stripped ldflags file-rdeps debug-files"
 
+do_extract() {
+	unzip ${S}/BIOS*.zip -d ${S}/
+}
+
 do_extract_bundled() {
 	unzip ${S}/BIOS*.zip -d ${S}/
 	unzip ${S}/BMC*.zip -d ${S}/
@@ -53,6 +57,10 @@ python do_unpack:append:x11spw-tf() {
 
 python do_unpack:append:x12sdv-4c-sp6f() {
     bb.build.exec_func('do_extract_bundled', d)
+}
+
+python do_unpack:append:a3sev-4c-ln4() {
+    bb.build.exec_func('do_extract', d)
 }
 
 do_install() {
