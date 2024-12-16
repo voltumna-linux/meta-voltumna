@@ -54,3 +54,6 @@
 	path = meta-amd
 	url = git://git.yoctoproject.org/meta-amd
 	branch = scarthgap
+[submodule "meta-intel-qat"]
+	path = meta-intel-qat
+	url = git://git.yoctoproject.org/meta-intel-qat
