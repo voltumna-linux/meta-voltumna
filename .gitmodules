@@ -50,3 +50,7 @@
 	path = meta-clang
 	url = https://github.com/kraj/meta-clang.git
 	branch = dunfell
+[submodule "meta-intel-qat"]
+	path = meta-intel-qat
+	url = git://git.yoctoproject.org/meta-intel-qat
+	branch = dunfell
