@@ -19,6 +19,7 @@ BBLAYERS ?= " \
   ##OEROOT##/../meta-arm/meta-arm-toolchain \
   ##OEROOT##/../meta-ti/meta-ti-bsp \
   ##OEROOT##/../meta-ti/meta-ti-extras \
+  ##OEROOT##/../meta-ti/meta-beagle \
   ##OEROOT##/../meta-amd/meta-amd-bsp \
   ##OEROOT##/../meta-clang \
   ##OEROOT##/../meta-cross-toolchain \
