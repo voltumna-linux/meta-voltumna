@@ -13,8 +13,8 @@ IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMEN
 	os-release systemd-journal-upload bash coreutils util-linux util-linux-sfdisk glibc-utils \
 	procps psmisc ldd less tzdata tzdata-europe polkit lsof socat stress-ng sed tar xz grep gawk \
 	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server \
-	nfs-utils-client iproute2 iproute2-devlink ethtool inetutils-ping inetutils-telnet net-tools curl \
-	libnss-resolve strace gdb libasan libubsan"
+	nfs-utils-client iproute2 iproute2-ip iproute2-devlink ethtool inetutils-ping inetutils-telnet \
+	net-tools curl libnss-resolve strace gdb libasan libubsan"
 IMAGE_INSTALL:append:intel-x86-common = " thermald liblsan libtsan linux-firmware-ice"
 
 append_to_osrelease() {
@@ -78,6 +78,7 @@ BAD_RECOMMENDATIONS += "busybox-syslog grub-common"
 inherit core-image
 
 IMAGE_CMD:tar() {
+
 	${IMAGE_CMD_TAR} --numeric-owner --exclude='.osdir*' -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar --transform "s;^rootfs;nfsroot;" -C ${IMAGE_ROOTFS}/.. rootfs || [ $? -eq 1 ]
 	${IMAGE_CMD_TAR} --numeric-owner -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.os.tar -C ${IMAGE_ROOTFS}/.osdir ${IMAGE_NAME} || [ $? -eq 1 ]
 }
