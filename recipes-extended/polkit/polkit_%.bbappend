@@ -4,6 +4,10 @@ SRC_URI:append = " \
 	file://00-log-access.rules \
 	"
 
+# Mozjs fails to build due rust buggy support
+PACKAGECONFIG:remove = "mozjs"
+PACKAGECONFIG:append = "duktape"
+
 # On Beaglebone polkit build failed due: 
 # make[3]: *** No rule to make target 'overview.xml', needed by 'html-build.stamp'.  Stop.
 EXTRA_OECONF:append = ' \
