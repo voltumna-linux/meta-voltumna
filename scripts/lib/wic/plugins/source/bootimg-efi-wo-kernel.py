@@ -330,6 +330,8 @@ class BootimgEFIPlugin(SourcePlugin):
 
                 # https://www.freedesktop.org/software/systemd/man/systemd-stub.html
                 objcopy_cmd = "%s-objcopy" % target_sys
+                objcopy_cmd += " --enable-deterministic-archives"
+                objcopy_cmd += " --preserve-dates"
                 objcopy_cmd += " --add-section .osrel=%s/usr/lib/os-release" % staging_dir_host
                 objcopy_cmd += " --change-section-vma .osrel=0x20000"
                 objcopy_cmd += " --add-section .cmdline=%s" % cmdline.name
@@ -389,6 +391,13 @@ class BootimgEFIPlugin(SourcePlugin):
 
         logger.debug("Added %d extra blocks to %s to get to %d total blocks",
                      extra_blocks, part.mountpoint, blocks)
+
+        # required for compatibility with certain devices expecting file system
+        # block count to be equal to partition block count
+        if blocks < part.fixed_size:
+            blocks = part.fixed_size
+            logger.debug("Overriding %s to %d total blocks for compatibility",
+                     part.mountpoint, blocks)
 
         # dosfs image, created by mkdosfs
         bootimg = "%s/boot.img" % cr_workdir
