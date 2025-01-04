@@ -27,8 +27,7 @@ do_deploy:prepend() {
 }
 
 do_install:append() {
-	sed -i -e "s,@IMAGE_NAME@,default,g" \
-		-e "s,@USR@,mount.usr=/.osdir/\$image,g" \
+	sed -i -e "s,@USR@,mount.usr=/.osdir/\$image,g" \
 		${WORKDIR}/uEnv.txt
 }
 

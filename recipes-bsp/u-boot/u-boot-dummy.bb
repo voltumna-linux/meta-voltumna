@@ -41,8 +41,7 @@ do_install() {
 }
 
 do_deploy() {
-	sed -i -e "s,@IMAGE_NAME@,default,g" \
-		-e "s,@USR@,mount.usr=/.osdir/\$image,g" \
+	sed -i -e "s,@USR@,mount.usr=/.osdir/\$image,g" \
 		${WORKDIR}/uEnv.txt
 	install -d ${DEPLOY_DIR_IMAGE}
 	install -m 0644 ${WORKDIR}/uEnv.txt ${DEPLOY_DIR_IMAGE}

@@ -19,8 +19,7 @@ SRC_URI:append:arria10 = " \
 UBOOT_SCRIPT = "boot"
 
 do_install:append() {
-	sed -i -e "s,@IMAGE_NAME@,default,g" \
-		-e "s,@USR@,mount.usr=/.osdir/\$image,g" \
+	sed -i -e "s,@USR@,mount.usr=/.osdir/\$image,g" \
 		${WORKDIR}/uEnv.txt
 }
 

@@ -7,7 +7,7 @@ SRC_URI:append = " \
 do_deploy[vardeps] += "PRIMARY_NETIF"
 do_deploy() {
 	install -m 0644 ${WORKDIR}/grub.cfg ${DEPLOYDIR}
-	sed -i 	-e "s,@ROOT@,${ROOT},g" -e "s,@IMAGE_NAME@,default,g" \
+	sed -i 	-e "s,@ROOT@,${ROOT},g" \
 		-e "s,@ETH@,${@d.getVar('PRIMARY_NETIF')},g" \
 		${DEPLOYDIR}/grub.cfg
 }
