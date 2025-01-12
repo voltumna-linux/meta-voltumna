@@ -7,7 +7,7 @@ inherit siteinfo
 
 RDEPENDS:${PN} += "libgomp"
 
-SRCREV = "5ef8b1964658f9cb6a6324a06f6a1a022609b0c5"
+SRCREV = "8795fc7985635de1ecf674b87e2008a15097ffab"
 SRC_URI = "git://github.com/xianyi/OpenBLAS.git;protocol=https;branch=release-0.3.0"
 
 S = "${WORKDIR}/git"
