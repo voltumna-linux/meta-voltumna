@@ -21,10 +21,10 @@ create_sdk_files_append() {
 	prefix=${6:-${prefix_nativesdk}}
 	bindir=${5:-${bindir_nativesdk}}
 	libdir=${4:-${libdir}}
-	multimach_target_sys="x86_64-voltumnasdk-linux"
-	sdk_target_prefix="$multimach_target_sys-"
 	sysroot=${SDKPATHNATIVE}
+	multimach_target_sys="x86_64-voltumnasdk-linux"
 	script=${1:-${SDK_OUTPUT}/${SDKPATH}/environment-setup-x86_64}
+	sdk_target_prefix="$multimach_target_sys-"
 	rm -f $script
 	touch $script
 
@@ -32,7 +32,7 @@ create_sdk_files_append() {
 	echo '# http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html#AEN80' >> $script
 	echo '# http://xahlee.info/UnixResource_dir/_/ldpath.html' >> $script
 	echo '# Only disable this check if you are absolutely know what you are doing!' >> $script
-	echo 'if [ ! -z "$LD_LIBRARY_PATH" ]; then' >> $script
+	echo 'if [ ! -z "${LD_LIBRARY_PATH:-}" ]; then' >> $script
 	echo "    echo \"Your environment is misconfigured, you probably need to 'unset LD_LIBRARY_PATH'\"" >> $script
 	echo "    echo \"but please check why this was set in the first place and that it's safe to unset.\"" >> $script
 	echo '    echo "The SDK will not operate correctly in most cases when LD_LIBRARY_PATH is set."' >> $script
@@ -42,12 +42,15 @@ create_sdk_files_append() {
 	echo '    return 1' >> $script
 	echo 'fi' >> $script
 
-	echo "${EXPORT_SDK_PS1}" | sed "s/${MACHINE}/x86_64/" >> $script
+	echo "${EXPORT_SDK_PS1}"\" x86_64:\$ \" >> $script
 	echo 'export SDKTARGETSYSROOT='"$sysroot" >> $script
-	echo "export PATH=$sdkpathnative$bindir:$sdkpathnative$sbindir:$sdkpathnative$base_bindir:$sdkpathnative$base_sbindir:$sdkpathnative$bindir/../${HOST_SYS}/bin"':$PATH' >> $script
+	echo 'if [ -z "$ORIGPATH" ]; then' >> $script
+	echo '	export ORIGPATH="$PATH"' >> $script
+	echo 'fi' >> $script
+	echo "export PATH=$sdkpathnative$bindir:$sdkpathnative$sbindir:$sdkpathnative$base_bindir:$sdkpathnative$base_sbindir:$sdkpathnative$bindir/../${HOST_SYS}/bin"':"$ORIGPATH"' >> $script
 	echo 'export PKG_CONFIG_SYSROOT_DIR=$SDKTARGETSYSROOT' >> $script
 	echo 'export PKG_CONFIG_PATH=$SDKTARGETSYSROOT'"$libdir"'/pkgconfig:$SDKTARGETSYSROOT'"$prefix"'/share/pkgconfig' >> $script
-	echo '' >> $script
+	echo 'unset CONFIG_SITE' >> $script
 	echo "export OECORE_NATIVE_SYSROOT=\"$sdkpathnative\"" >> $script
 	echo 'export OECORE_TARGET_SYSROOT="$SDKTARGETSYSROOT"' >> $script
 	echo "export OECORE_ACLOCAL_OPTS=\"-I $sdkpathnative/usr/share/aclocal\"" >> $script
