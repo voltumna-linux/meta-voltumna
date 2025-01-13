@@ -42,15 +42,15 @@ create_sdk_files:append() {
 	echo '    return 1' >> $script
 	echo 'fi' >> $script
 
-	echo "${EXPORT_SDK_PS1}" | sed "s/${MACHINE}/x86_64/" >> $script
+	echo "${EXPORT_SDK_PS1}"\" x86_64:\$ \" >> $script
 	echo 'export SDKTARGETSYSROOT='"$sysroot" >> $script
 	echo 'if [ -z "$ORIGPATH" ]; then' >> $script
 	echo '	export ORIGPATH="$PATH"' >> $script
 	echo 'fi' >> $script
-	echo "export PATH=$sdkpathnative$bindir:$sdkpathnative$sbindir:$sdkpathnative$base_bindir:$sdkpathnative$base_sbindir:$sdkpathnative$bindir/../${HOST_SYS}/bin"':$ORIGPATH' >> $script
+	echo "export PATH=$sdkpathnative$bindir:$sdkpathnative$sbindir:$sdkpathnative$base_bindir:$sdkpathnative$base_sbindir:$sdkpathnative$bindir/../${HOST_SYS}/bin"':"$ORIGPATH"' >> $script
 	echo 'export PKG_CONFIG_SYSROOT_DIR=$SDKTARGETSYSROOT' >> $script
 	echo 'export PKG_CONFIG_PATH=$SDKTARGETSYSROOT'"$libdir"'/pkgconfig:$SDKTARGETSYSROOT'"$prefix"'/share/pkgconfig' >> $script
-	echo '' >> $script
+	echo 'unset CONFIG_SITE' >> $script
 	echo "export OECORE_NATIVE_SYSROOT=\"$sdkpathnative\"" >> $script
 	echo 'export OECORE_TARGET_SYSROOT="$SDKTARGETSYSROOT"' >> $script
 	echo "export OECORE_ACLOCAL_OPTS=\"-I $sdkpathnative/usr/share/aclocal\"" >> $script
@@ -85,6 +85,7 @@ create_sdk_files:append() {
 	echo 'export OECORE_SDK_VERSION="${SDK_VERSION}"' >> $script
 	echo 'export ARCH=x86' >> $script
 	echo 'export CROSS_COMPILE='${sdk_target_prefix} >> $script
+	echo 'export OECORE_TUNE_CCARGS=""' >> $script
 
     cat >> $script <<EOF
 

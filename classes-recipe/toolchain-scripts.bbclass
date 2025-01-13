@@ -47,8 +47,10 @@ toolchain_create_sdk_env_script () {
 	echo '    return 1' >> $script
 	echo 'fi' >> $script
 
-	if [ "$1" != "${SDK_OUTPUT}/${SDKPATH}/environment-setup-${TUNE_PKGARCH}" ]; then
-		echo "${EXPORT_SDK_PS1}" >> $script
+	if [ "$1" = "${SDK_OUTPUT}/${SDKPATH}/environment-setup-${TUNE_PKGARCH}" ]; then
+		echo "${EXPORT_SDK_PS1}"\" ${TUNE_PKGARCH}:\$ \" >> $script
+	else
+		echo "${EXPORT_SDK_PS1}"\" ${MACHINE}:\$ \" >> $script
 	fi
 	echo 'export SDKTARGETSYSROOT='"$sysroot" >> $script
 	EXTRAPATH=""
