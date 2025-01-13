@@ -41,8 +41,10 @@ toolchain_create_sdk_env_script () {
 	echo '    return 1' >> $script
 	echo 'fi' >> $script
 
-	if [ "$1" != "${SDK_OUTPUT}/${SDKPATH}/environment-setup-${TUNE_PKGARCH}" ]; then
-		echo "${EXPORT_SDK_PS1}" >> $script
+	if [ "$1" = "${SDK_OUTPUT}/${SDKPATH}/environment-setup-${TUNE_PKGARCH}" ]; then
+		echo "${EXPORT_SDK_PS1}"\" ${TUNE_PKGARCH}:\$ \" >> $script
+	else
+		echo "${EXPORT_SDK_PS1}"\" ${MACHINE}:\$ \" >> $script
 	fi
 	echo 'export SDKTARGETSYSROOT='"$sysroot" >> $script
 	EXTRAPATH=""
@@ -52,7 +54,7 @@ toolchain_create_sdk_env_script () {
 	echo 'if [ -z "$ORIGPATH" ]; then' >> $script
 	echo '	export ORIGPATH="$PATH"' >> $script
 	echo 'fi' >> $script
-	echo "export PATH=$sdkpathnative$bindir:$sdkpathnative$sbindir:$sdkpathnative$base_bindir:$sdkpathnative$base_sbindir:$sdkpathnative$bindir/../${HOST_SYS}/bin:$sdkpathnative$bindir/${TARGET_SYS}"$EXTRAPATH':$ORIGPATH' >> $script
+	echo "export PATH=$sdkpathnative$bindir:$sdkpathnative$sbindir:$sdkpathnative$base_bindir:$sdkpathnative$base_sbindir:$sdkpathnative$bindir/../${HOST_SYS}/bin:$sdkpathnative$bindir/${TARGET_SYS}"$EXTRAPATH':"$ORIGPATH"' >> $script
 	echo 'export PKG_CONFIG_SYSROOT_DIR=$SDKTARGETSYSROOT' >> $script
 	echo 'export PKG_CONFIG_PATH=$SDKTARGETSYSROOT'"$libdir"'/pkgconfig:$SDKTARGETSYSROOT'"$prefix"'/share/pkgconfig' >> $script
 	echo 'export CONFIG_SITE=${SDKPATH}/site-config-'"${multimach_target_sys}" >> $script
