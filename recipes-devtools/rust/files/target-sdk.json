@@ -1,0 +1,28 @@
+{
+    "llvm-target": "x86_64-voltumna-linux-gnu",
+    "data-layout": "e-m:e-i64:64-f80:128-n8:16:32:64-S128",
+    "max-atomic-width": 64,
+    "target-pointer-width": "64",
+    "target-c-int-width": "32",
+    "target-endian": "little",
+    "arch": "x86_64",
+    "os": "linux",
+    "env": "gnu",
+    "vendor": "unknown",
+    "target-family": "unix",
+    "linker": "x86_64-voltumnasdk-linux-gcc",
+         "pre-link-args": {
+            "gcc": [
+              "--sysroot=@SDKTARGETSYSROOT",
+              "-Wl,-dynamic-linker,/lib64/ld-linux-x86-64.so.2"
+            ]
+        },
+    "cpu": "x86-64",
+    "dynamic-linking": true,
+    "executables": true,
+    "linker-is-gnu": true,
+    "linker-flavor": "gcc",
+    "has-rpath": true,
+    "position-independent-executables": true,
+    "panic-strategy": "unwind"
+}
