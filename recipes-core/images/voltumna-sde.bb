@@ -65,5 +65,9 @@ install_environment_setup_sh() {
 	__EOF__
 }
 
-ROOTFS_POSTPROCESS_COMMAND:append = " install_sdk_sh; install_environment_setup_sh;"
+set_killuserprocess() {
+	sed -ie 's,#KillUserProcesses=yes,KillUserProcesses=no,g' ${IMAGE_ROOTFS}${sysconfdir}/systemd/logind.conf
+}
+
+ROOTFS_POSTPROCESS_COMMAND:append = " install_sdk_sh; install_environment_setup_sh; set_killuserprocess;"
 MACHINE_FEATURES:remove = "qemu-usermode"
