@@ -1,13 +1,15 @@
 DESCRIPTION = "Supermicro Update Manager (SUM) is used for managing and configuring \
-the BIOS/BMC firmware for Supermicro X10 generation motherboards and above."
+the BIOS/BMC firmware for Supermicro X9 generation motherboards and above."
 HOMEPAGE = "https://www.supermicro.com/en/solutions/management-software/supermicro-update-manager"
 LICENSE = "CLOSED"
 
 COMPATIBLE_HOST = "x86_64.*-linux"
 
+DIR = "698"
 SUFFIX = "Linux_x86_64"
-SRC_URI = "https://www.supermicro.com/Bios/sw_download/527/sum_${PV}_${SUFFIX}_20221209.tar.gz"
-SRC_URI[sha256sum] = "4f64bde6c60250edb03935f7a8cad3e579e953a6822660b763d8694bfad6ea35"
+DATE = "20240215"
+SRC_URI = "https://www.supermicro.com/Bios/sw_download/${DIR}/sum_${PV}_${SUFFIX}_${DATE}.tar.gz"
+SRC_URI[sha256sum] = "79cf26203493bb6a5b64fc508d9696151f89e08b79120a582d337bd5aae6c0a1"
 
 S = "${WORKDIR}/${BPN}_${PV}_${SUFFIX}"
 PACKAGES = "${BPN}"
