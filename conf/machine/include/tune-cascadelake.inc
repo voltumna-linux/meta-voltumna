@@ -40,9 +40,6 @@ ADVANCED_ISA = " \
 -mno-avx512vbmi \
 -mno-avx512vbmi2 \
 -mno-avx512vnni \
--mno-avx5124vnniw \
 -mno-avx512bitalg \
 -mno-avx512vpopcntdq \
--mno-avx5124fmaps \
 "
-
