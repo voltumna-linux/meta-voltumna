@@ -8,7 +8,7 @@ IMAGE_INSTALL:append = " info man-pages"
 
 # To keep in sync with SDK
 IMAGE_INSTALL:append = " binutils cpp gcc libgcc-dev g++ libstdc++-dev libgomp-dev libasan-dev libubsan-dev \
-	rust cargo"
+	rust cargo clang python3-pylint"
 IMAGE_INSTALL:append:arm = " dtc"
 IMAGE_INSTALL:append:intel-x86-common = " liblsan-dev libtsan-dev"
 
