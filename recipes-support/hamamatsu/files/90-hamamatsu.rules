@@ -1,0 +1,8 @@
+KERNEL=="aslenum",GROUP="controls", MODE="0660"
+SUBSYSTEM=="aslenum",GROUP="controls", MODE="0660"
+KERNEL=="aslcxp",GROUP="controls", MODE="0660"
+SUBSYSTEM=="aslcxp",GROUP="controls", MODE="0660"
+KERNEL=="aslser",GROUP="controls", MODE="0660"
+SUBSYSTEM=="aslser",GROUP="controls", MODE="0660"
+KERNEL=="asldma",GROUP="controls", MODE="0660"
+SUBSYSTEM=="asldma",GROUP="controls", MODE="0660"
