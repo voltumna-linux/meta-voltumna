@@ -1,6 +1,6 @@
 [submodule "bitbake"]
 	path = bitbake
-	url = https://git.openembedded.org/bitbake
+	url = https://github.com/voltumna-linux/bitbake.git
 	branch = 1.46
 [submodule "meta-96boards"]
 	path = meta-96boards
