@@ -14,7 +14,7 @@ PACKAGES = "${BPN}"
 INSANE_SKIP:${PN} = "already-stripped"
 
 do_extract_data() {
-	tar zxf ${WORKDIR}/*_Linux.tar.gz -C "${S}"
+	tar zxf ${UNPACKDIR}/*_Linux.tar.gz -C "${S}"
 }
 
 python do_unpack:append() {
