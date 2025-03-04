@@ -1,3 +1,5 @@
+Upstream-Status: Inappropriate
+
 diff --git a/config/x86/meson.build b/config/x86/meson.build
 index 8087b9ae91..2590719868 100644
 --- a/config/x86/meson.build

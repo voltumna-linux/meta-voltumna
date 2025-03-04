@@ -37,11 +37,11 @@ do_install() {
 	oe_runmake install V=1 T=rnm-dpdk
 
 	install -d ${D}${bindir}
-	install -m 0755 ${WORKDIR}/rnm-dpdk-conf.sh ${D}${bindir}
+	install -m 0755 ${UNPACKDIR}/rnm-dpdk-conf.sh ${D}${bindir}
 
 	install -d ${D}${systemd_system_unitdir}
-	install -m 0644 ${WORKDIR}/rnm-dpdk.service \
-		${WORKDIR}/rnm-dpdk-conf.service \
+	install -m 0644 ${UNPACKDIR}/rnm-dpdk.service \
+		${UNPACKDIR}/rnm-dpdk-conf.service \
 		${D}${systemd_system_unitdir}
 
 	install -d ${D}${sysconfdir}

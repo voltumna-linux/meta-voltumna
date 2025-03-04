@@ -1,3 +1,5 @@
+Upstream-Status: Inappropriate
+
 diff --git a/tools/membw/Makefile b/tools/membw/Makefile
 index a5db895..051cb56 100644
 --- a/tools/membw/Makefile
