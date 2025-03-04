@@ -1,5 +1,7 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
+INSANE_SKIP:${PN}:append = " patch-status"
+
 SRC_URI:append = " \
 	file://log.cfg \
 	file://zram.cfg \

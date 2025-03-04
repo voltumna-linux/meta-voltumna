@@ -36,9 +36,9 @@ do_install:append() {
 	__EOF__
 
 	# Add two scripts
-	install -m 755 ${WORKDIR}/factory-reset ${D}/usr/sbin
-	install -m 755 ${WORKDIR}/etcdiff ${D}/usr/bin
+	install -m 755 ${UNPACKDIR}/factory-reset ${D}/usr/sbin
+	install -m 755 ${UNPACKDIR}/etcdiff ${D}/usr/bin
 
 	# Use systemd's nsswitch.conf file instead of the base-files's one
-	cp ${WORKDIR}/nsswitch.conf ${D}${sysconfdir}
+	cp ${UNPACKDIR}/nsswitch.conf ${D}${sysconfdir}
 }

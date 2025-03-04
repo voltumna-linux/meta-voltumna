@@ -1,7 +1,7 @@
 [submodule "bitbake"]
 	path = bitbake
 	url = https://git.openembedded.org/bitbake
-	branch = 2.8
+	branch = master
 [submodule "meta-96boards"]
 	path = meta-96boards
 	url = https://github.com/96boards/meta-96boards.git
@@ -13,19 +13,19 @@
 [submodule "meta-intel"]
 	path = meta-intel
 	url = git://git.yoctoproject.org/meta-intel
-	branch = scarthgap
+	branch = master
 [submodule "meta-mingw"]
 	path = meta-mingw
 	url = git://git.yoctoproject.org/meta-mingw
-	branch = scarthgap
+	branch = master
 [submodule "meta-openembedded"]
 	path = meta-openembedded
 	url = https://git.openembedded.org/meta-openembedded
-	branch = scarthgap
+	branch = master
 [submodule "meta-ti"]
 	path = meta-ti
 	url = git://git.yoctoproject.org/meta-ti
-	branch = scarthgap
+	branch = master
 [submodule "meta-tango"]
 	path = meta-tango
 	url = https://github.com/voltumna-linux/meta-tango.git
@@ -33,27 +33,28 @@
 [submodule "openembedded-core"]
 	path = openembedded-core
 	url = https://git.openembedded.org/openembedded-core
-	branch = scarthgap
+	branch = master
 [submodule "meta-dpdk"]
 	path = meta-dpdk
 	url = git://git.yoctoproject.org/meta-dpdk
-	branch = scarthgap
+	branch = master
 [submodule "meta-arm"]
 	path = meta-arm
 	url = git://git.yoctoproject.org/meta-arm
-	branch = scarthgap
+	branch = master
 [submodule "meta-intel-fpga"]
 	path = meta-intel-fpga
 	url = https://git.yoctoproject.org/meta-intel-fpga
-	branch = scarthgap
+	branch = master
 [submodule "meta-clang"]
 	path = meta-clang
 	url = https://github.com/kraj/meta-clang.git
-	branch = scarthgap
+	branch = master
 [submodule "meta-amd"]
 	path = meta-amd
 	url = git://git.yoctoproject.org/meta-amd
-	branch = scarthgap
+	branch = master
 [submodule "meta-intel-qat"]
 	path = meta-intel-qat
 	url = git://git.yoctoproject.org/meta-intel-qat
+	branch = master
