@@ -24,7 +24,6 @@ SRC_URI:append = " \
 	file://osnoise.cfg \
 	\
 	file://static_intel_drivers.cfg \
-	file://disable_trace_printk.patch \
 	file://intel-rdt.cfg \
 	"
 
