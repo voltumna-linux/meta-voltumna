@@ -20,8 +20,10 @@ SRC_URI:append:d-e5472-x7dwu = " \
 	"
 
 do_configure:prepend() {
-	sed -i 's,.*RTE_LIBRTE_I40E_16BYTE_RX_DESC.*,#define RTE_LIBRTE_I40E_16BYTE_RX_DESC 1,g' \
+	sed -i 's,.*RTE_LIBRTE_I40E_16BYTE_RX_DESC.*,#define RTE_LIBRTE_I40E_16BYTE_RX_DESC 1 \
+#define RTE_LIBRTE_ICE_16BYTE_RX_DESC 1,g' \
 		${S}/config/rte_config.h
+
 }
 
 BBCLASSEXTEND = "nativesdk"
