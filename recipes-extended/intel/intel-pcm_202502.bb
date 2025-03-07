@@ -4,11 +4,13 @@ HOMEPAGE = "https://github.com/intel/pcm"
 LICENSE = "BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=a708c4161b707763cc051a9e3ddc863a"
 
+DEPENDS = "openssl"
+
 SRC_URI = " \
-	git://github.com/intel/pcm;protocol=https;branch=master \
+	gitsm://github.com/intel/pcm.git;protocol=https;branch=master \
 	file://pcm-avoid-strip.patch \
 	"
-SRCREV = "e9a1f396fc0d57308d7e2d661dbcfd2681f44a86"
+SRCREV = "5cb70ffdb6ef6bb5e614a916812526a8104e377a"
 
 S = "${WORKDIR}/git"
 
