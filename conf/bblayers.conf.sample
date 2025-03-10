@@ -7,7 +7,6 @@ BBFILES ?= ""
 
 BBLAYERS ?= " \
   ##OEROOT##/../../meta-voltumna \
-  ##OEROOT##/meta \
   ##OEROOT##/../meta-dpdk \
   ##OEROOT##/../meta-tango \
   ##OEROOT##/../meta-mingw \
@@ -21,11 +20,10 @@ BBLAYERS ?= " \
   ##OEROOT##/../meta-ti/meta-ti-extras \
   ##OEROOT##/../meta-amd/meta-amd-bsp \
   ##OEROOT##/../meta-clang \
-  ##OEROOT##/../meta-cross-toolchain \
   ##OEROOT##/../meta-openembedded/meta-oe \
   ##OEROOT##/../meta-openembedded/meta-filesystems \
   ##OEROOT##/../meta-openembedded/meta-python \
   ##OEROOT##/../meta-openembedded/meta-networking \
   ##OEROOT##/../meta-openembedded/meta-webserver \
-  ##OEROOT##/../meta-96boards \
+  ##OEROOT##/meta \
   "
