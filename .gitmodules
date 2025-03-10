@@ -2,10 +2,6 @@
 	path = bitbake
 	url = https://github.com/voltumna-linux/bitbake.git
 	branch = 1.46
-[submodule "meta-96boards"]
-	path = meta-96boards
-	url = https://github.com/96boards/meta-96boards.git
-	branch = dunfell
 [submodule "meta-artesyn"]
 	path = meta-artesyn
 	url = https://github.com/voltumna-linux/meta-artesyn.git
