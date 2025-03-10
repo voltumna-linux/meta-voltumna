@@ -24,7 +24,7 @@ SRC_URI:append = " \
 	file://osnoise.cfg \
 	\
 	file://static_intel_drivers.cfg \
-	file://intel-rdt.cfg \
+	file://resctrl.cfg \
 	"
 
 SRC_URI:append:kvm = " \
