@@ -2,10 +2,6 @@
 	path = bitbake
 	url = https://git.openembedded.org/bitbake
 	branch = 2.0
-[submodule "meta-96boards"]
-	path = meta-96boards
-	url = https://github.com/96boards/meta-96boards.git
-	branch = kirkstone
 [submodule "meta-artesyn"]
 	path = meta-artesyn
 	url = https://github.com/voltumna-linux/meta-artesyn.git
