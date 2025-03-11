@@ -31,9 +31,7 @@ QEMU_UNAVAILABLE_ISA = " \
 -mno-avx \
 -mno-avx2 \
 -mno-avx512f \
--mno-avx512er \
 -mno-avx512cd \
--mno-avx512pf \
 -mno-avx512dq \
 -mno-avx512bw \
 -mno-avx512vl \
