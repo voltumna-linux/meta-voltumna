@@ -15,7 +15,7 @@ IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMEN
 	procps psmisc ldd less tzdata tzdata-europe polkit lsof socat stress-ng sed tar xz grep gawk \
 	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server \
 	nfs-utils-client iproute2 iproute2-ip iproute2-devlink ethtool inetutils-ping inetutils-telnet \
-	net-tools curl libnss-resolve strace gdb libasan libubsan"
+	net-tools curl libnss-resolve strace ltrace gdb libasan libubsan"
 IMAGE_INSTALL:append:intel-x86-common = " thermald liblsan libtsan linux-firmware-ice"
 
 append_to_osrelease() {
