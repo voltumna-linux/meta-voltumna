@@ -30,6 +30,4 @@ SRC_URI:append:kvm = " \
 	file://virtualization.cfg \
 	"
 
-#INSANE_SKIP:${PN} += "installed-vs-shipped"
-
 KERNEL_FEATURES:remove = " features/security/security.scc"
