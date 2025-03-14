@@ -11,12 +11,12 @@ SRC_URI:append = " \
 
 SRC_URI[sdk.sha256sum] = "5aa7cbe2ad4c585d5dc613afd42d04aa0b600dcdc88e59c1e0f6540ea07093ec"
 
-HAMAMATSU_DIR = "/usr/local/hamamatsu_dcam/api"
+COMPATIBLE_HOST = "x86_64.*-linux"
+HAMAMATSU_DIR = "${libdir}/api"
 
 FILES:${PN} += " \
 	${sbindir} \
 	${libdir} \
-	${HAMAMATSU_DIR} \
 	${sysconfdir}/udev/rules.d \
 	"
 
@@ -34,15 +34,12 @@ do_install() {
 
 	# From API
 	install -m 0644 ${WORKDIR}/DCAM-API_Lite*/doc/* ${D}${docdir}/${BPN}
-	for l in ${WORKDIR}/DCAM-API_Lite*/api/runtime/x86_64/core/libdcamapi*
-		do
-			f=$(basename $l)
-			s1=$(echo $f | cut -d. -f-2)
-			s2=$(echo $f | cut -d. -f-3)
-			install -m 0644 $l ${D}${HAMAMATSU_DIR}
-			ln -sr ${D}${HAMAMATSU_DIR}/$f ${D}${HAMAMATSU_DIR}/$s1
-			ln -sr ${D}${HAMAMATSU_DIR}/$f ${D}${HAMAMATSU_DIR}/$s2
-		done
+
+        install -m 0644 ${WORKDIR}/DCAM-API_Lite*/api/runtime/x86_64/core/libdcamapi* \
+            ${D}${HAMAMATSU_DIR}
+	ln -sr ${D}${HAMAMATSU_DIR}/libdcamapi* ${D}${HAMAMATSU_DIR}/libdcamapi.so.4
+	ln -sr ${D}${HAMAMATSU_DIR}/libdcamapi.so.4 ${D}${libdir}/libdcamapi.so
+
 	for l in ${WORKDIR}/DCAM-API_Lite*/api/runtime/x86_64/core/libdcamdig* \
 		${WORKDIR}/DCAM-API_Lite*/api/runtime/x86_64/usb3/lib* \
 		${WORKDIR}/DCAM-API_Lite*/api/runtime/x86_64/fbd/lib*
