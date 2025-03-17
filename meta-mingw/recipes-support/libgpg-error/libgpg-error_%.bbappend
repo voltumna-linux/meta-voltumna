@@ -1,3 +1,3 @@
 
-FILES_${PN}-dev_append_mingw32 = " ${bindir}/gpg-error.exe"
+FILES:${PN}-dev:append:mingw32 = " ${bindir}/gpg-error.exe"
 

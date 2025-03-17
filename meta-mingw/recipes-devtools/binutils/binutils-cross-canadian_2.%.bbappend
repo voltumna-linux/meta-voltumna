@@ -1,5 +1,7 @@
-EXTRA_OECONF_append_sdkmingw32 = " --disable-nls"
-LDFLAGS_append_sdkmingw32 = " -Wl,-static"
+EXTRA_OECONF:append:sdkmingw32 = " --disable-nls"
+LDFLAGS:append:sdkmingw32 = " -Wl,-static"
 
-DEPENDS_remove_sdkmingw32 = "nativesdk-gettext"
-DEPENDS_remove_sdkmingw32 = "nativesdk-flex"
+DEPENDS:remove:sdkmingw32 = "nativesdk-gettext"
+DEPENDS:remove:sdkmingw32 = "nativesdk-flex"
+
+FILES:${PN}-staticdev:append:sdkmingw32 = " ${libdir}/bfd-plugins/lib*.a"

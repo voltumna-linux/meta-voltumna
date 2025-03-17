@@ -31,6 +31,12 @@ class OESDKMinGWTestContext(OESDKTestContext):
         # Convenience variables to make test cases easier to write
         env['SDK_DIR'] = getattr(self, 'wine_sdk_dir', '')
 
+        # Set the language. If this is not set to a valid language, then
+        # program that use glib will attempt to determine the language from
+        # stdin, which results in an error, fallback to "UTF-8" which is
+        # invalid and crash
+        env["LANG"] = "C.UTF-8"
+
         return env
 
     def wine_path(self, p):

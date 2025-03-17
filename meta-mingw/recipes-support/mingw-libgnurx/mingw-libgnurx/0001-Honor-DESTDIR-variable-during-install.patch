@@ -1,0 +1,39 @@
+From a9b7e07a8ba9c390d9774daae769748a09d409ce Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Sat, 1 May 2021 14:41:21 -0700
+Subject: [PATCH] Honor DESTDIR variable during install
+
+Upstream-Status: Pending
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+ Makefile.in | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/Makefile.in b/Makefile.in
+index 6397bf1..8395d2f 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -78,16 +78,16 @@ gnurx.lib: libgnurx-$(DLLVERSION).dll
+ install: install-dll @install_dev@
+ 
+ install-dll:
+-	mkdir -p ${bindir}
+-	cp -p $(BINDIST_FILES) ${bindir}
++	mkdir -p $(DESTDIR)${bindir}
++	cp -p $(BINDIST_FILES) $(DESTDIR)${bindir}
+ 
+ install-dev:
+-	mkdir -p ${includedir} ${libdir}
+-	cp -p ${srcdir}/regex.h ${includedir}
+-	cp -p $(DEVDIST_FILES) ${libdir}
++	mkdir -p ${includedir} $(DESTDIR)${libdir}
++	cp -p ${srcdir}/regex.h $(DESTDIR)${includedir}
++	cp -p $(DEVDIST_FILES) $(DESTDIR)${libdir}
+ 	for s in 3 7; do \
+-	  mkdir -p ${mandir}/man$$s; \
+-	  gzip -c ${srcdir}/regex.$$s > ${mandir}/man$$s/regex.$$s.gz; \
++	  mkdir -p $(DESTDIR)${mandir}/man$$s; \
++	  gzip -c ${srcdir}/regex.$$s > $(DESTDIR)${mandir}/man$$s/regex.$$s.gz; \
+ 	done
+ 
+ dist:	 bindist devdist srcdist

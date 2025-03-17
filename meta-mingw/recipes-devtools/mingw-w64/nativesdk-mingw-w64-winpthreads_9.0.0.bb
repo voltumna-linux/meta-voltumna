@@ -16,7 +16,7 @@ do_configure() {
 
 TOOLCHAIN_OPTIONS = " --sysroot=${STAGING_DIR_TARGET}"
 
-do_install_append() {
+do_install:append() {
     # headers are already installed by mingw-w64-headers
     rm -rf ${D}${includedir}
 }
