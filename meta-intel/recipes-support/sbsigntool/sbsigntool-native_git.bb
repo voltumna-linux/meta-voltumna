@@ -1,5 +1,5 @@
 DESCRIPTION = "Utility for signing and verifying files for UEFI Secure Boot"
-LICENSE = "GPLv3 & LGPL-2.1 & LGPL-3.0 & MIT"
+LICENSE = "GPL-3.0-only & LGPL-2.1-only & LGPL-3.0-only & MIT"
 
 # sbsigntool statically links to libccan.a which is built with modules
 # passed to "create-ccan-tree" (and their dependencies). Therefore,
@@ -19,24 +19,26 @@ LIC_FILES_CHKSUM = "file://LICENSE.GPLv3;md5=9eef91148a9b14ec7f9df333daebc746 \
 
 # The original upstream is git://kernel.ubuntu.com/jk/sbsigntool but it has
 # not been maintained and many patches have been backported in this repo.
-SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/jejb/sbsigntools.git;protocol=https;name=sbsigntools \
-           git://github.com/rustyrussell/ccan.git;protocol=https;destsuffix=git/lib/ccan.git;name=ccan \
+SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/jejb/sbsigntools.git;protocol=https;name=sbsigntools;branch=master \
+           git://github.com/rustyrussell/ccan.git;protocol=https;destsuffix=git/lib/ccan.git;name=ccan;branch=master \
            file://0001-configure-Fixup-build-dependencies-for-cross-compili.patch \
+           file://0002-fix-openssl-3-0.patch \
           "
 
-SRCREV_sbsigntools  ?= "fe88da5f66241d959b7aeca7502d401ad88df410"
+SRCREV_sbsigntools  ?= "f12484869c9590682ac3253d583bf59b890bb826"
 SRCREV_ccan         ?= "b1f28e17227f2320d07fe052a8a48942fe17caa5"
 SRCREV_FORMAT       =  "sbsigntools_ccan"
 
 DEPENDS = "binutils-native gnu-efi-native help2man-native openssl-native util-linux-native"
 
-PV = "0.9.3-git${SRCPV}"
+PV = "0.9.4-git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-inherit native autotools pkgconfig
+inherit autotools pkgconfig
+inherit native
 
-do_configure_prepend() {
+do_configure:prepend() {
 	cd ${S}
 
 	sed -i s#RECIPE_SYSROOT#${RECIPE_SYSROOT_NATIVE}#g configure.ac
@@ -78,3 +80,5 @@ EXTRA_OEMAKE = "\
               -I${STAGING_INCDIR_NATIVE} \
               -I${STAGING_INCDIR_NATIVE}/efi/${@efi_arch(d)}' \
     "
+
+CFLAGS:append = " -Wno-error"

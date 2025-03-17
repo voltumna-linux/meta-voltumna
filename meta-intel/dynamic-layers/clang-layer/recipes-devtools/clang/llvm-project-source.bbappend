@@ -1,9 +1,13 @@
-FILESEXTRAPATHS_prepend_intel-x86-common := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend:intel-x86-common := "${THISDIR}/files:"
 
-SRC_URI_append_intel-x86-common = " \
-                                    git://github.com/KhronosGroup/SPIRV-LLVM-Translator.git;protocol=https;branch=llvm_release_100;destsuffix=git/llvm/projects/llvm-spirv;name=spirv \
-                                    file://0001-skip-building-tests.patch;patchdir=llvm/projects/llvm-spirv \
-                                    file://fix-shared-libs.patch;patchdir=llvm/projects/llvm-spirv \
-                                    "
+SRC_URI_LLVM12_PATCHES = " \
+                   file://llvm12-0001-Remove-__IMAGE_SUPPORT__-macro-for-SPIR-since-SPIR-d.patch \
+                   file://llvm12-0002-Avoid-calling-ParseCommandLineOptions-in-BackendUtil.patch \
+                   file://llvm12-0003-Support-cl_ext_float_atomics.patch \
+                   file://llvm12-0004-ispc-12_0_disable-A-B-A-B-and-BSWAP-in-InstCombine.patch \
+                   file://llvm12-0005-ispc-12_0_fix_for_2111.patch \
+                   file://llvm12-0006-OpenCL-Add-cl_khr_integer_dot_product.patch \
+                   file://llvm12-0007-OpenCL-3.0-support.patch \
+                   "
 
-SRCREV_spirv = "7743482f2053582be990e93ca46d15239c509c9d"
+SRC_URI:append:intel-x86-common = "${@bb.utils.contains('LLVMVERSION', '12.0.0', ' ${SRC_URI_LLVM12_PATCHES} ', '', d)}"
