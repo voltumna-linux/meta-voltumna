@@ -2,7 +2,7 @@ SUMMARY = "Kernel selftest for Linux"
 DESCRIPTION = "Kernel selftest for Linux"
 LICENSE = "GPL-2.0-only"
 
-LIC_FILES_CHKSUM = "file://../COPYING;md5=bbea815ee2795b2f4230826c0c6b8814"
+LIC_FILES_CHKSUM = "file://${UNPACKDIR}/COPYING;md5=bbea815ee2795b2f4230826c0c6b8814"
 
 DEPENDS = "rsync-native llvm-native"
 
@@ -12,6 +12,7 @@ SRC_URI:append:libc-musl = "\
                       "
 SRC_URI += "file://run-ptest \
             file://COPYING \
+            file://0001-selftests-timers-Fix-clock_adjtime-for-newer-32-bit-.patch \
             "
 
 # now we just test bpf and vm
@@ -108,7 +109,7 @@ do_install() {
 }
 
 do_configure() {
-    install -D -m 0644 ${WORKDIR}/COPYING ${S}/COPYING
+    install -D -m 0644 ${UNPACKDIR}/COPYING ${S}/COPYING
 }
 
 do_patch[prefuncs] += "copy_kselftest_source_from_kernel remove_unrelated"
@@ -136,6 +137,8 @@ remove_unrelated() {
             bberror "Your kernel is probably older than 4.10 and doesn't have tools/testing/selftests/bpf/Makefile file from https://github.com/torvalds/linux/commit/5aa5bd14c5f8660c64ceedf14a549781be47e53d, disable bpf PACKAGECONFIG"
     fi
 }
+
+do_configure[dirs] = "${S}"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
