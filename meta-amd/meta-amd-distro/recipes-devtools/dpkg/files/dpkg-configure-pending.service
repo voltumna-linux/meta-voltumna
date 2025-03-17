@@ -1,0 +1,16 @@
+[Unit]
+Description="Configure pkgs with failed postinsts that Sato GUI depends on."
+DefaultDependencies=no
+After=sysinit.target
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/dpkg-configure-pending
+ExecStartPost=/bin/systemctl --no-reload disable dpkg-configure-pending.service
+RemainAfterExit=No
+TimeoutSec=0
+User=root
+
+[Install]
+WantedBy=graphical.target

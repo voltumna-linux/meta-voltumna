@@ -1,0 +1,14 @@
+#!/bin/sh
+
+[ -e /etc/default/postinst ] && . /etc/default/postinst
+if [ "$POSTINST_LOGGING" = "1" ]; then
+    append_log="| tee -a $LOGFILE"
+fi
+
+[ "$POSTINST_LOGGING" = "1" ] && eval echo "Attempting to reconfigure packages on first boot that had failed postinsts..." ${append_log}
+
+dpkg --configure --pending | tee -a $LOGFILE
+
+if [ -n "`which update-rc.d`" ]; then
+    update-rc.d -f dpkg-configure-pending remove | tee -a $LOGFILE
+fi

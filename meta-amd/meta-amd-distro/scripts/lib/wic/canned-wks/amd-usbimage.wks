@@ -1,0 +1,5 @@
+# short-description: Create USB image with files from var IMAGE_BOOT_FILES
+# long-description: Creates a USB image with all files in the IMAGE_BOOT_FILES
+# var e.g. bootloader, initrd, kernel & rootfs.img.
+
+part /boot --source bootimg-partition --ondisk sda --fstype=vfat --label boot --overhead-factor 1.0 --active --align 1024

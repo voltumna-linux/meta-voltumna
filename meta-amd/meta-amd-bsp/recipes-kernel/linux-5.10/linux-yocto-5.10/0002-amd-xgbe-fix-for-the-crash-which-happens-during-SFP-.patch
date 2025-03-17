@@ -1,0 +1,77 @@
+From 1cbf1b80948bcb1c46b9674d6ff8f2b2629d1327 Mon Sep 17 00:00:00 2001
+From: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Date: Thu, 13 Feb 2020 15:26:20 +0530
+Subject: [PATCH 02/10] amd-xgbe fix for the crash which happens during SFP
+ hotplug
+
+ INFO: task kworker/u32:3:238 blocked for more than 120 seconds.
+       Tainted: G            E     5.4.2-sfp-fix+ #58
+ "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+ kworker/u32:3   D    0   238      2 0x80004000
+ Workqueue: enp2s0f1 xgbe_service [amd_xgbe]
+ Call Trace:
+  ? __schedule+0x293/0x700
+  schedule+0x2f/0xa0
+  schedule_preempt_disabled+0xa/0x10
+  __mutex_lock.isra.9+0x26d/0x4e0
+  ? xgbe_phy_get_comm_ownership+0x1f/0x110 [amd_xgbe]
+  xgbe_phy_get_comm_ownership+0x1f/0x110 [amd_xgbe]
+  xgbe_phy_mii_read+0x28/0xb0 [amd_xgbe]
+  ? kernfs_put+0xe9/0x190
+  __mdiobus_read+0x3b/0xd0
+  __phy_modify_changed+0x2b/0x80
+  phy_modify+0x38/0x60
+  phy_suspend+0x84/0xc0
+  phy_detach+0x5e/0x120
+  xgbe_phy_free_phy_device.isra.22+0x1d/0x50 [amd_xgbe]
+  xgbe_phy_sfp_mod_absent.isra.25+0xe/0x50 [amd_xgbe]
+  xgbe_phy_sfp_detect+0x16a/0x9b0 [amd_xgbe]
+  ? xgbe_phy_link_status+0x10a/0x490 [amd_xgbe]
+  xgbe_phy_link_status+0x10a/0x490 [amd_xgbe]
+  xgbe_phy_status+0x57/0x380 [amd_xgbe]
+  process_one_work+0x1f4/0x3e0
+  worker_thread+0x2d/0x3e0
+  ? process_one_work+0x3e0/0x3e0
+  kthread+0x113/0x130
+  ? kthread_park+0x90/0x90
+  ret_from_fork+0x22/0x40
+
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+index 18e48b3bc402..90f33c3ddb32 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+@@ -1283,7 +1283,7 @@ static int xgbe_phy_sfp_read_eeprom(struct xgbe_prv_data *pdata)
+ 
+ 		memcpy(&phy_data->sfp_eeprom, &sfp_eeprom, sizeof(sfp_eeprom));
+ 
+-		xgbe_phy_free_phy_device(pdata);
++
+ 	} else {
+ 		phy_data->sfp_changed = 0;
+ 	}
+@@ -1320,7 +1320,6 @@ static void xgbe_phy_sfp_mod_absent(struct xgbe_prv_data *pdata)
+ {
+ 	struct xgbe_phy_data *phy_data = pdata->phy_data;
+ 
+-	xgbe_phy_free_phy_device(pdata);
+ 
+ 	phy_data->sfp_mod_absent = 1;
+ 	phy_data->sfp_phy_avail = 0;
+@@ -1372,6 +1371,9 @@ static void xgbe_phy_sfp_detect(struct xgbe_prv_data *pdata)
+ 	xgbe_phy_sfp_phy_settings(pdata);
+ 
+ 	xgbe_phy_put_comm_ownership(pdata);
++
++	if((phy_data->sfp_mod_absent) || (phy_data->sfp_changed))
++			xgbe_phy_free_phy_device(pdata);
+ }
+ 
+ static int xgbe_phy_module_eeprom(struct xgbe_prv_data *pdata,
+-- 
+2.17.1
+

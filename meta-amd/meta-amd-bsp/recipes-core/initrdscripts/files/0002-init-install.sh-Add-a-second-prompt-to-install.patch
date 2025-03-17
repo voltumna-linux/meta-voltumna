@@ -1,0 +1,37 @@
+From b93b1271d5f548c048b0813e1f9662c0befdac97 Mon Sep 17 00:00:00 2001
+From: Drew Moseley <drew_moseley@mentor.com>
+Date: Sat, 5 Jul 2014 18:58:25 -0400
+Subject: [PATCH 2/4] init-install.sh: Add a second prompt to install
+
+This also makes it clear that the user will be overwriting
+the entire disk.
+
+Signed-off-by: Drew Moseley <drew_moseley@mentor.com>
+---
+ meta/recipes-core/initrdscripts/files/init-install.sh | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+Upstream-Status: Inappropriate [configuration]
+
+diff --git a/meta/recipes-core/initrdscripts/files/init-install.sh b/meta/recipes-core/initrdscripts/files/init-install.sh
+--- init-install.sh.orig	2016-08-01 13:29:03.823681411 -0700
++++ init-install.sh	2016-08-01 13:30:32.323680567 -0700
+@@ -94,6 +94,18 @@
+ done
+ 
+ if [ -n "$TARGET_DEVICE_NAME" ]; then
++    while true; do
++        echo "This will overwrite all data on $TARGET_DEVICE_NAME"
++        echo -n "Are you sure? [y/n] "
++        read answer
++        if [ "$answer" = "y" ]; then
++            break
++        elif [ "$answer" = "n" ]; then
++            echo "Installation aborted."
++            exit 1
++        fi
++        echo "Please answer y or n"
++    done
+     echo "Installing image on /dev/$TARGET_DEVICE_NAME ..."
+ else
+     echo "No hard drive selected. Installation aborted."

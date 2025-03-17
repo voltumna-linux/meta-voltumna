@@ -1,0 +1,421 @@
+From 9807cfcbc47a27ab79abf3996cbde99c05d347bd Mon Sep 17 00:00:00 2001
+From: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Date: Wed, 28 Apr 2021 11:13:54 +0530
+Subject: [PATCH 24/31] Bilby dummy codec
+
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Signed-off-by: rgaridap <Ramesh.Garidapuri@amd.com>
+Change-Id: I5243f9e8d864a33c95b93569cbed70863b9f9bf2
+---
+ sound/soc/amd/raven/Makefile          |   4 +
+ sound/soc/amd/raven/acp3x-dummy5102.c | 214 ++++++++++++++++++++++++++
+ sound/soc/amd/raven/dummy-w5102.c     |  94 +++++++++++
+ sound/soc/amd/raven/pci-acp3x.c       |  27 ++++
+ 4 files changed, 339 insertions(+)
+ mode change 100644 => 100755 sound/soc/amd/raven/Makefile
+ create mode 100755 sound/soc/amd/raven/acp3x-dummy5102.c
+ create mode 100755 sound/soc/amd/raven/dummy-w5102.c
+ mode change 100644 => 100755 sound/soc/amd/raven/pci-acp3x.c
+
+diff --git a/sound/soc/amd/raven/Makefile b/sound/soc/amd/raven/Makefile
+old mode 100644
+new mode 100755
+index 62c22b6ed95a..64f2ec8cdd3c
+--- a/sound/soc/amd/raven/Makefile
++++ b/sound/soc/amd/raven/Makefile
+@@ -2,7 +2,11 @@
+ # Raven Ridge platform Support
+ snd-pci-acp3x-objs	:= pci-acp3x.o
+ snd-acp3x-pcm-dma-objs	:= acp3x-pcm-dma.o
++snd-soc-dummy-w5102-objs := dummy-w5102.o
+ snd-acp3x-i2s-objs	:= acp3x-i2s.o
++snd-soc-acp3x-mach-objs := acp3x-dummy5102.o
+ obj-$(CONFIG_SND_SOC_AMD_ACP3x)	 += snd-pci-acp3x.o
+ obj-$(CONFIG_SND_SOC_AMD_ACP3x)	 += snd-acp3x-pcm-dma.o
++obj-$(CONFIG_SND_SOC_AMD_ACP3x)	+= snd-soc-dummy-w5102.o
+ obj-$(CONFIG_SND_SOC_AMD_ACP3x)	 += snd-acp3x-i2s.o
++obj-$(CONFIG_SND_SOC_AMD_ACP3x)	+= snd-soc-acp3x-mach.o
+diff --git a/sound/soc/amd/raven/acp3x-dummy5102.c b/sound/soc/amd/raven/acp3x-dummy5102.c
+new file mode 100755
+index 000000000000..8a22ac19157c
+--- /dev/null
++++ b/sound/soc/amd/raven/acp3x-dummy5102.c
+@@ -0,0 +1,214 @@
++/*
++ * Machine driver for AMD ACP Audio engine using dummy codec
++ *
++ * Copyright 2016 Advanced Micro Devices, Inc.
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++ * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
++ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
++ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
++ * OTHER DEALINGS IN THE SOFTWARE.
++ *
++ *
++ */
++
++#include <sound/soc.h>
++#include <sound/soc-dapm.h>
++#include <linux/module.h>
++#include <sound/pcm.h>
++#include <sound/pcm_params.h>
++#include "acp3x.h"
++static int i2s_tdm_mode = 0x0;
++module_param(i2s_tdm_mode, int, 0644);
++MODULE_PARM_DESC(i2s_tdm_mode, "enables I2S TDM Mode");
++
++static int acp3x_hw_params(struct snd_pcm_substream *substream,
++			   struct snd_pcm_hw_params *params)
++
++{
++	struct snd_soc_pcm_runtime *rtd = NULL;
++	struct snd_soc_dai *cpu_dai = NULL;
++	unsigned int fmt;
++	unsigned int dai_fmt;
++	unsigned int slot_width;
++	unsigned int slots;
++	unsigned int channels;
++	int ret = 0;
++
++	rtd = asoc_substream_to_rtd(substream);
++	cpu_dai = asoc_rtd_to_codec(rtd, 0);;
++
++	cpu_dai = asoc_rtd_to_cpu(rtd, 0);
++
++	if (i2s_tdm_mode) {
++		fmt = params_format(params);
++		switch (fmt) {
++		case SNDRV_PCM_FORMAT_S16_LE:
++			slot_width = 16;
++			break;
++		case SNDRV_PCM_FORMAT_S24_LE:
++			slot_width = 32;
++			break;
++		case SNDRV_PCM_FORMAT_S32_LE:
++			slot_width = 32;
++			break;
++		default:
++			pr_err("acp3x: unsupported PCM format\n");
++			return -EINVAL;
++		}
++
++		dai_fmt = SND_SOC_DAIFMT_DSP_A  | SND_SOC_DAIFMT_NB_NF |
++			  SND_SOC_DAIFMT_CBM_CFM;
++		ret = snd_soc_dai_set_fmt(cpu_dai, dai_fmt);
++		if (ret < 0) {
++			pr_err("can't set format to DSP_A mode ret:%d\n", ret);
++			return ret;
++		}
++		channels = params_channels(params);
++		if (channels == 0x08)
++			slots = 0x00;
++		else
++			slots = channels;
++		ret = snd_soc_dai_set_tdm_slot(cpu_dai, 0x3, 0x3, slots,
++					       slot_width);
++		if (ret < 0)
++			pr_err("can't set I2S TDM mode config ret:%d\n", ret);
++
++	} else {
++		dai_fmt = SND_SOC_DAIFMT_I2S  | SND_SOC_DAIFMT_NB_NF |
++			  SND_SOC_DAIFMT_CBM_CFM;
++		ret = snd_soc_dai_set_fmt(cpu_dai, dai_fmt);
++		pr_debug("i2s mode dai fmt set:0x%x ret:%d\n", dai_fmt, ret);
++	}
++	return ret;
++}
++
++static void acp3x_dummy_shutdown(struct snd_pcm_substream *substream)
++{
++
++}
++static int acp3x_dummy_startup(struct snd_pcm_substream *substream)
++{
++	struct snd_pcm_runtime *runtime = substream->runtime;
++	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
++	struct snd_soc_card *card = rtd->card;
++	struct acp3x_platform_info *machine = snd_soc_card_get_drvdata(card);
++
++	machine->play_i2s_instance = I2S_BT_INSTANCE;//I2S_SP_INSTANCE;
++	machine->cap_i2s_instance = I2S_BT_INSTANCE;//I2S_SP_INSTANCE;
++
++	runtime->hw.channels_max = 2;
++	return 0;
++}
++
++static struct snd_soc_ops acp3x_wm5102_ops = {
++	.hw_params = acp3x_hw_params,
++	.startup = acp3x_dummy_startup,
++	.shutdown = acp3x_dummy_shutdown,
++};
++
++SND_SOC_DAILINK_DEFS(pcm,
++	DAILINK_COMP_ARRAY(COMP_CPU("acp3x_i2s_playcap.0")),
++		     DAILINK_COMP_ARRAY(COMP_CODEC("dummy_w5102.0",
++						   "dummy_w5102_dai")),
++	DAILINK_COMP_ARRAY(COMP_PLATFORM("acp3x_rv_i2s_dma.0")));
++
++static int acp3x_init(struct snd_soc_pcm_runtime *rtd)
++{
++	return 0;
++}
++
++
++static struct snd_soc_dai_link acp3x_dai_w5102[] = {
++	{
++		.name = "RV-W5102-PLAY",
++		.stream_name = "Playback",
++		.ops = &acp3x_wm5102_ops,
++		.dpcm_playback = 1,
++		.dpcm_capture = 1,
++		.init = acp3x_init,
++		SND_SOC_DAILINK_REG(pcm),
++	},
++};
++
++static const struct snd_soc_dapm_widget acp3x_widgets[] = {
++	SND_SOC_DAPM_HP("Headphones", NULL),
++	SND_SOC_DAPM_MIC("Analog Mic", NULL),
++};
++
++static const struct snd_soc_dapm_route acp3x_audio_route[] = {
++	{"Headphones", NULL, "HPO L"},
++	{"Headphones", NULL, "HPO R"},
++	{"MIC1", NULL, "Analog Mic"},
++};
++
++static struct snd_soc_card acp3x_card = {
++	.name = "acp3x",
++	.owner = THIS_MODULE,
++	.dai_link = acp3x_dai_w5102,
++	.num_links = 1,
++};
++
++static int acp3x_probe(struct platform_device *pdev)
++{
++	int ret;
++
++	struct snd_soc_card *card;
++		struct acp3x_platform_info *machine;
++
++machine = devm_kzalloc(&pdev->dev, sizeof(struct acp3x_platform_info),
++			       GFP_KERNEL);
++	if (!machine)
++		return -ENOMEM;
++
++	card = &acp3x_card;
++	acp3x_card.dev = &pdev->dev;
++	platform_set_drvdata(pdev, card);
++	snd_soc_card_set_drvdata(card, machine);
++
++	ret = devm_snd_soc_register_card(&pdev->dev, card);
++	if (ret) {
++		dev_err(&pdev->dev,
++			"snd_soc_register_card(%s) failed: %d\n",
++				acp3x_card.name, ret);
++		return ret;
++	}
++	return 0;
++}
++
++static struct platform_driver acp3x_mach_driver = {
++	.driver = {
++		.name = "acp3x_w5102_mach",
++		.pm = &snd_soc_pm_ops,
++	},
++	.probe = acp3x_probe,
++};
++
++static int __init acp3x_audio_init(void)
++{
++	platform_driver_register(&acp3x_mach_driver);
++	return 0;
++}
++
++static void __exit acp3x_audio_exit(void)
++{
++	platform_driver_unregister(&acp3x_mach_driver);
++}
++
++module_init(acp3x_audio_init);
++module_exit(acp3x_audio_exit);
++
++MODULE_AUTHOR("Maruthi.Bayyavarapu@amd.com");
++MODULE_LICENSE("GPL v2");
+diff --git a/sound/soc/amd/raven/dummy-w5102.c b/sound/soc/amd/raven/dummy-w5102.c
+new file mode 100755
+index 000000000000..a629c66ccea6
+--- /dev/null
++++ b/sound/soc/amd/raven/dummy-w5102.c
+@@ -0,0 +1,94 @@
++/*
++ * dummy audio codec driver
++ *
++ * Copyright 2016 Advanced Micro Devices, Inc.
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++ * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
++ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
++ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
++ * OTHER DEALINGS IN THE SOFTWARE.
++ *
++ *
++ */
++
++#include <linux/module.h>
++#include <sound/soc.h>
++#include "acp3x.h"
++#define W5102_RATES	SNDRV_PCM_RATE_8000_96000
++#define W5102_FORMATS	(SNDRV_PCM_FMTBIT_S8 | \
++			SNDRV_PCM_FMTBIT_S16_LE | \
++			SNDRV_PCM_FMTBIT_S32_LE | \
++			SNDRV_PCM_FMTBIT_S24_LE)
++
++static const struct snd_soc_dapm_widget w5102_widgets[] = {
++	SND_SOC_DAPM_OUTPUT("dummy-w5102-out"),
++	SND_SOC_DAPM_INPUT("dummy-w5102-in"),
++};
++
++static const struct snd_soc_dapm_route w5102_routes[] = {
++	{ "dummy-w5102-out", NULL, "Playback" },
++	{ "Capture", NULL, "dummy-w5102-in" },
++};
++
++static struct snd_soc_dai_driver w5102_stub_dai = {
++	.name		= "dummy_w5102_dai",
++	.playback	= {
++		.stream_name	= "Playback",
++		.channels_min	= 2,
++		.channels_max	= 8,
++		.rates		= W5102_RATES,
++		.formats	= W5102_FORMATS,
++	},
++	.capture	= {
++		.stream_name	= "Capture",
++		.channels_min	= 2,
++		.channels_max	= 8,
++		.rates		= W5102_RATES,
++		.formats	= W5102_FORMATS,
++	},
++
++};
++
++static const struct snd_soc_component_driver soc_component_wm5102_dummy = {
++	 .dapm_widgets = w5102_widgets,
++         .num_dapm_widgets = ARRAY_SIZE(w5102_widgets),
++         .dapm_routes = w5102_routes,
++         .num_dapm_routes = ARRAY_SIZE(w5102_routes),
++};
++
++static int dummy_w5102_probe(struct platform_device *pdev)
++{
++	int ret;
++
++	ret = devm_snd_soc_register_component(&pdev->dev,
++					      &soc_component_wm5102_dummy,
++					      &w5102_stub_dai, 1);
++	return ret;
++}
++
++static struct platform_driver dummy_w5102_driver = {
++	.probe		= dummy_w5102_probe,
++	.driver		= {
++		.name	= "dummy_w5102",
++		.owner	= THIS_MODULE,
++	},
++};
++
++module_platform_driver(dummy_w5102_driver);
++
++MODULE_DESCRIPTION("dummy-w5102 dummy codec driver");
++MODULE_LICENSE("GPL v2");
++MODULE_ALIAS("platform: dummy_w5102");
+diff --git a/sound/soc/amd/raven/pci-acp3x.c b/sound/soc/amd/raven/pci-acp3x.c
+old mode 100644
+new mode 100755
+index a013a607b3d4..09b0b1313dde
+--- a/sound/soc/amd/raven/pci-acp3x.c
++++ b/sound/soc/amd/raven/pci-acp3x.c
+@@ -19,6 +19,7 @@ struct acp3x_dev_data {
+ 	bool acp3x_audio_mode;
+ 	struct resource *res;
+ 	struct platform_device *pdev[ACP3x_DEVS];
++	struct platform_device *pdevPlt[2];
+ 	u32 pme_en;
+ };
+ 
+@@ -241,6 +242,23 @@ static int snd_acp3x_probe(struct pci_dev *pci,
+ 				goto unregister_devs;
+ 			}
+ 		}
++		/* create dummy codec device */
++		adata->pdevPlt[0] = platform_device_register_simple("dummy_w5102",
++								 0, NULL, 0);
++		if (IS_ERR(adata->pdevPlt[0])) {
++			dev_err(&pci->dev, "Cannot register dummy_w5102\n");
++			ret = PTR_ERR(adata->pdevPlt[0]);
++			goto unregister_pdev0;
++		}
++		/* create dummy mach device */
++		adata->pdevPlt[1] =
++			platform_device_register_simple("acp3x_w5102_mach", 0,
++							NULL, 0);
++		if (IS_ERR(adata->pdevPlt[1])) {
++			dev_err(&pci->dev, "Can't register acp3x_w5102_mach\n");
++			ret = PTR_ERR(adata->pdevPlt[1]);
++			goto unregister_pdev1;
++		}
+ 		break;
+ 	default:
+ 		dev_info(&pci->dev, "ACP audio mode : %d\n", val);
+@@ -252,6 +270,11 @@ static int snd_acp3x_probe(struct pci_dev *pci,
+ 	pm_runtime_allow(&pci->dev);
+ 	return 0;
+ 
++unregister_pdev1:
++	platform_device_unregister(adata->pdevPlt[1]);
++unregister_pdev0:
++	platform_device_unregister(adata->pdevPlt[0]);
++
+ unregister_devs:
+ 	if (val == I2S_MODE)
+ 		for (i = 0; i < ACP3x_DEVS; i++)
+@@ -312,6 +335,10 @@ static void snd_acp3x_remove(struct pci_dev *pci)
+ 		for (i = 0; i < ACP3x_DEVS; i++)
+ 			platform_device_unregister(adata->pdev[i]);
+ 	}
++
++	platform_device_unregister(adata->pdevPlt[1]);
++	platform_device_unregister(adata->pdevPlt[0]);
++
+ 	ret = acp3x_deinit(adata->acp3x_base);
+ 	if (ret)
+ 		dev_err(&pci->dev, "ACP de-init failed\n");
+-- 
+2.34.1
+

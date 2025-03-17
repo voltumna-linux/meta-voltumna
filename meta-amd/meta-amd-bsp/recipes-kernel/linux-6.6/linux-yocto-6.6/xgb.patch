@@ -1,0 +1,263 @@
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-dev.c b/drivers/net/ethernet/amd/xgbe/xgbe-dev.c
+index bc1cd7d37d93..7393412ae58c 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-dev.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-dev.c
+@@ -120,6 +120,7 @@
+ #include <linux/bitrev.h>
+ #include <linux/crc32.h>
+ #include <linux/crc32poly.h>
++#include <linux/pci.h>
+ 
+ #include "xgbe.h"
+ #include "xgbe-common.h"
+@@ -1215,6 +1216,8 @@ static int xgbe_read_mmd_regs_v2(struct xgbe_prv_data *pdata, int prtad,
+ 	unsigned long flags;
+ 	unsigned int mmd_address, index, offset;
+ 	int mmd_data;
++	unsigned short val=0;
++	struct pci_dev *rdev;
+ 
+ 	if (mmd_reg & XGBE_ADDR_C45)
+ 		mmd_address = mmd_reg & ~XGBE_ADDR_C45;
+@@ -1233,10 +1236,23 @@ static int xgbe_read_mmd_regs_v2(struct xgbe_prv_data *pdata, int prtad,
+ 	mmd_address <<= 1;
+ 	index = mmd_address & ~pdata->xpcs_window_mask;
+ 	offset = pdata->xpcs_window + (mmd_address & pdata->xpcs_window_mask);
++	if (pdata->vdata->is_crater) {
++	rdev = pci_get_domain_bus_and_slot(0, 0, PCI_DEVFN(0, 0));
++	if (!rdev)
++		return 0;
++	}
+ 
+ 	spin_lock_irqsave(&pdata->xpcs_lock, flags);
++	if (pdata->vdata->is_crater) {
++	pci_user_write_config_dword(rdev, 0x60, (pdata->xphy_base + pdata->xpcs_window_sel_reg));
++	pci_user_write_config_dword(rdev, 0x64, index);
++	pci_user_write_config_dword(rdev, 0x60, pdata->xphy_base + offset);
++	pci_user_read_config_dword(rdev, 0x64, &mmd_data);
++	} else {
+ 	XPCS32_IOWRITE(pdata, pdata->xpcs_window_sel_reg, index);
+ 	mmd_data = XPCS16_IOREAD(pdata, offset);
++	}
++
+ 	spin_unlock_irqrestore(&pdata->xpcs_lock, flags);
+ 
+ 	return mmd_data;
+@@ -1247,6 +1263,9 @@ static void xgbe_write_mmd_regs_v2(struct xgbe_prv_data *pdata, int prtad,
+ {
+ 	unsigned long flags;
+ 	unsigned int mmd_address, index, offset;
++	unsigned int val;
++	unsigned int tmp_mmd_data;
++	struct pci_dev *rdev;
+ 
+ 	if (mmd_reg & XGBE_ADDR_C45)
+ 		mmd_address = mmd_reg & ~XGBE_ADDR_C45;
+@@ -1265,10 +1284,43 @@ static void xgbe_write_mmd_regs_v2(struct xgbe_prv_data *pdata, int prtad,
+ 	mmd_address <<= 1;
+ 	index = mmd_address & ~pdata->xpcs_window_mask;
+ 	offset = pdata->xpcs_window + (mmd_address & pdata->xpcs_window_mask);
++	
++	if (pdata->vdata->is_crater) {
++	rdev = pci_get_domain_bus_and_slot(0, 0, PCI_DEVFN(0, 0));
++	if (!rdev)
++		return;
++	}
+ 
+ 	spin_lock_irqsave(&pdata->xpcs_lock, flags);
++	if (pdata->vdata->is_crater) {
++	pci_user_write_config_dword(rdev, 0x60, (pdata->xphy_base + pdata->xpcs_window_sel_reg));
++	pci_user_write_config_dword(rdev, 0x64, index);
++
++	pci_user_write_config_dword(rdev, 0x60, pdata->xphy_base + offset);
++	pci_user_read_config_dword(rdev, 0x64, &tmp_mmd_data);
++
++	if(offset%4) {
++		tmp_mmd_data &= ~0xFFFF0000;
++		tmp_mmd_data |=  (mmd_data << 16);
++	} else {
++
++		tmp_mmd_data &= ~0x0000FFFF;
++		tmp_mmd_data |=  (mmd_data );
++	}
++
++	val = tmp_mmd_data;
++
++	pci_user_write_config_dword(rdev, 0x60, (pdata->xphy_base + pdata->xpcs_window_sel_reg));
++	pci_user_write_config_dword(rdev, 0x64, index);
++
++	pci_user_write_config_dword(rdev, 0x60, (pdata->xphy_base + offset));
++	pci_user_write_config_dword(rdev, 0x64, tmp_mmd_data);
++	pci_dev_put(rdev);
++	} else {
+ 	XPCS32_IOWRITE(pdata, pdata->xpcs_window_sel_reg, index);
+ 	XPCS16_IOWRITE(pdata, offset, mmd_data);
++	}
++
+ 	spin_unlock_irqrestore(&pdata->xpcs_lock, flags);
+ }
+ 
+@@ -1327,16 +1379,21 @@ static void xgbe_write_mmd_regs_v1(struct xgbe_prv_data *pdata, int prtad,
+ 	spin_unlock_irqrestore(&pdata->xpcs_lock, flags);
+ }
+ 
++static DEFINE_MUTEX(xgbe_phy_comm_lock_crater);
+ static int xgbe_read_mmd_regs(struct xgbe_prv_data *pdata, int prtad,
+ 			      int mmd_reg)
+ {
++	unsigned int xgbe_read_mmd;
+ 	switch (pdata->vdata->xpcs_access) {
+ 	case XGBE_XPCS_ACCESS_V1:
+ 		return xgbe_read_mmd_regs_v1(pdata, prtad, mmd_reg);
+ 
+ 	case XGBE_XPCS_ACCESS_V2:
+ 	default:
+-		return xgbe_read_mmd_regs_v2(pdata, prtad, mmd_reg);
++		mutex_lock(&xgbe_phy_comm_lock_crater);
++	xgbe_read_mmd =  xgbe_read_mmd_regs_v2(pdata, prtad, mmd_reg);
++	mutex_unlock(&xgbe_phy_comm_lock_crater);
++	return xgbe_read_mmd;
+ 	}
+ }
+ 
+@@ -1349,7 +1406,9 @@ static void xgbe_write_mmd_regs(struct xgbe_prv_data *pdata, int prtad,
+ 
+ 	case XGBE_XPCS_ACCESS_V2:
+ 	default:
+-		return xgbe_write_mmd_regs_v2(pdata, prtad, mmd_reg, mmd_data);
++		mutex_lock(&xgbe_phy_comm_lock_crater);
++		xgbe_write_mmd_regs_v2(pdata, prtad, mmd_reg, mmd_data);
++		mutex_unlock(&xgbe_phy_comm_lock_crater);
+ 	}
+ }
+ 
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-pci.c b/drivers/net/ethernet/amd/xgbe/xgbe-pci.c
+index b0eaa933f00b..670329699f33 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-pci.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-pci.c
+@@ -279,7 +279,7 @@ static int xgbe_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 		pdata->xpcs_window_def_reg = PCS_V2_RV_WINDOW_DEF;
+ 		pdata->xpcs_window_sel_reg = PCS_V2_RV_WINDOW_SELECT;
+ 	} else if (rdev && (rdev->vendor == PCI_VENDOR_ID_AMD) &&
+-		   (rdev->device == 0x14b5)) {
++		((rdev->device == 0x14b5) || (rdev->device == 0x1630))) {
+ 		pdata->xpcs_window_def_reg = PCS_V2_YC_WINDOW_DEF;
+ 		pdata->xpcs_window_sel_reg = PCS_V2_YC_WINDOW_SELECT;
+ 
+@@ -288,6 +288,17 @@ static int xgbe_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 
+ 		/* Yellow Carp devices do not need rrc */
+ 		pdata->vdata->enable_rrc = 0;
++		if(rdev->device == 0x14b5) {
++	pdata->vdata->is_yc = 1;
++	dev_dbg(dev, "Disabling the RRC on Yellow carp devices\n");
++	}
++	if(rdev->device == 0x1630) {
++	dev_dbg(dev, "Disabling the RRC on V2000 devices\n");
++	pdata->xpcs_window_def_reg = 0xF8078;
++	pdata->xpcs_window_sel_reg = 0xF807c;
++	pdata->vdata->is_crater = 1;
++	}
++
+ 	} else {
+ 		pdata->xpcs_window_def_reg = PCS_V2_WINDOW_DEF;
+ 		pdata->xpcs_window_sel_reg = PCS_V2_WINDOW_SELECT;
+@@ -295,6 +306,7 @@ static int xgbe_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 	pci_dev_put(rdev);
+ 
+ 	/* Configure the PCS indirect addressing support */
++	if (!pdata->vdata->is_crater) {
+ 	reg = XPCS32_IOREAD(pdata, pdata->xpcs_window_def_reg);
+ 	pdata->xpcs_window = XPCS_GET_BITS(reg, PCS_V2_WINDOW_DEF, OFFSET);
+ 	pdata->xpcs_window <<= 6;
+@@ -314,6 +326,8 @@ static int xgbe_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 			pdata->xpcs_window_mask);
+ 	}
+ 
++	}
++
+ 	pci_set_master(pdev);
+ 
+ 	/* Enable all interrupts in the hardware */
+@@ -361,6 +375,41 @@ static int xgbe_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 		dev_dbg(dev, "port property 5 = %#010x\n", pdata->pp5);
+ 	}
+ 
++	
++	if (pdata->vdata->is_crater) {
++	rdev = pci_get_domain_bus_and_slot(0, 0, PCI_DEVFN(0, 0));
++	pdata->xphy_base = 0x11e00000 + (0x100000 * XP_GET_BITS(pdata->pp0, XP_PROP_0, PORT_ID));
++	if (netif_msg_probe(pdata)) {
++		dev_dbg(dev, "xphy_dev  = %p\n", rdev);
++		dev_dbg(dev, "xphy_base = %08x\n", pdata->xphy_base);
++	}
++
++/* Configure the PCS indirect addressing support */
++
++	amd_smn_read(0, pdata->xphy_base + (pdata->xpcs_window_def_reg), &reg);
++	pci_dev_put(rdev);
++
++	pdata->xpcs_window = XPCS_GET_BITS(reg, PCS_V2_WINDOW_DEF, OFFSET);
++	pdata->xpcs_window <<= 6;
++	pdata->xpcs_window_size = XPCS_GET_BITS(reg, PCS_V2_WINDOW_DEF, SIZE);
++	pdata->xpcs_window_size = 1 << (pdata->xpcs_window_size + 7);
++	pdata->xpcs_window_mask = pdata->xpcs_window_size - 1;
++	if (netif_msg_probe(pdata)) {
++		dev_dbg(dev, "xpcs window def  = %#010x\n",
++			pdata->xpcs_window_def_reg);
++		dev_dbg(dev, "xpcs window sel  = %#010x\n",
++			pdata->xpcs_window_sel_reg);
++		dev_dbg(dev, "xpcs window	   = %#010x\n",
++			pdata->xpcs_window);
++		dev_dbg(dev, "xpcs window size = %#010x\n",
++			pdata->xpcs_window_size);
++		dev_dbg(dev, "xpcs window mask = %#010x\n",
++			pdata->xpcs_window_mask);
++	}
++}
++
++
++
+ 	/* Set the maximum channels and queues */
+ 	pdata->tx_max_channel_count = XP_GET_BITS(pdata->pp1, XP_PROP_1,
+ 						  MAX_TX_DMA);
+@@ -514,6 +563,9 @@ static const struct pci_device_id xgbe_pci_table[] = {
+ 	  .driver_data = (kernel_ulong_t)&xgbe_v2a },
+ 	{ PCI_VDEVICE(AMD, 0x1459),
+ 	  .driver_data = (kernel_ulong_t)&xgbe_v2b },
++	{ PCI_VDEVICE(AMD, 0x1641),
++	.driver_data = (kernel_ulong_t)&xgbe_v2b },
++
+ 	/* Last entry must be zero */
+ 	{ 0, }
+ };
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe.h b/drivers/net/ethernet/amd/xgbe/xgbe.h
+index 7eff27409e6d..8e401a4efa89 100755
+--- a/drivers/net/ethernet/amd/xgbe/xgbe.h
++++ b/drivers/net/ethernet/amd/xgbe/xgbe.h
+@@ -133,7 +133,7 @@
+ #include <linux/dcache.h>
+ #include <linux/ethtool.h>
+ #include <linux/list.h>
+-
++#include <asm/amd_nb.h>
+ #define XGBE_DRV_NAME		"amd-xgbe"
+ #define XGBE_DRV_DESC		"AMD 10 Gigabit Ethernet Driver"
+ 
+@@ -1074,6 +1074,7 @@ struct xgbe_version_data {
+ 	unsigned int rx_desc_prefetch;
+ 	unsigned int an_cdr_workaround;
+ 	unsigned int enable_rrc;
++	unsigned int is_crater;
+ };
+ 
+ struct xgbe_prv_data {
+@@ -1084,7 +1085,7 @@ struct xgbe_prv_data {
+ 	struct device *dev;
+ 	struct platform_device *phy_platdev;
+ 	struct device *phy_dev;
+-
++	unsigned int xphy_base;
+ 	/* Version related data */
+ 	struct xgbe_version_data *vdata;
+ 
