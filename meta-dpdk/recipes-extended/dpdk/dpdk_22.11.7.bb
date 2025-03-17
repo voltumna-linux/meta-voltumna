@@ -1,13 +1,22 @@
 include dpdk.inc
 
 SRC_URI += " \
-            file://0001-meson.build-march-and-mcpu-already-passed-by-Yocto.patch \
+            file://0001-meson.build-march-and-mcpu-already-passed-by-Yocto-21.11.patch \
 "
 
 STABLE = "-stable"
-BRANCH = "20.11"
-SRCREV = "d69724b1dcc69784bcef00b96597469b7f6e6207"
+BRANCH = "22.11"
+SRCREV = "077a7044cc5b2533410f691c8db6fb4f6667b1ca"
 S = "${WORKDIR}/git"
+
+# CVE-2021-3839 has been fixed by commit 4c40d30d2b in 21.11.1
+# NVD database is incomplete
+# CVE-2022-0669 has been fixed by commit 6cb68162e4 in 21.11.1
+# NVD database is incomplete
+CVE_CHECK_IGNORE += "\
+    CVE-2021-3839 \
+    CVE-2022-0669 \
+"
 
 # kernel module is provide by dpdk-module recipe, so disable here
 EXTRA_OEMESON = " -Denable_kmods=false \
@@ -19,14 +28,14 @@ COMPATIBLE_HOST:libc-musl:class-target = "null"
 COMPATIBLE_HOST:linux-gnux32 = "null"
 
 PACKAGECONFIG ??= " "
-PACKAGECONFIG[afxdp] = ",,libbpf"
+PACKAGECONFIG[afxdp] = ",,libbpf xdp-tools"
 PACKAGECONFIG[libvirt] = ",,libvirt"
 
 RDEPENDS:${PN} += "pciutils python3-core"
 RDEPENDS:${PN}-examples += "bash"
-DEPENDS = "numactl"
+DEPENDS = "numactl python3-pyelftools-native"
 
-inherit meson
+inherit meson pkgconfig
 
 INSTALL_PATH = "${prefix}/share/dpdk"
 
@@ -47,10 +56,10 @@ do_install:append(){
 
 PACKAGES =+ "${PN}-examples ${PN}-tools"
 
-FILES:${PN} = " ${bindir}/dpdk-testpmd \
+FILES:${PN} += " ${bindir}/dpdk-testpmd \
 		 ${bindir}/dpdk-proc-info \
 		 ${libdir}/*.so* \
-		 ${libdir}/dpdk/pmds-21.0/*.so* \
+		 ${libdir}/dpdk/pmds-23.0/*.so* \
 		 "
 FILES:${PN}-examples = " \
 	${prefix}/share/dpdk/examples/* \

@@ -41,6 +41,7 @@ index 0000000000..19897ee06e
 +MODULE_CFLAGS += -I$(S)/lib/librte_eal/include
 +MODULE_CFLAGS += -I$(S)/lib/librte_kni
 +MODULE_CFLAGS += -I$(S)/kernel/linux/kni
++MODULE_CFLAGS += -I$(S)/lib/kni
 +MODULE_CFLAGS += -I$(S)
 +MODULE_CFLAGS += -I$(STAGING_INCDIR)
 +

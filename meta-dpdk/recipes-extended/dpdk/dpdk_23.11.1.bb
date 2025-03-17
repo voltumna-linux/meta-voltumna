@@ -1,27 +1,23 @@
 include dpdk.inc
 
-SRC_URI += " \
-            file://0001-meson.build-march-and-mcpu-already-passed-by-Yocto-21.11.patch \
-"
+SRC_URI += " file://0001-config-meson-get-cpu_instruction_set-from-meson-opti.patch \
+             file://CVE-2024-11614.patch \
+           "
 
 STABLE = "-stable"
-BRANCH = "21.11"
-SRCREV = "49b2102bf9fea000d36860353016a5c6ddf993a9"
+BRANCH = "23.11"
+SRCREV = "a6ec5765cf83d3d58cbd6d4ed5b92b4a06f8a808"
 S = "${WORKDIR}/git"
 
-# CVE-2021-3839 has been fixed by commit 4c40d30d2b in 21.11.1
-# NVD database is incomplete
-# CVE-2022-0669 has been fixed by commit 6cb68162e4 in 21.11.1
-# NVD database is incomplete
-CVE_CHECK_IGNORE += "\
-    CVE-2021-3839 \
-    CVE-2022-0669 \
-"
+def get_cpu_instruction_set(bb, d):
+    import re
+    march = re.search(r'-march=([^\s]*)', d.getVar('CC'))
+    if march:
+        return march.group(1)
+    else:
+        return "core2"
 
-# kernel module is provide by dpdk-module recipe, so disable here
-EXTRA_OEMESON = " -Denable_kmods=false \
-                -Dexamples=all \
-"
+EXTRA_OEMESON = " -Dexamples=all -Dcpu_instruction_set=${@get_cpu_instruction_set(bb, d)} "
 
 COMPATIBLE_MACHINE = "null"
 COMPATIBLE_HOST:libc-musl:class-target = "null"
@@ -59,7 +55,7 @@ PACKAGES =+ "${PN}-examples ${PN}-tools"
 FILES:${PN} += " ${bindir}/dpdk-testpmd \
 		 ${bindir}/dpdk-proc-info \
 		 ${libdir}/*.so* \
-		 ${libdir}/dpdk/pmds-22.0/*.so* \
+		 ${libdir}/dpdk/pmds-24.0/*.so* \
 		 "
 FILES:${PN}-examples = " \
 	${prefix}/share/dpdk/examples/* \
