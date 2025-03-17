@@ -5,6 +5,58 @@ DEPENDS = "coreutils-native bc-native bison-native dtc-native flex-native"
 DEPENDS:append = " python3-setuptools-native swig-native u-boot-mkimage-native"
 DEPENDS:append = " u-boot-tools virtual/kernel"
 
+DEPENDS:append:agilex7_dk_si_agf014ea = " arm-trusted-firmware bash"
+DEPENDS:append:agilex7_dk_si_agf014eb = " arm-trusted-firmware bash"
+DEPENDS:append:agilex7_dk_si_agi027fb = " arm-trusted-firmware bash"
+DEPENDS:append:agilex7_dk_si_agi027fa = " arm-trusted-firmware bash"
+DEPENDS:append:agilex7_dk_si_agi027fc = " arm-trusted-firmware bash"
+DEPENDS:append:agilex7_dk_dev_agf027f1es = " arm-trusted-firmware bash"
+DEPENDS:append:agilex7_dk_dev_agm039fes = " arm-trusted-firmware bash"
+DEPENDS:append:agilex5 = " arm-trusted-firmware bash"
+DEPENDS:append:agilex5_dk_a5e065bb32aes1 = " arm-trusted-firmware bash"
+DEPENDS:append:agilex5_dk_a5e013bb32aesi0 = " arm-trusted-firmware bash"
+DEPENDS:append:agilex5_modular = " arm-trusted-firmware bash"
+DEPENDS:append:agilex5_mudv_cvr = " arm-trusted-firmware bash"
+DEPENDS:append:agilex5_mucv = " arm-trusted-firmware bash"
+DEPENDS:append:stratix10 = " arm-trusted-firmware bash"
+DEPENDS:append:stratix10_htile = " arm-trusted-firmware bash"
+DEPENDS:append:n5x = " arm-trusted-firmware bash"
+
+COMPILE_PREPEND_FILES:agilex7_dk_si_agf014ea = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex7_dk_si_agf014eb = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex7_dk_si_agi027fb = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex7_dk_si_agi027fa = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex7_dk_si_agi027fc = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex7_dk_dev_agf027f1es = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex7_dk_dev_agm039fes = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex5 = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex5_dk_a5e065bb32aes1 = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex5_dk_a5e013bb32aesi0 = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex5_modular = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex5_mudv_cvr = " bl31.bin "
+COMPILE_PREPEND_FILES:agilex5_mucv = " bl31.bin "
+COMPILE_PREPEND_FILES:stratix10 = " bl31.bin "
+COMPILE_PREPEND_FILES:stratix10_htile = " bl31.bin "
+COMPILE_PREPEND_FILES:n5x = " bl31.bin Image linux.dtb u-boot.txt "
+COMPILE_PREPEND_FILES:arria10 = " Image "
+
+DEPLOY_APPEND_FILES:agilex7_dk_si_agf014ea = ""
+DEPLOY_APPEND_FILES:agilex7_dk_si_agf014eb = ""
+DEPLOY_APPEND_FILES:agilex7_dk_si_agi027fb = ""
+DEPLOY_APPEND_FILES:agilex7_dk_si_agi027fa = ""
+DEPLOY_APPEND_FILES:agilex7_dk_si_agi027fc = ""
+DEPLOY_APPEND_FILES:agilex7_dk_dev_agf027f1es = ""
+DEPLOY_APPEND_FILES:agilex7_dk_dev_agm039fes = ""
+DEPLOY_APPEND_FILES:agilex5 = ""
+DEPLOY_APPEND_FILES:agilex5_dk_a5e065bb32aes1 = ""
+DEPLOY_APPEND_FILES:agilex5_dk_a5e013bb32aesi0 = ""
+DEPLOY_APPEND_FILES:agilex5_modular = ""
+DEPLOY_APPEND_FILES:agilex5_mudv_cvr = ""
+DEPLOY_APPEND_FILES:agilex5_mucv = ""
+DEPLOY_APPEND_FILES:stratix10 = ""
+DEPLOY_APPEND_FILES:stratix10_htile = ""
+DEPLOY_APPEND_FILES:n5x = " kernel.itb "
+
 LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM ?= "file://Licenses/README;md5=30503fd321432fc713238f582193b78e"
 PE = "1"
@@ -69,7 +121,7 @@ do_compile:prepend() {
 }
 
 do_install:append() {
-	if [ "${MACHINE}" = "agilex" ] || [ "${MACHINE}" = "stratix10" ] || [ "${MACHINE}" = "n5x" ]; then
+	if [ "${MACHINE}" = *"agilex7_"* ] || [ "${MACHINE}" = *"agilex5"* ] || [ "${MACHINE}" = *"stratix10"* ] || [ "${MACHINE}" = "n5x" ]; then
 		if [ -n "${UBOOT_CONFIG}" ]; then
 			for config in ${UBOOT_MACHINE}; do
 				i=$(expr $i + 1);
@@ -80,7 +132,7 @@ do_install:append() {
 						install -D -m 644 ${B}/${config}/u-boot-${type}.itb ${D}/boot/u-boot-${type}-${PV}-${PR}.itb
 						ln -sf u-boot-${type}-${PV}-${PR}.itb ${D}/boot/u-boot.itb-${type}
 						ln -sf u-boot-${type}-${PV}-${PR}.itb ${D}/boot/u-boot.itb
-						rm -rf  ${D}/boot/*.img*
+						rm -rf  ${D}/boot/?*.img*
 					fi
 				done
 				unset j
@@ -91,7 +143,7 @@ do_install:append() {
 			install -D -m 644 ${B}/u-boot-${config}.itb ${D}/boot/u-boot-${UBOOT_CONFIG}-${PV}-${PR}.itb
 			ln -sf u-boot-${UBOOT_CONFIG}-${PV}-${PR}.itb ${D}/boot/u-boot.itb-${UBOOT_CONFIG}
 			ln -sf u-boot-${UBOOT_CONFIG}-${PV}-${PR}.itb ${D}/boot/u-boot.itb
-			rm -rf  ${D}/boot/*.img*
+			rm -rf  ${D}/boot/?*.img*
 		fi
 	fi
 }
