@@ -1,0 +1,129 @@
+The official OpenEmbedded/Yocto BSP layer for Intel SoCFPGA platforms.
+
+
+Yocto Project Compatible
+========================
+
+The BSPs contained in this layer are compatible with the Yocto Project
+as per the requirements listed here:
+
+  https://www.yoctoproject.org/webform/yocto-project-compatible-registration
+
+
+Dependencies
+============
+
+This layer depends on:
+
+  URI: git://git.yoctoproject.org/poky
+  URI: git://git.openembedded.org/meta-openembedded/meta-python
+
+
+Supported U-Boot and Linux Kernels
+==================================
+
+It is important to understand the support and release of u-boot-socfpga
+and linux-socfpga in the github.com/altera-opensource repositories.  Only
+currently supported and maintained releases/branches are available in the
+repository. As such, supported kernel and u-boot releases are updated regularly
+in currently supported meta-intel-fpga branches.  Kernel and u-boot releases
+which are no longer supported are removed.
+
+
+Supported branches
+==================
+
+Only branches listed appropriately in https://wiki.yoctoproject.org/wiki/Stable_branch_maintenance are maintained.
+
+
+Choosing Kernel Versions
+========================
+
+This layer has a few providers for the kernel.  These are the linux-socfpga
+and linux-socfpga-lts kernels.
+
+To specify a linux-socfpga kernel, add the following to your conf/local.conf
+
+	PREFERRED_PROVIDER_virtual/kernel = "linux-socfpga"
+	PREFERRED_VERSION_linux-socfpga = "5.13%"
+
+or for the linux-socfpga-lts kernel
+
+	PREFERRED_PROVIDER_virtual/kernel = "linux-socfpga-lts"
+	PREFERRED_VERSION_linux-socfpga-lts = "5.10%"
+
+
+Specifying Devicetrees and U-Boot Configurations
+================================================
+
+All of the supported machines select default u-boot configurations and devicetrees.
+These selections can be overridden in the local.conf or by defining your own
+machine in your own layer.
+
+An example of this is the Arria10 SoC Dev Kit, which is a supported configuration
+in the U-Boot default configuration definition.
+
+	UBOOT_CONFIG = "arria10-socdk"
+	UBOOT_EXTLINUX_FDT_default = "../socfpga_arria10_socdk_sdmmc.dtb"
+
+The above overrides the u-boot configuration, "arria10-socdk" is a target in u-boot,
+and configures distroboot to indicate the arria10-socdk devicetree.
+Please keep in mind that not all targets are using distroboot in u-boot and may
+require u-boot environment changes.
+
+
+Guidelines for submitting patches
+=================================
+
+Please submit any patches against meta-intel BSPs to the meta-intel
+mailing list (meta-intel@lists.yoctoproject.org).  Also, if your patches are
+available via a public git repository, please also include a URL to
+the repo and branch containing your patches as that makes it easier
+for maintainers to grab and test your patches.
+
+There are patch submission scripts available that will, among other
+things, automatically include the repo URL and branch as mentioned.
+Please see the Yocto Project Development Manual sections entitled
+'Using Scripts to Push a Change Upstream and Request a Pull' and
+'Using Email to Submit a Patch' for details.
+
+Regardless of how you submit a patch or patchset, the patches should
+at minimum follow the suggestions outlined in the 'Submitting a Change
+to the Yocto Project' section in the Yocto Project Development Manual.
+Specifically, they should:
+
+  - Include a 'Signed-off-by:' line.  A commit can't legally be pulled
+    in without this.
+
+  - Provide a single-line, short summary of the change.  This short
+    description should be prefixed by the BSP or recipe name, as
+    appropriate, followed by a colon.  Capitalize the first character
+    of the summary (following the colon).
+
+  - For the body of the commit message, provide detailed information
+    that describes what you changed, why you made the change, and the
+    approach you used.
+
+  - If the change addresses a specific bug or issue that is associated
+    with a bug-tracking ID, include a reference to that ID in your
+    detailed description in the following format: [YOCTO #<bug-id>].
+
+  - Pay attention to line length - please don't allow any particular
+    line in the commit message to stretch past 72 characters.
+
+  - For any non-trivial patch, provide information about how you
+    tested the patch, and for any non-trivial or non-obvious testing
+    setup, provide details of that setup.
+
+Doing a quick 'git log' in meta-intel-fpga will provide you with many
+examples of good example commits if you have questions about any
+aspect of the preferred format.
+
+The meta-intel-fpga maintainers will do their best to review and/or
+pull in a patch or patchset within 48 hours of the time it was posted.
+For larger and/or more involved patches and patchsets, the review
+process may take longer.
+
+Please see the meta-intel-fpga/MAINTAINERS file for the list of
+maintainers and their specific areas; it's also a good idea to cc: the
+specific maintainer, if applicable.
