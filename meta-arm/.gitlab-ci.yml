@@ -1,0 +1,157 @@
+image: ghcr.io/siemens/kas/kas:3.2
+
+variables:
+  CPU_REQUEST: ""
+  DEFAULT_TAG: ""
+  # These are needed as the k8s executor doesn't respect the container entrypoint
+  # by default
+  FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY: 0
+  FF_KUBERNETES_HONOR_ENTRYPOINT: 1
+
+stages:
+  - prep
+  - bootstrap
+  - build
+
+# Common job fragment to get a worker ready
+.setup:
+  tags:
+    - $DEFAULT_TAG
+  stage: build
+  variables:
+    KAS_WORK_DIR: $CI_PROJECT_DIR/work
+    KAS_REPO_REF_DIR: $CI_BUILDS_DIR/persist/repos
+    SSTATE_DIR: $CI_BUILDS_DIR/persist/sstate
+    DL_DIR: $CI_BUILDS_DIR/persist/downloads
+    BB_LOGCONFIG: $CI_PROJECT_DIR/ci/logging.yml
+    IMAGE_DIR: $CI_PROJECT_DIR/work/build/tmp/deploy/images
+  before_script:
+    - echo KAS_WORK_DIR = $KAS_WORK_DIR
+    - echo SSTATE_DIR = $SSTATE_DIR
+    - echo DL_DIR = $DL_DIR
+    - rm -rf $KAS_WORK_DIR
+    - mkdir --verbose --parents $KAS_WORK_DIR $KAS_REPO_REF_DIR $SSTATE_DIR $DL_DIR
+
+# Generalised fragment to do a Kas build
+.build:
+  extends: .setup
+  variables:
+    KUBERNETES_CPU_REQUEST: $CPU_REQUEST
+  interruptible: true
+  script:
+    - KASFILES=$(./ci/jobs-to-kas $CI_JOB_NAME)
+    - kas shell --update --force-checkout $KASFILES -c 'cat conf/*.conf'
+    - kas build $KASFILES
+    - ./ci/check-warnings $KAS_WORK_DIR/build/warnings.log
+
+#
+# Prep stage, update repositories once
+#
+update-repos:
+  extends: .setup
+  stage: prep
+  script:
+  - flock --verbose --timeout 60 $KAS_REPO_REF_DIR ./ci/update-repos
+
+
+#
+# Bootstrap stage, bootstrap and machine coverage
+#
+
+# Build a number of native tools first to ensure the other builders don't race
+# over them
+n1sdp/bootstrap:
+  extends: .build
+  stage: bootstrap
+
+# What percentage of machines in the layer do we build
+machine-coverage:
+  stage: bootstrap
+  tags:
+    - $DEFAULT_TAG
+  script:
+  - ./ci/check-machine-coverage
+  coverage: '/Coverage: \d+/'
+
+
+#
+# Build stage, the actual build jobs
+#
+
+a5ds:
+  extends: .build
+
+foundation-armv8:
+  extends: .build
+
+fvp-base:
+  extends: .build
+
+gem5-arm64:
+  extends: .build
+
+juno:
+  extends: .build
+
+juno/musl:
+  extends: .build
+
+n1sdp:
+  extends: .build
+
+n1sdp/armgcc:
+  extends: .build
+
+qemuarm/testimage:
+  extends: .build
+
+qemuarmv5/testimage:
+  extends: .build
+
+tc0:
+  extends: .build
+
+
+#
+# Utility tasks, not executed automatically
+#
+
+delete-dl-dir:
+  extends: .setup
+  stage: prep
+  when: manual
+  script:
+  - rm -rf $DL_DIR/*
+
+delete-repo-dir:
+  extends: .setup
+  stage: prep
+  when: manual
+  script:
+  - rm -rf $KAS_REPO_REF_DIR/*
+
+# Delete all sstate
+delete-sstate:
+  extends: .setup
+  stage: prep
+  when: manual
+  script:
+  - rm -rf $SSTATE_DIR/*
+
+# Wipe out old sstate
+prune-sstate:
+  extends: .setup
+  stage: prep
+  when: manual
+  script:
+  - du -h -s $SSTATE_DIR
+  - find $SSTATE_DIR -type f -atime +30 -delete
+  - du -h -s $SSTATE_DIR
+
+# Report on disk usage
+usage:
+  extends: .setup
+  stage: prep
+  when: manual
+  script:
+  - du -h -s $DL_DIR $SSTATE_DIR $KAS_REPO_REF_DIR
