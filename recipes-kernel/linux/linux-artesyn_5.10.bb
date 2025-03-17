@@ -1,15 +1,15 @@
 DESCRIPTION = "Artesyn Linux kernel"
 LICENSE = "GPL-2.0-only"
-LIC_FILES_CHKSUM = "file://COPYING;md5=bbea815ee2795b2f4230826c0c6b8814"
+LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 
-LINUX_VERSION ?= "5.4"
+LINUX_VERSION ?= "5.10"
 LINUX_VERSION_EXTENSION ?= "-artesyn"
 
-SRCREV ?= "6920e4e219fbd51d4284eaf14f5116f7aa75ee65"
-KBRANCH ?= "artesyn-${LINUX_VERSION}"
-SRC_URI = "git://github.com/voltumna-linux/linux-artesyn.git;protocol=https;branch=${KBRANCH}"
+SRCREV ?= "179624a57b78c02de833370b7bdf0b0f4a27ca31"
+KBRANCH ?= "linux-5.10.y"
+SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git;protocol=https;branch=${KBRANCH}"
 
-PV = "${LINUX_VERSION}.193+git${SRCPV}"
+PV = "${LINUX_VERSION}.165+git${SRCPV}"
 
 COMPATIBLE_MACHINE = "(mvme5100|mvme2500|mvme7100)"
 
@@ -22,11 +22,15 @@ DEPENDS:append:mvme2500 = "u-boot-mkimage-native"
 
 SRC_URI:append = " \
 	file://defconfig \
+	file://enable_compat_time.cfg \
 	"
 
 SRC_URI:append:mvme5100 = " \
 	file://altivec.cfg \
 	file://devtmpfs.cfg \
+	file://0001-MVME5100-RTC-patch-for-Linux-3.14.patch \
+	file://0002-Add-device-tree-entry-for-rtc.patch \
+	file://0003-powerpc-embedded6xx-Make-reboot-works-on-MVME5100.patch \
 	"
 
 SRC_URI:append:mvme7100 = " \
