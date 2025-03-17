@@ -1,0 +1,55 @@
+From bdcf692dd43d4956951d5e0a699fb7c1420d1006 Mon Sep 17 00:00:00 2001
+From: Raju Rangoju <Raju.Rangoju@amd.com>
+Date: Mon, 20 Dec 2021 19:24:28 +0530
+Subject: [PATCH 29/48] net: amd-xgbe: Disable the CDR workaround path for
+ Yellow Carp Devices
+
+commit 6f60ecf233f9a8c6b75c08f4133865dbe0f1fdab upstream
+
+Yellow Carp Ethernet devices do not require
+Autonegotiation CDR workaround, hence disable the same.
+
+Co-developed-by: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>
+Signed-off-by: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>
+Signed-off-by: Raju Rangoju <Raju.Rangoju@amd.com>
+Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+Signed-off-by: Zhaolong Zhang <zhaolong.zhang@windriver.com>
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-pci.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-pci.c b/drivers/net/ethernet/amd/xgbe/xgbe-pci.c
+index 6ed1eceae348..2af3da4b2d05 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-pci.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-pci.c
+@@ -282,6 +282,9 @@ static int xgbe_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 		   (rdev->device == 0x14b5)) {
+ 		pdata->xpcs_window_def_reg = PCS_V2_YC_WINDOW_DEF;
+ 		pdata->xpcs_window_sel_reg = PCS_V2_YC_WINDOW_SELECT;
++
++		/* Yellow Carp devices do not need cdr workaround */
++		pdata->vdata->an_cdr_workaround = 0;
+ 	} else {
+ 		pdata->xpcs_window_def_reg = PCS_V2_WINDOW_DEF;
+ 		pdata->xpcs_window_sel_reg = PCS_V2_WINDOW_SELECT;
+@@ -467,7 +470,7 @@ static int __maybe_unused xgbe_pci_resume(struct device *dev)
+ 	return ret;
+ }
+ 
+-static const struct xgbe_version_data xgbe_v2a = {
++static struct xgbe_version_data xgbe_v2a = {
+ 	.init_function_ptrs_phy_impl	= xgbe_init_function_ptrs_phy_v2,
+ 	.xpcs_access			= XGBE_XPCS_ACCESS_V2,
+ 	.mmc_64bit			= 1,
+@@ -482,7 +485,7 @@ static const struct xgbe_version_data xgbe_v2a = {
+ 	.an_cdr_workaround		= 1,
+ };
+ 
+-static const struct xgbe_version_data xgbe_v2b = {
++static struct xgbe_version_data xgbe_v2b = {
+ 	.init_function_ptrs_phy_impl	= xgbe_init_function_ptrs_phy_v2,
+ 	.xpcs_access			= XGBE_XPCS_ACCESS_V2,
+ 	.mmc_64bit			= 1,
+-- 
+2.27.0
+

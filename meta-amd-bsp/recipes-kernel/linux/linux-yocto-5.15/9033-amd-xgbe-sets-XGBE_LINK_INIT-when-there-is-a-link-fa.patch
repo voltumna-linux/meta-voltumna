@@ -1,0 +1,39 @@
+From cd0c915d0e28e2ecfe756db9f984941fe3843b01 Mon Sep 17 00:00:00 2001
+From: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Date: Fri, 23 Oct 2020 01:45:15 +0530
+Subject: [PATCH 33/48] amd-xgbe: sets XGBE_LINK_INIT when there is a link
+ failure
+
+When "link down" happens due to a link partner, the xgbe driver
+will not set XGBE_LINK_INIT. This is observed when the port speed
+capability is set to  10G in backplane mode.
+
+This fix sets XGBE_LINK_INIT when there is a link failure and
+XGBE_LINK_INIT is not set. This helps the driver to restart AN
+when AN link timeout happens.
+
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-mdio.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c b/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
+index 4e97b4869522..91397cf3c5ab 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
+@@ -1371,6 +1371,12 @@ static void xgbe_phy_status(struct xgbe_prv_data *pdata)
+ 		xgbe_phy_status_result(pdata);
+ 
+ 		netif_carrier_off(pdata->netdev);
++
++		if (link_aneg && ((pdata->phy_if.phy_impl.cur_mode(pdata) == XGBE_MODE_KR) ||
++				  (pdata->phy_if.phy_impl.cur_mode(pdata) == XGBE_MODE_KX_1000))) {
++			if (!test_bit(XGBE_LINK_INIT, &pdata->dev_state))
++				set_bit(XGBE_LINK_INIT, &pdata->dev_state);
++		}
+ 	}
+ 
+ adjust_link:
+-- 
+2.27.0
+
