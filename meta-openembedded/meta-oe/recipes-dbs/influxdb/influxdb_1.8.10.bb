@@ -27,6 +27,8 @@ SRCREV = "688e697c51fd5353725da078555adbeff0363d01"
 
 inherit go-mod pkgconfig systemd update-rc.d useradd
 
+export GOPROXY = "https://proxy.golang.org,direct"
+
 # Workaround for network access issue during compile step
 # this needs to be fixed in the recipes buildsystem to move
 # this such that it can be accomplished during do_fetch task
@@ -45,7 +47,7 @@ do_install:prepend() {
 do_install:append() {
     install -d ${D}${sysconfdir}/influxdb
     install -m 0644 ${WORKDIR}/influxdb.conf ${D}${sysconfdir}/influxdb
-    chown -R root.influxdb ${D}${sysconfdir}/influxdb
+    chown -R root:influxdb ${D}${sysconfdir}/influxdb
 
     install -d ${D}${sysconfdir}/init.d
     install -m 0755 ${WORKDIR}/influxdb ${D}${sysconfdir}/init.d/influxdb
@@ -58,10 +60,14 @@ do_install:append() {
     if [ "${@bb.utils.filter('DISTRO_FEATURES', 'systemd', d)}" ] ; then
         install -d ${D}${systemd_unitdir}/system
         install -m 0644 ${S}/src/${GO_IMPORT}/scripts/influxdb.service ${D}${systemd_system_unitdir}/influxdb.service
+        install -d ${D}${libdir}/influxdb/scripts
+        install -m 0755 ${S}/src/${GO_IMPORT}/scripts/influxd-systemd-start.sh ${D}${libdir}/influxdb/scripts/influxd-systemd-start.sh
     fi
 
     # TODO chown
 }
+
+FILES:${PN} += "${libdir}/influxdb/scripts/influxd-systemd-start.sh"
 
 INITSCRIPT_PACKAGES = "${PN}"
 INITSCRIPT_NAME = "influxdb"
