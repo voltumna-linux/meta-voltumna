@@ -299,6 +299,11 @@ def check_path_length(filepath, pathname, limit):
         return "The length of %s is longer than %s, this would cause unexpected errors, please use a shorter path.\n" % (pathname, limit)
     return ""
 
+def check_non_ascii(filepath, pathname):
+    if(not filepath.isascii()):
+        return "Non-ASCII character(s) in %s path (\"%s\") detected. This would cause build failures as we build software that doesn't support this.\n" % (pathname, filepath)
+    return ""
+
 def get_filesystem_id(path):
     import subprocess
     try:
@@ -602,6 +607,28 @@ def drop_v14_cross_builds(d):
                 bb.utils.remove(stamp + "*")
                 bb.utils.remove(workdir, recurse = True)
 
+def check_cpp_toolchain(d):
+    """
+    it checks if the c++ compiling and linking to libstdc++ works properly in the native system
+    """
+    import shlex
+    import subprocess
+
+    cpp_code = """
+    #include <iostream>
+    int main() {
+        std::cout << "Hello, World!" << std::endl;
+        return 0;
+    }
+    """
+
+    cmd = shlex.split(d.getVar("BUILD_CXX")) + ["-x", "c++","-", "-o", "/dev/null", "-lstdc++"]
+    try:
+        subprocess.run(cmd, input=cpp_code, capture_output=True, text=True, check=True)
+        return None
+    except subprocess.CalledProcessError as e:
+        return f"An unexpected issue occurred during the C++ toolchain check: {str(e)}"
+
 def sanity_handle_abichanges(status, d):
     #
     # Check the 'ABI' of TMPDIR
@@ -697,6 +724,7 @@ def check_sanity_version_change(status, d):
     # Check that TMPDIR isn't on a filesystem with limited filename length (eg. eCryptFS)
     import stat
     tmpdir = d.getVar('TMPDIR')
+    topdir = d.getVar('TOPDIR')
     status.addresult(check_create_long_filename(tmpdir, "TMPDIR"))
     tmpdirmode = os.stat(tmpdir).st_mode
     if (tmpdirmode & stat.S_ISGID):
@@ -760,8 +788,11 @@ def check_sanity_version_change(status, d):
     if not oes_bb_conf:
         status.addresult('You are not using the OpenEmbedded version of conf/bitbake.conf. This means your environment is misconfigured, in particular check BBPATH.\n')
 
-    # The length of TMPDIR can't be longer than 410
-    status.addresult(check_path_length(tmpdir, "TMPDIR", 410))
+    # The length of TMPDIR can't be longer than 400
+    status.addresult(check_path_length(tmpdir, "TMPDIR", 400))
+
+    # Check that TOPDIR does not contain non ascii chars (perl_5.40.0, Perl-native and shadow-native build failures)
+    status.addresult(check_non_ascii(topdir, "TOPDIR"))
 
     # Check that TMPDIR isn't located on nfs
     status.addresult(check_not_nfs(tmpdir, "TMPDIR"))
@@ -769,6 +800,9 @@ def check_sanity_version_change(status, d):
     # Check for case-insensitive file systems (such as Linux in Docker on
     # macOS with default HFS+ file system)
     status.addresult(check_case_sensitive(tmpdir, "TMPDIR"))
+
+    # Check if linking with lstdc++ is failing
+    status.addresult(check_cpp_toolchain(d))
 
 def sanity_check_locale(d):
     """
