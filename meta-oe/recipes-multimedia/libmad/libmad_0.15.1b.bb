@@ -1,7 +1,7 @@
 SUMMARY = "MPEG Audio Decoder library"
 HOMEPAGE = "http://sourceforge.net/projects/mad/"
 BUGTRACKER = "http://sourceforge.net/tracker/?group_id=12349&atid=112349"
-LICENSE = "GPLv2+"
+LICENSE = "GPL-2.0-or-later"
 LICENSE_FLAGS = "commercial"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f \
     file://COPYRIGHT;md5=8e55eb14894e782b84488d5a239bc23d \
@@ -17,7 +17,7 @@ SRC_URI = "ftp://ftp.mars.org/pub/mpeg/libmad-${PV}.tar.gz \
     file://obsolete_automake_macros.patch \
     file://automake-foreign.patch \
 "
-SRC_URI_append_toolchain-clang = " file://0004-Remove-clang-unsupported-compiler-flags.patch "
+SRC_URI:append:toolchain-clang = " file://0004-Remove-clang-unsupported-compiler-flags.patch "
 
 SRC_URI[md5sum] = "1be543bc30c56fb6bea1d7bf6a64e66c"
 SRC_URI[sha256sum] = "bbfac3ed6bfbc2823d3775ebb931087371e142bb0e9bb1bee51a76a6e0078690"
@@ -27,9 +27,9 @@ S = "${WORKDIR}/libmad-${PV}"
 inherit autotools pkgconfig
 
 EXTRA_OECONF = "-enable-speed --enable-shared"
-EXTRA_OECONF_append_arm = " --enable-fpm=arm"
+EXTRA_OECONF:append:arm = " --enable-fpm=arm"
 
-do_configure_prepend () {
+do_configure:prepend () {
 #   damn picky automake...
     touch NEWS AUTHORS ChangeLog
 }

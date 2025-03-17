@@ -2,7 +2,7 @@ SUMMARY = "Telepathy IRC connection manager"
 DESCRIPTION = "Telepathy implementation of the Internet Relay Chat protocols."
 HOMEPAGE = "http://telepathy.freedesktop.org/wiki/"
 DEPENDS = "glib-2.0 dbus telepathy-glib openssl libxslt-native"
-LICENSE = "LGPLv2.1"
+LICENSE = "LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=2d5025d4aa3495befef8f17206a5b0a1 \
                     file://src/idle.c;beginline=1;endline=19;md5=b06b1e2594423111a1a7910b0eefc7f9"
 
@@ -13,7 +13,7 @@ SRC_URI[sha256sum] = "3013ad4b38d14ee630b8cc8ada5e95ccaa849b9a6fe15d2eaf6d0717d7
 
 inherit autotools pkgconfig ${@bb.utils.contains("BBFILE_COLLECTIONS", "meta-python2", "pythonnative", "", d)}
 
-FILES_${PN} += "${datadir}/telepathy \
+FILES:${PN} += "${datadir}/telepathy \
                 ${datadir}/dbus-1"
 
 python() {

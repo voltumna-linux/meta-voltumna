@@ -1,6 +1,6 @@
 SUMMARY = "GTK Performance tool"
 SECTION = "libs"
-LICENSE = "LGPLv2.1"
+LICENSE = "LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f"
 
 SRC_URI = "http://prdownloads.sourceforge.net/${BPN}/${BPN}_${PV}.tar.gz \
@@ -21,13 +21,13 @@ inherit features_check autotools binconfig pkgconfig gettext
 
 REQUIRED_DISTRO_FEATURES = "x11"
 
-do_configure_prepend () {
+do_configure:prepend () {
     rm -f ${S}/m4/init.m4
     cp -f ${WORKDIR}/Makevars ${S}/po/
 }
 
-do_install_append () {
+do_install:append () {
     rm -rf ${D}/${exec_prefix}/doc
 }
 
-FILES_${PN} += "${exec_prefix}/share/duck.png"
+FILES:${PN} += "${exec_prefix}/share/duck.png"

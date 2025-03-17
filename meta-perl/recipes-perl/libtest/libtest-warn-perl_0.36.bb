@@ -9,7 +9,7 @@ the time to go take a look. \
 SECTION = "libs"
 HOMEPAGE= "https://metacpan.org/release/Test-Warn"
 
-LICENSE = "Artistic-1.0 | GPL-1.0+"
+LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 LIC_FILES_CHKSUM = "file://README;beginline=73;endline=78;md5=42b423d91c92ba59c215835a2ee9b57a"
 
 CPAN_PACKAGE = "Test-Warn"
@@ -29,7 +29,7 @@ do_install_ptest() {
     chown -R root:root ${D}${PTEST_PATH}
 }
 
-RDEPENDS_${PN} += " \
+RDEPENDS:${PN} += " \
     libsub-uplevel-perl \
     perl-module-blib \
     perl-module-carp \
@@ -38,7 +38,7 @@ RDEPENDS_${PN} += " \
     perl-module-test-tester \
 "
 
-RDEPENDS_${PN}-ptest += " \
+RDEPENDS:${PN}-ptest += " \
     perl-module-file-spec \
     perl-module-test-more \
 "

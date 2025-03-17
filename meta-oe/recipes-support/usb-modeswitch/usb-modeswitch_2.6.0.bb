@@ -1,5 +1,5 @@
 SUMMARY = "A mode switching tool for controlling 'flip flop' (multiple device) USB gear"
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=091556bd6d0154cd4c2d17a1bfc7380a"
 
 DEPENDS = "libusb1"
@@ -10,13 +10,13 @@ SRC_URI[sha256sum] = "c215236e6bada6e659fc195a31d611ea298a4bdb4d57a0d68c553b5658
 
 inherit pkgconfig systemd
 
-SYSTEMD_SERVICE_${PN} = "usb_modeswitch@.service"
+SYSTEMD_SERVICE:${PN} = "usb_modeswitch@.service"
 
 EXTRA_OEMAKE = "TCL=${bindir}/tclsh"
 
-FILES_${PN} = "${bindir} ${sysconfdir} ${nonarch_base_libdir}/udev/usb_modeswitch ${sbindir} ${localstatedir}/lib/usb_modeswitch"
-RDEPENDS_${PN} = "tcl"
-RRECOMMENDS_${PN} = "usb-modeswitch-data"
+FILES:${PN} = "${bindir} ${sysconfdir} ${nonarch_base_libdir}/udev/usb_modeswitch ${sbindir} ${localstatedir}/lib/usb_modeswitch"
+RDEPENDS:${PN} = "tcl"
+RRECOMMENDS:${PN} = "usb-modeswitch-data"
 
 do_install() {
     oe_runmake DESTDIR=${D} UDEVDIR=${D}/${nonarch_base_libdir}/udev install

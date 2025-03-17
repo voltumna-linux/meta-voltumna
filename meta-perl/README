@@ -36,7 +36,7 @@ help for each package.
 
         1) vim local.conf:
         ...
-        IMAGE_INSTALL_append = " libdbd-sqlite-perl"
+        IMAGE_INSTALL:append = " libdbd-sqlite-perl"
         PERL_DBM_TEST = "1"
         ...
         2) build core-image-sato and boot the target
@@ -52,9 +52,7 @@ Dependencies
 This layer depends on:
 
   URI: git://git.openembedded.org/openembedded-core
-  branch: dunfell
-  revision: HEAD
-  prio: default
+  branch: kirkstone 
 
 Adding the meta-perl layer to your build
 ---------------------------------------
@@ -75,12 +73,13 @@ Maintenance
 -----------
 
 Send patches / pull requests to openembedded-devel@lists.openembedded.org with
-'[meta-perl][dunfell]' in the subject.
+'[meta-perl][kirkstone]' in the subject.
 
 When sending single patches, please using something like:
-'git send-email -M -1 --to openembedded-devel@lists.openembedded.org --subject-prefix=meta-perl][dunfell][PATCH'
+git send-email -M -1 --to openembedded-devel@lists.openembedded.org --subject-prefix='meta-perl][kirkstone][PATCH'
 
-dunfell maintainers: Armin kuster <akuster808@gmail.com>
+Layer maintainers: Armin Kuster <akuster808@gmail.com>
+    
 
 License
 -------
@@ -88,4 +87,3 @@ License
 All metadata is MIT licensed unless otherwise stated. Source code included
 in tree for individual recipes is under the LICENSE stated in each recipe
 (.bb file) unless otherwise stated.
-

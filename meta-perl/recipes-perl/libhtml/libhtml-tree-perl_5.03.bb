@@ -8,7 +8,7 @@ SECTION = "libs"
 
 HOMEPAGE = "http://www.cpan.org/authors/id/C/CJ/CJM/HTML-Tree-${PV}.readme"
 
-LICENSE = "Artistic-1.0 | GPL-1.0+"
+LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=3eb57a8958cae73cb65e7d0c26339242"
 
 SRC_URI = "${CPAN_MIRROR}/authors/id/C/CJ/CJM/HTML-Tree-${PV}.tar.gz \
@@ -21,16 +21,18 @@ S = "${WORKDIR}/HTML-Tree-${PV}"
 
 inherit cpan_build
 
+export PERL_USE_UNSAFE_INC = "1"
+
 DEPENDS += "libmodule-build-perl-native \
 "
 
-RPROVIDES_${PN} = " libhtml-element-perl \
+RPROVIDES:${PN} = " libhtml-element-perl \
     libhtml-tree-assubs-perl \
     libhtml-tree-perl \
     libhtml-treebuilder-perl \
 "
 
-RDEPENDS_${PN} = " perl-module-b \
+RDEPENDS:${PN} = " perl-module-b \
     perl-module-base \
     perl-module-strict \
     perl-module-warnings \

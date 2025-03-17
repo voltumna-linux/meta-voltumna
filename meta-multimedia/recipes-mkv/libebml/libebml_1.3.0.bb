@@ -1,5 +1,5 @@
 SUMMARY = "libebml is a C++ libary to parse EBML files"
-LICENSE = "LGPLv2.1"
+LICENSE = "LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://LICENSE.LGPL;md5=7fbc338309ac38fefcd64b04bb903e34"
 
 SRC_URI = "\
@@ -14,8 +14,8 @@ inherit dos2unix
 
 LIBEBML_OS = "Unknown"
 LIBEBML_OS_linux = "Linux"
-LIBEBML_OS_darwin = "Darwin"
-LIBEBML_OS_mingw32 = "Windows"
+LIBEBML_OS:darwin = "Darwin"
+LIBEBML_OS:mingw32 = "Windows"
 
 EXTRA_OEMAKE = "\
     'TARGET_OS=${LIBEBML_OS}' \

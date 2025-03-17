@@ -9,7 +9,7 @@ THIS IS NOT THE SORT OF THING YOU WANT TO DO EVERYDAY \
 SECTION = "libs"
 HOMEPAGE= "https://metacpan.org/release/Sub-Uplevel"
 
-LICENSE = "Artistic-1.0 | GPL-1.0+"
+LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=7f1207cd3108e4ade18448d81e6bcb6c"
 
 CPAN_PACKAGE = "Sub-Uplevel"
@@ -24,14 +24,14 @@ S = "${WORKDIR}/${CPAN_PACKAGE}-${PV}"
 
 inherit cpan ptest-perl
 
-RDEPENDS_${PN} += " \
+RDEPENDS:${PN} += " \
     perl-module-carp \
     perl-module-constant \
     perl-module-strict \
     perl-module-warnings \
 "
 
-RDEPENDS_${PN}-ptest += " \
+RDEPENDS:${PN}-ptest += " \
     perl-module-cpan \
     perl-module-exporter \
     perl-module-extutils-makemaker \

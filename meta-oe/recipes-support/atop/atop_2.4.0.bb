@@ -10,7 +10,7 @@ utilization, priority, username, state, and exit code."
 HOMEPAGE = "http://www.atoptool.nl"
 SECTION = "console/utils"
 
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=393a5ca445f6965873eca0259a17f833"
 
 DEPENDS = "ncurses zlib"
@@ -23,6 +23,10 @@ SRC_URI = "http://www.atoptool.nl/download/${BP}.tar.gz \
            "
 SRC_URI[md5sum] = "1077da884ed94f2bc3c81ac3ab970436"
 SRC_URI[sha256sum] = "be1c010a77086b7d98376fce96514afcd73c3f20a8d1fe01520899ff69a73d69"
+
+CVE_CHECK_IGNORE += "\
+    CVE-2011-3618 \
+"
 
 do_compile() {
     oe_runmake all
@@ -42,15 +46,19 @@ do_install() {
         rm -f ${D}${sysconfdir}/init.d/atopacct
     fi
 
+    # /var/log/atop will be created in runtime
+    rm -rf ${D}${localstatedir}/log
+    rmdir --ignore-fail-on-non-empty ${D}${localstatedir}
+
     # remove atopacct related files
     rm -rf ${D}${sbindir} ${D}${mandir}/man8
 }
 
 inherit systemd
 
-SYSTEMD_SERVICE_${PN} = "atop.service atopgpu.service"
+SYSTEMD_SERVICE:${PN} = "atop.service atopgpu.service"
 SYSTEMD_AUTO_ENABLE = "disable"
 
-FILES_${PN} += "${systemd_unitdir}/system-sleep"
+FILES:${PN} += "${systemd_unitdir}/system-sleep"
 
-RDEPENDS_${PN} = "procps"
+RDEPENDS:${PN} = "procps"

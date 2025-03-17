@@ -12,9 +12,11 @@ SRC_URI = "git://github.com/gt3389b/python-cson.git;branch=master;protocol=https
 
 S = "${WORKDIR}/git"
 
-RDEPENDS_${PN} = "python3-json"
+RDEPENDS:${PN} = "python3-json"
 
 inherit setuptools3
+
+PIP_INSTALL_PACKAGE = "python_cson"
 
 BBCLASSEXTEND = "native"
 

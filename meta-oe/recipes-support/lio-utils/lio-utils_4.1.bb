@@ -1,7 +1,7 @@
 SUMMARY = "lio-utils"
 DESCRIPTION = "a simple low-level configuration tool set for the Target+iSCSI (LIO)"
 HOMEPAGE = "http://linux-iscsi.org/index.php/Lio-utils"
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://debian/copyright;md5=c3ea231a32635cbb5debedf3e88aa3df"
 
 PV = "4.1+git${SRCPV}"
@@ -55,11 +55,13 @@ do_install() {
     install -m 755 ${S}/conf/lio_start.default ${D}/etc/target/lio_start.sh
 }
 
-RDEPENDS_${PN} += "python-stringold python-subprocess python-shell \
+SKIP_RECIPE[lio-utils] ?= "${@bb.utils.contains('I_SWEAR_TO_MIGRATE_TO_PYTHON3', 'yes', '', 'python2 is out of support for long time, read https://www.python.org/doc/sunset-python-2/ https://python3statement.org/ and if you really have to temporarily use this, then set I_SWEAR_TO_MIGRATE_TO_PYTHON3 to "yes"', d)}"
+
+RDEPENDS:${PN} += "python-stringold python-subprocess python-shell \
     python-datetime python-textutils python-crypt python-netclient python-email \
     bash"
 
-FILES_${PN} += "${sbindir}/* /etc/init.d/* /etc/target/*"
+FILES:${PN} += "${sbindir}/* /etc/init.d/* /etc/target/*"
 
 # http://errors.yoctoproject.org/Errors/Details/184712/
 # python-native/python: can't open file 'setup.py': [Errno 2] No such file or directory

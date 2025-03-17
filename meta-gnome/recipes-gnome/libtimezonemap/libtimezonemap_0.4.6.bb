@@ -1,7 +1,7 @@
 DESCRIPTION = "Time zone map widget for Gtk+"
 HOMEPAGE = "https://launchpad.net/timezonemap"
 SECTION = "devel/lib"
-LICENSE = "GPLv3"
+LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
 
 SRC_URI = "http://archive.ubuntu.com/ubuntu/pool/main/libt/${BPN}/${BPN}_${PV}.tar.gz"
@@ -16,6 +16,6 @@ inherit features_check autotools pkgconfig gobject-introspection
 
 REQUIRED_DISTRO_FEATURES = "x11"
 
-do_configure_prepend() {
+do_configure:prepend() {
 	(cd ${S}; NOCONFIGURE="yes" . ${S}/autogen.sh)
 }

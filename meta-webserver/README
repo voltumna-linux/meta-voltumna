@@ -11,17 +11,15 @@ Dependencies
 
 This layer depends on:
 
-URI: git://github.com/openembedded/oe-core.git
+URI: git://git.openembedded.org/openembedded-core
 subdirectory: meta
-branch: dunfell
-revision: HEAD
+branch: kirkstone
 
 For some recipes, the meta-oe layer is required:
 
-URI: git://github.com/openembedded/meta-oe.git
+URI: git://git.openembedded.org/meta-openembedded
 subdirectory: meta-oe
-branch: dunfell
-revision: HEAD
+branch: kirkstone
 
 
 
@@ -52,9 +50,12 @@ Maintenance
 -----------
 
 Send patches / pull requests to openembedded-devel@lists.openembedded.org
-with '[meta-webserver][dunfell]' in the subject.
+with '[meta-webserver][kirkstone]' in the subject.
 
-dunfell Maintainer: Armin Kuster <akuster808@gmail.com>
+When sending single patches, please using something like:
+git send-email -M -1 --to openembedded-devel@lists.openembedded.org --subject-prefix='meta-webserver][kirkstone][PATCH'
+
+Layer maintainer: Armin Kuster <akuster808@gmail.com>
 
 
 License

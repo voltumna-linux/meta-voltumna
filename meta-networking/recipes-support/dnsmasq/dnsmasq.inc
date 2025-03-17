@@ -2,9 +2,10 @@ SUMMARY = "Lightweight, easy to configure DNS forwarder and DHCP server"
 HOMEPAGE = "http://www.thekelleys.org.uk/dnsmasq/doc.html"
 SECTION = "net"
 # GPLv3 was added in version 2.41 as license option
-LICENSE = "GPLv2 | GPLv3"
-LIC_FILES_CHKSUM = "file://COPYING;md5=0636e73ff0215e8d672dc4c32c317bb3 \
-                    file://COPYING-v3;md5=d32239bcb673463ab874e80d47fae504"
+LICENSE = "GPL-2.0-only | GPL-3.0-only"
+LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263 \
+                    file://COPYING-v3;md5=d32239bcb673463ab874e80d47fae504 \
+                    "
 
 #at least versions 2.69 and prior are moved to the archive folder on the server
 SRC_URI = "http://www.thekelleys.org.uk/dnsmasq/${@['archive/', ''][float(d.getVar('PV').split('.')[1]) > 69]}dnsmasq-${PV}.tar.gz;name=dnsmasq-${PV} \
@@ -37,7 +38,7 @@ EXTRA_OEMAKE = "\
 
 SRC_URI += "${@bb.utils.contains('PACKAGECONFIG', 'resolvconf', 'file://dnsmasq.resolvconf file://99_dnsmasq file://dnsmasq-resolvconf-helper', '', d)}"
 
-do_compile_append() {
+do_compile:append() {
     # build dhcp_release
     cd ${S}/contrib/lease-tools
     oe_runmake
@@ -78,9 +79,9 @@ do_install () {
     fi
 }
 
-CONFFILES_${PN} = "${sysconfdir}/dnsmasq.conf"
+CONFFILES:${PN} = "${sysconfdir}/dnsmasq.conf"
 
-RPROVIDES_${PN} += "${PN}-systemd"
-RREPLACES_${PN} += "${PN}-systemd"
-RCONFLICTS_${PN} += "${PN}-systemd"
-SYSTEMD_SERVICE_${PN} = "dnsmasq.service"
+RPROVIDES:${PN} += "${PN}-systemd"
+RREPLACES:${PN} += "${PN}-systemd"
+RCONFLICTS:${PN} += "${PN}-systemd"
+SYSTEMD_SERVICE:${PN} = "dnsmasq.service"

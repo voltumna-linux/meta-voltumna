@@ -4,7 +4,7 @@ communication patterns. It aims to make the networking layer fast, scalable, \
 and easy to use. Implemented in C, it works on a wide range of operating \
 systems with no further dependencies."
 HOMEPAGE = "https://nanomsg.org/"
-LICENSE = "MIT-X"
+LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://COPYING;md5=587b3fd7fd291e418ff4d2b8f3904755"
 
 SECTION = "libs/networking"
@@ -22,7 +22,7 @@ inherit cmake pkgconfig
 EXTRA_OECMAKE = " -DNN_ENABLE_DOC=OFF "
 
 # we don't want nanomsg-tools to be renamed to libnanomsg-tools
-DEBIAN_NOAUTONAME_${PN}-tools = "1"
+DEBIAN_NOAUTONAME:${PN}-tools = "1"
 
 PACKAGES =+ "${PN}-tools"
-FILES_${PN}-tools = "${bindir}/*"
+FILES:${PN}-tools = "${bindir}/*"

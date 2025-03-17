@@ -7,7 +7,7 @@ tool.  If you're having network connectivity problems, traceroute will \
 show you where the trouble is coming from along the route."
 SECTION = "net"
 HOMEPAGE = "http://traceroute.sourceforge.net/"
-LICENSE = "GPL-2.0+ & LGPL-2.1+"
+LICENSE = "GPL-2.0-or-later & LGPL-2.1-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263 \
                     file://COPYING.LIB;md5=4fbd65380cdd255951079008b364516c"
 
@@ -16,15 +16,13 @@ inherit update-alternatives
 UPSTREAM_CHECK_URI = "https://sourceforge.net/projects/traceroute/files/traceroute/"
 
 SRC_URI = "${SOURCEFORGE_MIRROR}/traceroute/traceroute/${BP}/${BP}.tar.gz \
-           file://filter-out-the-patches-from-subdirs.patch \
 "
-
 SRC_URI[sha256sum] = "05ebc7aba28a9100f9bbae54ceecbf75c82ccf46bdfce8b5d64806459a7e0412"
 
 EXTRA_OEMAKE = "VPATH=${STAGING_LIBDIR}"
+LTOEXTRA += "-flto-partition=none"
 
 do_compile() {
-    export LDFLAGS="${TARGET_LDFLAGS} -L${S}/libsupp"
     oe_runmake "env=yes"
 }
 
@@ -41,6 +39,6 @@ do_install() {
 
 }
 
-ALTERNATIVE_PRIORITY = "60"
-ALTERNATIVE_${PN} = "traceroute"
+ALTERNATIVE_PRIORITY = "100"
+ALTERNATIVE:${PN} = "traceroute"
 ALTERNATIVE_LINK_NAME[traceroute] = "${bindir}/traceroute"

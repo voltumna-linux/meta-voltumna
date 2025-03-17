@@ -1,4 +1,4 @@
-From 0becb4843a40910d5ec9aa11969d4905a22037cf Mon Sep 17 00:00:00 2001
+From ab1d77c52e84746e75506a2870783806bc77f396 Mon Sep 17 00:00:00 2001
 From: "Roy.Li" <rongqing.li@windriver.com>
 Date: Fri, 16 Jan 2015 14:14:01 +0800
 Subject: [PATCH] net-snmp: fix "libtool --finish"
@@ -20,11 +20,11 @@ Signed-off-by: Roy.Li <rongqing.li@windriver.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Makefile.top b/Makefile.top
-index 5d4f9bc..d0ed31c 100644
+index a962c54..1ba5607 100644
 --- a/Makefile.top
 +++ b/Makefile.top
 @@ -89,7 +89,7 @@ LIBREVISION = 0
- LIB_LD_CMD      = $(LIBTOOL) --mode=link $(LINKCC) $(CFLAGS) -rpath $(libdir) -version-info $(LIBCURRENT):$(LIBREVISION):$(LIBAGE) -o
+ LIB_LD_CMD      = $(LIBTOOL) --mode=link $(LINKCC) $(CFLAGS) -rpath $(libdir) -version-info $(LIBCURRENT):$(LIBREVISION):$(LIBAGE) @LD_NO_UNDEFINED@ -o
  LIB_EXTENSION   = la
  LIB_VERSION     =
 -LIB_LDCONFIG_CMD = $(LIBTOOL) --mode=finish $(INSTALL_PREFIX)$(libdir)

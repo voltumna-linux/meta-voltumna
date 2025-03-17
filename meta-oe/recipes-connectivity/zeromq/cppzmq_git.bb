@@ -4,8 +4,8 @@ LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=db174eaf7b55a34a7c89551197f66e94"
 DEPENDS = "zeromq"
 
-SRCREV = "8d5c9a88988dcbebb72939ca0939d432230ffde1"
-PV = "4.6.0"
+SRCREV = "dd663fafd830466d34cba278c2cfd0f92eb67614"
+PV = "4.8.1"
 
 SRC_URI = "git://github.com/zeromq/cppzmq.git;branch=master;protocol=https"
 
@@ -17,4 +17,4 @@ EXTRA_OECMAKE = "-DCPPZMQ_BUILD_TESTS=OFF"
 
 PACKAGES = "${PN}-dev"
 
-RDEPENDS_${PN}-dev = "zeromq-dev"
+RDEPENDS:${PN}-dev = "zeromq-dev"

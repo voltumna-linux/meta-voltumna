@@ -1,11 +1,11 @@
 require wireguard.inc
 
 SRCREV = "3ba6527130c502144e7388b900138bca6260f4e8"
-SRC_URI = "git://git.zx2c4.com/wireguard-tools;branch=master"
+SRC_URI = "git://git.zx2c4.com/wireguard-tools;branch=master;protocol=https"
 
 inherit bash-completion systemd pkgconfig
 
-DEPENDS += "wireguard-module libmnl"
+DEPENDS += "libmnl"
 
 do_install () {
     oe_runmake DESTDIR="${D}" PREFIX="${prefix}" SYSCONFDIR="${sysconfdir}" \
@@ -16,10 +16,19 @@ do_install () {
         install
 }
 
-FILES_${PN} = " \
+PACKAGES += "${PN}-wg-quick"
+
+FILES:${PN} = " \
+    ${bindir}/wg \
     ${sysconfdir} \
-    ${systemd_unitdir} \
-    ${bindir} \
+"
+FILES:${PN}-wg-quick = " \
+    ${bindir}/wg-quick \
+    ${systemd_system_unitdir} \
 "
 
-RDEPENDS_${PN} = "wireguard-module bash"
+RDEPENDS:${PN}-wg-quick = "${PN} bash"
+RRECOMMENDS:${PN} = " \
+    kernel-module-wireguard \
+    ${PN}-wg-quick \
+    "

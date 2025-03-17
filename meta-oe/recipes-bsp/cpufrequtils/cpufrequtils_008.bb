@@ -4,7 +4,7 @@ inherit gettext
 
 DEPENDS = "libtool-cross"
 
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f"
 
 SRCREV = "a2f0c39d5f21596bb9f5223e895c0ff210b265d0"
@@ -14,7 +14,7 @@ SRC_URI = "git://github.com/emagii/cpufrequtils.git;branch=master;protocol=https
            file://0001-dont-unset-cflags.patch \
 "
 
-EXTRA_OEMAKE_append = " ${@['', 'NLS=false']['${USE_NLS}' == 'no']} "
+EXTRA_OEMAKE:append = " ${@['', 'NLS=false']['${USE_NLS}' == 'no']} "
 
 PR = "r5"
 
@@ -22,7 +22,7 @@ S = "${WORKDIR}/git"
 
 TARGET_CC_ARCH += "${LDFLAGS}"
 
-EXTRA_OEMAKE = "V=1 CROSS=${TARGET_PREFIX} LIBTOOL='${HOST_SYS}-libtool --tag cc' STRIPCMD=echo 'CP=cp'"
+EXTRA_OEMAKE = "V=1 CROSS=${TARGET_PREFIX} STRIPCMD=echo 'CP=cp'"
 
 do_compile() {
     oe_runmake

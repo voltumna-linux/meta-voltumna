@@ -1,5 +1,5 @@
 DESCRIPTION = "xdg-user-dirs is a tool to help manage user directories like the desktop folder and the music folder"
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f"
 
 SRC_URI = "http://user-dirs.freedesktop.org/releases/${BPN}-${PV}.tar.gz"
@@ -10,7 +10,7 @@ inherit autotools gettext
 
 EXTRA_OECONF = "--disable-documentation"
 
-CONFFILES_${PN} += " \
+CONFFILES:${PN} += " \
     ${sysconfdir}/xdg/user-dirs.conf \
     ${sysconfdir}/xdg/user-dirs.defaults \
 "

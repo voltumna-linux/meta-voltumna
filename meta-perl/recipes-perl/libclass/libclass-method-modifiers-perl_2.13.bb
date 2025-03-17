@@ -6,7 +6,7 @@ SECTION = "libs"
 
 HOMEPAGE = "https://github.com/moose/Class-Method-Modifiers/"
 
-LICENSE = "Artistic-1.0 | GPL-1.0+"
+LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=16fd0ec7b73c0e158426f753943f1058"
 
 SRC_URI = "${CPAN_MIRROR}/authors/id/E/ET/ETHER/Class-Method-Modifiers-${PV}.tar.gz"
@@ -17,7 +17,7 @@ S = "${WORKDIR}/Class-Method-Modifiers-${PV}"
 
 inherit cpan
 
-RDEPENDS_${PN} = " perl-module-b \
+RDEPENDS:${PN} = " perl-module-b \
                    perl-module-base \
                    perl-module-carp \
                    perl-module-exporter \

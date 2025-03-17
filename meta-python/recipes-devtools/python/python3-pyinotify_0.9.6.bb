@@ -2,9 +2,11 @@ DESCRIPTION = "Python pyinotify: Linux filesystem events monitoring"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://COPYING;md5=ab173cade7965b411528464589a08382"
 
-RDEPENDS_${PN} += "\
+RDEPENDS:${PN} += "\
     ${PYTHON_PN}-ctypes \
+    ${PYTHON_PN}-fcntl \
     ${PYTHON_PN}-io \
+    ${PYTHON_PN}-logging \
     ${PYTHON_PN}-misc \
     ${PYTHON_PN}-shell \
     ${PYTHON_PN}-smtpd \

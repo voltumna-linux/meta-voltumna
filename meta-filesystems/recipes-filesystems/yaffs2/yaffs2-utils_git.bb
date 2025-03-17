@@ -4,7 +4,7 @@ DESCRIPTION = "Tools for managing 'yaffs2' file systems."
 SECTION = "base"
 HOMEPAGE = "http://www.yaffs.net"
 
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://utils/mkyaffs2image.c;beginline=11;endline=13;md5=5f5464f9b3e981ca574e65b00e438561 \
                     file://utils/mkyaffsimage.c;beginline=10;endline=12;md5=5f5464f9b3e981ca574e65b00e438561 \
                     "
@@ -19,13 +19,13 @@ SRC_URI = "git://www.aleph1.co.uk/yaffs2;protocol=git;branch=master \
            file://0001-define-loff_t-if-not-already-defined.patch \
            "
 
-SRCREV = "b4ce1bb1b46accb1619dc07164ef6945feded9db"
+SRCREV = "9a6f486e56f927eeb8dc7e4e0d84f6bb95eeaa0f"
 
 UPSTREAM_CHECK_COMMITS = "1"
 
 S = "${WORKDIR}/git"
 
-CFLAGS_append = " -I.. -DCONFIG_YAFFS_UTIL -DCONFIG_YAFFS_DEFINES_TYPES"
+CFLAGS:append = " -I.. -DCONFIG_YAFFS_UTIL -DCONFIG_YAFFS_DEFINES_TYPES"
 EXTRA_OEMAKE = "-e MAKEFLAGS="
 
 do_compile() {

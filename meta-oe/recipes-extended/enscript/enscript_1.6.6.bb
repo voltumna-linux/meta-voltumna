@@ -7,7 +7,7 @@ customizing printouts."
 HOMEPAGE = "http://www.gnu.org/software/enscript/"
 SECTION = "console/utils"
 
-LICENSE = "GPLv3+"
+LICENSE = "GPL-3.0-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=f27defe1e96c2e1ecd4e0c9be8967949"
 
 SRC_URI = "${GNU_MIRROR}/${BPN}/${BP}.tar.gz \
@@ -22,4 +22,4 @@ EXTRA_OECONF += "PERL='${USRBINPATH}/env perl'"
 SRC_URI[md5sum] = "3acc242b829adacabcaf28533f049afd"
 SRC_URI[sha256sum] = "6d56bada6934d055b34b6c90399aa85975e66457ac5bf513427ae7fc77f5c0bb"
 
-RDEPENDS_${PN} = "perl"
+RDEPENDS:${PN} = "perl"

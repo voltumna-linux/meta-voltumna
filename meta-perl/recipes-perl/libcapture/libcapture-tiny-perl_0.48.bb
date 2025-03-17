@@ -10,7 +10,7 @@ SECTION = "libs"
 
 HOMEPAGE = "http://search.cpan.org/~dagolden/Capture-Tiny/"
 
-LICENSE = "Artistic-1.0 | GPL-1.0+"
+LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=37a4918a30ace24395020e5b8c03b83f"
 
 SRCNAME = "Capture-Tiny"
@@ -22,7 +22,7 @@ S = "${WORKDIR}/${SRCNAME}-${PV}"
 
 inherit cpan ptest-perl
 
-RDEPENDS_${PN} = " \
+RDEPENDS:${PN} = " \
     perl-module-carp \
     perl-module-exporter \
     perl-module-extutils-makemaker \
@@ -40,6 +40,6 @@ RDEPENDS_${PN} = " \
     perl-module-warnings \
 "
 
-RDEPENDS_${PN}-ptest += "perl-module-perlio"
+RDEPENDS:${PN}-ptest += "perl-module-perlio"
 
 BBCLASSEXTEND = "native"

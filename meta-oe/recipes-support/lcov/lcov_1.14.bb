@@ -5,10 +5,10 @@ tool gcov. It collects gcov data for multiple source files and creates \
 HTML pages containing the source code annotated with coverage information. \
 It also adds overview pages for easy navigation within the file structure. \
 LCOV supports statement, function and branch coverage measurement."
-LICENSE = "GPL-2.0"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=751419260aa954499f7abaabaa882bbe"
 
-RDEPENDS_${PN} += " \
+RDEPENDS:${PN} += " \
     libjson-perl \
     libperlio-gzip-perl \
     perl \
@@ -44,7 +44,7 @@ RDEPENDS_${PN} += " \
     perl-module-tie-hash \
 "
 
-RDEPENDS_${PN}_append_class-target = " \
+RDEPENDS:${PN}:append:class-target = " \
     gcov \
     gcov-symlinks \
 "
@@ -59,7 +59,7 @@ SRC_URI[md5sum] = "0220d01753469f83921f8f41ae5054c1"
 SRC_URI[sha256sum] = "14995699187440e0ae4da57fe3a64adc0a3c5cf14feab971f8db38fb7d8f071a"
 
 do_install() {
-    oe_runmake install PREFIX=${D}${prefix} CFG_DIR=${D}${sysconfdir} LCOV_PERL_PATH="/usr/bin/env perl"
+    oe_runmake install PREFIX=${D}${prefix} CFG_DIR=${D}${sysconfdir}
 }
 
 BBCLASSEXTEND = "native nativesdk"

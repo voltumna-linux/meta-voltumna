@@ -2,7 +2,7 @@ SUMMARY = "pam-ssh-agent-auth"
 DESCRIPTION = "A PAM module which permits authentication via ssh-agent."
 HOMEPAGE = "http://sourceforge.net/projects/pamsshagentauth/"
 SECTION = "libs"
-LICENSE = "openssl & BSD"
+LICENSE = "OpenSSL & BSD-2-Clause & BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://LICENSE.OpenSSL;md5=8ab01146141ded59b75f8ba7811ed05a \
                     file://OPENSSH_LICENSE;md5=7ae09218173be1643c998a4b71027f9b \
 "
@@ -21,7 +21,7 @@ REQUIRED_DISTRO_FEATURES = "pam"
 
 # This gets us ssh-agent, which we are almost certain to want.
 #
-RDEPENDS_${PN} += "openssh-misc"
+RDEPENDS:${PN} += "openssh-misc"
 
 # Kind of unfortunate to have underscores in the name.
 #
@@ -50,5 +50,5 @@ do_compile () {
 
 # This stuff is not any place looked at by default.
 #
-FILES_${PN} += "${base_libdir}/security/pam*"
-FILES_${PN}-dbg += "${base_libdir}/security/.debug"
+FILES:${PN} += "${base_libdir}/security/pam*"
+FILES:${PN}-dbg += "${base_libdir}/security/.debug"

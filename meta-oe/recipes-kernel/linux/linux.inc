@@ -1,6 +1,6 @@
 DESCRIPTION = "Linux Kernel"
 SECTION = "kernel"
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d7810fab7487fb0aad327b76f1be7cd7"
 
 INC_PR = "r0"
@@ -34,7 +34,7 @@ kernel_conf_variable() {
     fi
 }
 
-do_configure_prepend() {
+do_configure:prepend() {
     echo "" > ${B}/.config
     CONF_SED_SCRIPT=""
 
@@ -117,15 +117,15 @@ do_configure_prepend() {
     yes '' | oe_runmake -C ${S} O=${B} oldconfig
 }
 
-do_configure_append() {
+do_configure:append() {
     if test -e scripts/Makefile.fwinst ; then
         sed -i -e "s:-m0644:-m 0644:g" scripts/Makefile.fwinst
     fi
 }
 
-do_install_append() {
+do_install:append() {
     oe_runmake headers_install INSTALL_HDR_PATH=${D}${exec_prefix}/src/linux-${KERNEL_VERSION} ARCH=$ARCH
 }
 
 PACKAGES =+ "kernel-headers"
-FILES_kernel-headers = "${exec_prefix}/src/linux*"
+FILES:kernel-headers = "${exec_prefix}/src/linux*"

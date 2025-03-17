@@ -1,6 +1,6 @@
 DESCRIPTION = "An icon theme for Gnome"
 SECTION = "x11/wm"
-LICENSE = "GPLv3"
+LICENSE = "GPL-3.0-only"
 HOMEPAGE = "http://code.google.com/p/faenza-icon-theme/"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
 
@@ -23,4 +23,4 @@ do_install() {
     chown -R root:root ${D}${datadir}
 }
 
-FILES_${PN} += "${datadir}/icons ${datadir}/themes"
+FILES:${PN} += "${datadir}/icons ${datadir}/themes"

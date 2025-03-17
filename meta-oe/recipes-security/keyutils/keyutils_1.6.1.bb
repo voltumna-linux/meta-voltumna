@@ -7,14 +7,14 @@ DESCRIPTION = "\
 HOMEPAGE = "http://people.redhat.com/dhowells/keyutils"
 SECTION = "base"
 
-LICENSE = "LGPLv2.1+ & GPLv2.0+"
+LICENSE = "LGPL-2.1-or-later & GPL-2.0-or-later"
 
 LIC_FILES_CHKSUM = "file://LICENCE.GPL;md5=5f6e72824f5da505c1f4a7197f004b45 \
                     file://LICENCE.LGPL;md5=7d1cacaa3ea752b72ea5e525df54a21f"
 
 inherit siteinfo autotools-brokensep ptest
 
-SRC_URI = "http://people.redhat.com/dhowells/keyutils/${BP}.tar.bz2 \
+SRC_URI = "https://people.redhat.com/dhowells/keyutils/${BP}.tar.bz2 \
            file://keyutils-test-fix-output-format.patch \
            file://keyutils-fix-error-report-by-adding-default-message.patch \
            file://run-ptest \
@@ -49,8 +49,8 @@ do_install_ptest () {
 }
 
 
-RDEPENDS_${PN}-ptest += "lsb-release"
-RDEPENDS_${PN}-ptest_append_libc-glibc = " glibc-utils"
-RDEPENDS_${PN}-ptest_append_libc-musl = " musl-utils"
+RDEPENDS:${PN}-ptest += "lsb-release"
+RDEPENDS:${PN}-ptest:append:libc-glibc = " glibc-utils"
+RDEPENDS:${PN}-ptest:append:libc-musl = " musl-utils"
 
 BBCLASSEXTEND = "native nativesdk"

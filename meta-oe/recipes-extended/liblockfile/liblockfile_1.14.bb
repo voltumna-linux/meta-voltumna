@@ -1,7 +1,7 @@
 SUMMARY = "File locking library"
 HOMEPAGE = "http://packages.qa.debian.org/libl/liblockfile.html"
 SECTION = "libs"
-LICENSE = "LGPLv2+ & GPLv2+"
+LICENSE = "LGPL-2.0-or-later & GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://COPYRIGHT;md5=f4ba6ad04fcb05cc30a4cfa5062c55a3"
 
 SRC_URI = "${DEBIAN_MIRROR}/main/libl/liblockfile/liblockfile_1.14.orig.tar.gz \
@@ -10,6 +10,7 @@ SRC_URI = "${DEBIAN_MIRROR}/main/libl/liblockfile/liblockfile_1.14.orig.tar.gz \
     file://0001-Makefile.in-add-DESTDIR.patch \
     file://0001-Makefile.in-install-nfslock-libs.patch \
     file://liblockfile-fix-install-so-to-man-dir.patch \
+    file://0001-Makefile.in-fix-install-failure-on-host-without-ldco.patch \
 "
 
 SRC_URI[md5sum] = "420c056ba0cc4d1477e402f70ba2f5eb"
@@ -33,5 +34,5 @@ EXTRA_OECONF = "--enable-shared \
 # at https://github.com/miquels/liblockfile.git
 EXTRA_OEMAKE += "DESTDIR=${D}"
 
-FILES_${PN} += "${libdir}/nfslock.so.*"
-FILES_${PN}-dev += "${libdir}/nfslock.so"
+FILES:${PN} += "${libdir}/nfslock.so.*"
+FILES:${PN}-dev += "${libdir}/nfslock.so"

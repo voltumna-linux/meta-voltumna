@@ -5,7 +5,7 @@ such as phones and laptops."
 HOMEPAGE = "http://irda.sourceforge.net/"
 BUGTRACKER = "http://sourceforge.net/p/irda/bugs/"
 SECTION = "base"
-LICENSE = "GPLv2+"
+LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://irdadump/COPYING;md5=94d55d512a9ba36caa9b7df079bae19f \
                     file://smcinit/COPYING;md5=0636e73ff0215e8d672dc4c32c317bb3 \
                     file://man/COPYING;md5=94d55d512a9ba36caa9b7df079bae19f \
@@ -21,7 +21,7 @@ SRC_URI[sha256sum] = "61980551e46b2eaa9e17ad31cbc1a638074611fc33bff34163d10c7a67
 
 inherit update-rc.d
 
-RRECOMMENDS_${PN} = "\
+RRECOMMENDS:${PN} = "\
     kernel-module-pxaficp-ir \
     kernel-module-irda \
     kernel-module-ircomm \

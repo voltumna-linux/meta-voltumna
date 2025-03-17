@@ -1,19 +1,17 @@
 SUMMARY  = "Platform independent Near Field Communication (NFC) library"
 DESCRIPTION = "libnfc is a library which allows userspace application access \
 to NFC devices."
-LICENSE  = "LGPLv3"
+LICENSE  = "LGPL-3.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=b52f2d57d10c4f7ee67a7eb9615d5d24"
 SECTION = "libs"
 
 inherit autotools pkgconfig
 
-PV = "1.7.1+git${SRCPV}"
+PV = "1.8.0+git${SRCPV}"
 
 S = "${WORKDIR}/git"
-SRCREV = "2d4543673e9b76c02679ca8b89259659f1afd932"
-SRC_URI = "git://github.com/nfc-tools/libnfc.git;branch=master;protocol=https \
-           file://0001-usbbus-Include-stdint.h-for-uintX_t.patch \
-          "
+SRCREV = "f02ff51449240102c27a97173dc495e8e7789046"
+SRC_URI = "git://github.com/nfc-tools/libnfc.git;branch=master;protocol=https"
 
-CFLAGS_append_libc-musl = " -D_GNU_SOURCE"
+CFLAGS:append:libc-musl = " -D_GNU_SOURCE"
 DEPENDS = "libusb"

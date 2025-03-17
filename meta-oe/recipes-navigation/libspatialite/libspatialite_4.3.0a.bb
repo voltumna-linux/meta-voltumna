@@ -3,7 +3,7 @@ HOMEPAGE = "https://www.gaia-gis.it/fossil/libspatialite/"
 SECTION = "libs"
 DEPENDS = "proj geos sqlite3 libxml2 zlib"
 
-LICENSE = "MPLv1.1 & GPLv2+ & LGPLv2.1+"
+LICENSE = "MPL-1.1 & GPL-2.0-or-later & LGPL-2.1-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=0e92e1a36cc384b60f5b31dde0bdd39e"
 
 SRC_URI = "http://www.gaia-gis.it/gaia-sins/libspatialite-sources/libspatialite-${PV}.tar.gz \
@@ -18,5 +18,5 @@ CFLAGS += "-DACCEPT_USE_OF_DEPRECATED_PROJ_API_H"
 
 # package plugins for SQLite3
 PACKAGES += "${PN}-plugin"
-INSANE_SKIP_${PN}-plugin = "dev-so"
-FILES_${PN}-plugin += "${libdir}/mod_*"
+INSANE_SKIP:${PN}-plugin = "dev-so"
+FILES:${PN}-plugin += "${libdir}/mod_*"

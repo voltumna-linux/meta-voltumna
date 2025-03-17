@@ -1,6 +1,6 @@
 SUMMARY = "Connection tracking userspace tools for Linux"
 SECTION = "net"
-LICENSE = "GPLv2+"
+LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=8ca43cbc842c2336e835926c2166c28b"
 
 DEPENDS = "libnfnetlink libnetfilter-conntrack libnetfilter-cttimeout \
@@ -19,7 +19,7 @@ inherit autotools update-rc.d pkgconfig
 
 INITSCRIPT_NAME = "conntrackd"
 
-do_install_append() {
+do_install:append() {
     install -d ${D}/${sysconfdir}/conntrackd
     install -d ${D}/${sysconfdir}/init.d
     install -m 0644 ${S}/doc/sync/ftfw/conntrackd.conf ${D}/${sysconfdir}/conntrackd/conntrackd.conf.sample
@@ -32,3 +32,9 @@ do_install_append() {
     sed -i 's!/var/!${localstatedir}/!g' ${D}/${sysconfdir}/init.d/conntrack-failover ${D}/${sysconfdir}/init.d/conntrackd ${D}/${sysconfdir}/conntrackd/conntrackd.conf.sample
     sed -i 's!^export PATH=.*!export PATH=${base_sbindir}:${base_bindir}:${sbindir}:${bindir}!' ${D}/${sysconfdir}/init.d/conntrackd
 }
+
+# fix error message: Do not forget that you need *root* or CAP_NET_ADMIN capabilities ;-)
+pkg_postinst:${PN} () {
+    setcap cap_net_admin+ep "$D/${sbindir}/conntrack"
+}
+PACKAGE_WRITE_DEPS += "libcap-native"
