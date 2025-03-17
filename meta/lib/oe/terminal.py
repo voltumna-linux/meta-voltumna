@@ -5,7 +5,6 @@ import logging
 import oe.classutils
 import shlex
 from bb.process import Popen, ExecutionError
-from distutils.version import LooseVersion
 
 logger = logging.getLogger('BitBake.OE.Terminal')
 
@@ -31,9 +30,10 @@ class Registry(oe.classutils.ClassRegistry):
 
 class Terminal(Popen, metaclass=Registry):
     def __init__(self, sh_cmd, title=None, env=None, d=None):
+        from subprocess import STDOUT
         fmt_sh_cmd = self.format_command(sh_cmd, title)
         try:
-            Popen.__init__(self, fmt_sh_cmd, env=env)
+            Popen.__init__(self, fmt_sh_cmd, env=env, stderr=STDOUT)
         except OSError as exc:
             import errno
             if exc.errno == errno.ENOENT:
@@ -86,10 +86,10 @@ class Konsole(XTerminal):
     def __init__(self, sh_cmd, title=None, env=None, d=None):
         # Check version
         vernum = check_terminal_version("konsole")
-        if vernum and LooseVersion(vernum) < '2.0.0':
+        if vernum and bb.utils.vercmp_string_op(vernum, "2.0.0", "<"):
             # Konsole from KDE 3.x
             self.command = 'konsole -T "{title}" -e {command}'
-        elif vernum and LooseVersion(vernum) < '16.08.1':
+        elif vernum and bb.utils.vercmp_string_op(vernum, "16.08.1", "<"):
             # Konsole pre 16.08.01 Has nofork
             self.command = 'konsole --nofork --workdir . -p tabtitle="{title}" -e {command}'
         XTerminal.__init__(self, sh_cmd, title, env, d)
@@ -194,7 +194,7 @@ class Custom(Terminal):
             Terminal.__init__(self, sh_cmd, title, env, d)
             logger.warning('Custom terminal was started.')
         else:
-            logger.debug(1, 'No custom terminal (OE_TERMINAL_CUSTOMCMD) set')
+            logger.debug('No custom terminal (OE_TERMINAL_CUSTOMCMD) set')
             raise UnsupportedTerminal('OE_TERMINAL_CUSTOMCMD not set')
 
 
@@ -225,7 +225,7 @@ def spawn_preferred(sh_cmd, title=None, env=None, d=None):
 
 def spawn(name, sh_cmd, title=None, env=None, d=None):
     """Spawn the specified terminal, by name"""
-    logger.debug(1, 'Attempting to spawn terminal "%s"', name)
+    logger.debug('Attempting to spawn terminal "%s"', name)
     try:
         terminal = Registry.registry[name]
     except KeyError:
@@ -264,7 +264,7 @@ def spawn(name, sh_cmd, title=None, env=None, d=None):
 
 def check_tmux_version(desired):
     vernum = check_terminal_version("tmux")
-    if vernum and LooseVersion(vernum) < desired:
+    if vernum and bb.utils.vercmp_string_op(vernum, desired, "<"):
         return False
     return vernum
 

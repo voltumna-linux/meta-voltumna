@@ -1,5 +1,15 @@
 ROOTFS_LICENSE_DIR = "${IMAGE_ROOTFS}/usr/share/common-licenses"
 
+# This requires LICENSE_CREATE_PACKAGE=1 to work too
+COMPLEMENTARY_GLOB[lic-pkgs] = "*-lic"
+
+python() {
+    if not oe.data.typed_value('LICENSE_CREATE_PACKAGE', d):
+        features = set(oe.data.typed_value('IMAGE_FEATURES', d))
+        if 'lic-pkgs' in features:
+            bb.error("'lic-pkgs' in IMAGE_FEATURES but LICENSE_CREATE_PACKAGE not enabled to generate -lic packages")
+}
+
 python write_package_manifest() {
     # Get list of installed packages
     license_image_dir = d.expand('${LICENSE_DIRECTORY}/${IMAGE_NAME}')
@@ -29,7 +39,7 @@ python license_create_manifest() {
 
         pkg_dic[pkg_name] = oe.packagedata.read_pkgdatafile(pkg_info)
         if not "LICENSE" in pkg_dic[pkg_name].keys():
-            pkg_lic_name = "LICENSE_" + pkg_name
+            pkg_lic_name = "LICENSE:" + pkg_name
             pkg_dic[pkg_name]["LICENSE"] = pkg_dic[pkg_name][pkg_lic_name]
 
     rootfs_license_manifest = os.path.join(d.getVar('LICENSE_DIRECTORY'),
@@ -42,31 +52,25 @@ def write_license_files(d, license_manifest, pkg_dic, rootfs=True):
     import stat
 
     bad_licenses = (d.getVar("INCOMPATIBLE_LICENSE") or "").split()
-    bad_licenses = [canonical_license(d, l) for l in bad_licenses]
     bad_licenses = expand_wildcard_licenses(d, bad_licenses)
 
-    whitelist = []
-    for lic in bad_licenses:
-        whitelist.extend((d.getVar("WHITELIST_" + lic) or "").split())
-
+    exceptions = (d.getVar("INCOMPATIBLE_LICENSE_EXCEPTIONS") or "").split()
     with open(license_manifest, "w") as license_file:
         for pkg in sorted(pkg_dic):
-            if bad_licenses and pkg not in whitelist:
-                try:
-                    licenses = incompatible_pkg_license(d, bad_licenses, pkg_dic[pkg]["LICENSE"])
-                    if licenses:
-                        bb.fatal("Package %s cannot be installed into the image because it has incompatible license(s): %s" %(pkg, ' '.join(licenses)))
-                    (pkg_dic[pkg]["LICENSE"], pkg_dic[pkg]["LICENSES"]) = \
-                        oe.license.manifest_licenses(pkg_dic[pkg]["LICENSE"],
-                        bad_licenses, canonical_license, d)
-                except oe.license.LicenseError as exc:
-                    bb.fatal('%s: %s' % (d.getVar('P'), exc))
+            remaining_bad_licenses = oe.license.apply_pkg_license_exception(pkg, bad_licenses, exceptions)
+            incompatible_licenses = incompatible_pkg_license(d, remaining_bad_licenses, pkg_dic[pkg]["LICENSE"])
+            if incompatible_licenses:
+                bb.fatal("Package %s cannot be installed into the image because it has incompatible license(s): %s" %(pkg, ' '.join(incompatible_licenses)))
             else:
-                pkg_dic[pkg]["LICENSES"] = re.sub(r'[|&()*]', ' ', pkg_dic[pkg]["LICENSE"])
-                pkg_dic[pkg]["LICENSES"] = re.sub(r'  *', ' ', pkg_dic[pkg]["LICENSES"])
-                pkg_dic[pkg]["LICENSES"] = pkg_dic[pkg]["LICENSES"].split()
-                if pkg in whitelist:
-                    bb.warn("Including %s with an incompatible license %s into the image, because it has been whitelisted." %(pkg, pkg_dic[pkg]["LICENSE"]))
+                incompatible_licenses = incompatible_pkg_license(d, bad_licenses, pkg_dic[pkg]["LICENSE"])
+                if incompatible_licenses:
+                    oe.qa.handle_error('license-incompatible', "Including %s with incompatible license(s) %s into the image, because it has been allowed by exception list." %(pkg, ' '.join(incompatible_licenses)), d)
+            try:
+                (pkg_dic[pkg]["LICENSE"], pkg_dic[pkg]["LICENSES"]) = \
+                    oe.license.manifest_licenses(pkg_dic[pkg]["LICENSE"],
+                    remaining_bad_licenses, canonical_license, d)
+            except oe.license.LicenseError as exc:
+                bb.fatal('%s: %s' % (d.getVar('P'), exc))
 
             if not "IMAGE_MANIFEST" in pkg_dic[pkg]:
                 # Rootfs manifest
@@ -78,7 +82,7 @@ def write_license_files(d, license_manifest, pkg_dic, rootfs=True):
                 # If the package doesn't contain any file, that is, its size is 0, the license
                 # isn't relevant as far as the final image is concerned. So doing license check
                 # doesn't make much sense, skip it.
-                if pkg_dic[pkg]["PKGSIZE_%s" % pkg] == "0":
+                if pkg_dic[pkg]["PKGSIZE:%s" % pkg] == "0":
                     continue
             else:
                 # Image manifest
@@ -96,9 +100,11 @@ def write_license_files(d, license_manifest, pkg_dic, rootfs=True):
                    continue
 
                 if not os.path.exists(lic_file):
-                   bb.warn("The license listed %s was not in the "\ 
-                            "licenses collected for recipe %s" 
-                            % (lic, pkg_dic[pkg]["PN"]))
+                    oe.qa.handle_error('license-file-missing',
+                                       "The license listed %s was not in the "\
+                                       "licenses collected for recipe %s"
+                                       % (lic, pkg_dic[pkg]["PN"]), d)
+    oe.qa.exit_if_errors(d)
 
     # Two options here:
     # - Just copy the manifest
@@ -203,6 +209,18 @@ def license_deployed_manifest(d):
     image_license_manifest = os.path.join(lic_manifest_dir, 'image_license.manifest')
     write_license_files(d, image_license_manifest, man_dic, rootfs=False)
 
+    link_name = d.getVar('IMAGE_LINK_NAME')
+    if link_name:
+        lic_manifest_symlink_dir = os.path.join(d.getVar('LICENSE_DIRECTORY'),
+                                    link_name)
+        # remove old symlink
+        if os.path.islink(lic_manifest_symlink_dir):
+            os.unlink(lic_manifest_symlink_dir)
+
+        # create the image dir symlink
+        if lic_manifest_dir != lic_manifest_symlink_dir:
+            os.symlink(lic_manifest_dir, lic_manifest_symlink_dir)
+
 def get_deployed_dependencies(d):
     """
     Get all the deployed dependencies of an image
@@ -248,11 +266,12 @@ def get_deployed_files(man_file):
             dep_files.append(os.path.basename(f))
     return dep_files
 
-ROOTFS_POSTPROCESS_COMMAND_prepend = "write_package_manifest; license_create_manifest; "
+ROOTFS_POSTPROCESS_COMMAND:prepend = "write_package_manifest; license_create_manifest; "
 do_rootfs[recrdeptask] += "do_populate_lic"
 
 python do_populate_lic_deploy() {
     license_deployed_manifest(d)
+    oe.qa.exit_if_errors(d)
 }
 
 addtask populate_lic_deploy before do_build after do_image_complete

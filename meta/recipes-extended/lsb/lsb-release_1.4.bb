@@ -1,10 +1,10 @@
 SUMMARY = "lsb_release support for OpenEmbedded"
 SECTION = "console/utils"
 HOMEPAGE = "https://sourceforge.net/projects/lsb/files"
-LICENSE = "GPLv2+"
+LICENSE = "GPL-2.0-or-later"
 
 # lsb_release needs getopt
-RDEPENDS_${PN} += "${VIRTUAL-RUNTIME_getopt}"
+RDEPENDS:${PN} += "${VIRTUAL-RUNTIME_getopt}"
 
 LIC_FILES_CHKSUM = "file://README;md5=12da544b1a3a5a1795a21160b49471cf"
 
@@ -35,4 +35,4 @@ do_install() {
 	echo "DISTRIB_DESCRIPTION=\"${DISTRO_NAME} ${DISTRO_VERSION}\"" >> ${D}${sysconfdir}/lsb-release
 }
 
-FILES_${PN} += "${base_libdir}"
+FILES:${PN} += "${base_libdir}"

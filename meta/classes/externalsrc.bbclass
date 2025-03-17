@@ -13,7 +13,7 @@
 # called "myrecipe" you would do:
 #
 # INHERIT += "externalsrc"
-# EXTERNALSRC_pn-myrecipe = "/path/to/my/source/tree"
+# EXTERNALSRC:pn-myrecipe = "/path/to/my/source/tree"
 #
 # In order to make this class work for both target and native versions (or with
 # multilibs/cross or other BBCLASSEXTEND variants), B is set to point to a separate
@@ -21,7 +21,7 @@
 # the default, but the build directory can be set to the source directory if
 # circumstances dictate by setting EXTERNALSRC_BUILD to the same value, e.g.:
 #
-# EXTERNALSRC_BUILD_pn-myrecipe = "/path/to/my/source/tree"
+# EXTERNALSRC_BUILD:pn-myrecipe = "/path/to/my/source/tree"
 #
 
 SRCTREECOVEREDTASKS ?= "do_patch do_unpack do_fetch"
@@ -45,11 +45,11 @@ python () {
     if bpn == d.getVar('PN') or not classextend:
         if (externalsrc or
                 ('native' in classextend and
-                 d.getVar('EXTERNALSRC_pn-%s-native' % bpn)) or
+                 d.getVar('EXTERNALSRC:pn-%s-native' % bpn)) or
                 ('nativesdk' in classextend and
-                 d.getVar('EXTERNALSRC_pn-nativesdk-%s' % bpn)) or
+                 d.getVar('EXTERNALSRC:pn-nativesdk-%s' % bpn)) or
                 ('cross' in classextend and
-                 d.getVar('EXTERNALSRC_pn-%s-cross' % bpn))):
+                 d.getVar('EXTERNALSRC:pn-%s-cross' % bpn))):
             d.setVar('BB_DONT_CACHE', '1')
 
     if externalsrc:
@@ -62,12 +62,17 @@ python () {
         else:
             d.setVar('B', '${WORKDIR}/${BPN}-${PV}')
 
+        if d.getVar('SRCREV', "INVALID") != "INVALID":
+            # Ensure SRCREV has been processed before accessing SRC_URI
+            bb.fetch.get_srcrev(d)
+
         local_srcuri = []
         fetch = bb.fetch2.Fetch((d.getVar('SRC_URI') or '').split(), d)
         for url in fetch.urls:
             url_data = fetch.ud[url]
             parm = url_data.parm
             if (url_data.type == 'file' or
+                    url_data.type == 'npmsw' or url_data.type == 'crate' or
                     'type' in parm and parm['type'] == 'kmeta'):
                 local_srcuri.append(url)
 
@@ -75,6 +80,8 @@ python () {
 
         # Dummy value because the default function can't be called with blank SRC_URI
         d.setVar('SRCPV', '999')
+        # sstate is never going to work for external source trees, disable it
+        d.setVar('SSTATE_SKIP_CREATION', '1')
 
         if d.getVar('CONFIGUREOPT_DEPTRACK') == '--disable-dependency-tracking':
             d.setVar('CONFIGUREOPT_DEPTRACK', '')
@@ -82,22 +89,22 @@ python () {
         tasks = filter(lambda k: d.getVarFlag(k, "task"), d.keys())
 
         for task in tasks:
-            if task.endswith("_setscene"):
-                # sstate is never going to work for external source trees, disable it
-                bb.build.deltask(task, d)
-            else:
+            if os.path.realpath(d.getVar('S')) == os.path.realpath(d.getVar('B')):
                 # Since configure will likely touch ${S}, ensure only we lock so one task has access at a time
                 d.appendVarFlag(task, "lockfiles", " ${S}/singletask.lock")
 
-            # We do not want our source to be wiped out, ever (kernel.bbclass does this for do_clean)
-            cleandirs = oe.recipeutils.split_var_value(d.getVarFlag(task, 'cleandirs', False) or '')
-            setvalue = False
-            for cleandir in cleandirs[:]:
-                if oe.path.is_path_parent(externalsrc, d.expand(cleandir)):
-                    cleandirs.remove(cleandir)
-                    setvalue = True
-            if setvalue:
-                d.setVarFlag(task, 'cleandirs', ' '.join(cleandirs))
+        for v in d.keys():
+            cleandirs = d.getVarFlag(v, "cleandirs", False)
+            if cleandirs:
+                # We do not want our source to be wiped out, ever (kernel.bbclass does this for do_clean)
+                cleandirs = oe.recipeutils.split_var_value(cleandirs)
+                setvalue = False
+                for cleandir in cleandirs[:]:
+                    if oe.path.is_path_parent(externalsrc, d.expand(cleandir)):
+                        cleandirs.remove(cleandir)
+                        setvalue = True
+                if setvalue:
+                    d.setVarFlag(v, 'cleandirs', ' '.join(cleandirs))
 
         fetch_tasks = ['do_fetch', 'do_unpack']
         # If we deltask do_patch, there's no dependency to ensure do_unpack gets run, so add one
@@ -108,8 +115,8 @@ python () {
             if local_srcuri and task in fetch_tasks:
                 continue
             bb.build.deltask(task, d)
-            if bb.data.inherits_class('reproducible_build', d) and task == 'do_unpack':
-                # The reproducible_build's create_source_date_epoch_stamp function must
+            if task == 'do_unpack':
+                # The reproducible build create_source_date_epoch_stamp function must
                 # be run after the source is available and before the
                 # do_deploy_source_date_epoch task.  In the normal case, it's attached
                 # to do_unpack as a postfuncs, but since we removed do_unpack (above)

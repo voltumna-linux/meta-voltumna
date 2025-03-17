@@ -16,6 +16,7 @@ class LayerType(Enum):
     BSP = 0
     DISTRO = 1
     SOFTWARE = 2
+    CORE = 3
     ERROR_NO_LAYER_CONF = 98
     ERROR_BSP_DISTRO = 99
 
@@ -106,7 +107,13 @@ def _detect_layer(layer_path):
         if distros:
             is_distro = True
 
-    if is_bsp and is_distro:
+    layer['collections'] = _get_layer_collections(layer['path'])
+
+    if layer_name == "meta" and "core" in layer['collections']:
+        layer['type'] = LayerType.CORE
+        layer['conf']['machines'] = machines
+        layer['conf']['distros'] = distros
+    elif is_bsp and is_distro:
         layer['type'] = LayerType.ERROR_BSP_DISTRO
     elif is_bsp:
         layer['type'] = LayerType.BSP
@@ -116,8 +123,6 @@ def _detect_layer(layer_path):
         layer['conf']['distros'] = distros
     else:
         layer['type'] = LayerType.SOFTWARE
-
-    layer['collections'] = _get_layer_collections(layer['path'])
 
     return layer
 
@@ -155,6 +160,27 @@ def _find_layer(depend, layers):
             if depend == collection:
                 return layer
     return None
+
+def sanity_check_layers(layers, logger):
+    """
+    Check that we didn't find duplicate collection names, as the layer that will
+    be used is non-deterministic. The precise check is duplicate collections
+    with different patterns, as the same pattern being repeated won't cause
+    problems.
+    """
+    import collections
+
+    passed = True
+    seen = collections.defaultdict(set)
+    for layer in layers:
+        for name, data in layer.get("collections", {}).items():
+            seen[name].add(data["pattern"])
+
+    for name, patterns in seen.items():
+        if len(patterns) > 1:
+            passed = False
+            logger.error("Collection %s found multiple times: %s" % (name, ", ".join(patterns)))
+    return passed
 
 def get_layer_dependencies(layer, layers, logger):
     def recurse_dependencies(depends, layer, layers, logger, ret = []):
@@ -261,7 +287,7 @@ def check_command(error_msg, cmd, cwd=None):
         raise RuntimeError(msg)
     return output
 
-def get_signatures(builddir, failsafe=False, machine=None):
+def get_signatures(builddir, failsafe=False, machine=None, extravars=None):
     import re
 
     # some recipes needs to be excluded like meta-world-pkgdata
@@ -272,7 +298,10 @@ def get_signatures(builddir, failsafe=False, machine=None):
     sigs = {}
     tune2tasks = {}
 
-    cmd = 'BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE BB_SIGNATURE_HANDLER" BB_SIGNATURE_HANDLER="OEBasicHash" '
+    cmd = 'BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS BB_SIGNATURE_HANDLER" BB_SIGNATURE_HANDLER="OEBasicHash" '
+    if extravars:
+        cmd += extravars
+        cmd += ' '
     if machine:
         cmd += 'MACHINE=%s ' % machine
     cmd += 'bitbake '
@@ -295,8 +324,8 @@ def get_signatures(builddir, failsafe=False, machine=None):
         else:
             raise
 
-    sig_regex = re.compile("^(?P<task>.*:.*):(?P<hash>.*) .$")
-    tune_regex = re.compile("(^|\s)SIGGEN_LOCKEDSIGS_t-(?P<tune>\S*)\s*=\s*")
+    sig_regex = re.compile(r"^(?P<task>.*:.*):(?P<hash>.*) .$")
+    tune_regex = re.compile(r"(^|\s)SIGGEN_LOCKEDSIGS_t-(?P<tune>\S*)\s*=\s*")
     current_tune = None
     with open(sigs_file, 'r') as f:
         for line in f.readlines():

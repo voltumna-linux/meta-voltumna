@@ -15,7 +15,6 @@ Use strpbrk(3) for the illegal character test and return early.
 Upstream-Status: Backport [https://github.com/shadow-maint/shadow/commit/2eaea70111f65b16d55998386e4ceb4273c19eb4]
 
 Signed-off-by: Xiangyu Chen <xiangyu.chen@windriver.com>
-Signed-off-by: Vijay Anusuri <vanusuri@mvista.com>
 ---
  lib/fields.c | 24 ++++++++++--------------
  1 file changed, 10 insertions(+), 14 deletions(-)

@@ -558,6 +558,11 @@ def render_processes_chart(ctx, options, trace, curr_y, w, h, sec_w):
             draw_rect(ctx, PROC_BORDER_COLOR, (x, y, w, proc_h))
 
             draw_label_in_box(ctx, PROC_TEXT_COLOR, process, x, y + proc_h - 4, w, proc_h)
+
+            # Show elapsed time for each task
+            elapsed_time = f"{trace.processes[process][1] - start}s"
+            draw_text(ctx, elapsed_time, PROC_TEXT_COLOR, x + w + 4, y + proc_h - 4)
+
             y = y + proc_h
 
     return curr_y
@@ -698,7 +703,7 @@ def draw_processes_recursively(ctx, proc, proc_tree, y, proc_h, rect, clip) :
         cmdString = proc.cmd
     else:
         cmdString = ''
-    if (OPTIONS.show_pid or OPTIONS.show_all) and ipid is not 0:
+    if (OPTIONS.show_pid or OPTIONS.show_all) and ipid != 0:
         cmdString = cmdString + " [" + str(ipid // 1000) + "]"
     if OPTIONS.show_all:
         if proc.args:
@@ -796,7 +801,7 @@ class CumlSample:
         if self.color is None:
             i = self.next() % HSV_MAX_MOD
             h = 0.0
-            if i is not 0:
+            if i != 0:
                 h = (1.0 * i) / HSV_MAX_MOD
             s = 0.5
             v = 1.0

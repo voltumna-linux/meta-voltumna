@@ -9,11 +9,13 @@ SRC_URI = "http://www.nasm.us/pub/nasm/releasebuilds/${PV}/nasm-${PV}.tar.bz2 \
            file://0001-stdlib-Add-strlcat.patch \
            file://0002-Add-debug-prefix-map-option.patch \
            file://CVE-2022-44370.patch \
+           file://CVE-2022-46457.patch \
+           file://CVE-2020-21528.patch \
            "
 
 SRC_URI[sha256sum] = "3c4b8339e5ab54b1bcb2316101f8985a5da50a3f9e504d43fa6f35668bee2fd0"
 
-EXTRA_AUTORECONF_append = " -I autoconf/m4"
+EXTRA_AUTORECONF:append = " -I autoconf/m4"
 
 inherit autotools-brokensep
 

@@ -254,13 +254,13 @@ def add(args, config, basepath, workspace):
                 f.write('\n# initial_rev: %s\n' % initial_rev)
 
             if args.binary:
-                f.write('do_install_append() {\n')
+                f.write('do_install:append() {\n')
                 f.write('    rm -rf ${D}/.git\n')
                 f.write('    rm -f ${D}/singletask.lock\n')
                 f.write('}\n')
 
             if bb.data.inherits_class('npm', rd):
-                f.write('python do_configure_append() {\n')
+                f.write('python do_configure:append() {\n')
                 f.write('    pkgdir = d.getVar("NPM_PACKAGE")\n')
                 f.write('    lockfile = os.path.join(pkgdir, "singletask.lock")\n')
                 f.write('    bb.utils.remove(lockfile)\n')
@@ -316,10 +316,6 @@ def _check_compatible_recipe(pn, d):
 
     if bb.data.inherits_class('packagegroup', d):
         raise DevtoolError("The %s recipe is a packagegroup, and therefore is "
-                           "not supported by this tool" % pn, 4)
-
-    if bb.data.inherits_class('meta', d):
-        raise DevtoolError("The %s recipe is a meta-recipe, and therefore is "
                            "not supported by this tool" % pn, 4)
 
     if bb.data.inherits_class('externalsrc', d) and d.getVar('EXTERNALSRC'):
@@ -523,8 +519,10 @@ def _extract_source(srctree, keep_temp, devbranch, sync, config, basepath, works
         history = d.varhistory.variable('SRC_URI')
         for event in history:
             if not 'flag' in event:
-                if event['op'].startswith(('_append[', '_prepend[')):
-                    extra_overrides.append(event['op'].split('[')[1].split(']')[0])
+                if event['op'].startswith((':append[', ':prepend[')):
+                    override = event['op'].split('[')[1].split(']')[0]
+                    if not override.startswith('pn-'):
+                        extra_overrides.append(override)
         # We want to remove duplicate overrides. If a recipe had multiple
         # SRC_URI_override += values it would cause mulitple instances of
         # overrides. This doesn't play nicely with things like creating a
@@ -746,7 +744,7 @@ def _check_preserve(config, recipename):
                         os.remove(removefile)
                 else:
                     tf.write(line)
-    os.rename(newfile, origfile)
+    bb.utils.rename(newfile, origfile)
 
 def get_staging_kver(srcdir):
     # Kernel version from work-shared
@@ -766,6 +764,16 @@ def get_staging_kbranch(srcdir):
         (branch, _) = bb.process.run('git branch | grep \* | cut -d \' \' -f2', cwd=srcdir)
         staging_kbranch = "".join(branch.split('\n')[0])
     return staging_kbranch
+
+def get_real_srctree(srctree, s, workdir):
+    # Check that recipe isn't using a shared workdir
+    s = os.path.abspath(s)
+    workdir = os.path.abspath(workdir)
+    if s.startswith(workdir) and s != workdir and os.path.dirname(s) != workdir:
+        # Handle if S is set to a subdirectory of the source
+        srcsubdir = os.path.relpath(s, workdir).split(os.sep, 1)[1]
+        srctree = os.path.join(srctree, srcsubdir)
+    return srctree
 
 def modify(args, config, basepath, workspace):
     """Entry point for the devtool 'modify' subcommand"""
@@ -925,47 +933,40 @@ def modify(args, config, basepath, workspace):
 
         # Need to grab this here in case the source is within a subdirectory
         srctreebase = srctree
-
-        # Check that recipe isn't using a shared workdir
-        s = os.path.abspath(rd.getVar('S'))
-        workdir = os.path.abspath(rd.getVar('WORKDIR'))
-        if s.startswith(workdir) and s != workdir and os.path.dirname(s) != workdir:
-            # Handle if S is set to a subdirectory of the source
-            srcsubdir = os.path.relpath(s, workdir).split(os.sep, 1)[1]
-            srctree = os.path.join(srctree, srcsubdir)
+        srctree = get_real_srctree(srctree, rd.getVar('S'), rd.getVar('WORKDIR'))
 
         bb.utils.mkdirhier(os.path.dirname(appendfile))
         with open(appendfile, 'w') as f:
-            f.write('FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"\n')
+            f.write('FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"\n')
             # Local files can be modified/tracked in separate subdir under srctree
             # Mostly useful for packages with S != WORKDIR
-            f.write('FILESPATH_prepend := "%s:"\n' %
+            f.write('FILESPATH:prepend := "%s:"\n' %
                     os.path.join(srctreebase, 'oe-local-files'))
             f.write('# srctreebase: %s\n' % srctreebase)
 
             f.write('\ninherit externalsrc\n')
             f.write('# NOTE: We use pn- overrides here to avoid affecting multiple variants in the case where the recipe uses BBCLASSEXTEND\n')
-            f.write('EXTERNALSRC_pn-%s = "%s"\n' % (pn, srctree))
+            f.write('EXTERNALSRC:pn-%s = "%s"\n' % (pn, srctree))
 
             b_is_s = use_external_build(args.same_dir, args.no_same_dir, rd)
             if b_is_s:
-                f.write('EXTERNALSRC_BUILD_pn-%s = "%s"\n' % (pn, srctree))
+                f.write('EXTERNALSRC_BUILD:pn-%s = "%s"\n' % (pn, srctree))
 
             if bb.data.inherits_class('kernel', rd):
                 f.write('SRCTREECOVEREDTASKS = "do_validate_branches do_kernel_checkout '
                         'do_fetch do_unpack do_kernel_configcheck"\n')
                 f.write('\ndo_patch[noexec] = "1"\n')
-                f.write('\ndo_configure_append() {\n'
+                f.write('\ndo_configure:append() {\n'
                         '    cp ${B}/.config ${S}/.config.baseline\n'
                         '    ln -sfT ${B}/.config ${S}/.config.new\n'
                         '}\n')
-                f.write('\ndo_kernel_configme_prepend() {\n'
+                f.write('\ndo_kernel_configme:prepend() {\n'
                         '    if [ -e ${S}/.config ]; then\n'
                         '        mv ${S}/.config ${S}/.config.old\n'
                         '    fi\n'
                         '}\n')
             if rd.getVarFlag('do_menuconfig','task'):
-                f.write('\ndo_configure_append() {\n'
+                f.write('\ndo_configure:append() {\n'
                 '    if [ ! ${DEVTOOL_DISABLE_MENUCONFIG} ]; then\n'
                 '        cp ${B}/.config ${S}/.config.baseline\n'
                 '        ln -sfT ${B}/.config ${S}/.config.new\n'
@@ -1094,10 +1095,10 @@ def rename(args, config, basepath, workspace):
 
     # Rename bbappend
     logger.info('Renaming %s to %s' % (append, newappend))
-    os.rename(append, newappend)
+    bb.utils.rename(append, newappend)
     # Rename recipe file
     logger.info('Renaming %s to %s' % (recipefile, newfile))
-    os.rename(recipefile, newfile)
+    bb.utils.rename(recipefile, newfile)
 
     # Rename source tree if it's the default path
     appendmd5 = None
@@ -1333,7 +1334,7 @@ def _export_patches(srctree, rd, start_rev, destdir, changed_revs=None):
         if match_name:
             # Rename patch files
             if new_patch != match_name:
-                os.rename(os.path.join(destdir, new_patch),
+                bb.utils.rename(os.path.join(destdir, new_patch),
                           os.path.join(destdir, match_name))
             # Need to pop it off the list now before checking changed_revs
             oldpath = existing_patches.pop(old_patch)
@@ -1408,6 +1409,18 @@ def _export_local_files(srctree, rd, destdir, srctreebase):
     updated = OrderedDict()
     added = OrderedDict()
     removed = OrderedDict()
+
+    # Get current branch and return early with empty lists
+    # if on one of the override branches
+    # (local files are provided only for the main branch and processing
+    # them against lists from recipe overrides will result in mismatches
+    # and broken modifications to recipes).
+    stdout, _ = bb.process.run('git rev-parse --abbrev-ref HEAD',
+                               cwd=srctree)
+    branchname = stdout.rstrip()
+    if branchname.startswith(override_branch_prefix):
+        return (updated, added, removed)
+
     local_files_dir = os.path.join(srctreebase, 'oe-local-files')
     git_files = _git_ls_tree(srctree)
     if 'oe-local-files' in git_files:
@@ -1608,6 +1621,19 @@ def _update_recipe_patch(recipename, workspace, srctree, rd, appendlayerdir, wil
     if not os.path.exists(append):
         raise DevtoolError('unable to find workspace bbappend for recipe %s' %
                            recipename)
+    srctreebase = workspace[recipename]['srctreebase']
+    relpatchdir = os.path.relpath(srctreebase, srctree)
+    if relpatchdir == '.':
+        patchdir_params = {}
+    else:
+        patchdir_params = {'patchdir': relpatchdir}
+
+    def srcuri_entry(basepath):
+        if patchdir_params:
+            paramstr = ';' + ';'.join('%s=%s' % (k,v) for k,v in patchdir_params.items())
+        else:
+            paramstr = ''
+        return 'file://%s%s' % (basepath, paramstr)
 
     initial_rev, update_rev, changed_revs, filter_patches = _get_patchset_revs(srctree, append, initial_rev, force_patch_refresh)
     if not initial_rev:
@@ -1624,32 +1650,25 @@ def _update_recipe_patch(recipename, workspace, srctree, rd, appendlayerdir, wil
     tempdir = tempfile.mkdtemp(prefix='devtool')
     try:
         local_files_dir = tempfile.mkdtemp(dir=tempdir)
-        if filter_patches:
-            upd_f = {}
-            new_f = {}
-            del_f = {}
-        else:
-            srctreebase = workspace[recipename]['srctreebase']
-            upd_f, new_f, del_f = _export_local_files(srctree, rd, local_files_dir, srctreebase)
-
-        remove_files = []
-        if not no_remove:
-            # Get all patches from source tree and check if any should be removed
-            all_patches_dir = tempfile.mkdtemp(dir=tempdir)
-            _, _, del_p = _export_patches(srctree, rd, initial_rev,
-                                          all_patches_dir)
-            # Remove deleted local files and  patches
-            remove_files = list(del_f.values()) + list(del_p.values())
+        upd_f, new_f, del_f = _export_local_files(srctree, rd, local_files_dir, srctreebase)
 
         # Get updated patches from source tree
         patches_dir = tempfile.mkdtemp(dir=tempdir)
         upd_p, new_p, _ = _export_patches(srctree, rd, update_rev,
                                           patches_dir, changed_revs)
+        # Get all patches from source tree and check if any should be removed
+        all_patches_dir = tempfile.mkdtemp(dir=tempdir)
+        _, _, del_p = _export_patches(srctree, rd, initial_rev,
+                                      all_patches_dir)
         logger.debug('Pre-filtering: update: %s, new: %s' % (dict(upd_p), dict(new_p)))
         if filter_patches:
             new_p = OrderedDict()
             upd_p = OrderedDict((k,v) for k,v in upd_p.items() if k in filter_patches)
-            remove_files = [f for f in remove_files if f in filter_patches]
+            del_p = OrderedDict((k,v) for k,v in del_p.items() if k in filter_patches)
+        remove_files = []
+        if not no_remove:
+            # Remove deleted local files and  patches
+            remove_files = list(del_f.values()) + list(del_p.values())
         updatefiles = False
         updaterecipe = False
         destpath = None
@@ -1665,14 +1684,15 @@ def _update_recipe_patch(recipename, workspace, srctree, rd, appendlayerdir, wil
                     removedentries, remaining = _remove_file_entries(
                                                     srcuri, remove_files)
                     if removedentries or remaining:
-                        remaining = ['file://' + os.path.basename(item) for
+                        remaining = [srcuri_entry(os.path.basename(item)) for
                                      item in remaining]
                         removevalues = {'SRC_URI': removedentries + remaining}
                 appendfile, destpath = oe.recipeutils.bbappend_recipe(
                                 rd, appendlayerdir, files,
                                 wildcardver=wildcard_version,
                                 removevalues=removevalues,
-                                redirect_output=dry_run_outdir)
+                                redirect_output=dry_run_outdir,
+                                params=[patchdir_params] * len(files))
             else:
                 logger.info('No patches or local source files needed updating')
         else:
@@ -1696,7 +1716,7 @@ def _update_recipe_patch(recipename, workspace, srctree, rd, appendlayerdir, wil
                     # replace the entry in SRC_URI with our local version
                     logger.info('Replacing remote patch %s with updated local version' % basepath)
                     path = os.path.join(files_dir, basepath)
-                    _replace_srcuri_entry(srcuri, basepath, 'file://%s' % basepath)
+                    _replace_srcuri_entry(srcuri, basepath, srcuri_entry(basepath))
                     updaterecipe = True
                 else:
                     logger.info('Updating patch %s%s' % (basepath, dry_run_suffix))
@@ -1710,7 +1730,7 @@ def _update_recipe_patch(recipename, workspace, srctree, rd, appendlayerdir, wil
                            os.path.join(files_dir, basepath),
                            dry_run_outdir=dry_run_outdir,
                            base_outdir=recipedir)
-                srcuri.append('file://%s' % basepath)
+                srcuri.append(srcuri_entry(basepath))
                 updaterecipe = True
             for basepath, path in new_p.items():
                 logger.info('Adding new patch %s%s' % (basepath, dry_run_suffix))
@@ -1718,7 +1738,7 @@ def _update_recipe_patch(recipename, workspace, srctree, rd, appendlayerdir, wil
                            os.path.join(files_dir, basepath),
                            dry_run_outdir=dry_run_outdir,
                            base_outdir=recipedir)
-                srcuri.append('file://%s' % basepath)
+                srcuri.append(srcuri_entry(basepath))
                 updaterecipe = True
             # Update recipe, if needed
             if _remove_file_entries(srcuri, remove_files)[0]:

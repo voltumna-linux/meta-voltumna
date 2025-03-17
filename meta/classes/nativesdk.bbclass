@@ -23,15 +23,16 @@ RECIPE_SYSROOT = "${WORKDIR}/recipe-sysroot"
 #
 PACKAGE_ARCH = "${SDK_ARCH}-${SDKPKGSUFFIX}"
 PACKAGE_ARCHS = "${SDK_PACKAGE_ARCHS}"
+TUNE_PKGARCH = "${SDK_ARCH}"
 
 #
 # We need chrpath >= 0.14 to ensure we can deal with 32 and 64 bit
 # binaries
 #
-DEPENDS_append = " chrpath-replacement-native"
+DEPENDS:append = " chrpath-replacement-native"
 EXTRANATIVEPATH += "chrpath-native"
 
-PKGDATA_DIR = "${TMPDIR}/pkgdata/${SDK_SYS}"
+PKGDATA_DIR = "${PKGDATA_DIR_SDK}"
 
 HOST_ARCH = "${SDK_ARCH}"
 HOST_VENDOR = "${SDK_VENDOR}"
@@ -55,6 +56,7 @@ TARGET_CXXFLAGS = "${BUILDSDK_CXXFLAGS}"
 TARGET_LDFLAGS = "${BUILDSDK_LDFLAGS}"
 TARGET_FPU = ""
 EXTRA_OECONF_GCC_FLOAT = ""
+TUNE_FEATURES = ""
 
 CPPFLAGS = "${BUILDSDK_CPPFLAGS}"
 CFLAGS = "${BUILDSDK_CFLAGS}"
@@ -114,4 +116,4 @@ USE_NLS = "${SDKUSE_NLS}"
 
 OLDEST_KERNEL = "${SDK_OLDEST_KERNEL}"
 
-PATH_prepend = "${COREBASE}/scripts/nativesdk-intercept:"
+PATH:prepend = "${COREBASE}/scripts/nativesdk-intercept:"

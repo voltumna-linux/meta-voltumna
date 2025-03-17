@@ -17,6 +17,7 @@ import shutil
 import sys
 
 from oe.path import copyhardlinktree
+from pathlib import Path
 
 from wic import WicError
 from wic.pluginbase import SourcePlugin
@@ -32,8 +33,24 @@ class RootfsPlugin(SourcePlugin):
     name = 'rootfs'
 
     @staticmethod
+    def __validate_path(cmd, rootfs_dir, path):
+        if os.path.isabs(path):
+            logger.error("%s: Must be relative: %s" % (cmd, path))
+            sys.exit(1)
+
+        # Disallow climbing outside of parent directory using '..',
+        # because doing so could be quite disastrous (we will delete the
+        # directory, or modify a directory outside OpenEmbedded).
+        full_path = os.path.realpath(os.path.join(rootfs_dir, path))
+        if not full_path.startswith(os.path.realpath(rootfs_dir)):
+            logger.error("%s: Must point inside the rootfs:" % (cmd, path))
+            sys.exit(1)
+
+        return full_path
+
+    @staticmethod
     def __get_rootfs_dir(rootfs_dir):
-        if os.path.isdir(rootfs_dir):
+        if rootfs_dir and os.path.isdir(rootfs_dir):
             return os.path.realpath(rootfs_dir)
 
         image_rootfs_dir = get_bitbake_var("IMAGE_ROOTFS", rootfs_dir)
@@ -80,6 +97,9 @@ class RootfsPlugin(SourcePlugin):
         part.has_fstab = os.path.exists(os.path.join(part.rootfs_dir, "etc/fstab"))
         pseudo_dir = os.path.join(part.rootfs_dir, "../pseudo")
         if not os.path.lexists(pseudo_dir):
+            pseudo_dir = os.path.join(cls.__get_rootfs_dir(None), '../pseudo')
+
+        if not os.path.lexists(pseudo_dir):
             logger.warn("%s folder does not exist. "
                         "Usernames and permissions will be invalid " % pseudo_dir)
             pseudo_dir = None
@@ -99,14 +119,7 @@ class RootfsPlugin(SourcePlugin):
                 cd = part.change_directory
                 if cd[-1] == '/':
                     cd = cd[:-1]
-                if os.path.isabs(cd):
-                    logger.error("Must be relative: --change-directory=%s" % cd)
-                    sys.exit(1)
-                orig_dir = os.path.realpath(os.path.join(part.rootfs_dir, cd))
-                if not orig_dir.startswith(part.rootfs_dir):
-                    logger.error("'%s' points to a path outside the rootfs" % orig_dir)
-                    sys.exit(1)
-
+                orig_dir = cls.__validate_path("--change-directory", part.rootfs_dir, cd)
             else:
                 orig_dir = part.rootfs_dir
             copyhardlinktree(orig_dir, new_rootfs)
@@ -127,23 +140,68 @@ class RootfsPlugin(SourcePlugin):
                                                     orig_dir, new_rootfs)
                 exec_native_cmd(pseudo_cmd, native_sysroot)
 
-            for path in part.include_path or []:
-                copyhardlinktree(path, new_rootfs)
+            for in_path in part.include_path or []:
+                #parse arguments
+                include_path = in_path[0]
+                if len(in_path) > 2:
+                    logger.error("'Invalid number of arguments for include-path")
+                    sys.exit(1)
+                if len(in_path) == 2:
+                    path = in_path[1]
+                else:
+                    path = None
+
+                # Pack files to be included into a tar file.
+                # We need to create a tar file, because that way we can keep the
+                # permissions from the files even when they belong to different
+                # pseudo enviroments.
+                # If we simply copy files using copyhardlinktree/copytree... the
+                # copied files will belong to the user running wic.
+                tar_file = os.path.realpath(
+                           os.path.join(cr_workdir, "include-path%d.tar" % part.lineno))
+                if os.path.isfile(include_path):
+                    parent = os.path.dirname(os.path.realpath(include_path))
+                    tar_cmd = "tar c --owner=root --group=root -f %s -C %s %s" % (
+                                tar_file, parent, os.path.relpath(include_path, parent))
+                    exec_native_cmd(tar_cmd, native_sysroot)
+                else:
+                    if include_path in krootfs_dir:
+                        include_path = krootfs_dir[include_path]
+                    include_path = cls.__get_rootfs_dir(include_path)
+                    include_pseudo = os.path.join(include_path, "../pseudo")
+                    if os.path.lexists(include_pseudo):
+                        pseudo = cls.__get_pseudo(native_sysroot, include_path,
+                                                  include_pseudo)
+                        tar_cmd = "tar cf %s -C %s ." % (tar_file, include_path)
+                    else:
+                        pseudo = None
+                        tar_cmd = "tar c --owner=root --group=root -f %s -C %s ." % (
+                                tar_file, include_path)
+                    exec_native_cmd(tar_cmd, native_sysroot, pseudo)
+
+                #create destination
+                if path:
+                    destination = cls.__validate_path("--include-path", new_rootfs, path)
+                    Path(destination).mkdir(parents=True, exist_ok=True)
+                else:
+                    destination = new_rootfs
+
+                #extract destination
+                untar_cmd = "tar xf %s -C %s" % (tar_file, destination)
+                if new_pseudo:
+                    pseudo = cls.__get_pseudo(native_sysroot, new_rootfs, new_pseudo)
+                else:
+                    pseudo = None
+                exec_native_cmd(untar_cmd, native_sysroot, pseudo)
+                os.remove(tar_file)
 
             for orig_path in part.exclude_path or []:
                 path = orig_path
-                if os.path.isabs(path):
-                    logger.error("Must be relative: --exclude-path=%s" % orig_path)
-                    sys.exit(1)
 
-                full_path = os.path.realpath(os.path.join(new_rootfs, path))
+                full_path = cls.__validate_path("--exclude-path", new_rootfs, path)
 
-                # Disallow climbing outside of parent directory using '..',
-                # because doing so could be quite disastrous (we will delete the
-                # directory).
-                if not full_path.startswith(new_rootfs):
-                    logger.error("'%s' points to a path outside the rootfs" % orig_path)
-                    sys.exit(1)
+                if not os.path.lexists(full_path):
+                    continue
 
                 if new_pseudo:
                     pseudo = cls.__get_pseudo(native_sysroot, new_rootfs, new_pseudo)
@@ -163,10 +221,10 @@ class RootfsPlugin(SourcePlugin):
             # Update part.has_fstab here as fstab may have been added or
             # removed by the above modifications.
             part.has_fstab = os.path.exists(os.path.join(new_rootfs, "etc/fstab"))
-            if part.update_fstab_in_rootfs and part.has_fstab:
+            if part.update_fstab_in_rootfs and part.has_fstab and not part.no_fstab_update:
                 fstab_path = os.path.join(new_rootfs, "etc/fstab")
                 # Assume that fstab should always be owned by root with fixed permissions
-                install_cmd = "install -m 0644 %s %s" % (part.updated_fstab_path, fstab_path)
+                install_cmd = "install -m 0644 -p %s %s" % (part.updated_fstab_path, fstab_path)
                 if new_pseudo:
                     pseudo = cls.__get_pseudo(native_sysroot, new_rootfs, new_pseudo)
                 else:

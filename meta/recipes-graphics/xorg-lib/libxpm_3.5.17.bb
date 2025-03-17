@@ -20,8 +20,8 @@ XORG_EXT = "tar.xz"
 EXTRA_OECONF += "--disable-open-zfile"
 
 PACKAGES =+ "sxpm cxpm"
-FILES_cxpm = "${bindir}/cxpm"
-FILES_sxpm = "${bindir}/sxpm"
+FILES:cxpm = "${bindir}/cxpm"
+FILES:sxpm = "${bindir}/sxpm"
 
 SRC_URI[sha256sum] = "64b31f81019e7d388c822b0b28af8d51c4622b83f1f0cb6fa3fc95e271226e43"
 

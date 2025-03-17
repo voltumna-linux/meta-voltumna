@@ -1,3 +1,10 @@
+# fitImage kernel compression algorithm
+FIT_KERNEL_COMP_ALG ?= "gzip"
+FIT_KERNEL_COMP_ALG_EXTENSION ?= ".gz"
+
+# Kernel image type passed to mkimage (i.e. kernel kernel_noload...)
+UBOOT_MKIMAGE_KERNEL_TYPE ?= "kernel"
+
 uboot_prep_kimage() {
 	if [ -e arch/${ARCH}/boot/compressed/vmlinux ]; then
 		vmlinux_path="arch/${ARCH}/boot/compressed/vmlinux"
@@ -11,14 +18,24 @@ uboot_prep_kimage() {
 		linux_comp="none"
 	else
 		vmlinux_path="vmlinux"
-		linux_suffix=".gz"
-		linux_comp="gzip"
+		# Use vmlinux.initramfs for linux.bin when INITRAMFS_IMAGE_BUNDLE set
+		# As per the implementation in kernel.bbclass.
+		# See do_bundle_initramfs function
+		if [ "${INITRAMFS_IMAGE_BUNDLE}" = "1" ] && [ -e vmlinux.initramfs ]; then
+			vmlinux_path="vmlinux.initramfs"
+		fi
+		linux_suffix="${FIT_KERNEL_COMP_ALG_EXTENSION}"
+		linux_comp="${FIT_KERNEL_COMP_ALG}"
 	fi
 
 	[ -n "${vmlinux_path}" ] && ${OBJCOPY} -O binary -R .note -R .comment -S "${vmlinux_path}" linux.bin
 
 	if [ "${linux_comp}" != "none" ] ; then
-		gzip -9 linux.bin
+		if [ "${linux_comp}" = "gzip" ] ; then
+			gzip -9 linux.bin
+		elif [ "${linux_comp}" = "lzo" ] ; then
+			lzop -9 linux.bin
+		fi
 		mv -f "linux.bin${linux_suffix}" linux.bin
 	fi
 

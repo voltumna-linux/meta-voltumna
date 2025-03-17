@@ -5,14 +5,9 @@ SUMMARY = "Locale data from glibc"
 BPN = "glibc"
 LOCALEBASEPN = "${MLPREFIX}glibc"
 
-# glibc-collateral.inc inhibits all default deps, but do_package needs objcopy
-# ERROR: objcopy failed with exit code 127 (cmd was 'i586-webos-linux-objcopy' --only-keep-debug 'glibc-locale/2.17-r0/package/usr/lib/gconv/IBM1166.so' 'glibc-locale/2.17-r0/package/usr/lib/gconv/.debug/IBM1166.so')
-# ERROR: Function failed: split_and_strip_files
-BINUTILSDEP = "virtual/${MLPREFIX}${TARGET_PREFIX}binutils:do_populate_sysroot"
-BINUTILSDEP_class-nativesdk = "virtual/${TARGET_PREFIX}binutils-crosssdk:do_populate_sysroot"
-do_package[depends] += "${BINUTILSDEP}"
-
-DEPENDS += "virtual/libc"
+# Do not inhibit default deps, do_package requires binutils/gcc for
+# objcopy/gcc-nm and glibc-locale depends on virtual/libc directly.
+INHIBIT_DEFAULT_DEPS = ""
 
 # Binary locales are generated at build time if ENABLE_BINARY_LOCALE_GENERATION
 # is set. The idea is to avoid running localedef on the target (at first boot)
@@ -21,7 +16,7 @@ DEPENDS += "virtual/libc"
 
 # default to disabled
 ENABLE_BINARY_LOCALE_GENERATION ?= "0"
-ENABLE_BINARY_LOCALE_GENERATION_pn-nativesdk-glibc-locale = "1"
+ENABLE_BINARY_LOCALE_GENERATION:pn-nativesdk-glibc-locale = "1"
 
 #enable locale generation on these arches
 # BINARY_LOCALE_ARCHES is a space separated list of regular expressions
@@ -40,32 +35,32 @@ PACKAGES_DYNAMIC = "^locale-base-.* \
                     ^${MLPREFIX}glibc-gconv$"
 
 # Create a glibc-binaries package
-ALLOW_EMPTY_${BPN}-binaries = "1"
+ALLOW_EMPTY:${BPN}-binaries = "1"
 PACKAGES += "${BPN}-binaries"
-RRECOMMENDS_${BPN}-binaries =  "${@" ".join([p for p in d.getVar('PACKAGES').split() if p.find("glibc-binary") != -1])}"
+RRECOMMENDS:${BPN}-binaries =  "${@" ".join([p for p in d.getVar('PACKAGES').split() if p.find("glibc-binary-") != -1])}"
 
 # Create a glibc-charmaps package
-ALLOW_EMPTY_${BPN}-charmaps = "1"
+ALLOW_EMPTY:${BPN}-charmaps = "1"
 PACKAGES += "${BPN}-charmaps"
-RRECOMMENDS_${BPN}-charmaps =  "${@" ".join([p for p in d.getVar('PACKAGES').split() if p.find("glibc-charmap") != -1])}"
+RRECOMMENDS:${BPN}-charmaps =  "${@" ".join([p for p in d.getVar('PACKAGES').split() if p.find("glibc-charmap-") != -1])}"
 
 # Create a glibc-gconvs package
-ALLOW_EMPTY_${BPN}-gconvs = "1"
+ALLOW_EMPTY:${BPN}-gconvs = "1"
 PACKAGES += "${BPN}-gconvs"
-RRECOMMENDS_${BPN}-gconvs =  "${@" ".join([p for p in d.getVar('PACKAGES').split() if p.find("glibc-gconv") != -1])}"
+RRECOMMENDS:${BPN}-gconvs =  "${@" ".join([p for p in d.getVar('PACKAGES').split() if p.find("glibc-gconv-") != -1])}"
 
 # Create a glibc-localedatas package
-ALLOW_EMPTY_${BPN}-localedatas = "1"
+ALLOW_EMPTY:${BPN}-localedatas = "1"
 PACKAGES += "${BPN}-localedatas"
-RRECOMMENDS_${BPN}-localedatas =  "${@" ".join([p for p in d.getVar('PACKAGES').split() if p.find("glibc-localedata") != -1])}"
+RRECOMMENDS:${BPN}-localedatas =  "${@" ".join([p for p in d.getVar('PACKAGES').split() if p.find("glibc-localedata-") != -1])}"
 
-DESCRIPTION_localedef = "glibc: compile locale definition files"
+DESCRIPTION:localedef = "glibc: compile locale definition files"
 
 # glibc-gconv is dynamically added into PACKAGES, thus
-# FILES_glibc-gconv will not be automatically extended in multilib.
-# Explicitly add ${MLPREFIX} for FILES_glibc-gconv.
-FILES_${MLPREFIX}glibc-gconv = "${libdir}/gconv/*"
-FILES_localedef = "${bindir}/localedef"
+# FILES:glibc-gconv will not be automatically extended in multilib.
+# Explicitly add ${MLPREFIX} for FILES:glibc-gconv.
+FILES:${MLPREFIX}glibc-gconv = "${libdir}/gconv/*"
+FILES:localedef = "${bindir}/localedef"
 
 LOCALETREESRC = "${COMPONENTS_DIR}/${PACKAGE_ARCH}/glibc-stash-locale"
 
@@ -87,10 +82,9 @@ do_install() {
 	if [ ${PACKAGE_NO_GCONV} -eq 0 ]; then
 		copy_locale_files ${libdir}/gconv 0755
 		copy_locale_files ${datadir}/i18n 0644
-	else
-		# Remove the libdir if it is empty when gconv is not copied
-		find ${D}${libdir} -type d -empty -delete
 	fi
+	# Remove empty dirs in libdir when gconv or locales are not copied
+	find ${D}${libdir} -type d -empty -delete
 	copy_locale_files ${datadir}/locale 0644
 	install -m 0644 ${LOCALETREESRC}/SUPPORTED ${WORKDIR}/SUPPORTED
 }

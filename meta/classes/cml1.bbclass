@@ -27,12 +27,16 @@ CROSS_CURSES_INC = '-DCURSES_LOC="<curses.h>"'
 TERMINFO = "${STAGING_DATADIR_NATIVE}/terminfo"
 
 KCONFIG_CONFIG_COMMAND ??= "menuconfig"
+KCONFIG_CONFIG_ROOTDIR ??= "${B}"
 python do_menuconfig() {
     import shutil
 
+    config = os.path.join(d.getVar('KCONFIG_CONFIG_ROOTDIR'), ".config")
+    configorig = os.path.join(d.getVar('KCONFIG_CONFIG_ROOTDIR'), ".config.orig")
+
     try:
-        mtime = os.path.getmtime(".config")
-        shutil.copy(".config", ".config.orig")
+        mtime = os.path.getmtime(config)
+        shutil.copy(config, configorig)
     except OSError:
         mtime = 0
 
@@ -44,13 +48,13 @@ python do_menuconfig() {
     # ensure that environment variables are overwritten with this tasks 'd' values
     d.appendVar("OE_TERMINAL_EXPORTS", " PKG_CONFIG_DIR PKG_CONFIG_PATH PKG_CONFIG_LIBDIR PKG_CONFIG_SYSROOT_DIR")
 
-    oe_terminal("sh -c \"make %s; if [ \\$? -ne 0 ]; then echo 'Command failed.'; printf 'Press any key to continue... '; read r; fi\"" % d.getVar('KCONFIG_CONFIG_COMMAND'),
+    oe_terminal("sh -c 'make %s; if [ \\$? -ne 0 ]; then echo \"Command failed.\"; printf \"Press any key to continue... \"; read r; fi'" % d.getVar('KCONFIG_CONFIG_COMMAND'),
                 d.getVar('PN') + ' Configuration', d)
 
     # FIXME this check can be removed when the minimum bitbake version has been bumped
     if hasattr(bb.build, 'write_taint'):
         try:
-            newmtime = os.path.getmtime(".config")
+            newmtime = os.path.getmtime(config)
         except OSError:
             newmtime = 0
 
@@ -60,7 +64,7 @@ python do_menuconfig() {
 }
 do_menuconfig[depends] += "ncurses-native:do_populate_sysroot"
 do_menuconfig[nostamp] = "1"
-do_menuconfig[dirs] = "${B}"
+do_menuconfig[dirs] = "${KCONFIG_CONFIG_ROOTDIR}"
 addtask menuconfig after do_configure
 
 python do_diffconfig() {
@@ -69,8 +73,8 @@ python do_diffconfig() {
 
     workdir = d.getVar('WORKDIR')
     fragment = workdir + '/fragment.cfg'
-    configorig = '.config.orig'
-    config = '.config'
+    configorig = os.path.join(d.getVar('KCONFIG_CONFIG_ROOTDIR'), ".config.orig")
+    config = os.path.join(d.getVar('KCONFIG_CONFIG_ROOTDIR'), ".config")
 
     try:
         md5newconfig = bb.utils.md5_file(configorig)
@@ -93,5 +97,5 @@ python do_diffconfig() {
 }
 
 do_diffconfig[nostamp] = "1"
-do_diffconfig[dirs] = "${B}"
+do_diffconfig[dirs] = "${KCONFIG_CONFIG_ROOTDIR}"
 addtask diffconfig

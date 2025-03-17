@@ -1,5 +1,5 @@
 require patch.inc
-LICENSE = "GPLv3"
+LICENSE = "GPL-3.0-only"
 
 SRC_URI += "file://0001-Unset-need_charset_alias-when-building-for-musl.patch \
             file://0002-Fix-segfault-with-mangled-rename-patch.patch \
@@ -23,6 +23,6 @@ acpaths = "-I ${S}/m4 "
 PACKAGECONFIG ?= "${@bb.utils.filter('DISTRO_FEATURES', 'xattr', d)}"
 PACKAGECONFIG[xattr] = "--enable-xattr,--disable-xattr,attr,"
 
-PROVIDES_append_class-native = " patch-replacement-native"
+PROVIDES:append:class-native = " patch-replacement-native"
 
 BBCLASSEXTEND = "native nativesdk"

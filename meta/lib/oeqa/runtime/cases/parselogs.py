@@ -59,10 +59,12 @@ common_errors = [
     "Failed to process device, ignoring: Device or resource busy",
     "Cannot find a map file",
     "[rdrand]: Initialization Failed",
+    "[rndr  ]: Initialization Failed",
     "[pulseaudio] authkey.c: Failed to open cookie file",
     "[pulseaudio] authkey.c: Failed to load authentication key",
     "was skipped because of a failed condition check",
     "was skipped because all trigger condition checks failed",
+    "xf86OpenConsole: Switching VT failed",
     ]
 
 video_related = [
@@ -119,7 +121,12 @@ ignore_errors = {
         'can\'t handle BAR above 4GB',
         'Cannot reserve Legacy IO',
         ] + common_errors,
-    'qemuarm' : [
+    'qemuppc64' : [
+        'vio vio: uevent: failed to send synthetic uevent',
+        'synth uevent: /devices/vio: failed to send uevent',
+        'PCI 0000:00 Cannot reserve Legacy IO [io  0x10000-0x10fff]',
+        ] + common_errors,
+    'qemuarmv5' : [
         'mmci-pl18x: probe of fpga:05 failed with error -22',
         'mmci-pl18x: probe of fpga:0b failed with error -22',
         'Failed to load module "glx"',
@@ -133,6 +140,8 @@ ignore_errors = {
         'OF: amba_device_add() failed (-19) for /amba/fpga/sci@a000',
         'Failed to initialize \'/amba/timer@101e3000\': -22',
         'jitterentropy: Initialization failed with host not compliant with requirements: 2',
+        'clcd-pl11x: probe of 10120000.display failed with error -2',
+        'arm-charlcd 10008000.lcd: error -ENXIO: IRQ index 0 not found'
         ] + common_errors,
     'qemuarm64' : [
         'Fatal server error:',

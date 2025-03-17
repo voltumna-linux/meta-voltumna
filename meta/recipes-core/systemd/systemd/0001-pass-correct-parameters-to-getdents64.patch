@@ -1,0 +1,80 @@
+From 2252b9a6c598f8ed4efe95d2a149f68db7fb9cc4 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Fri, 21 Jan 2022 15:15:11 -0800
+Subject: [PATCH] pass correct parameters to getdents64
+
+Fixes
+../git/src/basic/recurse-dir.c:57:40: error: incompatible pointer types passing 'uint8_t *' (aka 'unsigned char *') to parameter of type 'struct dirent *' [-Werror,-Wincompatible-pointer-types]
+                n = getdents64(dir_fd, (uint8_t*) de->buffer + de->buffer_size, bs - de->buffer_size);
+                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+../git/src/basic/stat-util.c:102:28: error: incompatible pointer types passing 'union (unnamed union at ../git/src/basic/stat-util.c:78:9) *' to parameter of type 'struct dirent *' [-Werror,-Wincompatible-pointer-types]
+        n = getdents64(fd, &buffer, sizeof(buffer));
+                           ^~~~~~~
+
+Modified to resolve the merge conflict introduced by systemd v250.14 version.
+
+Upstream-Status: Inappropriate [musl specific]
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+Signed-off-by: Jiaqing Zhao <jiaqing.zhao@linux.intel.com>
+Signed-off-by: Narpat Mali <narpat.falna@gmail.com>
+
+---
+ src/basic/dirent-util.h | 6 ++++++
+ src/basic/recurse-dir.c | 2 +-
+ src/basic/stat-util.c   | 8 ++++++--
+ 3 files changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/src/basic/dirent-util.h b/src/basic/dirent-util.h
+index 04bc53003f..5fde9043a3 100644
+--- a/src/basic/dirent-util.h
++++ b/src/basic/dirent-util.h
+@@ -51,3 +51,9 @@ assert_cc(sizeof_field(struct dirent, d_name) == sizeof_field(struct dirent64, d
+         for (void *_end = (uint8_t*) ({ (de) = (buf); }) + (sz);        \
+              (uint8_t*) (de) < (uint8_t*) _end;                         \
+              (de) = (struct dirent*) ((uint8_t*) (de) + (de)->d_reclen))
++
++#define DEFINE_DIRENT_BUFFER(name, sz)                                  \
++        union {                                                         \
++                struct dirent de;                                       \
++                uint8_t data[(sz) * DIRENT_SIZE_MAX];                   \
++        } name
+diff --git a/src/basic/recurse-dir.c b/src/basic/recurse-dir.c
+index efa1797b7b..03ff10ebe9 100644
+--- a/src/basic/recurse-dir.c
++++ b/src/basic/recurse-dir.c
+@@ -54,7 +54,7 @@ int readdir_all(int dir_fd,
+                 bs = MIN(MALLOC_SIZEOF_SAFE(de) - offsetof(DirectoryEntries, buffer), (size_t) SSIZE_MAX);
+                 assert(bs > de->buffer_size);
+ 
+-                n = getdents64(dir_fd, (uint8_t*) de->buffer + de->buffer_size, bs - de->buffer_size);
++                n = getdents64(dir_fd, (struct dirent*)((uint8_t*) de->buffer + de->buffer_size), bs - de->buffer_size);
+                 if (n < 0)
+                         return -errno;
+                 if (n == 0)
+diff --git a/src/basic/stat-util.c b/src/basic/stat-util.c
+index db22f06d0f..cb76726c37 100644
+--- a/src/basic/stat-util.c
++++ b/src/basic/stat-util.c
+@@ -66,6 +66,10 @@ int is_device_node(const char *path) {
+ int dir_is_empty_at(int dir_fd, const char *path) {
+         _cleanup_close_ int fd = -1;
+         _cleanup_closedir_ DIR *d = NULL;
++        /* Allocate space for at least 3 full dirents, since every dir has at least two entries ("."  +
++         * ".."), and only once we have seen if there's a third we know whether the dir is empty or not. */
++        DEFINE_DIRENT_BUFFER(buffer, 3);
++        ssize_t n;
+
+         if (path) {
+                 assert(dir_fd >= 0 || dir_fd == AT_FDCWD);
+@@ -85,8 +89,8 @@ int dir_is_empty_at(int dir_fd, const char *path) {
+                         return fd;
+         }
+ 
+-        d = take_fdopendir(&fd);
+-        if (!d)
++        n = getdents64(fd, (struct dirent *)&buffer, sizeof(buffer));
++        if (n < 0)
+                 return -errno;
+ 
+         FOREACH_DIRENT(de, d, return -errno)

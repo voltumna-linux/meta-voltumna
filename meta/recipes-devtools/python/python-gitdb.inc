@@ -6,14 +6,13 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=59e5ecb13339a936eedf83282eaf4528"
 
 inherit pypi
 
-PYPI_PACKAGE = "gitdb2"
+PYPI_PACKAGE = "gitdb"
 
-SRC_URI[md5sum] = "1a7ea3362e405f8a5634f7ee53636094"
-SRC_URI[sha256sum] = "1b6df1433567a51a4a9c1a5a0de977aa351a405cc56d7d35f3388bad1f630350"
+SRC_URI[sha256sum] = "bac2fd45c0a1c9cf619e63a90d62bdc63892ef92387424b855792a6cabe789aa"
 
 DEPENDS = "${PYTHON_PN}-async ${PYTHON_PN}-setuptools-native ${PYTHON_PN}-smmap"
 
-RDEPENDS_${PN} += "${PYTHON_PN}-async \
+RDEPENDS:${PN} += "${PYTHON_PN}-async \
                    ${PYTHON_PN}-compression \
                    ${PYTHON_PN}-crypt \
                    ${PYTHON_PN}-io \

@@ -20,10 +20,16 @@ class DevtoolTest(OESDKExtTestCase):
         myapp_src = os.path.join(cls.tc.esdk_files_dir, "myapp")
         cls.myapp_dst = os.path.join(cls.tc.sdk_dir, "myapp")
         shutil.copytree(myapp_src, cls.myapp_dst)
+        subprocess.check_output(['git', 'init', '.'], cwd=cls.myapp_dst)
+        subprocess.check_output(['git', 'add', '.'], cwd=cls.myapp_dst)
+        subprocess.check_output(['git', 'commit', '-m', "'test commit'"], cwd=cls.myapp_dst)
 
         myapp_cmake_src = os.path.join(cls.tc.esdk_files_dir, "myapp_cmake")
         cls.myapp_cmake_dst = os.path.join(cls.tc.sdk_dir, "myapp_cmake")
         shutil.copytree(myapp_cmake_src, cls.myapp_cmake_dst)
+        subprocess.check_output(['git', 'init', '.'], cwd=cls.myapp_cmake_dst)
+        subprocess.check_output(['git', 'add', '.'], cwd=cls.myapp_cmake_dst)
+        subprocess.check_output(['git', 'commit', '-m', "'test commit'"], cwd=cls.myapp_cmake_dst)
 
     @classmethod
     def tearDownClass(cls):
@@ -106,7 +112,7 @@ class SdkUpdateTest(OESDKExtTestCase):
         cmd = 'oe-publish-sdk %s %s' % (tcname_new, self.publish_dir)
         subprocess.check_output(cmd, shell=True)
 
-        self.http_service = HTTPService(self.publish_dir)
+        self.http_service = HTTPService(self.publish_dir, logger=self.logger)
         self.http_service.start()
 
         self.http_url = "http://127.0.0.1:%d" % self.http_service.port

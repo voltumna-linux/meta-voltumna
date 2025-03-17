@@ -33,9 +33,24 @@ def get_kernelversion_file(p):
     except IOError:
         return None
 
+def get_kernellocalversion_file(p):
+    fn = p + '/kernel-localversion'
+
+    try:
+        with open(fn, 'r') as f:
+            return f.readlines()[0].strip()
+    except IOError:
+        return ""
+
+    return ""
+
 def linux_module_packages(s, d):
     suffix = ""
     return " ".join(map(lambda s: "kernel-module-%s%s" % (s.lower().replace('_', '-').replace('@', '+'), suffix), s.split()))
+
+export KBUILD_BUILD_VERSION = "1"
+export KBUILD_BUILD_USER ?= "oe-user"
+export KBUILD_BUILD_HOST ?= "oe-host"
 
 # that's all
 

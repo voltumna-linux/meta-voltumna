@@ -3,6 +3,8 @@
 # Released under the MIT license (see COPYING.MIT)
 
 inherit metadata_scm
+inherit image-artifact-names
+
 # testimage.bbclass enables testing of qemu images using python unittests.
 # Most of the tests are commands run on target image over ssh.
 # To use it add testimage to global inherit and call your target image with -c testimage
@@ -34,6 +36,7 @@ TESTIMAGE_AUTO ??= "0"
 # TEST_OVERALL_TIMEOUT can be used to set the maximum time in seconds the tests will be allowed to run (defaults to no limit).
 # TEST_QEMUPARAMS can be used to pass extra parameters to qemu, e.g. "-m 1024" for setting the amount of ram to 1 GB.
 # TEST_RUNQEMUPARAMS can be used to pass extra parameters to runqemu, e.g. "gl" to enable OpenGL acceleration.
+# QEMU_USE_KVM can be set to "" to disable the use of kvm (by default it is enabled if target_arch == build_arch or both of them are x86 archs)
 
 # TESTIMAGE_BOOT_PATTERNS can be used to override certain patterns used to communicate with the target when booting,
 # if a pattern is not specifically present on this variable a default will be used when booting the target.
@@ -58,23 +61,22 @@ BASICTESTSUITE = "\
     ping date df ssh scp python perl gi ptest parselogs \
     logrotate connman systemd oe_syslog pam stap ldd xorg \
     kernelmodule gcc buildcpio buildlzip buildgalculator \
-    dnf rpm opkg apt weston"
+    dnf rpm opkg apt weston go rust"
 
 DEFAULT_TEST_SUITES = "${BASICTESTSUITE}"
 
-# aarch64 has no graphics
-DEFAULT_TEST_SUITES_remove_aarch64 = "xorg"
 # musl doesn't support systemtap
-DEFAULT_TEST_SUITES_remove_libc-musl = "stap"
+DEFAULT_TEST_SUITES:remove:libc-musl = "stap"
 
 # qemumips is quite slow and has reached the timeout limit several times on the YP build cluster,
 # mitigate this by removing build tests for qemumips machines.
 MIPSREMOVE ??= "buildcpio buildlzip buildgalculator"
-DEFAULT_TEST_SUITES_remove_qemumips = "${MIPSREMOVE}"
-DEFAULT_TEST_SUITES_remove_qemumips64 = "${MIPSREMOVE}"
+DEFAULT_TEST_SUITES:remove:qemumips = "${MIPSREMOVE}"
+DEFAULT_TEST_SUITES:remove:qemumips64 = "${MIPSREMOVE}"
 
 TEST_SUITES ?= "${DEFAULT_TEST_SUITES}"
 
+QEMU_USE_KVM ?= "1"
 TEST_QEMUBOOT_TIMEOUT ?= "1000"
 TEST_OVERALL_TIMEOUT ?= ""
 TEST_TARGET ?= "qemu"
@@ -84,7 +86,7 @@ TEST_RUNQEMUPARAMS ?= ""
 TESTIMAGE_BOOT_PATTERNS ?= ""
 
 TESTIMAGEDEPENDS = ""
-TESTIMAGEDEPENDS_append_qemuall = " qemu-native:do_populate_sysroot qemu-helper-native:do_populate_sysroot qemu-helper-native:do_addto_recipe_sysroot"
+TESTIMAGEDEPENDS:append:qemuall = " qemu-native:do_populate_sysroot qemu-helper-native:do_populate_sysroot qemu-helper-native:do_addto_recipe_sysroot"
 TESTIMAGEDEPENDS += "${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'cpio-native:do_populate_sysroot', '', d)}"
 TESTIMAGEDEPENDS += "${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'dnf-native:do_populate_sysroot', '', d)}"
 TESTIMAGEDEPENDS += "${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'createrepo-c-native:do_populate_sysroot', '', d)}"
@@ -92,16 +94,19 @@ TESTIMAGEDEPENDS += "${@bb.utils.contains('IMAGE_PKGTYPE', 'ipk', 'opkg-utils-na
 TESTIMAGEDEPENDS += "${@bb.utils.contains('IMAGE_PKGTYPE', 'deb', 'apt-native:do_populate_sysroot  package-index:do_package_index', '', d)}"
 
 TESTIMAGELOCK = "${TMPDIR}/testimage.lock"
-TESTIMAGELOCK_qemuall = ""
+TESTIMAGELOCK:qemuall = ""
 
 TESTIMAGE_DUMP_DIR ?= "${LOG_DIR}/runtime-hostdump/"
 
-TESTIMAGE_UPDATE_VARS ?= "DL_DIR WORKDIR DEPLOY_DIR"
+TESTIMAGE_UPDATE_VARS ?= "DL_DIR WORKDIR DEPLOY_DIR IMAGE_LINK_NAME"
 
 testimage_dump_target () {
 }
 
 testimage_dump_host () {
+}
+
+testimage_dump_monitor () {
 }
 
 python do_testimage() {
@@ -110,6 +115,7 @@ python do_testimage() {
 
 addtask testimage
 do_testimage[nostamp] = "1"
+do_testimage[network] = "1"
 do_testimage[depends] += "${TESTIMAGEDEPENDS}"
 do_testimage[lockfiles] += "${TESTIMAGELOCK}"
 
@@ -175,7 +181,6 @@ def testimage_main(d):
     import shutil
 
     from bb.utils import export_proxies
-    from oeqa.core.utils.misc import updateTestData
     from oeqa.runtime.context import OERuntimeTestContext
     from oeqa.runtime.context import OERuntimeTestContextExecutor
     from oeqa.core.target.qemu import supported_fstypes
@@ -204,18 +209,19 @@ def testimage_main(d):
     bb.utils.mkdirhier(d.getVar("TEST_LOG_DIR"))
 
     image_name = ("%s/%s" % (d.getVar('DEPLOY_DIR_IMAGE'),
-                             d.getVar('IMAGE_LINK_NAME')))
+                             d.getVar('IMAGE_LINK_NAME') or d.getVar('IMAGE_NAME')))
 
     tdname = "%s.testdata.json" % image_name
     try:
         with open(tdname, "r") as f:
             td = json.load(f)
     except FileNotFoundError as err:
-        bb.fatal('File %s not found (%s).\nHave you built the image with INHERIT += "testimage" in the conf/local.conf?' % (tdname, err))
+        bb.fatal('File %s not found (%s).\nHave you built the image with IMAGE_CLASSES += "testimage" in the conf/local.conf?' % (tdname, err))
 
     # Some variables need to be updates (mostly paths) with the
     # ones of the current environment because some tests require them.
-    updateTestData(d, td, d.getVar('TESTIMAGE_UPDATE_VARS').split())
+    for var in d.getVar('TESTIMAGE_UPDATE_VARS').split():
+        td[var] = d.getVar(var)
 
     image_manifest = "%s.manifest" % image_name
     image_packages = OERuntimeTestContextExecutor.readPackagesManifest(image_manifest)
@@ -284,20 +290,19 @@ def testimage_main(d):
                       'dump_dir'    : d.getVar("TESTIMAGE_DUMP_DIR"),
                       'serial_ports': len(d.getVar("SERIAL_CONSOLES").split()),
                       'ovmf'        : ovmf,
+                      'tmpfsdir'    : d.getVar("RUNQEMU_TMPFS_DIR"),
                     }
 
     if d.getVar("TESTIMAGE_BOOT_PATTERNS"):
         target_kwargs['boot_patterns'] = get_testimage_boot_patterns(d)
-
-    # TODO: Currently BBPATH is needed for custom loading of targets.
-    # It would be better to find these modules using instrospection.
-    target_kwargs['target_modules_path'] = d.getVar('BBPATH')
 
     # hardware controlled targets might need further access
     target_kwargs['powercontrol_cmd'] = d.getVar("TEST_POWERCONTROL_CMD") or None
     target_kwargs['powercontrol_extra_args'] = d.getVar("TEST_POWERCONTROL_EXTRA_ARGS") or ""
     target_kwargs['serialcontrol_cmd'] = d.getVar("TEST_SERIALCONTROL_CMD") or None
     target_kwargs['serialcontrol_extra_args'] = d.getVar("TEST_SERIALCONTROL_EXTRA_ARGS") or ""
+    target_kwargs['testimage_dump_monitor'] = d.getVar("testimage_dump_monitor") or ""
+    target_kwargs['testimage_dump_target'] = d.getVar("testimage_dump_target") or ""
 
     def export_ssh_agent(d):
         import os

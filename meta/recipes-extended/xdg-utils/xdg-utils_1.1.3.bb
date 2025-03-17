@@ -36,4 +36,4 @@ inherit autotools-brokensep features_check
 REQUIRED_DISTRO_FEATURES = "x11"
 
 DEPENDS = "xmlto-native libxslt-native"
-RDEPENDS_${PN} += "xprop"
+RDEPENDS:${PN} += "xprop"

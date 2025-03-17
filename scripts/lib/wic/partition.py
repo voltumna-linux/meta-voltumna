@@ -54,6 +54,7 @@ class Partition():
         self.uuid = args.uuid
         self.fsuuid = args.fsuuid
         self.type = args.type
+        self.no_fstab_update = args.no_fstab_update
         self.updated_fstab_path = None
         self.has_fstab = False
         self.update_fstab_in_rootfs = False
@@ -131,6 +132,8 @@ class Partition():
             self.update_fstab_in_rootfs = True
 
         if not self.source:
+            if self.fstype == "none" or self.no_table:
+                return
             if not self.size and not self.fixed_size:
                 raise WicError("The %s partition has a size of zero. Please "
                                "specify a non-zero --size/--fixed-size for that "
@@ -141,9 +144,9 @@ class Partition():
                                             native_sysroot)
                 self.source_file = "%s/fs.%s" % (cr_workdir, self.fstype)
             else:
-                if self.fstype == 'squashfs':
-                    raise WicError("It's not possible to create empty squashfs "
-                                   "partition '%s'" % (self.mountpoint))
+                if self.fstype in ('squashfs', 'erofs'):
+                    raise WicError("It's not possible to create empty %s "
+                                   "partition '%s'" % (self.fstype, self.mountpoint))
 
                 rootfs = "%s/fs_%s.%s.%s" % (cr_workdir, self.label,
                                              self.lineno, self.fstype)
@@ -170,7 +173,7 @@ class Partition():
             # Split sourceparams string of the form key1=val1[,key2=val2,...]
             # into a dict.  Also accepts valueless keys i.e. without =
             splitted = self.sourceparams.split(',')
-            srcparams_dict = dict(par.split('=', 1) for par in splitted if par)
+            srcparams_dict = dict((par.split('=', 1) + [None])[:2] for par in splitted if par)
 
         plugin = PluginMgr.get_plugins('source')[self.source]
         plugin.do_configure_partition(self, srcparams_dict, creator,
@@ -286,7 +289,7 @@ class Partition():
             (self.fstype, extraopts, rootfs, label_str, self.fsuuid, rootfs_dir)
         exec_native_cmd(mkfs_cmd, native_sysroot, pseudo=pseudo)
 
-        if self.updated_fstab_path and self.has_fstab:
+        if self.updated_fstab_path and self.has_fstab and not self.no_fstab_update:
             debugfs_script_path = os.path.join(cr_workdir, "debugfs_script")
             with open(debugfs_script_path, "w") as f:
                 f.write("cd etc\n")
@@ -297,6 +300,30 @@ class Partition():
 
         mkfs_cmd = "fsck.%s -pvfD %s" % (self.fstype, rootfs)
         exec_native_cmd(mkfs_cmd, native_sysroot, pseudo=pseudo)
+
+        if os.getenv('SOURCE_DATE_EPOCH'):
+            sde_time = hex(int(os.getenv('SOURCE_DATE_EPOCH')))
+            debugfs_script_path = os.path.join(cr_workdir, "debugfs_script")
+            files = []
+            for root, dirs, others in os.walk(rootfs_dir):
+                base = root.replace(rootfs_dir, "").rstrip(os.sep)
+                files += [ "/" if base == "" else base ]
+                files += [ base + "/" + n for n in dirs + others ]
+            with open(debugfs_script_path, "w") as f:
+                f.write("set_current_time %s\n" % (sde_time))
+                if self.updated_fstab_path and self.has_fstab and not self.no_fstab_update:
+                    f.write("set_inode_field /etc/fstab mtime %s\n" % (sde_time))
+                    f.write("set_inode_field /etc/fstab mtime_extra 0\n")
+                for file in set(files):
+                    for time in ["atime", "ctime", "crtime"]:
+                        f.write("set_inode_field \"%s\" %s %s\n" % (file, time, sde_time))
+                        f.write("set_inode_field \"%s\" %s_extra 0\n" % (file, time))
+                for time in ["wtime", "mkfs_time", "lastcheck"]:
+                    f.write("set_super_value %s %s\n" % (time, sde_time))
+                for time in ["mtime", "first_error_time", "last_error_time"]:
+                    f.write("set_super_value %s 0\n" % (time))
+            debugfs_cmd = "debugfs -w -f %s %s" % (debugfs_script_path, rootfs)
+            exec_native_cmd(debugfs_cmd, native_sysroot)
 
         self.check_for_Y2038_problem(rootfs, native_sysroot)
 
@@ -339,8 +366,6 @@ class Partition():
             label_str = "-n %s" % self.label
 
         size_str = ""
-        if self.fstype == 'msdos':
-            size_str = "-F 16" # FAT 16
 
         extraopts = self.mkfs_extraopts or '-S 512'
 
@@ -352,8 +377,8 @@ class Partition():
         mcopy_cmd = "mcopy -i %s -s %s/* ::/" % (rootfs, rootfs_dir)
         exec_native_cmd(mcopy_cmd, native_sysroot)
 
-        if self.updated_fstab_path and self.has_fstab:
-            mcopy_cmd = "mcopy -i %s %s ::/etc/fstab" % (rootfs, self.updated_fstab_path)
+        if self.updated_fstab_path and self.has_fstab and not self.no_fstab_update:
+            mcopy_cmd = "mcopy -m -i %s %s ::/etc/fstab" % (rootfs, self.updated_fstab_path)
             exec_native_cmd(mcopy_cmd, native_sysroot)
 
         chmod_cmd = "chmod 644 %s" % rootfs
@@ -370,6 +395,19 @@ class Partition():
         squashfs_cmd = "mksquashfs %s %s %s" % \
                        (rootfs_dir, rootfs, extraopts)
         exec_native_cmd(squashfs_cmd, native_sysroot, pseudo=pseudo)
+
+    def prepare_rootfs_erofs(self, rootfs, cr_workdir, oe_builddir, rootfs_dir,
+                             native_sysroot, pseudo):
+        """
+        Prepare content for a erofs rootfs partition.
+        """
+        extraopts = self.mkfs_extraopts or ''
+        erofs_cmd = "mkfs.erofs %s -U %s %s %s" % \
+                       (extraopts, self.fsuuid, rootfs, rootfs_dir)
+        exec_native_cmd(erofs_cmd, native_sysroot, pseudo=pseudo)
+
+    def prepare_empty_partition_none(self, rootfs, oe_builddir, native_sysroot):
+        pass
 
     def prepare_empty_partition_ext(self, rootfs, oe_builddir,
                                     native_sysroot):
@@ -422,8 +460,6 @@ class Partition():
             label_str = "-n %s" % self.label
 
         size_str = ""
-        if self.fstype == 'msdos':
-            size_str = "-F 16" # FAT 16
 
         extraopts = self.mkfs_extraopts or '-S 512'
 

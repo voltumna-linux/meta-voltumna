@@ -36,6 +36,7 @@ NATIVE_RECIPES = {"bmaptool": "bmap-tools",
                   "mkdosfs": "dosfstools",
                   "mkisofs": "cdrtools",
                   "mkfs.btrfs": "btrfs-tools",
+                  "mkfs.erofs": "erofs-utils",
                   "mkfs.ext2": "e2fsprogs",
                   "mkfs.ext3": "e2fsprogs",
                   "mkfs.ext4": "e2fsprogs",
@@ -140,11 +141,12 @@ def exec_native_cmd(cmd_and_args, native_sysroot, pseudo=""):
         cmd_and_args = pseudo + cmd_and_args
 
     hosttools_dir = get_bitbake_var("HOSTTOOLS_DIR")
+    target_sys = get_bitbake_var("TARGET_SYS")
 
-    native_paths = "%s/sbin:%s/usr/sbin:%s/usr/bin:%s/bin:%s" % \
+    native_paths = "%s/sbin:%s/usr/sbin:%s/usr/bin:%s/usr/bin/%s:%s/bin:%s" % \
                    (native_sysroot, native_sysroot,
-                    native_sysroot, native_sysroot,
-                    hosttools_dir)
+                    native_sysroot, native_sysroot, target_sys,
+                    native_sysroot, hosttools_dir)
 
     native_cmd_and_args = "export PATH=%s:$PATH;%s" % \
                    (native_paths, cmd_and_args)

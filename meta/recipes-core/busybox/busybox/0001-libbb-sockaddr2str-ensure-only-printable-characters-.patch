@@ -1,7 +1,7 @@
-From c7e181fdf58c392e06ab805e2c044c3e57d5445a Mon Sep 17 00:00:00 2001
+From 0c8da1bead8ffaf270b4b723ead2c517371405d7 Mon Sep 17 00:00:00 2001
 From: Ariadne Conill <ariadne@dereferenced.org>
 Date: Sun, 3 Apr 2022 12:14:33 +0000
-Subject: [PATCH] libbb: sockaddr2str: ensure only printable characters are
+Subject: [PATCH 1/2] libbb: sockaddr2str: ensure only printable characters are
  returned for the hostname part
 
 CVE: CVE-2022-28391
@@ -13,10 +13,10 @@ Signed-off-by: Steve Sakoman <steve@sakoman.com>
  1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/libbb/xconnect.c b/libbb/xconnect.c
-index eb2871cb1..b5520bb21 100644
+index 0e0b247b8..02c061e67 100644
 --- a/libbb/xconnect.c
 +++ b/libbb/xconnect.c
-@@ -501,8 +501,9 @@ static char* FAST_FUNC sockaddr2str(const struct sockaddr *sa, int flags)
+@@ -497,8 +497,9 @@ static char* FAST_FUNC sockaddr2str(const struct sockaddr *sa, int flags)
  	);
  	if (rc)
  		return NULL;
@@ -27,7 +27,7 @@ index eb2871cb1..b5520bb21 100644
  #if ENABLE_FEATURE_IPV6
  	if (sa->sa_family == AF_INET6) {
  		if (strchr(host, ':')) /* heh, it's not a resolved hostname */
-@@ -513,7 +514,7 @@ static char* FAST_FUNC sockaddr2str(const struct sockaddr *sa, int flags)
+@@ -509,7 +510,7 @@ static char* FAST_FUNC sockaddr2str(const struct sockaddr *sa, int flags)
  #endif
  	/* For now we don't support anything else, so it has to be INET */
  	/*if (sa->sa_family == AF_INET)*/
@@ -36,3 +36,6 @@ index eb2871cb1..b5520bb21 100644
  	/*return xstrdup(host);*/
  }
  
+-- 
+2.35.1
+

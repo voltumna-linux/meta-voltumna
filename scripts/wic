@@ -159,6 +159,9 @@ def wic_create_subcommand(options, usage_str):
                            "(Use -e/--image-name to specify it)")
         native_sysroot = options.native_sysroot
 
+    if options.kernel_dir:
+        kernel_dir = options.kernel_dir
+
     if not options.vars_dir and (not native_sysroot or not os.path.isdir(native_sysroot)):
         logger.info("Building wic-tools...\n")
         subprocess.check_call(["bitbake", "wic-tools"])
@@ -346,6 +349,8 @@ def wic_init_parser_create(subparser):
                       default=False, help="output debug information")
     subparser.add_argument("-i", "--imager", dest="imager",
                       default="direct", help="the wic imager plugin")
+    subparser.add_argument("--extra-space", type=int, dest="extra_space",
+                      default=0, help="additional free disk space to add to the image")
     return
 
 

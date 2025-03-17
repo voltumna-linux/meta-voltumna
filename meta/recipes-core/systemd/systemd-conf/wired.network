@@ -1,5 +1,6 @@
 [Match]
-Name=en* eth*
+Type=ether
+Name=!veth*
 KernelCommandLine=!nfsroot
 KernelCommandLine=!ip
 
@@ -7,5 +8,6 @@ KernelCommandLine=!ip
 DHCP=yes
 
 [DHCP]
+UseMTU=yes
 RouteMetric=10
 ClientIdentifier=mac

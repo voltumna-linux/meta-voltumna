@@ -1,4 +1,4 @@
-From b5125000917810731bc28055c0445d571121f80e Mon Sep 17 00:00:00 2001
+From 2c20198b1ddb1bfb47269b8caf929ffb83748f78 Mon Sep 17 00:00:00 2001
 From: Nick Wellnhofer <wellnhofer@aevum.de>
 Date: Thu, 21 Apr 2022 00:45:58 +0200
 Subject: [PATCH] Port gentest.py to Python 3
@@ -46,12 +46,13 @@ might be useless (e.g. /usr/lib/python3.8/site-packages on Ubuntu-22.10
 which uses python 3.10 and there is no site-packages with libxml2)
 
 Signed-off-by: Martin Jansa <Martin.Jansa@gmail.com>
+
 ---
  gentest.py | 421 ++++++++++++++++++++++++++---------------------------
  1 file changed, 209 insertions(+), 212 deletions(-)
 
 diff --git a/gentest.py b/gentest.py
-index b763300..0756706 100755
+index b6cd866..af15a4f 100755
 --- a/gentest.py
 +++ b/gentest.py
 @@ -8,7 +8,7 @@ import string
@@ -452,7 +453,7 @@ index b763300..0756706 100755
      test.write("#include <libxml/%s.h>\n" % name)
      modules.append(name)
 @@ -679,7 +679,7 @@ def generate_test(module, node):
-     # and store the informations for the generation
+     # and store the information for the generation
      #
      try:
 -	args = node.xpathEval("arg")

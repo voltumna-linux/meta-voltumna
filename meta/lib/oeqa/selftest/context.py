@@ -39,7 +39,7 @@ class NonConcurrentTestSuite(unittest.TestSuite):
 
 def removebuilddir(d):
     delay = 5
-    while delay and os.path.exists(d + "/bitbake.lock"):
+    while delay and (os.path.exists(d + "/bitbake.lock") or os.path.exists(d + "/cache/hashserv.db-wal")):
         time.sleep(1)
         delay = delay - 1
     # Deleting these directories takes a lot of time, use autobuilder
@@ -188,6 +188,7 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
                 help='Keep the test build directory even if all tests pass')
 
         parser.add_argument('-B', '--newbuilddir', help='New build directory to use for tests.')
+        parser.add_argument('-v', '--verbose', action='store_true')
         parser.set_defaults(func=self.run)
 
     def _get_available_machines(self):

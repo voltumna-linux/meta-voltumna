@@ -10,7 +10,7 @@ PATCHDEPENDENCY = "${PATCHTOOL}-native:do_populate_sysroot"
 # http://git.savannah.gnu.org/cgit/patch.git/patch/?id=82b800c9552a088a241457948219d25ce0a407a4
 # This leaks into debug sources in particular. Add the dependency
 # to target recipes to avoid this problem until we can rely on 2.7.4 or later.
-PATCHDEPENDENCY_append_class-target = " patch-replacement-native:do_populate_sysroot"
+PATCHDEPENDENCY:append:class-target = " patch-replacement-native:do_populate_sysroot"
 
 PATCH_GIT_USER_NAME ?= "OpenEmbedded"
 PATCH_GIT_USER_EMAIL ?= "oe.patch@oe"
@@ -150,12 +150,12 @@ python patch_do_patch() {
             patchset.Import({"file":local, "strippath": parm['striplevel']}, True)
         except Exception as exc:
             bb.utils.remove(process_tmpdir, True)
-            bb.fatal("Importing patch '%s' with striplevel '%s'\n%s" % (parm['patchname'], parm['striplevel'], str(exc)))
+            bb.fatal("Importing patch '%s' with striplevel '%s'\n%s" % (parm['patchname'], parm['striplevel'], repr(exc).replace("\\n", "\n")))
         try:
             resolver.Resolve()
         except bb.BBHandledException as e:
             bb.utils.remove(process_tmpdir, True)
-            bb.fatal("Applying patch '%s' on target directory '%s'\n%s" % (parm['patchname'], patchdir, str(e)))
+            bb.fatal("Applying patch '%s' on target directory '%s'\n%s" % (parm['patchname'], patchdir, repr(e).replace("\\n", "\n")))
 
     bb.utils.remove(process_tmpdir, True)
     del os.environ['TMPDIR']
@@ -163,7 +163,6 @@ python patch_do_patch() {
 patch_do_patch[vardepsexclude] = "PATCHRESOLVE"
 
 addtask patch after do_unpack
-do_patch[umask] = "022"
 do_patch[dirs] = "${WORKDIR}"
 do_patch[depends] = "${PATCHDEPENDENCY}"
 
