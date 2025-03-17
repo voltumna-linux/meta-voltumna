@@ -1,4 +1,10 @@
 [![Yoe Distro CI](https://github.com/kraj/meta-clang/workflows/Yoe%20Distro%20CI/badge.svg?branch=master)](https://github.com/kraj/meta-clang/actions/workflows/yoe.yml?query=workflow%3AYoe+branch%3Amaster)
+<table border="0" rules="none">
+<tr border="0">
+<td width="250" height="150"><img alt="Yocto Project Layer Compatible"
+src="images/Yocto_Project™_Badge_Compatible_Web_RGB.png"></td>
+</tr>
+</table>
 
 # meta-clang (C/C++ frontend and LLVM compiler backend)
 
@@ -9,10 +15,10 @@ with GNU compiler and can be used for specific recipes or full system compiler.
 # Getting Started
 
 ```shell
-git clone git://github.com/openembedded/openembedded-core.git
+git clone https://github.com/openembedded/openembedded-core.git
 cd openembedded-core
-git clone git://github.com/openembedded/bitbake.git
-git clone git://github.com/kraj/meta-clang.git
+git clone https://github.com/openembedded/bitbake.git
+git clone https://github.com/kraj/meta-clang.git
 
 $ . ./oe-init-build-env
 ```
@@ -21,7 +27,7 @@ If using poky ( Yocto project reference Distribution )
 ```shell
 git clone https://git.yoctoproject.org/git/poky
 cd poky
-git clone git://github.com/kraj/meta-clang.git
+git clone https://github.com/kraj/meta-clang.git
 
 $ . ./oe-init-build-env
 ```
@@ -42,7 +48,7 @@ clang to be the default compiler then set
 TOOLCHAIN ?= "clang"
 ```
 
-in `local.conf`, this would now switch default cross-compiler to be clang 
+in `local.conf`, this would now switch default cross-compiler to be clang
 you can select clang per recipe too by writing bbappends for them containing
 
 ```shell
@@ -51,19 +57,33 @@ TOOLCHAIN = "clang"
 also look at `conf/nonclangable.conf` for list of recipes which do not yet fully
 build with clang.
 
+# Providing LLVM
+
+clang recipes can provide llvm and related packages too, it might be worth using single
+provider for llvm and clang to save some compile time and space, select the knobs
+to point to clang, default is to use the version provided by core layer.
+
+```shell
+PREFERRED_PROVIDER_llvm = "clang"
+PREFERRED_PROVIDER_llvm-native = "clang-native"
+PREFERRED_PROVIDER_nativesdk-llvm = "nativesdk-clang"
+PROVIDES:pn-clang = "llvm"
+PROVIDES:pn-clang-native = "llvm-native"
+PROVIDES:pn-nativesdk-clang = "nativesdk-llvm"
+```
 # Default Compiler Runtime
 
-Default is to use GNU runtime `RUNTIME = "gnu"` which consists of libgcc, libstdc++ to provide C/C++
+Default is to use GNU runtime `TC_CXX_RUNTIME = "gnu"` which consists of libgcc, libstdc++ to provide C/C++
 runtime support. However it's possible to use LLVM runtime to replace it where
 compile-rt, llvm libunwind, and libc++ are used to provide C/C++ runtime, while
 GNU runtime works with both GCC and Clang, LLVM runtime is only tested with Clang
 compiler, switching to use LLVM runtime is done via a config metadata knob
 
 ```shell
-RUNTIME = "llvm"
+TC_CXX_RUNTIME = "llvm"
 ```
 
-RUNTIME variable influences individual runtime elements and can be set explicitly as well
+TC_CXX_RUNTIME variable influences individual runtime elements and can be set explicitly as well
 e.g. `LIBCPLUSPLUS` `COMPILER_RT` and `UNWINDLIB`.
 
 Please note that this will still use crt files from GNU compiler always, while llvm now
@@ -71,8 +91,8 @@ do provide crt files, they have not been yet integrated into the toolchain.
 
 # Default C++ Standard Library Switch
 
-Using RUNTIME variable will select which C++ runtime is used, however it can be overridden
-if needed to by modifying `LIBCPLUSPLUS` variable, usually defaults used by `RUNTIME` are
+Using TC_CXX_RUNTIME variable will select which C++ runtime is used, however it can be overridden
+if needed to by modifying `LIBCPLUSPLUS` variable, usually defaults used by `TC_CXX_RUNTIME` are
 best fit. e.g. below we select LLVM C++ as default C++ runtime.
 
 ```shell
@@ -99,6 +119,46 @@ in `local.conf`
 ```shell
 CLANGSDK = "1"
 ```
+
+# Kernel build with clang
+Newer kernels and Android kernels support clang compilation, and even support LTO, The following takes [rockchip](https://github.com/JeffyCN/meta-rockchip)'s kernel as an example to configure clang compilation. x86, arm and arm64 kernel supported full LLVM toolchain, other arch only support clang. more info https://docs.kernel.org/kbuild/llvm.html
+
+- linux-rockchip_%bbappend
+```shell
+TOOLCHAIN:forcevariable = "clang"
+
+DEPENDS:append:toolchain-clang = " clang-cross-${TARGET_ARCH}"
+KERNEL_CC:toolchain-clang = "${CCACHE}clang ${HOST_CC_KERNEL_ARCH} -fuse-ld=lld ${DEBUG_PREFIX_MAP} -fdebug-prefix-map=${STAGING_KERNEL_DIR}=${KERNEL_SRC_PATH}"
+KERNEL_LD:toolchain-clang = "${CCACHE}ld.lld"
+KERNEL_AR:toolchain-clang = "${CCACHE}llvm-ar"
+```
+if you want use LLVM integrated assembler for some older kernel, newer vesion is enabled default.
+```shell
+do_compile:prepend:toolchain-clang() {
+	export LLVM_IAS=1
+}
+
+do_compile_kernelmodules:prepend:toolchain-clang() {
+	export LLVM_IAS=1
+}
+```
+if you want enable LTO, append follow content.
+```
+FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
+SRC_URI:append:toolchain-clang = "\
+	file://lto.cfg \
+"
+```
+
+`CONFIG_LTO_CLANG`is need for some android based kernel, mainline kernel will do auto detect.
+
+- lto.cfg
+```
+CONFIG_LTO_CLANG=y
+CONFIG_LTO=y
+CONFIG_LTO_CLANG_THIN=y
+```
+
 
 # Building
 
@@ -132,15 +192,15 @@ CXX:remove:pn-<recipe>:toolchain-clang = " -stdlib=libc++ "
 
 # compiler-rt failing in do_configure with custom TARGET_VENDOR
 
-If your DISTRO sets own value of TARGET_VENDOR, then it's need to be added in
+If your DISTRO sets its own value of TARGET_VENDOR, then it needs to be added in
 CLANG_EXTRA_OE_VENDORS, it should be done automatically, but if compiler-rt fails
 like bellow, then check the end of work-shared/llvm-project-source-12.0.0-r0/temp/log.do_patch
-is should have line like:
+it should have a line like:
 NOTE: Adding support following TARGET_VENDOR values: foo in
   /OE/build/oe-core/tmp-glibc/work-shared/llvm-project-source-12.0.0-r0/git/llvm/lib/Support/Triple.cpp and
   /OE/build/oe-core/tmp-glibc/work-shared/llvm-project-source-12.0.0-r0/git/clang/lib/Driver/ToolChains/Gnu.cpp
 and check these files if //CLANG_EXTRA_OE_VENDORS* strings were replaced correctly.
-Read add_more_target_vendors function in recipes-devtools/clang/llvm-project-source.inc for more details.
+Read add_distro_vendor function in recipes-devtools/clang/llvm-project-source.inc for more details.
 
 http://errors.yoctoproject.org/Errors/Details/574365/
 ```shell
@@ -167,11 +227,11 @@ CMake Error at TOPDIR/tmp-glibc/work/core2-64-foo-linux/compiler-rt/12.0.0-r0/re
 # Dependencies
 
 ```shell
-URI: git://github.com/openembedded/openembedded-core.git
+URI: https://github.com/openembedded/openembedded-core.git
 branch: master
 revision: HEAD
 
-URI: git://github.com/openembedded/bitbake.git
+URI: ghttps://github.com/openembedded/bitbake.git
 branch: master
 revision: HEAD
 ```
