@@ -9,7 +9,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
-__version__ = "2.8.0"
+__version__ = "2.9.1"
 
 import sys
 if sys.version_info < (3, 8, 0):
@@ -104,26 +104,6 @@ class BBLoggerAdapter(logging.LoggerAdapter, BBLoggerMixin):
         self.setup_bblogger(logger.name)
         super().__init__(logger, *args, **kwargs)
 
-    if sys.version_info < (3, 6):
-        # These properties were added in Python 3.6. Add them in older versions
-        # for compatibility
-        @property
-        def manager(self):
-            return self.logger.manager
-
-        @manager.setter
-        def manager(self, value):
-            self.logger.manager = value
-
-        @property
-        def name(self):
-            return self.logger.name
-
-        def __repr__(self):
-            logger = self.logger
-            level = logger.getLevelName(logger.getEffectiveLevel())
-            return '<%s %s (%s)>' % (self.__class__.__name__, logger.name, level)
-
 logging.LoggerAdapter = BBLoggerAdapter
 
 logger = logging.getLogger("BitBake")
@@ -214,7 +194,6 @@ def deprecated(func, name=None, advice=""):
 # For compatibility
 def deprecate_import(current, modulename, fromlist, renames = None):
     """Import objects from one module into another, wrapping them with a DeprecationWarning"""
-    import sys
 
     module = __import__(modulename, fromlist = fromlist)
     for position, objname in enumerate(fromlist):
