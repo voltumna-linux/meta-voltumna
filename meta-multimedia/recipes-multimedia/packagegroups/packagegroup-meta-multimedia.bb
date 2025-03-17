@@ -25,9 +25,6 @@ RDEPENDS:packagegroup-meta-multimedia = "\
     bluealsa \
     caps \
     cdparanoia \
-    dleyna-connector-dbus \
-    dleyna-renderer \
-    dleyna-server \
     dvb-apps \
     ${@bb.utils.contains("LICENSE_FLAGS_ACCEPTED", "commercial", "faac mpd", "", d)} \
     gerbera \
@@ -50,7 +47,7 @@ RDEPENDS:packagegroup-meta-multimedia = "\
     libopenmpt \
     mimic \
     ${@bb.utils.contains("LICENSE_FLAGS_ACCEPTED", "commercial", "minidlna", "", d)} \
-    mycroft \
+    ${@bb.utils.contains("DISTRO_FEATURES", "pulseaudio", "mycroft", "", d)} \
     openal-soft \
     opusfile \
     opus-tools \
@@ -65,7 +62,7 @@ RDEPENDS:packagegroup-meta-multimedia-connectivity = "\
     gupnp-dlna \
     ${@bb.utils.contains("DISTRO_FEATURES", "x11", "gupnp-tools", "", d)} \
     libupnp \
-    ${@bb.utils.contains("DISTRO_FEATURES", "gobject-introspection-data", "rygel", "", d)} \
+    ${@bb.utils.contains("DISTRO_FEATURES", "x11", bb.utils.contains("DISTRO_FEATURES", "gobject-introspection-data", "rygel", "", d), "", d)} \
 "
 RDEPENDS:packagegroup-meta-multimedia-dvb = "\
     oscam \

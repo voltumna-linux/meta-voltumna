@@ -11,7 +11,6 @@ do_configure. Add it back.
 Upstream-Status: Inappropriate [embedded specific]
 
 Signed-off-by: Yi Zhao <yi.zhao@windriver.com>
-Signed-off-by: Haixiao Yan <haixiao.yan.cn@windriver.com>
 ---
  autogen.sh | 19 +++++++++++++++++++
  1 file changed, 19 insertions(+)
