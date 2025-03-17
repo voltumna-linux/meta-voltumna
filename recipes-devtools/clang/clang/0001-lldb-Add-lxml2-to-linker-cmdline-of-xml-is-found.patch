@@ -1,0 +1,37 @@
+From 9f0c90da3de0706e3dd699ed0eb92744d4d9ea80 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Mon, 22 May 2017 17:36:16 -0700
+Subject: [PATCH] lldb: Add -lxml2 to linker cmdline of xml is found
+
+When cross compiling for systems where static libs
+for libxml are not available cmake's detection mechanism
+resort to linking with libxml.so but doesnt use -lxml2
+liblldbHost.a however requires libxml on linker
+cmdline _after_ itself so its use of symbols from libxml2
+can be resolved. Here check for libxml2 being detected and
+add it if its found.
+
+Fixes
+
+| ../../../../lib/liblldbHost.a(XML.cpp.o): In function `lldb_private::XMLDocument::Clear()':
+| /usr/src/debug/lldb/5.0.0+gitAUTOINC+69edad7913_08d6b47db9_cf6c5b3386-r0/git/tools/lldb/source/Host/common/XML.cpp:29: undefined reference to `xmlFreeDoc'
+| /usr/src/debug/lldb/5.0.0+gitAUTOINC+69edad7913_08d6b47db9_cf6c5b3386-r0/git/tools/lldb/source/Host/common/XML.cpp:29: undefined reference to `xmlFreeDoc'
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+ lldb/source/Host/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lldb/source/Host/CMakeLists.txt b/lldb/source/Host/CMakeLists.txt
+index 2e9bb402227..bfad6703c65 100644
+--- a/lldb/source/Host/CMakeLists.txt
++++ b/lldb/source/Host/CMakeLists.txt
+@@ -149,7 +149,7 @@ if (APPLE)
+   list(APPEND EXTRA_LIBS xml2)
+ else ()
+   if (LIBXML2_FOUND)
+-    list(APPEND EXTRA_LIBS ${LIBXML2_LIBRARIES})
++    list(APPEND EXTRA_LIBS xml2)
+   endif()
+ endif ()
+ if (HAVE_LIBDL)
