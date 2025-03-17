@@ -9,6 +9,7 @@ inherit autotools pkgconfig
 S = "${WORKDIR}/git"
 SRCREV = "231a1d5243cd45c7a6b511b667f1ec52178fdda8"
 SRC_URI = "git://github.com/intel/libxcam.git;branch=1.5.0;protocol=https \
+            file://0001-fake_v4l2_device.h-fix-narrowing-warning.patch \
 "
 
 COMPATIBLE_HOST:libc-musl = "null"
@@ -29,7 +30,7 @@ PACKAGECONFIG[dnn]    = "--enable-dnn, --disable-dnn,"
 
 do_install:append () {
     install -d ${D}${bindir}/libxcam
-    cp -r ${WORKDIR}/build/tests/.libs/* ${D}${bindir}/libxcam/
+    cp -r ${B}/tests/.libs/* ${D}${bindir}/libxcam/
 }
 
 FILES:${PN} += "${libdir}/gstreamer-*/*.so"
