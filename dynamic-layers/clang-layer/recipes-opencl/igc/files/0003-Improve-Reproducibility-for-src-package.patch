@@ -1,0 +1,36 @@
+From c2b7f30dd56568482b1b7c2f22bafdf68736fc88 Mon Sep 17 00:00:00 2001
+From: Lee Chee Yang <chee.yang.lee@intel.com>
+Date: Wed, 2 Sep 2020 08:28:35 +0800
+Subject: [PATCH 3/5] Improve Reproducibility for src package
+
+Improve reproducibility for intel-graphics-compiler-src package.
+needs to pass build path as environment variable to the build.
+this only works on bison 3.7 onward, hence check for bison version
+before adding the flags.
+Upstream-Status: Inappropriate [applying --file-prefix-map in such way does not work for upstream]
+Signed-off-by: Lee Chee Yang <chee.yang.lee@intel.com>
+---
+ visa/CMakeLists.txt | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/visa/CMakeLists.txt b/visa/CMakeLists.txt
+index 65dbb4934..8cd607a69 100644
+--- a/visa/CMakeLists.txt
++++ b/visa/CMakeLists.txt
+@@ -123,8 +123,11 @@ endif()
+ set(bison_output_file ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.cpp)
+ set(flex_output_file ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.cpp)
+ 
+-BISON_TARGET(CISAParser CISA.y ${bison_output_file} COMPILE_FLAGS "-vt -p CISA")
+-FLEX_TARGET(CISAScanner CISA.l ${flex_output_file} COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
++if(BISON_VERSION VERSION_GREATER_EQUAL "3.7.0")
++    set(BISON_EXTRA_FLAGS " --file-prefix-map=$ENV{B}=/igc/ ")
++endif()
++BISON_TARGET(CISAParser CISA.y ${bison_output_file} COMPILE_FLAGS "-l -vt -p CISA ${BISON_EXTRA_FLAGS} ")
++FLEX_TARGET(CISAScanner CISA.l ${flex_output_file} COMPILE_FLAGS "-PCISA -L ${WIN_FLEX_FLAG} ")
+ ADD_FLEX_BISON_DEPENDENCY(CISAScanner CISAParser)
+ set(CISAScanner_dependencies)
+ 
+-- 
+2.20.1
+
