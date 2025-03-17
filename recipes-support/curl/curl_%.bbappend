@@ -1,2 +1,3 @@
-PACKAGECONFIG_remove_class-nativesdk_mingw32 = "ssl"
-RRECOMMENDS_lib${BPN}_remove_mingw32 = "ca-certificates"
+PACKAGECONFIG:remove:class-nativesdk:mingw32 = "openssl"
+EXTRA_OECONF:append:class-nativesdk:mingw32 = " --without-ssl"
+RRECOMMENDS:lib${BPN}:remove:mingw32 = "ca-certificates"

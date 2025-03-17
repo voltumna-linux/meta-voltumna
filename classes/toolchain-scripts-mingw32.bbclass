@@ -1,5 +1,5 @@
 # Based off of the oe-core meta/classes/toolchain-scripts.bbclass version
-toolchain_create_sdk_env_script_sdkmingw32 () {
+toolchain_create_sdk_env_script:sdkmingw32 () {
 	# Create environment setup script
 	sdkpathnative=${7:-${SDKPATHNATIVE}}
 	prefix=${6:-${prefix_nativesdk}}
@@ -54,7 +54,7 @@ toolchain_create_sdk_env_script_sdkmingw32 () {
 	mv $script.new $script
 }
 
-toolchain_shared_env_script_sdkmingw32 () {
+toolchain_shared_env_script:sdkmingw32 () {
 	echo 'set CC=${TARGET_PREFIX}gcc ${TARGET_CC_ARCH} --sysroot=%SDKTARGETSYSROOT%' >> $script
 	echo 'set CXX=${TARGET_PREFIX}g++ ${TARGET_CC_ARCH} --sysroot=%SDKTARGETSYSROOT%' >> $script
 	echo 'set CPP=${TARGET_PREFIX}gcc -E ${TARGET_CC_ARCH} --sysroot=%SDKTARGETSYSROOT%' >> $script
@@ -94,13 +94,13 @@ toolchain_shared_env_script_sdkmingw32 () {
 EOF
 }
 
-toolchain_create_sdk_siteconfig_append_sdkmingw32 () {
+toolchain_create_sdk_siteconfig:append:sdkmingw32 () {
         # Make the file windows friendly...
         awk 'sub("$", "\r")' $siteconfig > $siteconfig.new
         mv $siteconfig.new $siteconfig
 }
 
-toolchain_create_sdk_version_append_sdkmingw32 () {
+toolchain_create_sdk_version:append:sdkmingw32 () {
         # Make the file windows friendly...
         awk 'sub("$", "\r")' $versionfile > $versionfile.new
         mv $versionfile.new $versionfile

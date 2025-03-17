@@ -10,6 +10,7 @@ TOOLCHAIN_HOST_TASK += "\
     nativesdk-dbus \
     nativesdk-dtc \
     nativesdk-libarchive \
+    nativesdk-ninja \
     nativesdk-swig \
     nativesdk-wayland \
     "

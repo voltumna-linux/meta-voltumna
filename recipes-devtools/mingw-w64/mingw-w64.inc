@@ -5,10 +5,11 @@ COMPATIBLE_HOST = ".*-mingw.*"
 
 SRC_URI = "${SOURCEFORGE_MIRROR}/project/mingw-w64/mingw-w64/mingw-w64-release/mingw-w64-v${PV}.tar.bz2"
 
-SRC_URI[md5sum] = "cf5673f6d689bb5e02863e6284cc3d03"
-SRC_URI[sha256sum] = "805e11101e26d7897fce7d49cbb140d7bac15f3e085a91e0001e80b2adaf48f0"
+SRC_URI[sha256sum] = "1929b94b402f5ff4d7d37a9fe88daa9cc55515a6134805c104d1794ae22a4181"
 
 UPSTREAM_CHECK_URI = "http://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/"
 UPSTREAM_CHECK_REGEX = "mingw-w64-v(?P<pver>(\d+[\.\-_]*)+)\.tar"
-
-
+#| Assembler messages:
+#| i686-w64-mingw32-dlltool --as-flags=--32 -m i386 -k --as=i686-w64-mingw32-as  --output-lib lib32/libd3dcompiler_41.a  --input-def ../mingw-w64-v9.0.0/mingw-w64-crt/lib32/d3dcompiler_41.def
+#| i686-w64-mingw32-dlltool: failed to open temporary tail file: D3DCompiler_dll_t.o: No such file or directory
+PARALLEL_MAKE = ""

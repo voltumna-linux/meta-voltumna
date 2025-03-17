@@ -1,1 +1,1 @@
-PACKAGECONFIG_remove_class-nativesdk_mingw32 = "python"
+PACKAGECONFIG:remove:class-nativesdk:mingw32 = "python"

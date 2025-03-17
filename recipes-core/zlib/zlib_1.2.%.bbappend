@@ -1,1 +1,1 @@
-EXTRA_OEMAKE_append_mingw32 = " LDSHAREDLIBC=''"
+EXTRA_OEMAKE:append:mingw32 = " LDSHAREDLIBC=''"
