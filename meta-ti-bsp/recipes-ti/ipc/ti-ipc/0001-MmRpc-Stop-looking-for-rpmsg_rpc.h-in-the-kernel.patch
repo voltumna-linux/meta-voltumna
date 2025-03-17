@@ -24,12 +24,11 @@ index 2df7420..10f496b 100644
 @@ -64,7 +64,7 @@
  #define linux_include(kd,m) <kd/include/uapi/linux/m.h>
  #endif
- 
+
 -#include linux_include(KERNEL_INSTALL_DIR,rpmsg_rpc)
 +#include "linux/rpmsg_rpc.h"
- 
+
  #ifdef _linux_
  #define linux _linux
--- 
+--
 2.17.1
-

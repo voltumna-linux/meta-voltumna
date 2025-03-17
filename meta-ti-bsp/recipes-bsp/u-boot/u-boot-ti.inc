@@ -21,16 +21,20 @@ LIC_FILES_CHKSUM = "file://Licenses/README;md5=2ca5f2c35c8cc335f0a19756634782f1"
 
 BRANCH ?= "master"
 UBOOT_GIT_URI ?= "git://git.ti.com/git/ti-u-boot/ti-u-boot.git"
-UBOOT_GIT_PROTOCOL = "https"
-SRC_URI = "${UBOOT_GIT_URI};protocol=${UBOOT_GIT_PROTOCOL};branch=${BRANCH}"
+UBOOT_GIT_PROTOCOL ?= "https"
+UBOOT_GIT_BRANCH ?= "branch=${BRANCH}"
+SRC_URI = "${UBOOT_GIT_URI};protocol=${UBOOT_GIT_PROTOCOL};${UBOOT_GIT_BRANCH}"
 
-PV:append = "+git${SRCPV}"
+PV:append = "+git"
+
+# u-boot builds a tool mkeficapsule and it needs this
+DEPENDS += "gnutls-native"
 
 # u-boot needs devtree compiler to parse dts files
-DEPENDS += "dtc-native bc-native lzop-native flex-native bison-native python3-setuptools-native"
+DEPENDS += "dtc-native bc-native flex-native bison-native python3-setuptools-native"
 
 # u-boot needs these for binman
-DEPENDS += "python3-pyelftools-native python3-pyyaml-native python3-jsonschema-native"
+DEPENDS += "python3-pyelftools-native python3-pyyaml-native python3-jsonschema-native python3-yamllint-native"
 
 # SYSFW/TIFS Firmware
 DEPENDS:append:k3 = " ti-sci-fw"
@@ -44,12 +48,15 @@ PLAT_SFX:j7200 = "j7200"
 PLAT_SFX:j721s2 = "j721s2"
 PLAT_SFX:j784s4 = "j784s4"
 PLAT_SFX:j722s = "j722s"
+PLAT_SFX:j742s2 = "j742s2"
 PLAT_SFX:am65xx = "am65xx"
 PLAT_SFX:am64xx = "am64xx"
 PLAT_SFX:am62xx = "am62xx"
 PLAT_SFX:am62axx = "am62axx"
+PLAT_SFX:am62lxx = "am62lxx"
 PLAT_SFX:am62pxx = "am62pxx"
 
+PACKAGECONFIG[ap-trusted-rom] = "BL1=${STAGING_DIR_HOST}/firmware/bl1.bin,,trusted-firmware-a"
 PACKAGECONFIG[atf] = "BL31=${STAGING_DIR_HOST}/firmware/bl31.bin,,trusted-firmware-a"
 PACKAGECONFIG[optee] = "TEE=${STAGING_DIR_HOST}${nonarch_base_libdir}/firmware/bl32.bin,,optee-os"
 PACKAGECONFIG[dm] = "DM=${STAGING_DIR_HOST}${nonarch_base_libdir}/firmware/ti-dm/${PLAT_SFX}/${DM_FIRMWARE},,ti-dm-fw"
@@ -60,8 +67,10 @@ PACKAGECONFIG:append:j7200 = " dm"
 PACKAGECONFIG:append:j721s2 = " dm"
 PACKAGECONFIG:append:j784s4 = " dm"
 PACKAGECONFIG:append:j722s = " dm"
+PACKAGECONFIG:append:j742s2 = " dm"
 PACKAGECONFIG:append:am62xx = " dm"
 PACKAGECONFIG:append:am62axx = " dm"
+PACKAGECONFIG:append:am62lxx = " ap-trusted-rom"
 PACKAGECONFIG:append:am62pxx = " dm"
 
 COMPATIBLE_MACHINE = "(ti-soc)"
@@ -113,104 +122,125 @@ UBOOT_HS_2ND_BINARY = "u-boot-spl_HS_2ND"
 UBOOT_HS_2ND_IMAGE = "u-boot-spl_HS_2ND-${MACHINE}-${PV}-${PR}"
 UBOOT_HS_2ND_SYMLINK = "u-boot-spl_HS_2ND-${MACHINE}"
 
-do_compile:append:k3r5 () {
-	if [ -n "${UBOOT_CONFIG}" ];
-	then
-		for config in ${UBOOT_MACHINE}; do
-			i=$(expr $i + 1);
-			for type in ${UBOOT_CONFIG}; do
-				j=$(expr $j + 1);
-				if [ $j -eq $i ];
-				then
-					if ! [ -L ${B}/${config}/${UBOOT_BINARY} ] && ! [ -f ${B}/${config}/${UBOOT_BINARY} ]; then
-						ln -s ${B}/${config}/spl/u-boot-spl.${UBOOT_SUFFIX} ${B}/${config}/${UBOOT_BINARY}
-					fi
-				fi
-			done
-			unset  j
-		done
-		unset  i
-	else
-		if ! [ -f ${B}/${UBOOT_BINARY} ]; then
-			ln -s spl/u-boot-spl.${UBOOT_SUFFIX} ${B}/${UBOOT_BINARY}
-		fi
-	fi
+uboot_compile:append () {
+    if ! [ -f ${B}/${UBOOT_BINARY} ]; then
+        ln -s spl/u-boot-spl.${UBOOT_SUFFIX} ${B}/${UBOOT_BINARY}
+    fi
 }
 
-do_install:append () {
-	if [ -n "${UBOOT_CONFIG}" ]
-	then
-		for config in ${UBOOT_MACHINE}; do
-			i=$(expr $i + 1);
-			for type in ${UBOOT_CONFIG}; do
-				j=$(expr $j + 1);
-				if [ $j -eq $i ]
-				then
-					if [ "x${SPL_UART_BINARY}" != "x" ]; then
-						install ${B}/${config}/spl/${SPL_UART_BINARY} ${D}/boot/${SPL_UART_IMAGE}-${type}
-						ln -sf ${SPL_UART_IMAGE}-${type} ${D}/boot/${SPL_UART_BINARY}-${type}
-						ln -sf ${SPL_UART_IMAGE}-${type} ${D}/boot/${SPL_UART_BINARY}
-					fi
-					if [ -f ${B}/${config}/${SPL_HS_MLO_BINARY} ]; then
-						install ${B}/${config}/${SPL_HS_MLO_BINARY} ${D}/boot/${SPL_HS_MLO_IMAGE}-${type}
-						ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${D}/boot/${SPL_HS_MLO_BINARY}-${type}
-						ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${D}/boot/${SPL_HS_MLO_BINARY}
-					fi
-					if [ -f ${B}/${config}/${UBOOT_HS_XLD_BINARY} ]; then
-						install ${B}/${config}/${UBOOT_HS_XLD_BINARY} ${D}/boot/${UBOOT_HS_XLD_IMAGE}-${type}
-						ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${D}/boot/${UBOOT_HS_XLD_BINARY}-${type}
-						ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${D}/boot/${UBOOT_HS_XLD_BINARY}
-					fi
-					if [ -f ${B}/${config}/${UBOOT_HS_MLO_BINARY} ]; then
-						install ${B}/${config}/${UBOOT_HS_MLO_BINARY} ${D}/boot/${UBOOT_HS_MLO_IMAGE}-${type}
-						ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${D}/boot/${UBOOT_HS_MLO_BINARY}-${type}
-						ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${D}/boot/${UBOOT_HS_MLO_BINARY}
-					fi
-					if [ -f ${B}/${config}/${UBOOT_HS_ISSW_BINARY} ]; then
-						install ${B}/${config}/${UBOOT_HS_ISSW_BINARY} ${D}/boot/${UBOOT_HS_ISSW_IMAGE}-${type}
-						ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${D}/boot/${UBOOT_HS_ISSW_BINARY}-${type}
-						ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${D}/boot/${UBOOT_HS_ISSW_BINARY}
-					fi
-					if [ -f ${B}/${config}/${UBOOT_HS_2ND_BINARY} ]; then
-						install ${B}/${config}/${UBOOT_HS_2ND_BINARY} ${D}/boot/${UBOOT_HS_2ND_IMAGE}-${type}
-						ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${D}/boot/${UBOOT_HS_2ND_BINARY}-${type}
-						ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${D}/boot/${UBOOT_HS_2ND_BINARY}
-					fi
-				fi
-			done
-			unset  j
-		done
-		unset  i
-	else
-		if [ "x${SPL_UART_BINARY}" != "x" ]; then
-			install ${B}/spl/${SPL_UART_BINARY} ${D}/boot/${SPL_UART_IMAGE}
-			ln -sf ${SPL_UART_IMAGE} ${D}/boot/${SPL_UART_BINARY}
-		fi
-		if [ -f ${B}/${SPL_HS_MLO_BINARY} ]; then
-			install ${B}/${SPL_HS_MLO_BINARY} ${D}/boot/${SPL_HS_MLO_IMAGE}
-			ln -sf ${SPL_HS_MLO_IMAGE} ${D}/boot/${SPL_HS_MLO_BINARY}
-		fi
-		if [ -f ${B}/${UBOOT_HS_XLD_BINARY} ]; then
-			install ${B}/${UBOOT_HS_XLD_BINARY} ${D}/boot/${UBOOT_HS_XLD_IMAGE}
-			ln -sf ${UBOOT_HS_XLD_IMAGE} ${D}/boot/${UBOOT_HS_XLD_BINARY}
-		fi
-		if [ -f ${B}/${UBOOT_HS_MLO_BINARY} ]; then
-			install ${B}/${UBOOT_HS_MLO_BINARY} ${D}/boot/${UBOOT_HS_MLO_IMAGE}
-			ln -sf ${UBOOT_HS_MLO_IMAGE} ${D}/boot/${UBOOT_HS_MLO_BINARY}
-		fi
-		if [ -f ${B}/${UBOOT_HS_ISSW_BINARY} ]; then
-			install ${B}/${UBOOT_HS_ISSW_BINARY} ${D}/boot/${UBOOT_HS_ISSW_IMAGE}
-			ln -sf ${UBOOT_HS_ISSW_IMAGE} ${D}/boot/${UBOOT_HS_ISSW_BINARY}
-		fi
-		if [ -f ${B}/${UBOOT_HS_2ND_BINARY} ]; then
-			install ${B}/${UBOOT_HS_2ND_BINARY} ${D}/boot/${UBOOT_HS_2ND_IMAGE}
-			ln -sf ${UBOOT_HS_2ND_IMAGE} ${D}/boot/${UBOOT_HS_2ND_BINARY}
-		fi
-	fi
+uboot_compile_config_copy_binary:k3r5 () {
+    config=$1
+    type=$2
+    binary=$3
+
+    if ! [ -L ${B}/${config}/${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX} ] && ! [ -f ${B}/${config}/${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX} ]; then
+        ln -s ${B}/${config}/spl/u-boot-spl.${UBOOT_SUFFIX} ${B}/${config}/${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}
+    fi
+
+    if ! [ -L ${B}/${config}/${binary} ] && ! [ -f ${B}/${config}/${binary} ]; then
+        ln -s ${B}/${config}/spl/u-boot-spl.${UBOOT_SUFFIX} ${B}/${config}/${binary}
+    fi
+}
+
+uboot_install_config:append () {
+    if [ "x${SPL_UART_BINARY}" != "x" ]; then
+        install ${B}/${config}/spl/${SPL_UART_BINARY} ${D}/boot/${SPL_UART_IMAGE}-${type}
+        ln -sf ${SPL_UART_IMAGE}-${type} ${D}/boot/${SPL_UART_BINARY}-${type}
+        ln -sf ${SPL_UART_IMAGE}-${type} ${D}/boot/${SPL_UART_BINARY}
+    fi
+    if [ -f ${B}/${config}/${SPL_HS_MLO_BINARY} ]; then
+        install ${B}/${config}/${SPL_HS_MLO_BINARY} ${D}/boot/${SPL_HS_MLO_IMAGE}-${type}
+        ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${D}/boot/${SPL_HS_MLO_BINARY}-${type}
+        ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${D}/boot/${SPL_HS_MLO_BINARY}
+    fi
+    if [ -f ${B}/${config}/${UBOOT_HS_XLD_BINARY} ]; then
+        install ${B}/${config}/${UBOOT_HS_XLD_BINARY} ${D}/boot/${UBOOT_HS_XLD_IMAGE}-${type}
+        ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${D}/boot/${UBOOT_HS_XLD_BINARY}-${type}
+        ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${D}/boot/${UBOOT_HS_XLD_BINARY}
+    fi
+    if [ -f ${B}/${config}/${UBOOT_HS_MLO_BINARY} ]; then
+        install ${B}/${config}/${UBOOT_HS_MLO_BINARY} ${D}/boot/${UBOOT_HS_MLO_IMAGE}-${type}
+        ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${D}/boot/${UBOOT_HS_MLO_BINARY}-${type}
+        ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${D}/boot/${UBOOT_HS_MLO_BINARY}
+    fi
+    if [ -f ${B}/${config}/${UBOOT_HS_ISSW_BINARY} ]; then
+        install ${B}/${config}/${UBOOT_HS_ISSW_BINARY} ${D}/boot/${UBOOT_HS_ISSW_IMAGE}-${type}
+        ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${D}/boot/${UBOOT_HS_ISSW_BINARY}-${type}
+        ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${D}/boot/${UBOOT_HS_ISSW_BINARY}
+    fi
+    if [ -f ${B}/${config}/${UBOOT_HS_2ND_BINARY} ]; then
+        install ${B}/${config}/${UBOOT_HS_2ND_BINARY} ${D}/boot/${UBOOT_HS_2ND_IMAGE}-${type}
+        ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${D}/boot/${UBOOT_HS_2ND_BINARY}-${type}
+        ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${D}/boot/${UBOOT_HS_2ND_BINARY}
+    fi
+}
+
+uboot_install:append () {
+    if [ "x${SPL_UART_BINARY}" != "x" ]; then
+        install ${B}/spl/${SPL_UART_BINARY} ${D}/boot/${SPL_UART_IMAGE}
+        ln -sf ${SPL_UART_IMAGE} ${D}/boot/${SPL_UART_BINARY}
+    fi
+    if [ -f ${B}/${SPL_HS_MLO_BINARY} ]; then
+        install ${B}/${SPL_HS_MLO_BINARY} ${D}/boot/${SPL_HS_MLO_IMAGE}
+        ln -sf ${SPL_HS_MLO_IMAGE} ${D}/boot/${SPL_HS_MLO_BINARY}
+    fi
+    if [ -f ${B}/${UBOOT_HS_XLD_BINARY} ]; then
+        install ${B}/${UBOOT_HS_XLD_BINARY} ${D}/boot/${UBOOT_HS_XLD_IMAGE}
+        ln -sf ${UBOOT_HS_XLD_IMAGE} ${D}/boot/${UBOOT_HS_XLD_BINARY}
+    fi
+    if [ -f ${B}/${UBOOT_HS_MLO_BINARY} ]; then
+        install ${B}/${UBOOT_HS_MLO_BINARY} ${D}/boot/${UBOOT_HS_MLO_IMAGE}
+        ln -sf ${UBOOT_HS_MLO_IMAGE} ${D}/boot/${UBOOT_HS_MLO_BINARY}
+    fi
+    if [ -f ${B}/${UBOOT_HS_ISSW_BINARY} ]; then
+        install ${B}/${UBOOT_HS_ISSW_BINARY} ${D}/boot/${UBOOT_HS_ISSW_IMAGE}
+        ln -sf ${UBOOT_HS_ISSW_IMAGE} ${D}/boot/${UBOOT_HS_ISSW_BINARY}
+    fi
+    if [ -f ${B}/${UBOOT_HS_2ND_BINARY} ]; then
+        install ${B}/${UBOOT_HS_2ND_BINARY} ${D}/boot/${UBOOT_HS_2ND_IMAGE}
+        ln -sf ${UBOOT_HS_2ND_IMAGE} ${D}/boot/${UBOOT_HS_2ND_BINARY}
+    fi
 }
 
 do_deploy:append:k3r5 () {
-	for f in ${B}/tiboot3-*.bin; do
+	rm -f ${DEPLOYDIR}/u-boot-initial-env*
+	rm -f ${DEPLOYDIR}/${PN}-initial-env*
+	rm -f ${DEPLOYDIR}/u-boot-initial-env-${MACHINE}*
+	rm -f ${DEPLOYDIR}/${PN}-initial-env-${MACHINE}*
+	rm -f ${DEPLOYDIR}/u-boot-initial-env-${MACHINE}-${PV}-${PR}*
+	rm -f ${DEPLOYDIR}/${PN}-initial-env-${MACHINE}-${PV}-${PR}*
+}
+
+uboot_deploy_config:append:k3r5 () {
+    for f in ${B}/${config}/tiboot3-*.bin; do
+		if [ -f "$f" ]; then
+            f_base=$(basename $f)
+			install -m 644 $f ${DEPLOYDIR}/${f_base}-${type}
+            ln -sf ${f_base}-${type} ${DEPLOYDIR}/${f_base}
+		fi
+	done
+
+	for f in ${B}/${config}/sysfw*.itb; do
+		if [ -f "$f" ]; then
+            f_base=$(basename $f)
+			install -m 644 $f ${DEPLOYDIR}/${f_base}-${type}
+            ln -sf ${f_base}-${type} ${DEPLOYDIR}/${f_base}
+		fi
+	done
+}
+
+uboot_deploy_config:append:am62lxx () {
+	for f in ${B}/${config}/tiboot3-*.bin; do
+		if [ -f "$f" ]; then
+			f_base=$(basename $f)
+			install -m 644 $f ${DEPLOYDIR}/${f_base}-${type}
+			ln -sf ${f_base}-${type} ${DEPLOYDIR}/${f_base}
+		fi
+	done
+}
+
+uboot_deploy:append:k3r5 () {
+    for f in ${B}/tiboot3-*.bin; do
 		if [ -f "$f" ]; then
 			install -m 644 $f ${DEPLOYDIR}/
 		fi
@@ -221,117 +251,106 @@ do_deploy:append:k3r5 () {
 			install -m 644 $f ${DEPLOYDIR}/
 		fi
 	done
-
-	rm ${DEPLOYDIR}/u-boot-initial-env || true
-	rm ${DEPLOYDIR}/${PN}-initial-env || true
-	rm ${DEPLOYDIR}/u-boot-initial-env-${MACHINE} || true
-	rm ${DEPLOYDIR}/${PN}-initial-env-${MACHINE} || true
-	rm ${DEPLOYDIR}/u-boot-initial-env-${MACHINE}-${PV}-${PR} || true
-	rm ${DEPLOYDIR}/${PN}-initial-env-${MACHINE}-${PV}-${PR} || true
 }
 
-do_deploy:append () {
-	if [ -n "${UBOOT_CONFIG}" ]
-	then
-		for config in ${UBOOT_MACHINE}; do
-			i=$(expr $i + 1);
-			for type in ${UBOOT_CONFIG}; do
-				j=$(expr $j + 1);
-				if [ $j -eq $i ]
-				then
-					cd ${DEPLOYDIR}
-					if [ "x${SPL_UART_BINARY}" != "x" ]; then
-						install ${B}/${config}/spl/${SPL_UART_BINARY} ${SPL_UART_IMAGE}-${type}
-						rm -f ${SPL_UART_BINARY} ${SPL_UART_SYMLINK}
-						ln -sf ${SPL_UART_IMAGE}-${type} ${SPL_UART_BINARY}-${type}
-						ln -sf ${SPL_UART_IMAGE}-${type} ${SPL_UART_BINARY}
-						ln -sf ${SPL_UART_IMAGE}-${type} ${SPL_UART_SYMLINK}-${type}
-						ln -sf ${SPL_UART_IMAGE}-${type} ${SPL_UART_SYMLINK}
-					fi
-					if [ -f ${B}/${config}/${SPL_HS_MLO_BINARY} ]; then
-						install ${B}/${config}/${SPL_HS_MLO_BINARY} ${SPL_HS_MLO_IMAGE}-${type}
-						rm -f ${SPL_HS_MLO_BINARY} ${SPL_HS_MLO_SYMLINK}
-						ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${SPL_HS_MLO_SYMLINK}-${type}
-						ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${SPL_HS_MLO_SYMLINK}
-						ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${SPL_HS_MLO_BINARY}-${type}
-						ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${SPL_HS_MLO_BINARY}
-					fi
-					if [ -f ${B}/${config}/${UBOOT_HS_XLD_BINARY} ]; then
-						install ${B}/${config}/${UBOOT_HS_XLD_BINARY} ${UBOOT_HS_XLD_IMAGE}-${type}
-						rm -f ${UBOOT_HS_XLD_BINARY} ${UBOOT_HS_XLD_SYMLINK}
-						ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${UBOOT_HS_XLD_SYMLINK}-${type}
-						ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${UBOOT_HS_XLD_SYMLINK}
-						ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${UBOOT_HS_XLD_BINARY}-${type}
-						ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${UBOOT_HS_XLD_BINARY}
-					fi
-					if [ -f ${B}/${config}/${UBOOT_HS_MLO_BINARY} ]; then
-						install ${B}/${config}/${UBOOT_HS_MLO_BINARY} ${UBOOT_HS_MLO_IMAGE}-${type}
-						rm -f ${UBOOT_HS_MLO_BINARY} ${UBOOT_HS_MLO_SYMLINK}
-						ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${UBOOT_HS_MLO_SYMLINK}-${type}
-						ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${UBOOT_HS_MLO_SYMLINK}
-						ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${UBOOT_HS_MLO_BINARY}-${type}
-						ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${UBOOT_HS_MLO_BINARY}
-					fi
-					if [ -f ${B}/${config}/${UBOOT_HS_ISSW_BINARY} ]; then
-						install ${B}/${config}/${UBOOT_HS_ISSW_BINARY} ${UBOOT_HS_ISSW_IMAGE}-${type}
-						rm -f ${UBOOT_HS_ISSW_BINARY} ${UBOOT_HS_ISSW_SYMLINK}
-						ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${UBOOT_HS_ISSW_SYMLINK}-${type}
-						ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${UBOOT_HS_ISSW_SYMLINK}
-						ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${UBOOT_HS_ISSW_BINARY}-${type}
-						ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${UBOOT_HS_ISSW_BINARY}
-					fi
-					if [ -f ${B}/${config}/${UBOOT_HS_2ND_BINARY} ]; then
-						install ${B}/${config}/${UBOOT_HS_2ND_BINARY} ${UBOOT_HS_2ND_IMAGE}-${type}
-						rm -f ${UBOOT_HS_2ND_BINARY} ${UBOOT_HS_2ND_SYMLINK}
-						ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${UBOOT_HS_2ND_SYMLINK}-${type}
-						ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${UBOOT_HS_2ND_SYMLINK}
-						ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${UBOOT_HS_2ND_BINARY}-${type}
-						ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${UBOOT_HS_2ND_BINARY}
-					fi
-				fi
-			done
-			unset  j
-		done
-		unset  i
-	else
-		cd ${DEPLOYDIR}
-		if [ "x${SPL_UART_BINARY}" != "x" ]; then
-			install ${B}/spl/${SPL_UART_BINARY} ${SPL_UART_IMAGE}
-			rm -f ${SPL_UART_BINARY} ${SPL_UART_SYMLINK}
-			ln -sf ${SPL_UART_IMAGE} ${SPL_UART_BINARY}
-			ln -sf ${SPL_UART_IMAGE} ${SPL_UART_SYMLINK}
+uboot_deploy:append:am62lxx () {
+	for f in ${B}/tiboot3*.bin; do
+		if [ -f "$f" ]; then
+			install -m 644 $f ${DEPLOYDIR}/
 		fi
-		if [ -f ${B}/${SPL_HS_MLO_BINARY} ]; then
-			install ${B}/${SPL_HS_MLO_BINARY} ${SPL_HS_MLO_IMAGE}
-			rm -f ${SPL_HS_MLO_BINARY} ${SPL_HS_MLO_SYMLINK}
-			ln -sf ${SPL_HS_MLO_IMAGE} ${SPL_HS_MLO_SYMLINK}
-			ln -sf ${SPL_HS_MLO_IMAGE} ${SPL_HS_MLO_BINARY}
-		fi
-		if [ -f ${B}/${UBOOT_HS_XLD_BINARY} ]; then
-			install ${B}/${UBOOT_HS_XLD_BINARY} ${UBOOT_HS_XLD_IMAGE}
-			rm -f ${UBOOT_HS_XLD_BINARY} ${UBOOT_HS_XLD_SYMLINK}
-			ln -sf ${UBOOT_HS_XLD_IMAGE} ${UBOOT_HS_XLD_SYMLINK}
-			ln -sf ${UBOOT_HS_XLD_IMAGE} ${UBOOT_HS_XLD_BINARY}
-		fi
-		if [ -f ${B}/${UBOOT_HS_MLO_BINARY} ]; then
-			install ${B}/${UBOOT_HS_MLO_BINARY} ${UBOOT_HS_MLO_IMAGE}
-			rm -f ${UBOOT_HS_MLO_BINARY} ${UBOOT_HS_MLO_SYMLINK}
-			ln -sf ${UBOOT_HS_MLO_IMAGE} ${UBOOT_HS_MLO_SYMLINK}
-			ln -sf ${UBOOT_HS_MLO_IMAGE} ${UBOOT_HS_MLO_BINARY}
-		fi
-		if [ -f ${B}/${UBOOT_HS_ISSW_BINARY} ]; then
-			install ${B}/${UBOOT_HS_ISSW_BINARY} ${UBOOT_HS_ISSW_IMAGE}
-			rm -f ${UBOOT_HS_ISSW_BINARY} ${UBOOT_HS_ISSW_SYMLINK}
-			ln -sf ${UBOOT_HS_ISSW_IMAGE} ${UBOOT_HS_ISSW_SYMLINK}
-			ln -sf ${UBOOT_HS_ISSW_IMAGE} ${UBOOT_HS_ISSW_BINARY}
-		fi
-		if [ -f ${B}/${UBOOT_HS_2ND_BINARY} ]; then
-			install ${B}/${UBOOT_HS_2ND_BINARY} ${UBOOT_HS_2ND_IMAGE}
-			rm -f ${UBOOT_HS_2ND_BINARY} ${UBOOT_HS_2ND_SYMLINK}
-			ln -sf ${UBOOT_HS_2ND_IMAGE} ${UBOOT_HS_2ND_SYMLINK}
-			ln -sf ${UBOOT_HS_2ND_IMAGE} ${UBOOT_HS_2ND_BINARY}
-		fi
-	fi
+	done
+}
+
+uboot_deploy_config:append () {
+    cd ${DEPLOYDIR}
+    if [ "x${SPL_UART_BINARY}" != "x" ]; then
+        install ${B}/${config}/spl/${SPL_UART_BINARY} ${SPL_UART_IMAGE}-${type}
+        rm -f ${SPL_UART_BINARY} ${SPL_UART_SYMLINK}
+        ln -sf ${SPL_UART_IMAGE}-${type} ${SPL_UART_BINARY}-${type}
+        ln -sf ${SPL_UART_IMAGE}-${type} ${SPL_UART_BINARY}
+        ln -sf ${SPL_UART_IMAGE}-${type} ${SPL_UART_SYMLINK}-${type}
+        ln -sf ${SPL_UART_IMAGE}-${type} ${SPL_UART_SYMLINK}
+    fi
+    if [ -f ${B}/${config}/${SPL_HS_MLO_BINARY} ]; then
+        install ${B}/${config}/${SPL_HS_MLO_BINARY} ${SPL_HS_MLO_IMAGE}-${type}
+        rm -f ${SPL_HS_MLO_BINARY} ${SPL_HS_MLO_SYMLINK}
+        ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${SPL_HS_MLO_SYMLINK}-${type}
+        ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${SPL_HS_MLO_SYMLINK}
+        ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${SPL_HS_MLO_BINARY}-${type}
+        ln -sf ${SPL_HS_MLO_IMAGE}-${type} ${SPL_HS_MLO_BINARY}
+    fi
+    if [ -f ${B}/${config}/${UBOOT_HS_XLD_BINARY} ]; then
+        install ${B}/${config}/${UBOOT_HS_XLD_BINARY} ${UBOOT_HS_XLD_IMAGE}-${type}
+        rm -f ${UBOOT_HS_XLD_BINARY} ${UBOOT_HS_XLD_SYMLINK}
+        ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${UBOOT_HS_XLD_SYMLINK}-${type}
+        ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${UBOOT_HS_XLD_SYMLINK}
+        ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${UBOOT_HS_XLD_BINARY}-${type}
+        ln -sf ${UBOOT_HS_XLD_IMAGE}-${type} ${UBOOT_HS_XLD_BINARY}
+    fi
+    if [ -f ${B}/${config}/${UBOOT_HS_MLO_BINARY} ]; then
+        install ${B}/${config}/${UBOOT_HS_MLO_BINARY} ${UBOOT_HS_MLO_IMAGE}-${type}
+        rm -f ${UBOOT_HS_MLO_BINARY} ${UBOOT_HS_MLO_SYMLINK}
+        ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${UBOOT_HS_MLO_SYMLINK}-${type}
+        ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${UBOOT_HS_MLO_SYMLINK}
+        ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${UBOOT_HS_MLO_BINARY}-${type}
+        ln -sf ${UBOOT_HS_MLO_IMAGE}-${type} ${UBOOT_HS_MLO_BINARY}
+    fi
+    if [ -f ${B}/${config}/${UBOOT_HS_ISSW_BINARY} ]; then
+        install ${B}/${config}/${UBOOT_HS_ISSW_BINARY} ${UBOOT_HS_ISSW_IMAGE}-${type}
+        rm -f ${UBOOT_HS_ISSW_BINARY} ${UBOOT_HS_ISSW_SYMLINK}
+        ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${UBOOT_HS_ISSW_SYMLINK}-${type}
+        ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${UBOOT_HS_ISSW_SYMLINK}
+        ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${UBOOT_HS_ISSW_BINARY}-${type}
+        ln -sf ${UBOOT_HS_ISSW_IMAGE}-${type} ${UBOOT_HS_ISSW_BINARY}
+    fi
+    if [ -f ${B}/${config}/${UBOOT_HS_2ND_BINARY} ]; then
+        install ${B}/${config}/${UBOOT_HS_2ND_BINARY} ${UBOOT_HS_2ND_IMAGE}-${type}
+        rm -f ${UBOOT_HS_2ND_BINARY} ${UBOOT_HS_2ND_SYMLINK}
+        ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${UBOOT_HS_2ND_SYMLINK}-${type}
+        ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${UBOOT_HS_2ND_SYMLINK}
+        ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${UBOOT_HS_2ND_BINARY}-${type}
+        ln -sf ${UBOOT_HS_2ND_IMAGE}-${type} ${UBOOT_HS_2ND_BINARY}
+    fi
+}
+
+uboot_deploy:append () {
+    cd ${DEPLOYDIR}
+    if [ "x${SPL_UART_BINARY}" != "x" ]; then
+        install ${B}/spl/${SPL_UART_BINARY} ${SPL_UART_IMAGE}
+        rm -f ${SPL_UART_BINARY} ${SPL_UART_SYMLINK}
+        ln -sf ${SPL_UART_IMAGE} ${SPL_UART_BINARY}
+        ln -sf ${SPL_UART_IMAGE} ${SPL_UART_SYMLINK}
+    fi
+    if [ -f ${B}/${SPL_HS_MLO_BINARY} ]; then
+        install ${B}/${SPL_HS_MLO_BINARY} ${SPL_HS_MLO_IMAGE}
+        rm -f ${SPL_HS_MLO_BINARY} ${SPL_HS_MLO_SYMLINK}
+        ln -sf ${SPL_HS_MLO_IMAGE} ${SPL_HS_MLO_SYMLINK}
+        ln -sf ${SPL_HS_MLO_IMAGE} ${SPL_HS_MLO_BINARY}
+    fi
+    if [ -f ${B}/${UBOOT_HS_XLD_BINARY} ]; then
+        install ${B}/${UBOOT_HS_XLD_BINARY} ${UBOOT_HS_XLD_IMAGE}
+        rm -f ${UBOOT_HS_XLD_BINARY} ${UBOOT_HS_XLD_SYMLINK}
+        ln -sf ${UBOOT_HS_XLD_IMAGE} ${UBOOT_HS_XLD_SYMLINK}
+        ln -sf ${UBOOT_HS_XLD_IMAGE} ${UBOOT_HS_XLD_BINARY}
+    fi
+    if [ -f ${B}/${UBOOT_HS_MLO_BINARY} ]; then
+        install ${B}/${UBOOT_HS_MLO_BINARY} ${UBOOT_HS_MLO_IMAGE}
+        rm -f ${UBOOT_HS_MLO_BINARY} ${UBOOT_HS_MLO_SYMLINK}
+        ln -sf ${UBOOT_HS_MLO_IMAGE} ${UBOOT_HS_MLO_SYMLINK}
+        ln -sf ${UBOOT_HS_MLO_IMAGE} ${UBOOT_HS_MLO_BINARY}
+    fi
+    if [ -f ${B}/${UBOOT_HS_ISSW_BINARY} ]; then
+        install ${B}/${UBOOT_HS_ISSW_BINARY} ${UBOOT_HS_ISSW_IMAGE}
+        rm -f ${UBOOT_HS_ISSW_BINARY} ${UBOOT_HS_ISSW_SYMLINK}
+        ln -sf ${UBOOT_HS_ISSW_IMAGE} ${UBOOT_HS_ISSW_SYMLINK}
+        ln -sf ${UBOOT_HS_ISSW_IMAGE} ${UBOOT_HS_ISSW_BINARY}
+    fi
+    if [ -f ${B}/${UBOOT_HS_2ND_BINARY} ]; then
+        install ${B}/${UBOOT_HS_2ND_BINARY} ${UBOOT_HS_2ND_IMAGE}
+        rm -f ${UBOOT_HS_2ND_BINARY} ${UBOOT_HS_2ND_SYMLINK}
+        ln -sf ${UBOOT_HS_2ND_IMAGE} ${UBOOT_HS_2ND_SYMLINK}
+        ln -sf ${UBOOT_HS_2ND_IMAGE} ${UBOOT_HS_2ND_BINARY}
+    fi
 }
 
 do_install:append:am62xx() {

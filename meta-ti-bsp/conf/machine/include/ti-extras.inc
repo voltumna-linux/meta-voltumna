@@ -2,4 +2,3 @@
 
 TI_EXTRAS ??= ""
 MACHINEOVERRIDES =. "${@ '${TI_EXTRAS}:' if d.getVar('TI_EXTRAS').startswith('tie-') else ''}"
-

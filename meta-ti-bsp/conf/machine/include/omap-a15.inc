@@ -4,16 +4,11 @@ SOC_FAMILY:append = ":omap-a15"
 DEFAULTTUNE ?= "armv7athf-neon"
 require conf/machine/include/arm/armv7a/tune-cortexa15.inc
 
-# Increase this everytime you change something in the kernel
-MACHINE_KERNEL_PR = "r7"
-
-PREFERRED_PROVIDER_virtual/kernel ?= "linux-ti-staging"
-PREFERRED_PROVIDER_virtual/bootloader ?= "u-boot-ti-staging"
-PREFERRED_PROVIDER_u-boot ?= "u-boot-ti-staging"
+require conf/machine/include/ti-bsp.inc
 
 # Graphics providers and variables
 require conf/machine/include/mesa-pvr.inc
-PREFERRED_PROVIDER_virtual/gpudriver ?= "ti-sgx-ddk-km"
+PREFERRED_PROVIDER_virtual/gpudriver ?= "${BSP_SGX_DRIVER_PROVIDER}"
 PVR_DISPLAY_CONTROLLER_ALIAS ?= "omapdrm"
 
 KERNEL_IMAGETYPE = "zImage"
@@ -24,7 +19,7 @@ UBOOT_ARCH = "arm"
 UBOOT_ENTRYPOINT = "0x80008000"
 UBOOT_LOADADDRESS = "0x80008000"
 
-DEVICETREE_FILE = "${@(d.getVar('KERNEL_DEVICETREE') or "").replace("ti/","")}"
+DEVICETREE_FILE = "${@(d.getVar('KERNEL_DEVICETREE') or "").replace("ti/omap/","").replace("ti/","")}"
 
 # Generate an extlinux.conf file
 UBOOT_EXTLINUX = "1"

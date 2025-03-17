@@ -19,6 +19,8 @@ SRC_URI = " \
     file://0001-freedreno-pm4-Use-unsigned-instead-of-uint-to-fix-mu.patch \
     file://0001-gallium-Fix-build-with-llvm-17.patch \
     file://0001-fix-gallivm-limit-usage-of-LLVMContextSetOpaquePoint.patch \
+    file://0001-fix-gallivm-fix-LLVM-include-of-Host-h-moved-to-TargetParser.patch \
+    file://0001-gallium-Fix-build-with-llvm-18-and-19.patch \
 "
 
 S = "${WORKDIR}/git"
@@ -29,6 +31,7 @@ PACKAGECONFIG:append = " \
 "
 
 SRCREV = "c9f0919367589b38f5682183846de9d60eec082d"
+PV = "22.3.5"
 
 PVR_DISPLAY_CONTROLLER_ALIAS ??= "tidss"
 PACKAGECONFIG[pvr] = "-Dgallium-pvr-alias=${PVR_DISPLAY_CONTROLLER_ALIAS},"

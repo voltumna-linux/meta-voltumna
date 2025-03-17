@@ -3,16 +3,10 @@
 require conf/machine/include/ti-soc.inc
 SOC_FAMILY:append = ":k3"
 
-require conf/machine/include/arm/arch-arm64.inc
+DEFAULTTUNE ?= "aarch64"
+require conf/machine/include/arm/armv8a/tune-cortexa72-cortexa53.inc
 
-BBMULTICONFIG += "k3r5"
-
-# Increase this everytime you change something in the kernel
-MACHINE_KERNEL_PR = "r0"
-
-PREFERRED_PROVIDER_virtual/kernel ?= "linux-ti-staging"
-PREFERRED_PROVIDER_virtual/bootloader ?= "u-boot-ti-staging"
-PREFERRED_PROVIDER_u-boot ?= "u-boot-ti-staging"
+require conf/machine/include/ti-bsp.inc
 
 KERNEL_IMAGETYPE = "Image"
 KERNEL_IMAGETYPES = "Image fitImage"
@@ -31,10 +25,6 @@ SPL_BINARY = "tispl.bin"
 SPL_BINARYNAME = "tispl.bin"
 UBOOT_SUFFIX = "img"
 
-UBOOT_SIGN_ENABLE = "1"
-UBOOT_MKIMAGE_DTCOPTS = "-I dts -O dtb"
-UBOOT_SIGN_KEYNAME ?= "custMpk"
-UBOOT_SIGN_KEYDIR ?= "${TI_SECURE_DEV_PKG}/keys"
 FIT_HASH_ALG ?= "sha512"
 FIT_SIGN_ALG ?= "rsa4096"
 
@@ -61,8 +51,8 @@ MACHINE_FEATURES += "efi"
 
 WKS_FILE ?= "${@bb.utils.contains("MACHINE_FEATURES", "efi", "sdimage-2part-efi.wks.in", "sdimage-2part.wks", d)}"
 
+TI_WKS_BOOTLOADER_APPEND ?= ""
+
 do_image_wic[depends] += "virtual/bootloader:do_deploy"
-do_image[mcdepends] += "mc::k3r5:virtual/bootloader:do_deploy"
 
 SERIAL_CONSOLES = "115200;ttyS0 115200;ttyS2"
-SERIAL_CONSOLES_CHECK = "${SERIAL_CONSOLES}"

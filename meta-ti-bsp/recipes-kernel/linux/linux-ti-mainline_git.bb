@@ -9,34 +9,25 @@ require recipes-kernel/linux/ti-kernel.inc
 
 DEPENDS += "gmp-native libmpc-native"
 
-KERNEL_EXTRA_ARGS += "LOADADDR=${UBOOT_ENTRYPOINT} \
-		      ${EXTRA_DTC_ARGS}"
+KERNEL_EXTRA_ARGS += "LOADADDR=${UBOOT_ENTRYPOINT} ${EXTRA_DTC_ARGS}"
 
 S = "${WORKDIR}/git"
 
-# 6.2 Mainline version
-SRCREV = "c9c3395d5e3dcc6daee66c6908354d47bf98cb0c"
-PV = "6.2+git${SRCPV}"
-
-# Append to the MACHINE_KERNEL_PR so that a new SRCREV will cause a rebuild
-MACHINE_KERNEL_PR:append = "b"
-PR = "${MACHINE_KERNEL_PR}"
+# 6.12 Mainline version
+SRCREV = "adc218676eef25575469234709c2d87185ca223a"
+PV = "6.12"
 
 KERNEL_GIT_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
-KERNEL_GIT_PROTOCOL = "https"
-KERNEL_GIT_BRANCH = "master"
-SRC_URI += " \
-	${KERNEL_GIT_URI};protocol=${KERNEL_GIT_PROTOCOL};branch=${KERNEL_GIT_BRANCH} \
+BRANCH = "master"
+
+KERNEL_DEFCONFIG = ""
+
+KERNEL_REPRODUCIBILITY_PATCHES = " \
+    file://0001-drivers-gpu-drm-msm-registers-improve-reproducibilit.patch \
+    file://0001-perf-python-Fix-compile-for-32bit-platforms.patch \
 "
 
 DEFCONFIG_NAME = "multi_v7_defconfig"
 DEFCONFIG_NAME:omapl138 = "davinci_all_defconfig"
 DEFCONFIG_NAME:k3 = "defconfig"
 KERNEL_CONFIG_COMMAND = "oe_runmake -C ${S} O=${B} ${DEFCONFIG_NAME}"
-
-do_shared_workdir:prepend() {
-	cd ${B}
-	echo >> Module.symvers
-}
-
-FILES:${KERNEL_PACKAGE_NAME}-devicetree += "/${KERNEL_IMAGEDEST}/*.itb"

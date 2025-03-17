@@ -5,10 +5,12 @@ LIC_FILES_CHKSUM = "file://${WORKDIR}/git/LICENSE;md5=7232b98c1c58f99e3baa03de52
 
 inherit bin_package
 
+INHIBIT_DEFAULT_DEPS = ""
+
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 COMPATIBLE_MACHINE = "j721e|j721s2|j784s4|am62xx|am62pxx|j722s"
 
-PR = "r2"
+PR = "r3"
 
 BRANCH = "linuxws/kirkstone/k6.1/${PV}"
 SRC_URI = "git://git.ti.com/git/graphics/ti-img-rogue-umlibs.git;protocol=https;branch=${BRANCH}"
@@ -42,7 +44,7 @@ PACKAGECONFIG[opencl] = ",,,,${OPENCL_PACKAGES}"
 def get_file_list(package_list_var, d):
     file_list = []
     package_list = d.getVar(package_list_var)
-    prefix = f"{d.getVar('S')}/"
+    prefix = f"{d.getVar('D')}/"
     if package_list:
         for package in package_list.split():
             package_file_string = d.getVar(f"FILES:{package}")
@@ -51,7 +53,7 @@ def get_file_list(package_list_var, d):
                     file_list.append(f"{prefix}{package_file}")
     return " ".join(file_list)
 
-do_install:prepend() {
+do_install:append() {
     if ${@bb.utils.contains('PACKAGECONFIG', 'opengl', 'false', 'true', d)}; then
         for file in ${@get_file_list('GLES_PACKAGES',  d)}; do
             rm -rf ${file}
@@ -68,13 +70,13 @@ do_install:prepend() {
         done
     fi
     if ${@bb.utils.contains('DISTRO_FEATURES', 'usrmerge', 'true', 'false', d)}; then
-        if [ -e ${S}/lib/firmware ]; then
-            mv ${S}/lib/firmware ${S}${nonarch_base_libdir}
+        if [ -e ${D}/lib/firmware ]; then
+            mv ${D}/lib/firmware ${D}${nonarch_base_libdir}
         fi
     fi
 
     # clean up any empty directories
-    find "${S}" -empty -type d -delete
+    find "${D}" -empty -type d -delete
 }
 
 GLES_PACKAGES = "libgles1-rogue libgles2-rogue libgles3-rogue"
@@ -107,7 +109,7 @@ python __anonymous() {
         mlprefix = d.getVar("MLPREFIX")
         pkgs = " " + " ".join(mlprefix + x + suffix for x in p[1:])
         d.setVar("DEBIAN_NOAUTONAME:" + fullp, "1")
-        d.setVar("INSANE_SKIP:" + fullp, "dev-so")
+        d.setVar("INSANE_SKIP:" + fullp, "dev-so ldflags")
         d.appendVar("RRECOMMENDS:" + fullp, " ${MLPREFIX}ti-img-rogue-umlibs" + suffix)
 }
 
@@ -127,10 +129,12 @@ RDEPENDS:libopencl-rogue += "opencl-icd-loader"
 RRECOMMENDS:libopencl-rogue += "libopencl-rogue-tools"
 FILES:libopencl-rogue-tools += "${bindir}/ocl*"
 DEBIAN_NOAUTONAME:libopencl-rogue-tools = "1"
+INSANE_SKIP:libopencl-rogue-tools = "ldflags"
 
 # optional tools and tests
 FILES:${PN}-tools = "${bindir}/"
 RDEPENDS:${PN}-tools = "python3-core ${PN}"
+INSANE_SKIP:${PN}-tools = "ldflags"
 
 # required firmware
 FILES:${PN}-firmware = "${base_libdir}/firmware/*"
@@ -140,4 +144,4 @@ RRECOMMENDS:${PN} += " \
     ${PN}-tools \
 "
 
-INSANE_SKIP:${PN} += "already-stripped dev-so"
+INSANE_SKIP:${PN} += "already-stripped dev-so ldflags"

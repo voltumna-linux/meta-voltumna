@@ -4,17 +4,11 @@ SOC_FAMILY:append = ":ti33x"
 DEFAULTTUNE ?= "armv7athf-neon"
 require conf/machine/include/arm/armv7a/tune-cortexa8.inc
 
-# Increase this everytime you change something in the kernel
-MACHINE_KERNEL_PR = "r22"
-
-# Default providers, may need to override for specific machines
-PREFERRED_PROVIDER_virtual/kernel ?= "linux-ti-staging"
-PREFERRED_PROVIDER_virtual/bootloader ?= "u-boot-ti-staging"
-PREFERRED_PROVIDER_u-boot ?= "u-boot-ti-staging"
+require conf/machine/include/ti-bsp.inc
 
 # Graphics providers and variables
 require conf/machine/include/mesa-pvr.inc
-PREFERRED_PROVIDER_virtual/gpudriver ?= "ti-sgx-ddk-km"
+PREFERRED_PROVIDER_virtual/gpudriver ?= "${BSP_SGX_DRIVER_PROVIDER}"
 PVR_DISPLAY_CONTROLLER_ALIAS ?= "tilcdc"
 
 KERNEL_IMAGETYPE = "zImage"
@@ -25,17 +19,43 @@ KERNEL_DEVICETREE_PREFIX = " \
 "
 
 KERNEL_DEVICETREE = " \
-    am335x-evm.dtb \
-    am335x-evmsk.dtb \
-    am335x-icev2.dtb \
-    am335x-pocketbeagle.dtb \
-    am335x-bone.dtb \
-    am335x-boneblue.dtb \
-    am335x-bonegreen.dtb \
-    am335x-bonegreen-wireless.dtb \
-    am335x-boneblack.dtb \
-    am335x-boneblack-wireless.dtb \
-    am335x-sancloud-bbe.dtb \
+    ti/omap/am335x-baltos-ir2110.dtb \
+    ti/omap/am335x-baltos-ir3220.dtb \
+    ti/omap/am335x-baltos-ir5221.dtb \
+    ti/omap/am335x-base0033.dtb \
+    ti/omap/am335x-bone.dtb \
+    ti/omap/am335x-boneblack-wireless.dtb \
+    ti/omap/am335x-boneblack.dtb \
+    ti/omap/am335x-boneblue.dtb \
+    ti/omap/am335x-bonegreen-wireless.dtb \
+    ti/omap/am335x-bonegreen.dtb \
+    ti/omap/am335x-chiliboard.dtb \
+    ti/omap/am335x-cm-t335.dtb \
+    ti/omap/am335x-evm.dtb \
+    ti/omap/am335x-evmsk.dtb \
+    ti/omap/am335x-guardian.dtb \
+    ti/omap/am335x-icev2.dtb \
+    ti/omap/am335x-lxm.dtb \
+    ti/omap/am335x-moxa-uc-2101.dtb \
+    ti/omap/am335x-moxa-uc-8100-me-t.dtb \
+    ti/omap/am335x-myirtech-myd.dtb \
+    ti/omap/am335x-nano.dtb \
+    ti/omap/am335x-netcan-plus-1xx.dtb \
+    ti/omap/am335x-netcom-plus-2xx.dtb \
+    ti/omap/am335x-netcom-plus-8xx.dtb \
+    ti/omap/am335x-osd3358-sm-red.dtb \
+    ti/omap/am335x-pdu001.dtb \
+    ti/omap/am335x-pepper.dtb \
+    ti/omap/am335x-phycore-rdk.dtb \
+    ti/omap/am335x-pocketbeagle.dtb \
+    ti/omap/am335x-regor-rdk.dtb \
+    ti/omap/am335x-sancloud-bbe-extended-wifi.dtb \
+    ti/omap/am335x-sancloud-bbe-lite.dtb \
+    ti/omap/am335x-sancloud-bbe.dtb \
+    ti/omap/am335x-sbc-t335.dtb \
+    ti/omap/am335x-shc.dtb \
+    ti/omap/am335x-sl50.dtb \
+    ti/omap/am335x-wega-rdk.dtb \
 "
 
 UBOOT_ARCH = "arm"
@@ -44,6 +64,8 @@ UBOOT_MACHINE = "am335x_evm_config"
 UBOOT_ENTRYPOINT = "0x80008000"
 UBOOT_LOADADDRESS = "0x80008000"
 
+DEVICETREE_FILE = "${@(d.getVar('KERNEL_DEVICETREE') or "").replace("ti/omap/","")}"
+
 # Generate an extlinux.conf file
 UBOOT_EXTLINUX = "1"
 UBOOT_EXTLINUX_ROOT = "root=PARTUUID=${uuid}"
@@ -51,7 +73,7 @@ UBOOT_EXTLINUX_KERNEL_ARGS = "rootwait rw earlycon"
 UBOOT_EXTLINUX_BOOT_FILES = " \
     extlinux.conf;extlinux/extlinux.conf \
     ${KERNEL_IMAGETYPE} \
-    ${KERNEL_DEVICETREE} \
+    ${DEVICETREE_FILE} \
 "
 
 SPL_BINARY = "MLO"

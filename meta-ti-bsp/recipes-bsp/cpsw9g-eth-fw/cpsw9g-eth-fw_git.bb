@@ -3,8 +3,7 @@ SUMMARY = "R5 PSDK CPSW9G Ethernet Switch Firmware"
 LICENSE = "TI-TFL"
 LIC_FILES_CHKSUM = "file://LICENSE.ti;md5=04ad0a015d4bb63c2b9e7b112debf3db"
 
-PV = "6.2+git${SRCPV}"
-PACKAGE_ARCH = "${MACHINE_ARCH}"
+PV = "6.2+git"
 
 inherit update-alternatives
 
