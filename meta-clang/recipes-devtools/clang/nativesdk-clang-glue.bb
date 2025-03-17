@@ -23,11 +23,13 @@ sysroot_stage_all () {
 	sysroot_stage_dir ${D} ${SYSROOT_DESTDIR}
 }
 
-FILES_${PN} += "${prefix_nativesdk} ${base_libdir_nativesdk}"
-FILES_${PN}-dbg = ""
+FILES:${PN} += "${prefix_nativesdk} ${base_libdir_nativesdk}"
+FILES:${PN}-dbg = ""
 
 deltask do_configure
 deltask do_compile
 deltask do_patch
 deltask do_fetch
 deltask do_unpack
+deltask do_create_spdx
+deltask do_create_runtime_spdx
