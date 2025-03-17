@@ -1,11 +1,11 @@
 header:
-  version: 9
+  version: 11
 
 distro: poky
 
 defaults:
   repos:
-    refspec: dunfell
+    refspec: kirkstone
 
 repos:
   meta-arm:
@@ -20,29 +20,31 @@ repos:
       meta:
       meta-poky:
 
-  meta-openembedded:
-    url: https://git.openembedded.org/meta-openembedded
-    layers:
-      meta-oe:
-
 env:
   BB_LOGCONFIG: ""
+  TOOLCHAIN_DIR: ""
 
 local_conf_header:
   base: |
-    CONF_VERSION = "1"
-    PACKAGE_CLASSES = "package_ipk"
-    LICENSE_FLAGS_WHITELIST += "armcompiler"
-    PACKAGECONFIG_remove_pn-qemu-system-native = "gtk+ sdl"
-    EXTRA_IMAGE_FEATURES_append = " debug-tweaks"
+    BB_SERVER_TIMEOUT = "60"
+    CONF_VERSION = "2"
     BB_NUMBER_THREADS = "16"
     PARALLEL_MAKE = "-j16"
+    LICENSE_FLAGS_ACCEPTED += "Arm-FVP-EULA"
+  setup: |
+    PACKAGE_CLASSES = "package_ipk"
+    PACKAGECONFIG:remove:pn-qemu-system-native = "gtk+ sdl"
+    EXTRA_IMAGE_FEATURES:append = " debug-tweaks"
+    PACKAGECONFIG:append:pn-perf = " coresight"
     INHERIT += "rm_work"
-  ptest: |
-    DISTRO_FEATURES_remove = "ptest"
-
+    DISTRO_FEATURES:remove = "ptest"
+  kvm: |
+    QEMU_USE_KVM = ""
+  perf: |
+    CORE_IMAGE_EXTRA_INSTALL += "perf"
+  sshkeys: |
+    CORE_IMAGE_EXTRA_INSTALL += "ssh-pregen-hostkeys"
 machine: unset
 
 target:
   - core-image-base
-#  - perf

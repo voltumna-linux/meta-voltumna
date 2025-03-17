@@ -7,23 +7,25 @@ EXTERNAL_TOOLCHAIN ?= "/usr/local/arm-binary-toolchain/${TARGET_ARCH}"
 TOOLCHAIN_PATH_ADD = "${EXTERNAL_TOOLCHAIN}/bin:"
 PATH =. "${TOOLCHAIN_PATH_ADD}"
 
-EAT_TARGET_SYS_arm ?= "${@ 'arm-none-linux-gnueabihf' if os.path.exists('${EXTERNAL_TOOLCHAIN}/bin/arm-none-linux-gnueabihf-gcc') else 'arm-linux-gnueabihf'}"
-EAT_TARGET_SYS_aarch64 ?= "${@ 'aarch64-none-linux-gnu' if os.path.exists('${EXTERNAL_TOOLCHAIN}/bin/aarch64-none-linux-gnu-gcc') else 'aarch64-linux-gnu'}"
+EAT_TARGET_SYS:arm ?= "${@ 'arm-none-linux-gnueabihf' if os.path.exists('${EXTERNAL_TOOLCHAIN}/bin/arm-none-linux-gnueabihf-gcc') else 'arm-linux-gnueabihf'}"
+EAT_TARGET_SYS:aarch64 ?= "${@ 'aarch64-none-linux-gnu' if os.path.exists('${EXTERNAL_TOOLCHAIN}/bin/aarch64-none-linux-gnu-gcc') else 'aarch64-linux-gnu'}"
 EAT_TARGET_SYS = "${TARGET_SYS}"
 TARGET_PREFIX = "${EAT_TARGET_SYS}-"
 
-EAT_LIBDIR_arm = "lib"
-EAT_LIBDIR_aarch64 = "lib64"
+EAT_LIBDIR:arm = "lib"
+EAT_LIBDIR:aarch64 = "lib64"
 
-GCCMULTILIB_forcevariable = "--disable-multilib"
-IMAGE_LINGUAS_forcevariable = ""
+GCCMULTILIB:forcevariable = "--disable-multilib"
+IMAGE_LINGUAS:forcevariable = ""
 
 # Blacklist toolchain recipes as a belt-and-suspenders way to use the external toolchain
-PNBLACKLIST[glibc] = "Using external toolchain"
-PNBLACKLIST[libgcc] = "Using external toolchain"
-PNBLACKLIST[gcc-cross] = "Using external toolchain"
-PNBLACKLIST[gcc-runtime] = "Using external toolchain"
-PNBLACKLIST[gcc-sanitizers] = "Using external toolchain"
+SKIP_RECIPE[glibc] = "Using external toolchain"
+SKIP_RECIPE[libgcc] = "Using external toolchain"
+SKIP_RECIPE[gcc-cross] = "Using external toolchain"
+SKIP_RECIPE[gcc-cross-aarch64] = "Using external toolchain"
+SKIP_RECIPE[gcc-cross-arm] = "Using external toolchain"
+SKIP_RECIPE[gcc-runtime] = "Using external toolchain"
+SKIP_RECIPE[gcc-sanitizers] = "Using external toolchain"
 
 PREFERRED_PROVIDER_linux-libc-headers = "external-arm-toolchain"
 PREFERRED_PROVIDER_linux-libc-headers-dev = "external-arm-toolchain"
@@ -62,7 +64,7 @@ DISTRO_FEATURES_LIBC = "ipv4 ipv6 libc-backtrace libc-big-macros libc-bsd libc-c
 ENABLE_BINARY_LOCALE_GENERATION = "0"
 GLIBC_INTERNAL_USE_BINARY_LOCALE = "precompiled"
 LIBCOVERRIDE = ":libc-glibc"
-LIBC_DEPENDENCIES_remove = "glibc-gconv-cp1252 glibc-gconv-ibm850 glibc-gconv-iso8859-1 glibc-gconv-iso8859-15 glibc-localedata-i18n"
+LIBC_DEPENDENCIES:remove = "glibc-gconv-cp1252 glibc-gconv-ibm850 glibc-gconv-iso8859-1 glibc-gconv-iso8859-15 glibc-localedata-i18n"
 
 ERROR_QA[type] ?= "list"
 python toolchain_metadata_setup () {

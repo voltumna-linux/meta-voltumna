@@ -1,11 +1,6 @@
 header:
-  version: 9
+  version: 11
   includes:
-    - base.yml
+    - ci/base.yml
 
 machine: qemuarmv5
-
-local_conf_header:
-  bugs: |
-    # Remove parselogs until errors can be resolved
-    TEST_SUITES_remove = "parselogs"
