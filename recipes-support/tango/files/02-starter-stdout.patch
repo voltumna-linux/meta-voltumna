@@ -1,0 +1,13 @@
+diff --git a/StartProcessThread.cpp b/StartProcessThread.cpp
+index 84dee82..1cf61ce 100644
+--- a/StartProcessThread.cpp
++++ b/StartProcessThread.cpp
+@@ -213,7 +213,7 @@ namespace Starter_ns {
+ #endif
+                         // Close standard out
+                         close(1);
+-                        open("/dev/null", O_RDWR | O_CREAT, 0664);
++//                        open("/dev/null", O_RDWR | O_CREAT, 0664);
+
+                         //	Close the stderr and re-open it on a log file.
+                         close(2);

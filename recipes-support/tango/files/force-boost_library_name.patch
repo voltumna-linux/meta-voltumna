@@ -1,0 +1,13 @@
+diff --git a/setup.py b/setup.py
+index 2b3bac6..ed3bc29 100644
+--- a/setup.py
++++ b/setup.py
+@@ -237,7 +237,7 @@ def add_lib_boost(dirs):
+         dirs["include_dirs"].append(inc_dir)
+         dirs["library_dirs"].extend(lib_dirs)
+ 
+-    dirs["libraries"].append(boost_library_name)
++    dirs['libraries'].append("boost_python{v[0]}{v[1]}".format(v=PYTHON_VERSION))
+ 
+ 
+ class build(dftbuild):

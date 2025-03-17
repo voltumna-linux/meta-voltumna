@@ -1,0 +1,27 @@
+diff --git a/cppapi/server/device.h b/cppapi/server/device.h
+index 41731d66..512b82ff 100644
+--- a/cppapi/server/device.h
++++ b/cppapi/server/device.h
+@@ -256,22 +256,20 @@ public:
+  *
+  * @return Pointer to the device multi attribute object
+  */
+ 
+ 	MultiAttribute *get_device_attr() {return dev_attr;}
+ 
+ /**
+  * Set device multi attribute object.
+  *
+  * Set the pointer to the device multi attribute object
+- *
+- * @return Pointer to the device multi attribute object
+  */
+ 
+ 	void set_device_attr(MultiAttribute *ptr) {dev_attr = ptr;}
+ 
+ /**
+  * Get a pointer to the associated DbDevice object.
+  *
+  * Return a pointer to DbDevice object associated with the device
+  *
+  * @return Pointer to the DbDevice object

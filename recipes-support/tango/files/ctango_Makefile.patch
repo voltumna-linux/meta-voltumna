@@ -1,0 +1,80 @@
+diff --git a/Makefile b/Makefile
+index d90bdb0..61e3b8e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -5,9 +5,7 @@
+ include Make.rules
+ 
+ 
+-CC = c++
+-AR = ar rv
+-AR_SL = $(CC) -fPIC -shared -ldl 
++AR_SL = $(CXX) -fPIC -shared -ldl
+ VERS_OPT = -Wl,-soname,
+ SL_EXT = so
+ #
+@@ -22,7 +20,7 @@ OBJS_DIR_SL = 	objs_sl/$(BIN_DIR)
+ 
+ 
+ INCLUDE_DIRS = 	-I$(CLIENT_SRC) \
+-				-I$(TANGO_BASE)/include \
++				-I$(TANGO_BASE)/include/tango \
+ 				-I$(OMNI_BASE)/include \
+ 	       		-I$(LOG4TANGO_BASE)/include
+ 
+@@ -37,12 +35,12 @@ LIB_DIRS     = -L $(TANGO_HOME)/lib \
+ #------------------------------------------------------------------
+ 
+ 
+-CXXFLAGS = -g -std=c++0x -D_REENTRANT $(INCLUDE_DIRS)
+-#CXXFLAGS = -g -D_REENTRANT $(INCLUDE_DIRS)
++CXXFLAGS ?= -g -std=c++0x
++CXXFLAGS += -D_REENTRANT $(INCLUDE_DIRS)
+ 
+ CXXFLAGS_SL = $(CXXFLAGS) -fPIC
+ 
+-LFLAGS =  $(LIB_DIRS)  		\
++LFLAGS =  $(LDFLAGS) $(LIB_DIRS)  		\
+ 				-ltango			\
+ 				-lomniORB4 		\
+ 				-lomniDynamic4	\
+@@ -77,7 +75,7 @@ CLIENT_INCLUDE =	c_tango.h
+ 	
+ .SUFFIXES:	.o .c
+ .c.o:
+-	$(CC) $(CXXFLAGS) -c $<
++	$(CXX) $(CXXFLAGS) -c $<
+ 
+ #
+ # Rule for shared library
+@@ -85,18 +83,18 @@ CLIENT_INCLUDE =	c_tango.h
+ 
+ .SUFFIXES:	.so.o .c
+ .c.so.o:
+-	$(CC) $(CXXFLAGS_SL) -c $< -o $*.so.o
++	$(CXX) $(CXXFLAGS_SL) -c $< -o $*.so.o
+ 
+ #
+ # Rule for API files
+ #		
+ $(OBJS_DIR)/%.o: $(CLIENT_SRC)/%.c
+ 	@./cr_dir $(OBJS_DIR)
+-	$(CC) $(CXXFLAGS) -c $< -o $(OBJS_DIR)/$*.o
++	$(CXX) $(CXXFLAGS) -c $< -o $(OBJS_DIR)/$*.o
+ 	
+ $(OBJS_DIR_SL)/%.so.o: $(CLIENT_SRC)/%.c
+ 	@./cr_dir $(OBJS_DIR_SL)
+-	$(CC) $(CXXFLAGS_SL) -c $< -o $(OBJS_DIR_SL)/$*.so.o
++	$(CXX) $(CXXFLAGS_SL) -c $< -o $(OBJS_DIR_SL)/$*.so.o
+ 					
+ #-----------------------------------------------------------------
+ 
+@@ -109,7 +107,7 @@ all:	$(LIBNAME).$(AR_EXT) $(LIBNAME).$(SL_EXT) install_include install_link
+ 
+ $(LIBNAME).$(AR_EXT): 	$(CLIENT_OBJS)
+ 	@./cr_dir $(INSTALL_BASE)/lib
+-	$(AR) $(INSTALL_BASE)/lib/$(LIBNAME).$(MAJOR_VERS).$(MINOR_VERS).$(PATCH_VERS).$(AR_EXT) \
++	$(AR) rv $(INSTALL_BASE)/lib/$(LIBNAME).$(MAJOR_VERS).$(MINOR_VERS).$(PATCH_VERS).$(AR_EXT) \
+ 	$(CLIENT_OBJS)
+ 
+ #

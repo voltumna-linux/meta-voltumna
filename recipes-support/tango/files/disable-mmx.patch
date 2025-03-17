@@ -1,0 +1,24 @@
+diff --git a/configure/cmake_linux.cmake b/configure/cmake_linux.cmake
+index 4dc920cc..0938fc74 100644
+--- a/configure/cmake_linux.cmake
++++ b/configure/cmake_linux.cmake
+@@ -4,7 +4,6 @@ add_library(tango $<TARGET_OBJECTS:log4tango_objects>
+                   $<TARGET_OBJECTS:client_objects>
+                   $<TARGET_OBJECTS:idl_objects>
+                   $<TARGET_OBJECTS:jpeg_objects>
+-                  $<TARGET_OBJECTS:jpeg_mmx_objects>
+                   $<TARGET_OBJECTS:server_objects>)
+ target_link_libraries(tango PUBLIC ${ZMQ_PKG_LIBRARIES} ${OMNIORB_PKG_LIBRARIES} ${OMNICOS_PKG_LIBRARIES} ${OMNIDYN_PKG_LIBRARIES} ${CMAKE_DL_LIBS})
+ target_include_directories(tango PUBLIC ${ZMQ_PKG_INCLUDE_DIRS} ${OMNIORB_PKG_INCLUDE_DIRS} ${OMNIDYN_PKG_INCLUDE_DIRS})
+diff --git a/cppapi/server/CMakeLists.txt b/cppapi/server/CMakeLists.txt
+index 1475915e..f0fab300 100644
+--- a/cppapi/server/CMakeLists.txt
++++ b/cppapi/server/CMakeLists.txt
+@@ -132,7 +132,6 @@ set(HEADERS attrdesc.h
+ 
+ add_subdirectory(idl)
+ add_subdirectory(jpeg)
+-add_subdirectory(jpeg_mmx)
+ 
+ if(WIN32)
+     set(SOURCES_WIN
