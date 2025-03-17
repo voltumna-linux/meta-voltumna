@@ -12,10 +12,19 @@ class OESDKMinGWTestContext(OESDKTestContext):
     sdk_files_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "files")
 
     def __init__(self, td=None, logger=None, sdk_dir=None, sdk_env=None, wine_prefix=None,
-            wine_arch=None, target_pkg_manifest=None, host_pkg_manifest=None):
+            wine_arch=None, wine_devices={}, target_pkg_manifest=None, host_pkg_manifest=None):
         super(OESDKMinGWTestContext, self).__init__(td, logger, sdk_dir, sdk_env, target_pkg_manifest, host_pkg_manifest)
         self.wine_prefix = wine_prefix
         self.wine_arch = wine_arch
+        # Create the wine environment
+        subprocess.check_output(["wine", "cmd", "/c", "echo 1"], env=self.get_wine_env())
+
+        device_dir  = "%s/dosdevices" % wine_prefix
+        bb.utils.mkdirhier(device_dir)
+        for device, path in wine_devices.items():
+            device_path = "%s/%s" % (device_dir, device)
+            os.symlink(os.path.relpath(path, device_dir), device_path)
+
         self.wine_sdk_dir = self.wine_path(sdk_dir)
         self.wine_sdk_env = self.wine_path(sdk_env)
 
