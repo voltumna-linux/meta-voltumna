@@ -9,7 +9,6 @@ inherit python3native meson-routines qemu
 DEPENDS:append = " meson-native ninja-native"
 
 EXEWRAPPER_ENABLED:class-native = "False"
-EXEWRAPPER_ENABLED:class-nativesdk = "False"
 EXEWRAPPER_ENABLED ?= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', 'True', 'False', d)}"
 DEPENDS:append = "${@' qemu-native' if d.getVar('EXEWRAPPER_ENABLED') == 'True' else ''}"
 
@@ -22,6 +21,9 @@ MESON_SOURCEPATH = "${S}"
 
 # The target to build in do_compile. If unset the default targets are built.
 MESON_TARGET ?= ""
+
+# Since 0.60.0 you can specify custom tags to install
+MESON_INSTALL_TAGS ?= ""
 
 def noprefix(var, d):
     return d.getVar(var).replace(d.getVar('prefix') + '/', '', 1)
@@ -127,7 +129,7 @@ cpp_link_args = ${@meson_array('BUILD_LDFLAGS', d)}
 EOF
 }
 
-do_write_config:append:class-target() {
+write_qemuwrapper() {
     # Write out a qemu wrapper that will be used as exe_wrapper so that meson
     # can run target helper binaries through that.
     qemu_binary="${@qemu_wrapper_cmdline(d, '$STAGING_DIR_HOST', ['$STAGING_DIR_HOST/${libdir}','$STAGING_DIR_HOST/${base_libdir}'])}"
@@ -143,6 +145,14 @@ unset LD_LIBRARY_PATH
 $qemu_binary "\$@"
 EOF
     chmod +x ${WORKDIR}/meson-qemuwrapper
+}
+
+do_write_config:append:class-target() {
+    write_qemuwrapper
+}
+
+do_write_config:append:class-nativesdk() {
+    write_qemuwrapper
 }
 
 # Tell externalsrc that changes to this file require a reconfigure
@@ -175,7 +185,10 @@ meson_do_compile() {
 }
 
 meson_do_install() {
-    meson install --destdir ${D} --no-rebuild
+    if [ "x${MESON_INSTALL_TAGS}" != "x" ] ; then
+        meson_install_tags="--tags ${MESON_INSTALL_TAGS}"
+    fi
+    meson install --destdir ${D} --no-rebuild $meson_install_tags
 }
 
 EXPORT_FUNCTIONS do_configure do_compile do_install
