@@ -21,7 +21,7 @@ DISTRO_FEATURES_FILTER_NATIVESDK:remove:mingw32 = "debuginfod"
 SDK_PACKAGING_FUNC = "do_compile"
 
 # Causes an endless loop
-#SDKTAROPTS_append = " -h --hard-dereference"
+# SDKTAROPTS:append = " -h --hard-dereference"
 
 SDKUSE_NLS = "no"
 SDKIMAGE_LINGUAS = ""
@@ -35,13 +35,18 @@ MACHINEOVERRIDES .= ":sdkmingw32"
 TESTSDK_CLASS_NAME = "oeqa.sdkmingw.testsdk.TestSDKMinGW"
 TESTSDKEXT_CLASS_NAME = ""
 
+WINDMC:mingw32 = "${HOST_PREFIX}windmc"
 WINDRES:mingw32 = "${HOST_PREFIX}windres --include-dir=${STAGING_INCDIR}"
 RC:mingw32 = "${WINDRES}"
+WINDMC:class-cross-canadian = "${HOST_PREFIX}windmc"
+WINDRES:class-cross-canadian = "${HOST_PREFIX}windres --include-dir=${STAGING_INCDIR}"
+RC:class-cross-canadian = "${WINDRES}"
 
+export WINDMC
 export WINDRES
 export RC
 
-BB_BASEHASH_IGNORE_VARS:append = " WINDRES RC"
+BB_BASEHASH_IGNORE_VARS:append = " WINDRES RC WINDMC"
 
 # Needed to override no-static-libs.inc
 DISABLE_STATIC:mingw32 = ""
@@ -50,5 +55,4 @@ DISABLE_STATIC:mingw32 = ""
 GCCPIE:mingw32 = ""
 
 # wine and wineserver are required to test MinGW SDKs
-HOSTTOOLS += "${@'wine wineserver' if (bb.utils.contains_any('IMAGE_CLASSES', 'testsdk', True, False, d) or any(x in (d.getVar("BBINCLUDED") or "") for x in ["testsdk.bbclass"])) else ''}"
-
+HOSTTOOLS_NONFATAL += "wine wineserver"

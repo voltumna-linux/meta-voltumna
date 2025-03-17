@@ -44,6 +44,9 @@ class TestSDKMinGW(TestSDK):
 
         return {
             'wine_prefix': wine_prefix,
-            'wine_arch': d.getVar('TESTSDK_WINEARCH') or 'win64'
+            'wine_arch': d.getVar('TESTSDK_WINEARCH') or 'win64',
+            'wine_devices': {
+                'w:': d.getVar("WORKDIR"),
             }
+        }
 

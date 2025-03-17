@@ -1,7 +1,7 @@
 # Need to disable X11 explictly as nativesdk-libxdmcp fails:
 # .libs/Fill.o:Fill.c:(.text+0x48): undefined reference to `_imp__recvfrom@24'
 # .libs/Flush.o:Flush.c:(.text+0x36): undefined reference to `_imp__sendto@24'
-PACKAGECONFIG:remove:mingw32:class-nativesdk = "x11 opengl"
+PACKAGECONFIG:remove:mingw32:class-nativesdk = "x11 opengl gles2"
 
 # libtool doesn't think it can link windres output (COFF) with libtool objects
 # (COFF) , but it can.  This might be because file misidentifies version.o:

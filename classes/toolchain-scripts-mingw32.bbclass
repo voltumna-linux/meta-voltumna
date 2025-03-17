@@ -12,6 +12,7 @@ toolchain_create_sdk_env_script:sdkmingw32 () {
 	touch $script
 	# Be sure to use the 'short' path, so we can have deeper directories.
 	echo 'set SDKROOT=%~sdp0%' >> $script
+	echo 'IF %SDKROOT:~-1%==\ set SDKROOT=%SDKROOT:~0,-1%' >> $script
 
 	# Convert to mingw32 subpaths
 	sysroot='%SDKROOT%'${sysroot##${SDKPATH}}

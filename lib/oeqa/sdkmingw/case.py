@@ -56,7 +56,7 @@ class OESDKMinGWTestCase(OESDKTestCase):
                 return s[1:-1]
             return s
 
-        command = ['wine', 'cmd', '/c', self.tc.wine_sdk_env, '>', 'NUL', '&&', 'cd', self.wine_test_dir, '&&']
+        command = ['wine', 'cmd', '/c', self.tc.wine_sdk_env, '>', 'NUL', '&&']
 
         # Perform some massaging so that commands can be written naturally in
         # test cases. shlex.split() in Non-posix mode gets us most of the way
@@ -65,7 +65,7 @@ class OESDKMinGWTestCase(OESDKTestCase):
         command.extend(strip_quotes(s) for s in shlex.split(cmd, posix=False))
 
         return subprocess.check_output(command, env=self.tc.get_wine_env(),
-                stderr=subprocess.STDOUT, universal_newlines=True)
+                stderr=subprocess.STDOUT, universal_newlines=True, cwd=self.test_dir)
 
     def assertIsTargetElf(self, path):
         import oe.qa

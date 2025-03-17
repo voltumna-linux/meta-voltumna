@@ -2,6 +2,5 @@
 # compatible with i686 MinGW
 PACKAGECONFIG:remove:mingw32:i686 = "dtd-validation"
 
-EXTRA_OECONF:class-nativesdk:mingw32 = "--disable-documentation --disable-libraries"
-EXTRA_OEMESON:class-nativesdk:mingw32 = "-Ddocumentation=false -Dlibraries=false"
+EXTRA_OEMESON:class-nativesdk:mingw32 = "-Ddocumentation=false -Dlibraries=false -Dtests=false"
 
