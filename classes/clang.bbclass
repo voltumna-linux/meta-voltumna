@@ -13,6 +13,7 @@ OBJCOPY:toolchain-clang = "${HOST_PREFIX}llvm-objcopy"
 STRIP:toolchain-clang = "${HOST_PREFIX}llvm-strip"
 STRINGS:toolchain-clang = "${HOST_PREFIX}llvm-strings"
 READELF:toolchain-clang = "${HOST_PREFIX}llvm-readelf"
+LD:toolchain-clang = "${@bb.utils.contains('DISTRO_FEATURES', 'ld-is-lld', '${HOST_PREFIX}ld.lld${TOOLCHAIN_OPTIONS} ${HOST_LD_ARCH}', '${HOST_PREFIX}ld${TOOLCHAIN_OPTIONS} ${HOST_LD_ARCH}', d)}"
 
 LTO:toolchain-clang = "${@bb.utils.contains('DISTRO_FEATURES', 'thin-lto', '-flto=thin', '-flto -fuse-ld=lld', d)}"
 
@@ -131,7 +132,7 @@ def clang_base_deps(d):
             elif (d.getVar('LIBCPLUSPLUS').find('-stdlib=libc++') != -1):
                 ret += " libcxx "
             else:
-                ret += " virtual/${TARGET_PREFIX}compilerlibs "
+                ret += " virtual/${MLPREFIX}compilerlibs "
             return ret
     return ""
 
@@ -149,17 +150,6 @@ EOF
     sed -i 's/ -mmusl / /g' ${WORKDIR}/toolchain.cmake
 }
 
-RECIPESYSROOTFUNCS = ""
-RECIPESYSROOTFUNCS:toolchain-clang = "recipe_sysroot_check_ld_is_lld"
-
-recipe_sysroot_check_ld_is_lld () {
-    if ${@bb.utils.contains('DISTRO_FEATURES', 'ld-is-lld', 'true', 'false', d)} &&  \
-        [ -e ${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}ld.lld ]; then
-        ln -srf ${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}ld.lld ${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}ld
-    fi
-}
-do_prepare_recipe_sysroot[postfuncs] += "${RECIPESYSROOTFUNCS}"
-#
 # dump recipes which still use gcc
 #python __anonymous() {
 #    toolchain = d.getVar("TOOLCHAIN")

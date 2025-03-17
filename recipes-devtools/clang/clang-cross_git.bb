@@ -1,7 +1,7 @@
 # Copyright (C) 2014 Khem Raj <raj.khem@gmail.com>
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-DESCRIPTION = "Cross compiler wrappers for LLVM based C/C++ compiler"
+SUMMARY = "Cross compiler wrappers for LLVM based C/C++ compiler"
 HOMEPAGE = "http://clang.llvm.org/"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0-with-LLVM-exception;md5=0bcd48c3bdfef0c9d9fd17726e4b7dab"
 SECTION = "devel"
@@ -11,7 +11,7 @@ PN = "clang-cross-${TARGET_ARCH}"
 require clang.inc
 require common-source.inc
 inherit cross
-DEPENDS += "clang-native virtual/${TARGET_PREFIX}binutils"
+DEPENDS += "clang-native virtual/cross-binutils"
 
 do_install() {
         install -d ${D}${bindir}
