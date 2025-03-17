@@ -6,7 +6,7 @@ DISTRO_UNATTENDED_INST_TESTS ?= "0"
 
 require ${@oe.utils.vartrue("DISTRO_UNATTENDED_INST_TESTS", "arm-systemready-linux-distros-unattended.inc", "", d)}
 
-IMAGE_CLASSES:remove = "license_image"
+IMAGE_CLASSES:remove = "license_image create-spdx-image-3.0"
 IMAGE_CLASSES:remove = "${@oe.utils.vartrue("DISTRO_UNATTENDED_INST_TESTS", "", "testimage", d)}"
 BUILDHISTORY_FEATURES:remove = "image"
 
@@ -27,6 +27,8 @@ ARM_SYSTEMREADY_LINUX_DISTRO_ISO_IMAGE = \
 # Size of installation disk in MB
 ARM_SYSTEMREADY_LINUX_DISTRO_INSTALL_SIZE ?= "4096"
 
+S = "${WORKDIR}/sources-unpack"
+
 do_image() {
     dd if=/dev/zero of=${WORKDIR}/${IMAGE_LINK_NAME}.wic \
         bs=1M count=${ARM_SYSTEMREADY_LINUX_DISTRO_INSTALL_SIZE} status=none
@@ -34,7 +36,7 @@ do_image() {
 
 do_deploy() {
     # Deploy the iso and installation target disk image to the deploy folder
-    install -m 644 ${WORKDIR}/${ISO_IMAGE_NAME}.iso ${DEPLOYDIR}
+    install -m 644 ${UNPACKDIR}/${ISO_IMAGE_NAME}.iso ${DEPLOYDIR}
     install -m 644 ${WORKDIR}/${IMAGE_LINK_NAME}.wic ${DEPLOYDIR}
 }
 
