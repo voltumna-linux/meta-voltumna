@@ -1,0 +1,61 @@
+From f0fdf1ac5a5d2af457f10f3ac0a7af907f07981e Mon Sep 17 00:00:00 2001
+From: Ramesh Garidapuri <ramesh.garidapuri@amd.com>
+Date: Fri, 20 Oct 2023 16:07:27 +0530
+Subject: [PATCH 21/31] amd-xgbe : Work around patch for 10G BCM link stability
+ issues.
+
+this wont impact other interfaces only modified on 10Gbase-T
+Change-Id: I18982970a47729a6ca494df4c9ace6a225cc04e4
+Signed-off-by: Ramesh Garidapuri <ramesh.garidapuri@amd.com>
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c | 27 ++++++++++++++++++---
+ 1 file changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+index f429f461618c..ef97bf99f283 100755
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+@@ -3021,8 +3021,16 @@ static int xgbe_get_phy_link_status(struct xgbe_prv_data *pdata, int *an_restart
+ 		/* if the link is available and adaptation is done,
+ 		 * declare link up
+ 		 */
+-		if ((reg & MDIO_STAT1_LSTATUS) && pdata->rx_adapt_done)
+-			return 1;
++		if(pdata->an_mode == XGBE_AN_MODE_MDIO) {
++			if (((reg & MDIO_STAT1_LSTATUS) && !(reg & MDIO_STAT1_FAULT)) && (pdata->rx_adapt_done)) {
++				return 1;
++			} else {
++				return 0;
++			}
++		} else {
++			if ((reg & MDIO_STAT1_LSTATUS) && (pdata->rx_adapt_done))
++				return 1;
++		}
+ 		/* If either link is not available or adaptation is not done,
+ 		 * retrigger the adaptation logic. (if the mode is not set,
+ 		 * then issue mailbox command first)
+@@ -3037,8 +3045,19 @@ static int xgbe_get_phy_link_status(struct xgbe_prv_data *pdata, int *an_restart
+ 		/* check again for the link and adaptation status */
+ 		reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_STAT1);
+ 		reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_STAT1);
+-		if ((reg & MDIO_STAT1_LSTATUS) && pdata->rx_adapt_done)
+-			return 1;
++
++		if(pdata->an_mode == XGBE_AN_MODE_MDIO) {
++                        if (((reg & MDIO_STAT1_LSTATUS) && !(reg & MDIO_STAT1_FAULT)) && (pdata->rx_adapt_done)) {
++                                return 1;
++                        } else {
++                                return 0;
++                        }
++                } else {
++                        if ((reg & MDIO_STAT1_LSTATUS) && (pdata->rx_adapt_done))
++                                return 1;
++                }
++
++	
+ 	} else if (reg & MDIO_STAT1_LSTATUS)
+ 		return 1;
+ 
+-- 
+2.34.1
+

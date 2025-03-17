@@ -1,0 +1,48 @@
+From e767bca2ca8be4d75befc244641b20e1dbf33776 Mon Sep 17 00:00:00 2001
+From: Satheesh Kumar <satheesh.kumar@amd.com>
+Date: Wed, 30 Mar 2022 12:48:15 +0530
+Subject: [PATCH 37/48] amd-xgbe: 10KR Modeset every AN link time out
+
+Start AN with KR training auto start
+
+Signed-off-by: Satheesh Kumar <satheesh.kumar@amd.com>
+Change-Id: I31eaa0ed95b1347d83de41844cf1268ad9c0b128
+Signed-off-by: rgaridap <Ramesh.Garidapuri@amd.com>
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-mdio.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c b/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
+index 91397cf3c5ab..1d165d885e3f 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
+@@ -402,6 +402,14 @@ static void xgbe_an73_set(struct xgbe_prv_data *pdata, bool enable,
+ 		reg |= MDIO_AN_CTRL1_RESTART;
+ 
+ 	XMDIO_WRITE(pdata, MDIO_MMD_AN, MDIO_CTRL1, reg);
++
++	if(xgbe_cur_mode(pdata) == XGBE_MODE_KR) {
++		/* step-4 Start AN with KR training auto start */
++		XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD,
++				MDIO_PMA_10GBR_PMD_CTRL,
++				(XGBE_KR_TRAINING_ENABLE | XGBE_KR_TRAINING_START),
++				(XGBE_KR_TRAINING_ENABLE | XGBE_KR_TRAINING_START));
++	}
+ }
+ 
+ static void xgbe_an73_restart(struct xgbe_prv_data *pdata)
+@@ -1206,6 +1214,11 @@ static int __xgbe_phy_config_aneg(struct xgbe_prv_data *pdata, bool set_mode)
+ 	/* Disable auto-negotiation interrupt */
+ 	disable_irq(pdata->an_irq);
+ 
++	if(xgbe_cur_mode(pdata) == XGBE_MODE_KR) {
++		xgbe_change_mode(pdata, XGBE_MODE_KR);
++		netif_dbg(pdata, link, pdata->netdev, "AN force modeset 10GKR \n");
++	}
++
+ 	if (set_mode) {
+ 		/* Start auto-negotiation in a supported mode */
+ 		if (xgbe_use_mode(pdata, XGBE_MODE_KR)) {
+-- 
+2.27.0
+

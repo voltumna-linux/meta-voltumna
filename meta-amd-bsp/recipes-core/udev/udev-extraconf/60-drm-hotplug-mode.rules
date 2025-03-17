@@ -1,0 +1,1 @@
+ACTION=="change", SUBSYSTEM=="drm", ENV{HOTPLUG}=="1", ENV{DISPLAY}=":0", RUN+="/etc/udev/scripts/hotplug-display-@MULTIDISPLAYMODE.sh"

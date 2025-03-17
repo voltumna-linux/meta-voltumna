@@ -1,0 +1,38 @@
+From 9b105a61568b289891558bc8b80e7cd04e4ec101 Mon Sep 17 00:00:00 2001
+From: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Date: Tue, 9 Feb 2021 23:44:03 +0530
+Subject: [PATCH 23/31] mmc: sdhci-acpi: eMMC 5.0 host controller fix for AMD
+ platforms
+
+	HS400 mode on AMD eMMC follows v5.0
+ The fix avoids switching to HS speed from HS200 speed
+on host controller.
+
+Co-developed-by: Rahul Kumar  <Rahul.Kumar1@amd.com>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Signed-off-by: rgaridap <Ramesh.Garidapuri@amd.com>
+Change-Id: If03e3868792f5f10d2177d59900649df727d57e7
+---
+ drivers/mmc/host/sdhci-acpi.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/mmc/host/sdhci-acpi.c b/drivers/mmc/host/sdhci-acpi.c
+index b917060a258a..0e677e7fccd5 100644
+--- a/drivers/mmc/host/sdhci-acpi.c
++++ b/drivers/mmc/host/sdhci-acpi.c
+@@ -542,6 +542,12 @@ static void amd_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
+ 	unsigned int old_timing = host->timing;
+ 	u16 val;
+ 
++	if (mmc->ios.clock == 52000000 && host->clock == 200000000)
++		return;
++
++	if (mmc->ios.timing == MMC_TIMING_MMC_HS && host->timing == MMC_TIMING_MMC_HS200)
++		return;
++
+ 	sdhci_set_ios(mmc, ios);
+ 
+ 	if (old_timing != host->timing && amd_host->tuned_clock) {
+-- 
+2.34.1
+

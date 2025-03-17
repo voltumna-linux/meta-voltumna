@@ -1,0 +1,2 @@
+PREFERRED_VERSION_linux-yocto ?= "6.6.4%"
+

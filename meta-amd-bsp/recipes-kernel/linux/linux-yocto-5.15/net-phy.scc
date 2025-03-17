@@ -1,0 +1,3 @@
+# out-of-tree
+patch 9049-net-phy-aquantia-Added-support-for-AQR113-PHY-device.patch
+patch 9050-Add-10M-support-in-PHY-device-supported-field.patch

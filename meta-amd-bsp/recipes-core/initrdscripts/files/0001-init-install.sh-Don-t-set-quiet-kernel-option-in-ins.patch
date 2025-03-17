@@ -1,0 +1,38 @@
+From 2fe5dc144c38ca4e8621d81e990453565bb1b01e Mon Sep 17 00:00:00 2001
+From: Awais Belal <awais_belal@mentor.com>
+Date: Mon, 19 Mar 2018 16:49:51 +0500
+Subject: [PATCH] init-install.sh: Don't set "quiet" kernel option
+
+Signed-off-by: Drew Moseley <drew_moseley@mentor.com>
+Signed-off-by: Awais Belal <awais_belal@mentor.com>
+
+Upstream-Status: Inappropriate [configuration]
+---
+ init-install.sh | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/init-install.sh b/init-install.sh
+index 713a830..36fcdba 100644
+--- init-install.sh
++++ init-install.sh
+@@ -293,7 +293,7 @@ if [ -f /etc/grub.d/00_header -a $grub_version -ne 0 ] ; then
+     cat >$GRUBCFG <<_EOF
+ menuentry "Linux" {
+     search --no-floppy --fs-uuid $boot_uuid --set root
+-    linux /$kernel root=PARTUUID=$root_part_uuid $rootwait rw $5 $3 $4 quiet
++    linux /$kernel root=PARTUUID=$root_part_uuid $rootwait rw $5 $3 $4
+ }
+ _EOF
+     chmod 0444 $GRUBCFG
+@@ -307,7 +307,7 @@ if [ $grub_version -eq 0 ] ; then
+     echo "timeout 30" >> /boot/grub/menu.lst
+     echo "title Live Boot/Install-Image" >> /boot/grub/menu.lst
+     echo "root  (hd0,0)" >> /boot/grub/menu.lst
+-    echo "kernel /$kernel root=$rootfs rw $3 $4 quiet" >> /boot/grub/menu.lst
++    echo "kernel /$kernel root=$rootfs rw $3 $4" >> /boot/grub/menu.lst
+ fi
+ 
+ # Copy kernel artifacts. To add more artifacts just add to types
+-- 
+2.11.1
+

@@ -1,0 +1,37 @@
+From a2c99e6a9b5a47f72a9a73ad5d1978786c809583 Mon Sep 17 00:00:00 2001
+From: Drew Moseley <drew_moseley@mentor.com>
+Date: Sat, 5 Jul 2014 18:58:39 -0400
+Subject: [PATCH 4/4] init-install-efi.sh: Add a second prompt to install
+
+This also makes it clear that the user will be overwriting
+the entire disk.
+
+Signed-off-by: Drew Moseley <drew_moseley@mentor.com>
+---
+ meta/recipes-core/initrdscripts/files/init-install-efi.sh | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+Upstream-Status: Inappropriate [configuration]
+
+diff --git a/meta/recipes-core/initrdscripts/files/init-install-efi.sh b/meta/recipes-core/initrdscripts/files/init-install-efi.sh
+--- init-install-efi.sh.orig	2016-08-02 12:13:24.718900725 -0700
++++ init-install-efi.sh	2016-08-02 12:16:05.926899187 -0700
+@@ -100,6 +100,18 @@
+ done
+ 
+ if [ -n "$TARGET_DEVICE_NAME" ]; then
++    while true; do
++        echo "This will overwrite all data on $TARGET_DEVICE_NAME"
++        echo -n "Are you sure? [y/n] "
++        read answer
++        if [ "$answer" = "y" ]; then
++            break
++        elif [ "$answer" = "n" ]; then
++            echo "Installation aborted."
++            exit 1
++        fi
++        echo "Please answer y or n"
++    done
+     echo "Installing image on /dev/$TARGET_DEVICE_NAME ..."
+ else
+     echo "No hard drive selected. Installation aborted."

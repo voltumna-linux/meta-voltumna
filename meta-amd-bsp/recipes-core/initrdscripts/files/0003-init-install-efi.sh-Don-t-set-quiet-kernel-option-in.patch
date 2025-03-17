@@ -1,0 +1,38 @@
+From 30186b183e0022abb97485f5804be0e1e02ccb1f Mon Sep 17 00:00:00 2001
+From: Awais Belal <awais_belal@mentor.com>
+Date: Mon, 19 Mar 2018 16:56:53 +0500
+Subject: [PATCH] init-install-efi.sh: Don't set "quiet" kernel option
+
+Signed-off-by: Drew Moseley <drew_moseley@mentor.com>
+Signed-off-by: Awais Belal <awais_belal@mentor.com>
+
+Upstream-Status: Inappropriate [configuration]
+---
+ init-install-efi.sh | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/init-install-efi.sh b/init-install-efi.sh
+index f946d97..c8af835 100644
+--- init-install-efi.sh
++++ init-install-efi.sh
+@@ -246,7 +246,7 @@ if [ -f /run/media/$1/EFI/BOOT/grub.cfg ]; then
+     sed -i "s/ LABEL=[^ ]*/ /" $GRUBCFG
+     # Replace root= and add additional standard boot options
+     # We use root as a sentinel value, as vmlinuz is no longer guaranteed
+-    sed -i "s/ root=[^ ]*/ root=PARTUUID=$root_part_uuid rw $rootwait quiet /g" $GRUBCFG
++    sed -i "s/ root=[^ ]*/ root=PARTUUID=$root_part_uuid rw $rootwait /g" $GRUBCFG
+ fi
+ 
+ if [ -d /run/media/$1/loader ]; then
+@@ -263,7 +263,7 @@ if [ -d /run/media/$1/loader ]; then
+     # delete any root= strings
+     sed -i "s/ root=[^ ]*/ /" $SYSTEMDBOOT_CFGS
+     # add the root= and other standard boot options
+-    sed -i "s@options *@options root=PARTUUID=$rootuuid rw $rootwait quiet @" $SYSTEMDBOOT_CFGS
++    sed -i "s@options *@options root=PARTUUID=$rootuuid rw $rootwait @" $SYSTEMDBOOT_CFGS
+ fi
+ 
+ umount /tgt_root
+-- 
+2.11.1
+
