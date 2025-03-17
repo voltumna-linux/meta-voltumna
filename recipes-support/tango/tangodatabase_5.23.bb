@@ -12,9 +12,9 @@ SRC_URI = "\
 
 S = "${WORKDIR}/git"
 
-FILES_${PN} += "${bindir} ${datadir}"
+FILES:${PN} += "${bindir} ${datadir}"
 
-#SYSTEMD_SERVICE_${PN} = "starter.service"
+#SYSTEMD_SERVICE:${PN} = "starter.service"
 #
 #do_install:append() {
 #	install -d ${D}${systemd_unitdir}/system

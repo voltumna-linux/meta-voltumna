@@ -5,7 +5,7 @@ LICENSE = "LGPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=8195c2d9416e5fc98eb30ee334511b73"
 
 DEPENDS += "omniorb-native omniorb tango-idl cppzmq libjpeg-turbo doxygen-native graphviz-native"
-RDEPENDS_${PN} += "omniorb"
+RDEPENDS:${PN} += "omniorb"
 
 DEFAULT_PREFERENCE = "-1"
 
@@ -21,7 +21,7 @@ EXTRA_OECMAKE += " \
 	-DTANGO_USE_TELEMETRY=OFF"
 EXTRA_OECMAKE_BUILD = "doc"
 
-do_install_append() {
+do_install:append() {
 	install -d ${D}${docdir}/${BPN}
 	cp -R ${B}/doc_html ${D}${docdir}/${BPN}/
 }

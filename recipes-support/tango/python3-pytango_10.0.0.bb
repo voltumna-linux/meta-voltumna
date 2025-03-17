@@ -15,13 +15,12 @@ DEPENDS += "\
 SRCREV = "82dff8fe0150a5e57699a7c413bb7367cb6c76c7"
 SRC_URI = "\
 	gitsm://gitlab.com/tango-controls/pytango.git;protocol=https;branch=stable \
-	file://python3.8-support.patch \
 	"
 
 S = "${WORKDIR}/git"
 
-FILES_${PN} += " ${PYTHON_SITEPACKAGES_DIR}"
-do_install_append() {
+FILES:${PN} += " ${PYTHON_SITEPACKAGES_DIR}"
+do_install:append() {
 	rm -fr ${D}/*
 
 	install -d ${D}${PYTHON_SITEPACKAGES_DIR}
@@ -37,7 +36,7 @@ do_install_append() {
 	${PYTHON_PN} ${STAGING_LIBDIR}/${PYTHON_DIR}/py_compile.py ${D}${PYTHON_SITEPACKAGES_DIR}/tango/*.py
 }
 
-RDEPENDS_${PN} += "\
+RDEPENDS:${PN} += "\
     ${PYTHON_PN}-numpy \
     ${PYTHON_PN}-packaging \
     ${PYTHON_PN}-psutil \
@@ -46,7 +45,3 @@ RDEPENDS_${PN} += "\
 inherit pkgconfig cmake python3native python3targetconfig
 
 BBCLASSEXTEND = "nativesdk"
-
-EXTRA_OECMAKE = "\
-	-DBOOST_PYTHON_SUFFIX="38" \
-	"	

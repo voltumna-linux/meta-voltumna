@@ -9,26 +9,25 @@ SRC_URI = "http://downloads.sourceforge.net/omniorb/omniORB-${PV}.tar.bz2"
 SRC_URI[sha256sum] = "1c745330d01904afd7a1ed0a5896b9a6e53ac1a4b864a48503b93c7eecbf1fa8"
 SRC_URI:append = "\
     file://0002-python-shebang.patch \
-    file://force-autoconf-to-2.69.patch \
 "
 
 S = "${WORKDIR}/omniORB-${PV}"
 
 EXTRA_OECONF += "--disable-longdouble --with-openssl"
 
-CONFFILES_${PN} += "/etc/omniORB.cfg"
-FILES_${PN}-dev += "${libdir}/python${PYTHON_BASEVERSION}"
+CONFFILES:${PN} += "/etc/omniORB.cfg"
+FILES:${PN}-dev += "${libdir}/python${PYTHON_BASEVERSION}"
 
 do_compile () {
 	export TOOLBINDIR=${STAGING_BINDIR_NATIVE}
 	oe_runmake
 }
 
-do_compile_class-native () {
+do_compile:class-native () {
 	oe_runmake
 }
 
-do_install_append () {
+do_install:append () {
 	install -d ${D}${sysconfdir}
 	install -m 0644 ${S}/sample.cfg ${D}${sysconfdir}/omniORB.cfg
 
