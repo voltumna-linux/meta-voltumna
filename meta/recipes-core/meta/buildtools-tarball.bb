@@ -11,8 +11,11 @@ TOOLCHAIN_HOST_TASK ?= "\
     nativesdk-python3-git \
     nativesdk-python3-jinja2 \
     nativesdk-python3-testtools \
+    nativesdk-python3-pip \
+    nativesdk-python3-setuptools \
     nativesdk-python3-subunit \
     nativesdk-python3-pyyaml \
+    nativesdk-python3-websockets \
     nativesdk-ncurses-terminfo-base \
     nativesdk-chrpath \
     nativesdk-tar \
@@ -30,6 +33,7 @@ TOOLCHAIN_HOST_TASK ?= "\
     nativesdk-mtools \
     nativesdk-zstd \
     nativesdk-lz4 \
+    nativesdk-libacl \
     "
 
 MULTIMACH_TARGET_SYS = "${SDK_ARCH}-nativesdk${SDK_VENDOR}-${SDK_OS}"
@@ -107,6 +111,9 @@ INHIBIT_DEFAULT_DEPS = "1"
 
 # Directory in testsdk that contains testcases
 TESTSDK_CASES = "buildtools-cases"
+
+# We have our own code, avoid deferred inherit
+SDK_CLASSES:remove = "testsdk"
 
 python do_testsdk() {
     import oeqa.sdk.testsdk

@@ -11,8 +11,7 @@ CVE_PRODUCT = "gcc"
 inherit autotools gettext texinfo
 
 BPN = "gcc"
-COMPILERDEP = "virtual/${MLPREFIX}${TARGET_PREFIX}gcc:do_gcc_stash_builddir"
-COMPILERDEP:class-nativesdk = "virtual/${TARGET_PREFIX}gcc-crosssdk:do_gcc_stash_builddir"
+COMPILERDEP = "virtual/${TARGET_PREFIX}gcc:do_gcc_stash_builddir"
 
 python extract_stashed_builddir () {
     src = d.expand("${COMPONENTS_DIR}/${BUILD_ARCH}/gcc-stashed-builddir-${TARGET_SYS}")
@@ -31,6 +30,16 @@ def get_gcc_float_setting(bb, d):
     return ""
 
 get_gcc_float_setting[vardepvalue] = "${@get_gcc_float_setting(bb, d)}"
+
+def get_gcc_x86_64_arch_setting(bb, d):
+    import re
+    march = re.match(r'^.*-march=([^\s]*)', d.getVar('TUNE_CCARGS'))
+    if march:
+        return "--with-arch=%s " % march.group(1)
+    # The earliest supported x86-64 CPU
+    return "--with-arch=core2"
+
+get_gcc_x86_64_arch_setting[vardepvalue] = "${@get_gcc_x86_64_arch_setting(bb, d)}"
 
 def get_gcc_mips_plt_setting(bb, d):
     if d.getVar('TRANSLATED_TARGET_ARCH') in [ 'mips', 'mipsel' ] and bb.utils.contains('DISTRO_FEATURES', 'mplt', True, False, d):
