@@ -1,4 +1,4 @@
-require conf/machine/include/arm/arch-armv8a.inc
+require conf/machine/include/arm/arch-armv8-2a.inc
 
 KERNEL_PROVIDER ?= "linux-socfpga"
 PREFERRED_PROVIDER_virtual/kernel ?= "${KERNEL_PROVIDER}"
