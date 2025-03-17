@@ -1,0 +1,15 @@
+diff -ruNp Python-3.8.13.orig/configure.ac Python-3.8.13/configure.ac
+--- Python-3.8.13.orig/configure.ac	2022-03-29 09:06:35.962801168 +0200
++++ Python-3.8.13/configure.ac	2022-03-29 09:41:59.464401372 +0200
+@@ -744,6 +744,11 @@ esac
+ 
+ if test x$PLATFORM_TRIPLET != xdarwin; then
+   MULTIARCH=$($CC --print-multiarch 2>/dev/null)
++  # Tweak MULTIARCH
++  if test x$MULTIARCH = xpowerpc-linux-gnuspev1
++  then
++    MULTIARCH="powerpc-linux-gnuspe"
++  fi
+ fi
+ AC_SUBST(MULTIARCH)
+ 

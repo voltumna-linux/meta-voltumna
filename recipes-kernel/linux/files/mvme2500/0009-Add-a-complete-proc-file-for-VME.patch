@@ -1,0 +1,148 @@
+From 213a75185be19df6e66d075aeacce9a46ee65187 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Thu, 16 Jun 2022 17:24:30 +0200
+Subject: [PATCH 9/9] Add a complete proc file for VME
+
+---
+ drivers/vme/vme.c | 117 +++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 116 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/vme/vme.c b/drivers/vme/vme.c
+index b398293980b6..4ce0008e1d0d 100644
+--- a/drivers/vme/vme.c
++++ b/drivers/vme/vme.c
+@@ -26,6 +26,7 @@
+ #include <linux/mutex.h>
+ #include <linux/spinlock.h>
+ #include <linux/slab.h>
++#include <linux/proc_fs.h>
+ #include <linux/vme.h>
+ 
+ #include "vme_bridge.h"
+@@ -2019,8 +2020,122 @@ struct bus_type vme_bus_type = {
+ };
+ EXPORT_SYMBOL(vme_bus_type);
+ 
++static int vme_proc_show(struct seq_file *m, void *v)
++{
++	struct vme_bridge *bridge;
++	struct list_head *master_pos = NULL;
++	struct vme_master_resource *master_image = NULL;
++	int enabled;
++	unsigned long long base, size;
++	u32 aspace, cycle, dwidth;
++
++	mutex_lock(&vme_buses_lock);
++	list_for_each_entry(bridge, &vme_bus_list, bus_list) {
++		seq_printf(m, "Bus number: %d Bus name: %s\n", bridge->num, bridge->name);
++		list_for_each(master_pos, &bridge->master_resources) {
++			master_image = list_entry(master_pos, struct vme_master_resource, list);
++			bridge->master_get(master_image, &enabled, &base, &size, &aspace, &cycle, &dwidth);
++			seq_printf(m, "  Master %d (%d)", master_image->number, master_image->locked);
++			seq_printf(m, " addr:");
++			if (master_image->address_attr & VME_A16) seq_printf(m, " A16");
++			if (master_image->address_attr & VME_A24) seq_printf(m, " A24");
++			if (master_image->address_attr & VME_A32) seq_printf(m, " A32");
++			if (master_image->address_attr & VME_A64) seq_printf(m, " A64");
++			if (master_image->address_attr & VME_CRCSR) seq_printf(m, " CRCSR");
++			if (master_image->address_attr & VME_USER1) seq_printf(m, " USER1");
++			if (master_image->address_attr & VME_USER2) seq_printf(m, " USER2");
++			if (master_image->address_attr & VME_USER3) seq_printf(m, " USER3");
++			if (master_image->address_attr & VME_USER4) seq_printf(m, " USER4");
++			seq_printf(m, " cycle:");
++			if (master_image->cycle_attr & VME_SCT) seq_printf(m, " SCT");
++			if (master_image->cycle_attr & VME_BLT) seq_printf(m, " BLT");
++			if (master_image->cycle_attr & VME_MBLT) seq_printf(m, " MBLT");
++			if (master_image->cycle_attr & VME_2eVME) seq_printf(m, " 2eVME");
++			if (master_image->cycle_attr & VME_2eSST) seq_printf(m, " 2eSST");
++			if (master_image->cycle_attr & VME_2eSSTB) seq_printf(m, " 2eSSTB");
++			if (master_image->cycle_attr & VME_2eSST160) seq_printf(m, " 2eSST160");
++			if (master_image->cycle_attr & VME_2eSST267) seq_printf(m, " 2eSST267");
++			if (master_image->cycle_attr & VME_2eSST320) seq_printf(m, " 2eSST320");
++			if (master_image->cycle_attr & VME_SUPER) seq_printf(m, " SUPER");
++			if (master_image->cycle_attr & VME_USER) seq_printf(m, " USER");
++			if (master_image->cycle_attr & VME_PROG) seq_printf(m, " PROG");
++			if (master_image->cycle_attr & VME_DATA) seq_printf(m, " DATA");
++			seq_printf(m, " width:");
++			if (master_image->width_attr & VME_D8) seq_printf(m, " D8");
++			if (master_image->width_attr & VME_D16) seq_printf(m, " D16");
++			if (master_image->width_attr & VME_D32) seq_printf(m, " D32");
++			if (master_image->width_attr & VME_D64) seq_printf(m, " D64");
++			if (enabled) {
++				seq_printf(m, "\n    Configured base: 0x%llx size: 0x%llx aspace:", base, size);
++				if (aspace & VME_A16) seq_printf(m, " A16");
++				if (aspace & VME_A24) seq_printf(m, " A24");
++				if (aspace & VME_A32) seq_printf(m, " A32");
++				if (aspace & VME_A64) seq_printf(m, " A64");
++				if (aspace & VME_CRCSR) seq_printf(m, " CRCSR");
++				if (aspace & VME_USER1) seq_printf(m, " USER1");
++				if (aspace & VME_USER2) seq_printf(m, " USER2");
++				if (aspace & VME_USER3) seq_printf(m, " USER3");
++				if (aspace & VME_USER4) seq_printf(m, " USER4");
++				seq_printf(m, " cycle:");
++				if (cycle & VME_SCT) seq_printf(m, " SCT");
++				if (cycle & VME_BLT) seq_printf(m, " BLT");
++				if (cycle & VME_MBLT) seq_printf(m, " MBLT");
++				if (cycle & VME_2eVME) seq_printf(m, " 2eVME");
++				if (cycle & VME_2eSST) seq_printf(m, " 2eSST");
++				if (cycle & VME_2eSSTB) seq_printf(m, " 2eSSTB");
++				if (cycle & VME_2eSST160) seq_printf(m, " 2eSST160");
++				if (cycle & VME_2eSST267) seq_printf(m, " 2eSST267");
++				if (cycle & VME_2eSST320) seq_printf(m, " 2eSST320");
++				if (cycle & VME_SUPER) seq_printf(m, " SUPER");
++				if (cycle & VME_USER) seq_printf(m, " USER");
++				if (cycle & VME_PROG) seq_printf(m, " PROG");
++				if (cycle & VME_DATA) seq_printf(m, " DATA");
++				seq_printf(m, " width:");
++				if (dwidth & VME_D8) seq_printf(m, " D8");
++				if (dwidth & VME_D16) seq_printf(m, " D16");
++				if (dwidth & VME_D32) seq_printf(m, " D32");
++				if (dwidth & VME_D64) seq_printf(m, " D64");
++			}
++			seq_printf(m, "\n");
++		}
++	}
++	mutex_unlock(&vme_buses_lock);
++
++	return 0;
++}
++
++static int vme_proc_open(struct inode *inode, struct  file *file)
++{
++	return single_open(file, vme_proc_show, NULL);
++}
++
++static const struct file_operations vme_proc_fops = {
++	.owner = THIS_MODULE,
++	.open = vme_proc_open,
++	.read = seq_read,
++	.llseek = seq_lseek,
++	.release = single_release,
++};
++
+ static int __init vme_init(void)
+ {
+-	return bus_register(&vme_bus_type);
++	int retval;
++	if ((retval = bus_register(&vme_bus_type)) != 0)
++		return retval;
++
++	if (proc_create("vmeinfo", 0, NULL, &vme_proc_fops))
++		return retval;
++	else
++	{
++		bus_unregister(&vme_bus_type);
++		return -ENOMEM;
++	}
+ }
+ subsys_initcall(vme_init);
++
++static void __exit vme_exit(void)
++{
++	remove_proc_entry("vmeinfo", NULL);
++	bus_unregister(&vme_bus_type);
++}
++module_exit(vme_exit);
+-- 
+2.24.4
+
