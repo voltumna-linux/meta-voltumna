@@ -1,4 +1,0 @@
-KERNEL=="a3818_[0-9]",GROUP="controls", MODE="0660"
-KERNEL=="a3818_[0-9][0-9]", GROUP="controls", MODE="0660"
-
-

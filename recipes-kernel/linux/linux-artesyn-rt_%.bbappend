@@ -1,1 +1,0 @@
-linux-artesyn_%.bbappend

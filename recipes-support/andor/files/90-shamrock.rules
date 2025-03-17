@@ -1,4 +1,0 @@
-ATTRS{idVendor}=="136e", ATTRS{idProduct}=="0017", GROUP="controls", MODE="0660"
-ATTRS{idVendor}=="0abf", ATTRS{idProduct}=="03ed", GROUP="controls", MODE="0660"
-ATTRS{idVendor}=="0403", ATTRS{idProduct}=="d493", GROUP="controls", MODE="0660"
-

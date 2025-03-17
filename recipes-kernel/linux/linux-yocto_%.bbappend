@@ -21,10 +21,9 @@ SRC_URI:append = " \
 	file://vtd.cfg \
 	file://serial_console.cfg \
 	file://ipmi.cfg \
-	file://0001-igb-Stop-PTP-related-workqueues-if-aren-t-necessary.patch \
+	file://osnoise.cfg \
+	\
 	file://resctrl.cfg \
-	file://0001-sched-core-Fix-arch_scale_freq_tick-on-tickless-syst.patch \
-	file://0001-hugetlbfs-extend-the-definition-of-hugepages-paramet.patch \
 	"
 
 SRC_URI:append:kvm = " \

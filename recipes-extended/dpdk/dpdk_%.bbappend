@@ -3,8 +3,8 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/dpdk:"
 RDEPENDS:${PN}:class-nativesdk += "python3-core"
 DEPENDS:class-nativesdk = "python3-pyelftools-native"
 
-PACKAGECONFIG = " afxdp"
-PACKAGECONFIG[afxdp] = ",,libbpf"
+# PACKAGECONFIG = " afxdp"
+# PACKAGECONFIG[afxdp] = ",,libbpf xdp-tools"
 EXTRA_OEMESON:append = " -Duse_hpet=true"
 
 SRC_URI:append = " \
@@ -23,7 +23,8 @@ do_configure:prepend() {
 	sed -i 's,.*RTE_LIBRTE_I40E_16BYTE_RX_DESC.*,#define RTE_LIBRTE_I40E_16BYTE_RX_DESC 1 \
 #define RTE_LIBRTE_ICE_16BYTE_RX_DESC 1,g' \
 		${S}/config/rte_config.h
+
 }
 
 BBCLASSEXTEND = "nativesdk"
-MACHINE_FEATURES:remove = "qemu-usermode"
+MACHINE_FEATURES:append = " highly-optimized"

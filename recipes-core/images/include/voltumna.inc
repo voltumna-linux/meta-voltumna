@@ -29,6 +29,8 @@ append_to_osrelease() {
 
 remove_useless() {
 	rm -f ${IMAGE_ROOTFS}/usr/bin/su ${IMAGE_ROOTFS}/usr/bin/su.*
+	rm -f ${IMAGE_ROOTFS}/usr/lib/rustlib/x86_64-voltumna-linux-gnu/x86_64-voltumnasdk-linux-gnu.json
+	rm -fr ${IMAGE_ROOTFS}/usr/share/post-relocate-setup.d/
 }
 
 disable_upload() {
@@ -86,8 +88,8 @@ IMAGE_PREPROCESS_COMMAND:append = " use_initramfs_bundled_kernel; copy_etc_into_
 BAD_RECOMMENDATIONS += "busybox-syslog grub-common"
 inherit core-image
 
-IMAGE_CMD:tar() {
-
+IMAGE_CMD:tar:append() {
+	true
 	${IMAGE_CMD_TAR} --numeric-owner --exclude='.osdir*' -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar --transform 's;^rootfs;nfsroot;' -C ${IMAGE_ROOTFS}/.. rootfs || [ $? -eq 1 ]
 	${IMAGE_CMD_TAR} --numeric-owner -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.os.tar -C ${IMAGE_ROOTFS}/.osdir ${IMAGE_NAME} || [ $? -eq 1 ]
 }

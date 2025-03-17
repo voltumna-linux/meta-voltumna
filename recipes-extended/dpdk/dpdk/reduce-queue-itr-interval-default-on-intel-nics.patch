@@ -1,4 +1,4 @@
-From 46cfe12d1afb130676b3e750491f2dcbaf370a62 Mon Sep 17 00:00:00 2001
+From c98c7730d4d1a71c5f6edbb587d6b82289570ed5 Mon Sep 17 00:00:00 2001
 From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
 Date: Thu, 30 Nov 2023 09:04:33 +0100
 Subject: [PATCH] Optimize DPDK on Intel boards
@@ -13,7 +13,7 @@ Subject: [PATCH] Optimize DPDK on Intel boards
  6 files changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/net/i40e/i40e_ethdev.h b/drivers/net/i40e/i40e_ethdev.h
-index 9b806d130e..7e045f5a4a 100644
+index 31fc92691e..653f4dad1f 100644
 --- a/drivers/net/i40e/i40e_ethdev.h
 +++ b/drivers/net/i40e/i40e_ethdev.h
 @@ -186,23 +186,23 @@ enum i40e_flxpld_layer_idx {
@@ -43,10 +43,10 @@ index 9b806d130e..7e045f5a4a 100644
  
  #define I40E_RSS_TYPE_NONE           0ULL
 diff --git a/drivers/net/iavf/iavf.h b/drivers/net/iavf/iavf.h
-index aa18650ffa..3c69533888 100644
+index ad526c644c..d42a1db575 100644
 --- a/drivers/net/iavf/iavf.h
 +++ b/drivers/net/iavf/iavf.h
-@@ -63,21 +63,21 @@
+@@ -64,21 +64,21 @@
  	RTE_ETH_RSS_NONFRAG_IPV6_TCP | \
  	RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
  	RTE_ETH_RSS_NONFRAG_IPV6_SCTP | \
@@ -70,10 +70,10 @@ index aa18650ffa..3c69533888 100644
  	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + RTE_VLAN_HLEN * 2)
  #define IAVF_ETH_MAX_LEN (RTE_ETHER_MTU + IAVF_ETH_OVERHEAD)
 diff --git a/drivers/net/ice/ice_dcf_ethdev.c b/drivers/net/ice/ice_dcf_ethdev.c
-index 223fa39f33..47efa03d9c 100644
+index 8f3a385ca5..e05583b1b3 100644
 --- a/drivers/net/ice/ice_dcf_ethdev.c
 +++ b/drivers/net/ice/ice_dcf_ethdev.c
-@@ -160,21 +160,21 @@ ice_dcf_init_rx_queues(struct rte_eth_dev *dev)
+@@ -159,21 +159,21 @@ ice_dcf_init_rx_queues(struct rte_eth_dev *dev)
  	ice_set_rx_function(dev);
  	ice_set_tx_function(dev);
  
@@ -97,10 +97,10 @@ index 223fa39f33..47efa03d9c 100644
  	/* Convert to hardware count, as writing each 1 represents 2 us */
  	return interval / 2;
 diff --git a/drivers/net/ixgbe/ixgbe_ethdev.h b/drivers/net/ixgbe/ixgbe_ethdev.h
-index 48290af512..764ddee1cc 100644
+index 8ad841ea2c..b829d1e08d 100644
 --- a/drivers/net/ixgbe/ixgbe_ethdev.h
 +++ b/drivers/net/ixgbe/ixgbe_ethdev.h
-@@ -55,21 +55,21 @@
+@@ -56,21 +56,21 @@
  #endif
  #define IXGBE_HWSTRIP_BITMAP_SIZE (IXGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
  
@@ -124,10 +124,10 @@ index 48290af512..764ddee1cc 100644
  
  #define IXGBE_RTTBCNRC_RF_INT_MASK_BASE 0x000003FF
 diff --git a/drivers/net/ngbe/ngbe_ethdev.h b/drivers/net/ngbe/ngbe_ethdev.h
-index d6c56dcce4..fdf36bd7cc 100644
+index 7af58a57ac..676788369b 100644
 --- a/drivers/net/ngbe/ngbe_ethdev.h
 +++ b/drivers/net/ngbe/ngbe_ethdev.h
-@@ -22,21 +22,21 @@
+@@ -23,21 +23,21 @@
  #define NGBE_HKEY_MAX_INDEX 10
  /*Default value of Max Rx Queue*/
  #define NGBE_MAX_RX_QUEUE_NUM	8
@@ -151,10 +151,10 @@ index d6c56dcce4..fdf36bd7cc 100644
  	RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
  	RTE_ETH_RSS_IPV6 | \
 diff --git a/drivers/net/txgbe/txgbe_ethdev.h b/drivers/net/txgbe/txgbe_ethdev.h
-index 4625236cb7..1715ed1a8e 100644
+index f0f4ced5b0..c0c7bb3c48 100644
 --- a/drivers/net/txgbe/txgbe_ethdev.h
 +++ b/drivers/net/txgbe/txgbe_ethdev.h
-@@ -41,21 +41,21 @@
+@@ -42,21 +42,21 @@
  #define TXGBE_MAX_RX_QUEUE_NUM	128
  #define TXGBE_VMDQ_DCB_NB_QUEUES     TXGBE_MAX_RX_QUEUE_NUM
  #define TXGBE_NONE_MODE_TX_NB_QUEUES 64

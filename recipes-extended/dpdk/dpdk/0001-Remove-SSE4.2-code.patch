@@ -1,19 +1,9 @@
-From ce297701036b6d4b5cd3b25dc55692ca4e75fc99 Mon Sep 17 00:00:00 2001
-From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
-Date: Fri, 17 Feb 2023 17:33:59 +0000
-Subject: [PATCH] Remove SSE4.2 code
-
----
- config/x86/meson.build      | 13 +++++++------
- lib/distributor/meson.build |  6 +-----
- lib/meson.build             |  2 --
- 3 files changed, 8 insertions(+), 13 deletions(-)
-
 diff --git a/config/x86/meson.build b/config/x86/meson.build
-index 54345c4da3..0814f83a01 100644
+index 8087b9ae91..2590719868 100644
 --- a/config/x86/meson.build
 +++ b/config/x86/meson.build
-@@ -18,26 +18,27 @@ if cc.has_argument('-mavx512f')
+@@ -20,35 +20,36 @@ if cc.has_argument('-mavx512f')
+     code = '''#include <immintrin.h>
      void test(__m512i zmm){
          __m256i ymm = _mm512_extracti64x4_epi64(zmm, 0);}'''
      result = cc.compiles(code, args : '-mavx512f', name : 'AVX512 checking')
@@ -23,18 +13,28 @@ index 54345c4da3..0814f83a01 100644
      endif
  endif
  
- # we require SSE4.2 for DPDK
--if cc.get_define('__SSE4_2__', args: machine_args) == ''
--    message('SSE 4.2 not enabled by default, explicitly enabling')
--    machine_args += '-msse4'
+-if not is_ms_compiler
+-    # we require SSE4.2 for DPDK
+-    if cc.get_define('__SSE4_2__', args: machine_args) == ''
+-        message('SSE 4.2 not enabled by default, explicitly enabling')
+-        machine_args += '-msse4'
+-    endif
 -endif
--
--base_flags = ['SSE', 'SSE2', 'SSE3','SSSE3', 'SSE4_1', 'SSE4_2']
-+#if cc.get_define('__SSE4_2__', args: machine_args) == ''
-+#    message('SSE 4.2 not enabled by default, explicitly enabling')
-+#    machine_args += '-msse4'
++#if not is_ms_compiler
++#    # we require SSE4.2 for DPDK
++#    if cc.get_define('__SSE4_2__', args: machine_args) == ''
++#        message('SSE 4.2 not enabled by default, explicitly enabling')
++#        machine_args += '-msse4'
++#    endif
 +#endif
-+#
+ 
+ # enable restricted transactional memory intrinsics
+ # https://gcc.gnu.org/onlinedocs/gcc/x86-transactional-memory-intrinsics.html
+ if cc.get_id() != 'msvc'
+     machine_args += '-mrtm'
+ endif
+ 
+-base_flags = ['SSE', 'SSE2', 'SSE3','SSSE3', 'SSE4_1', 'SSE4_2']
 +#base_flags = ['SSE', 'SSE2', 'SSE3','SSSE3', 'SSE4_1', 'SSE4_2']
 +base_flags = ['SSE', 'SSE2', 'SSE3','SSSE3', 'SSE4_1']
  foreach f:base_flags
@@ -71,50 +71,28 @@ index 24988c5827..8de3a7af35 100644
  headers = files('rte_distributor.h')
  deps += ['mbuf']
 diff --git a/lib/meson.build b/lib/meson.build
-index 02dfa9b868..e70dbb8d58 100644
+index 162287753f..cfeab93c35 100644
 --- a/lib/meson.build
 +++ b/lib/meson.build
-@@ -51,21 +51,20 @@ libraries = [
-         'rib',
+@@ -56,21 +56,20 @@ libraries = [
          'reorder',
          'sched',
          'security',
          'stack',
          'vhost',
          'ipsec', # ipsec lib depends on net, crypto and security
+         'pdcp', # pdcp lib depends on crypto and security
          'fib', #fib lib depends on rib
          'port', # pkt framework libs which use other libs from above
          'pdump', # pdump lib depends on bpf
 -        'table',
          'pipeline',
-         'flow_classify', # flow_classify lib depends on pkt framework table lib
          'graph',
          'node',
  ]
  
- optional_libs = [
-         'bitratestats',
-         'cfgfile',
-         'flow_classify',
-@@ -74,21 +73,20 @@ optional_libs = [
-         'gso',
-         'kni',
-         'jobstats',
-         'latencystats',
-         'metrics',
-         'node',
-         'pdump',
-         'pipeline',
-         'port',
-         'power',
--        'table',
-         'vhost',
- ]
- 
- dpdk_libs_deprecated += [
-         'flow_classify',
-         'kni',
- ]
- 
- disabled_libs = []
- opt_disabled_libs = run_command(list_dir_globs, get_option('disable_libs'),
+ always_enable = [
+         'cmdline',
+         'eal',
+         'ethdev',
+         'hash',

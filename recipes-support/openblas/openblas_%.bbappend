@@ -1,1 +1,1 @@
-MACHINE_FEATURES:remove = "qemu-usermode"
+MACHINE_FEATURES:append = " highly-optimized"

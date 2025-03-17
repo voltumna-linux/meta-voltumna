@@ -4,13 +4,13 @@ IMAGE_LINGUAS = "en-us"
 SDKIMAGE_FEATURES = "${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
 
 IMAGE_INSTALL:append = " info man-pages"
-IMAGE_INSTALL:append = " libasan-dev libubsan-dev"
+IMAGE_INSTALL:append = " libasan-dev libubsan-dev rust"
 IMAGE_INSTALL:append:intel-x86-common = " liblsan-dev libtsan-dev"
 
 # To keep in sync with SDE
 TOOLCHAIN_HOST_TASK:append = " nativesdk-make nativesdk-binutils nativesdk-cpp nativesdk-gcc \
 	nativesdk-libgcc-dev nativesdk-g++ nativesdk-libstdc++-dev nativesdk-libgomp-dev \
-	nativesdk-libasan-dev nativesdk-libubsan-dev nativesdk-clang nativesdk-python3-pylint"
+	nativesdk-libasan-dev nativesdk-libubsan-dev nativesdk-rust nativesdk-cargo nativesdk-clang nativesdk-python3-pylint"
 TOOLCHAIN_HOST_TASK:append:arm = " nativesdk-dtc"
 TOOLCHAIN_HOST_TASK:append:intel-x86-common = " nativesdk-liblsan-dev nativesdk-libtsan-dev"
 

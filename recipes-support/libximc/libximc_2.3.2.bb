@@ -3,7 +3,7 @@ DESCRIPTION = "Library to interface Standa 8SMC4-USB controllers. \
 Based on Standa libximc 2.3.2 available from http://files.xisupport.com/Software.en.html"
 SECTION = "libs"
 
-LICENSE = "GPL-3.0-only"
+LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=6370da19fa5b48405ba554721dfb00ab"
 
 S = "${WORKDIR}/git"
