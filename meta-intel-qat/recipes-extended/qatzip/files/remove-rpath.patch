@@ -1,0 +1,29 @@
+From 8e24408b8b8de6b35f60a489104eb65b635d23ad Mon Sep 17 00:00:00 2001
+From: Yongxin Liu <yongxin.liu@windriver.com>
+Date: Sun, 5 Jun 2022 16:05:43 +0800
+Subject: [PATCH] remove rpath
+
+The libraries of QAT have been installed to stardard search path,
+thus there is no need to hard code the path to executable files.
+
+Upstream-Status: Inappropriate [Yocto specific]
+
+Signed-off-by: Yongxin Liu <yongxin.liu@windriver.com>
+---
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configure.ac b/configure.ac
+index b000c03..be24ecf 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -143,7 +143,7 @@ AS_IF([test ! -z "${ICP_ROOT}"],
+                                 -I${ICP_ROOT}/quickassist/include/dc/ \
+                                 -I${ICP_ROOT}/quickassist/utilities/libusdm_drv/ \
+                                 -I${ICP_ROOT}/quickassist/lookaside/access_layer/include/ "
+-            LDFLAGS+=" -Wl,-rpath,${ICP_ROOT}/build/ -L${ICP_ROOT}/build/ "
++            LDFLAGS+=" -L${ICP_ROOT}/build/ "
+         ]
+     )
+     AC_SUBST(ICP_INCLUDE_CFLAGS)
+-- 

@@ -1,0 +1,40 @@
+--- qat/quickassist/build_system/build_files/OS/linux_2.6_kernel_space_rules.mk	2023-12-06 17:31:40.099741000 +0800
++++ qat-new/quickassist/build_system/build_files/OS/linux_2.6_kernel_space_rules.mk	2024-01-17 17:44:35.946289745 +0800
+
+Here objective is to get object files in kernel space for the
+static library (libosal.a), but overwriting already defined obj-m to empty and
+passing KBUILD_BUILTIN=1 causing following failures:
+
+| make[3]: Entering directory 'build/tmp/work-shared/intel-corei7-64/kernel-source'
+| make[4]: Entering directory 'build/tmp/work-shared/intel-corei7-64/kernel-build-artifacts'
+| make[5]: *** No rule to make target 'vmlinux.o', needed by 'modpost'.  Stop.
+| make[4]: *** [build/tmp/work-shared/intel-corei7-64/kernel-source/Makefile:234: __sub-make] Error 2
+| make[4]: Leaving directory 'build/tmp/work-shared/intel-corei7-64/kernel-build-artifacts'
+| make[3]: *** [Makefile:234: __sub-make] Error 2
+| make[3]: Leaving directory 'build/tmp/work-shared/intel-corei7-64/kernel-source'
+| Copying outputs
+| mv: cannot stat 'OsalServices.o': No such file or directory
+| mv: cannot stat 'OsalSemaphore.o': No such file or directory
+| mv: cannot stat 'OsalSpinLock.o': No such file or directory
+| mv: cannot stat 'OsalThread.o': No such file or directory
+| mv: cannot stat 'OsalAtomic.o': No such file or directory
+| mv: cannot stat 'OsalMemMgmt.o': No such file or directory
+| mv: cannot stat 'OsalIOMMUMgmt.o': No such file or directory
+| mv: cannot stat 'OsalUsrKrlProxy.o': No such file or directory
+| mv: cannot stat 'OsalCryptoInterface.o': No such file or directory
+
+Keeping this fix for now, until proper fix is available in upstream.
+
+Upstream-Status: Pending
+
+Signed-off-by: Naveen Saini <naveen.kumar.saini@intel.com>
+
+@@ -72,7 +72,7 @@
+ 
+ $(LIB_STATIC): dirs
+ 	@echo 'Creating static library ${LIB_STATIC}'; \
+-	$(MAKE) -C $(KERNEL_SOURCE_ROOT)/ M=$(PWD) obj-m="" KBUILD_BUILTIN=1; \
++	$(MAKE) -C $(KERNEL_SOURCE_ROOT)/ M=$(PWD); \
+ 	echo 'Copying outputs';\
+ 	test -f lib.a  &&  (ar -t lib.a | xargs ar -rcsD $(LIB_STATIC)); \
+ 	test -f $(LIB_STATIC)  &&  mv -f $(LIB_STATIC) $($(PROG_ACY)_FINAL_OUTPUT_DIR)/$(LIB_STATIC); \

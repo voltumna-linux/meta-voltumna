@@ -1,0 +1,104 @@
+From 2a4c1dd6bedeb03e5a7a2d3d4ee73dbfdda0add2 Mon Sep 17 00:00:00 2001
+From: Liwei Song <liwei.song@windriver.com>
+Date: Thu, 22 Jul 2021 08:09:05 +0000
+Subject: [PATCH] usdm_drv: convert mutex_lock to mutex_trylock to aviod
+
+ deadlock
+
+exist the following deadlock when run cpa_sample_code:
+
+======================================================
+WARNING: possible circular locking dependency detected
+5.10.47-yocto-standard #1 Tainted: G           O
+------------------------------------------------------
+
+cpa_sample_code/2144 is trying to acquire lock:
+ffffffffc04883d0 (&dev_mem_lock
+=============================
+){+.+.}-{3:3}, at: mem_mmap+0x32/0x160 [usdm_drv]
+
+but task is already holding lock:
+ff1ab034bf111278 (&mm->mmap_lock#2){++++}-{3:3}, at:
+vm_mmap_pgoff+0x99/0x100
+
+which lock already depends on the new lock.
+
+the existing dependency chain (in reverse order) is:
+
+-> #1 (&mm->mmap_lock#2){++++}-{3:3}:
+       __lock_acquire+0x4be/0x980
+       lock_acquire+0xe1/0x2f0
+WARNING: suspicious RCU usage
+       __might_fault+0x5e/0x80
+       _copy_to_user+0x23/0xa0
+       mem_ioctl+0x2ed/0x3b5 [usdm_drv]
+       __x64_sys_ioctl+0x91/0xc0
+       do_syscall_64+0x38/0x50
+       entry_SYSCALL_64_after_hwframe+0x44/0xa9
+5.10.47-yocto-standard #1 Tainted: G           O
+
+-> #0 (&dev_mem_lock){+.+.}-{3:3}:
+       check_prev_add+0x95/0xc00
+       validate_chain+0x723/0xaa0
+       __lock_acquire+0x4be/0x980
+       lock_acquire+0xe1/0x2f0
+       __mutex_lock+0x97/0x960
+       mutex_lock_nested+0x1b/0x20
+       mem_mmap+0x32/0x160 [usdm_drv]
+-----------------------------
+       mmap_region+0x423/0x6b0
+       do_mmap+0x46a/0x5e0
+       vm_mmap_pgoff+0xc5/0x100
+       ksys_mmap_pgoff+0x1d0/0x230
+       __x64_sys_mmap+0x33/0x40
+       do_syscall_64+0x38/0x50
+       entry_SYSCALL_64_after_hwframe+0x44/0xa9
+kernel/sched/core.c:7263 Illegal context switch in RCU-bh read-side
+critical section!
+
+other info that might help us debug this:
+
+ Possible unsafe locking scenario:
+
+       CPU0                    CPU1
+       ----                    ----
+  lock(&mm->mmap_lock#2);
+                               lock(&dev_mem_lock);
+                               lock(&mm->mmap_lock#2);
+  lock(&dev_mem_lock);
+
+ *** DEADLOCK ***
+
+convert mutex_lock to mutex_trylock which will return without wait.
+
+Upstream-Status: Inappropriate
+
+Signed-off-by: Liwei Song <liwei.song@windriver.com>
+---
+ .../utilities/libusdm_drv/linux/kernel_space/qae_mem_drv.c  | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/quickassist/utilities/libusdm_drv/linux/kernel_space/qae_mem_drv.c b/quickassist/utilities/libusdm_drv/linux/kernel_space/qae_mem_drv.c
+index d73cb0d..06e5d15 100644
+--- a/quickassist/utilities/libusdm_drv/linux/kernel_space/qae_mem_drv.c
++++ b/quickassist/utilities/libusdm_drv/linux/kernel_space/qae_mem_drv.c
+@@ -87,6 +87,7 @@
+ #include <linux/uaccess.h>
+ #include <linux/version.h>
+ #include <linux/hugetlb.h>
++#include <linux/delay.h>
+ 
+ #include "qae_mem_utils.h"
+ 
+@@ -1049,7 +1050,10 @@ mem_mmap(struct file *fp, struct vm_area_struct *vma)
+     uint64_t pages = size >> PAGE_SHIFT;
+     id = vma->vm_pgoff << PAGE_SHIFT;
+ 
+-    mutex_lock(&dev_mem_lock);
++    while(!mutex_trylock(&dev_mem_lock)){
++        udelay(5);
++    }
++
+     kmem = userMemGetInfo(fp, id);
+     if (!kmem)
+     {
