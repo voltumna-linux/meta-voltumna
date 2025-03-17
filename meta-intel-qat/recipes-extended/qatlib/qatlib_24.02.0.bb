@@ -4,11 +4,15 @@ HOMEPAGE = "https://github.com/intel/qatlib"
 LICENSE = "BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=64dc5eee9d532c8a1633bb63ed0d1aac"
 
+PROVIDES += "virtual/qat"
+RPROVIDES:${PN} += "qat"
+
+COMPATIBLE_MACHINE = 'null'
 COMPATIBLE_HOST:x86-x32 = 'null'
 COMPATIBLE_HOST:libc-musl:class-target = 'null'
 
 SRC_URI = "git://github.com/intel/qatlib.git;protocol=https;branch=main"
-SRCREV = "142e305970ec66a860945d20bb7c330f99ed900b"
+SRCREV = "61178382110a5b93898e2a1d07c84aac9c695362"
 
 S = "${WORKDIR}/git"
 
