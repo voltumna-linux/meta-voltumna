@@ -54,6 +54,7 @@ class DirectPlugin(ImagerPlugin):
         self.native_sysroot = native_sysroot
         self.oe_builddir = oe_builddir
 
+        self.debug = options.debug
         self.outdir = options.outdir
         self.compressor = options.compressor
         self.bmap = options.bmap
@@ -76,7 +77,8 @@ class DirectPlugin(ImagerPlugin):
 
         image_path = self._full_path(self.workdir, self.parts[0].disk, "direct")
         self._image = PartitionedImage(image_path, self.ptable_format,
-                                       self.parts, self.native_sysroot)
+                                       self.parts, self.native_sysroot,
+                                       options.extra_space)
 
     def setup_workdir(self, workdir):
         if workdir:
@@ -146,6 +148,9 @@ class DirectPlugin(ImagerPlugin):
             self.updated_fstab_path = os.path.join(self.workdir, "fstab")
             with open(self.updated_fstab_path, "w") as f:
                 f.writelines(fstab_lines)
+            if os.getenv('SOURCE_DATE_EPOCH'):
+                fstab_time = int(os.getenv('SOURCE_DATE_EPOCH'))
+                os.utime(self.updated_fstab_path, (fstab_time, fstab_time))
 
     def _full_path(self, path, name, extention):
         """ Construct full file path to a file we generate. """
@@ -257,6 +262,8 @@ class DirectPlugin(ImagerPlugin):
             if part.mountpoint == "/":
                 if part.uuid:
                     return "PARTUUID=%s" % part.uuid
+                elif part.label and self.ptable_format != 'msdos':
+                    return "PARTLABEL=%s" % part.label
                 else:
                     suffix = 'p' if part.disk.startswith('mmcblk') else ''
                     return "/dev/%s%s%-d" % (part.disk, suffix, part.realnum)
@@ -274,8 +281,9 @@ class DirectPlugin(ImagerPlugin):
             if os.path.isfile(path):
                 shutil.move(path, os.path.join(self.outdir, fname))
 
-        # remove work directory
-        shutil.rmtree(self.workdir, ignore_errors=True)
+        # remove work directory when it is not in debugging mode
+        if not self.debug:
+            shutil.rmtree(self.workdir, ignore_errors=True)
 
 # Overhead of the MBR partitioning scheme (just one sector)
 MBR_OVERHEAD = 1
@@ -291,7 +299,7 @@ class PartitionedImage():
     Partitioned image in a file.
     """
 
-    def __init__(self, path, ptable_format, partitions, native_sysroot=None):
+    def __init__(self, path, ptable_format, partitions, native_sysroot=None, extra_space=0):
         self.path = path  # Path to the image file
         self.numpart = 0  # Number of allocated partitions
         self.realpart = 0 # Number of partitions in the partition table
@@ -312,6 +320,7 @@ class PartitionedImage():
         self.sector_size = SECTOR_SIZE
         self.native_sysroot = native_sysroot
         num_real_partitions = len([p for p in self.partitions if not p.no_table])
+        self.extra_space = extra_space
 
         # calculate the real partition number, accounting for partitions not
         # in the partition table and logical partitions
@@ -481,6 +490,7 @@ class PartitionedImage():
             self.min_size += GPT_OVERHEAD
 
         self.min_size *= self.sector_size
+        self.min_size += self.extra_space
 
     def _create_partition(self, device, parttype, fstype, start, size):
         """ Create a partition on an image described by the 'device' object. """

@@ -11,7 +11,7 @@ rasterize fonts."
 HOMEPAGE = "http://www.fontconfig.org"
 BUGTRACKER = "https://bugs.freedesktop.org/enter_bug.cgi?product=fontconfig"
 
-LICENSE = "MIT-style & MIT & PD"
+LICENSE = "MIT & MIT & PD"
 LIC_FILES_CHKSUM = "file://COPYING;md5=7a0449e9bc5370402a94c00204beca3d \
                     file://src/fcfreetype.c;endline=45;md5=5d9513e3196a1fbfdfa94051c09dfc84 \
                     file://src/fccache.c;beginline=1671;endline=1686;md5=0326cfeb4a7333dd4dd25fbbc4b9f27f"
@@ -29,33 +29,33 @@ SRC_URI[sha256sum] = "9f0d852b39d75fc655f9f53850eb32555394f36104a044bb2b2fc9e66d
 
 UPSTREAM_CHECK_REGEX = "fontconfig-(?P<pver>\d+\.\d+\.(?!9\d+)\d+)"
 
-do_configure_prepend() {
+do_configure:prepend() {
     # work around https://bugs.freedesktop.org/show_bug.cgi?id=101280
     rm -f ${S}/src/fcobjshash.h ${S}/src/fcobjshash.gperf
 }
 
-do_install_append_class-target() {
+do_install:append:class-target() {
     # duplicate fc-cache for postinstall script
     mkdir -p ${D}${libexecdir}
     ln ${D}${bindir}/fc-cache ${D}${libexecdir}/${MLPREFIX}fc-cache
 }
 
-do_install_append_class-nativesdk() {
+do_install:append:class-nativesdk() {
     # duplicate fc-cache for postinstall script
     mkdir -p ${D}${libexecdir}
     ln ${D}${bindir}/fc-cache ${D}${libexecdir}/${MLPREFIX}fc-cache
 }
 
 PACKAGES =+ "fontconfig-utils"
-FILES_${PN} =+ "${datadir}/xml/*"
-FILES_${PN}-dev += "${datadir}/gettext/*"
-FILES_fontconfig-utils = "${bindir}/* ${libexecdir}/*"
+FILES:${PN} =+ "${datadir}/xml/*"
+FILES:${PN}-dev += "${datadir}/gettext/*"
+FILES:fontconfig-utils = "${bindir}/* ${libexecdir}/*"
 
 # Work around past breakage in debian.bbclass
-RPROVIDES_fontconfig-utils = "libfontconfig-utils"
-RREPLACES_fontconfig-utils = "libfontconfig-utils"
-RCONFLICTS_fontconfig-utils = "libfontconfig-utils"
-DEBIAN_NOAUTONAME_fontconfig-utils = "1"
+RPROVIDES:fontconfig-utils = "libfontconfig-utils"
+RREPLACES:fontconfig-utils = "libfontconfig-utils"
+RCONFLICTS:fontconfig-utils = "libfontconfig-utils"
+DEBIAN_NOAUTONAME:fontconfig-utils = "1"
 
 inherit autotools pkgconfig relative_symlinks gettext
 

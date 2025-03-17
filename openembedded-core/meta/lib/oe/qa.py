@@ -48,6 +48,9 @@ class ELFFile:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def close(self):
         if self.data:
             self.data.close()
 
@@ -128,6 +131,9 @@ class ELFFile:
         """
         return self.getShort(ELFFile.E_MACHINE)
 
+    def set_objdump(self, cmd, output):
+        self.objdump_output[cmd] = output
+
     def run_objdump(self, cmd, d):
         import bb.process
         import sys
@@ -170,6 +176,40 @@ def elf_machine_to_string(machine):
         }[machine]
     except:
         return "Unknown (%s)" % repr(machine)
+
+def write_error(type, error, d):
+    logfile = d.getVar('QA_LOGFILE')
+    if logfile:
+        p = d.getVar('P')
+        with open(logfile, "a+") as f:
+            f.write("%s: %s [%s]\n" % (p, error, type))
+
+def handle_error(error_class, error_msg, d):
+    if error_class in (d.getVar("ERROR_QA") or "").split():
+        write_error(error_class, error_msg, d)
+        bb.error("QA Issue: %s [%s]" % (error_msg, error_class))
+        d.setVar("QA_ERRORS_FOUND", "True")
+        return False
+    elif error_class in (d.getVar("WARN_QA") or "").split():
+        write_error(error_class, error_msg, d)
+        bb.warn("QA Issue: %s [%s]" % (error_msg, error_class))
+    else:
+        bb.note("QA Issue: %s [%s]" % (error_msg, error_class))
+    return True
+
+def add_message(messages, section, new_msg):
+    if section not in messages:
+        messages[section] = new_msg
+    else:
+        messages[section] = messages[section] + "\n" + new_msg
+
+def exit_with_message_if_errors(message, d):
+    qa_fatal_errors = bb.utils.to_boolean(d.getVar("QA_ERRORS_FOUND"), False)
+    if qa_fatal_errors:
+        bb.fatal(message)
+
+def exit_if_errors(d):
+    exit_with_message_if_errors("Fatal QA errors were found, failing task.", d)
 
 if __name__ == "__main__":
     import sys

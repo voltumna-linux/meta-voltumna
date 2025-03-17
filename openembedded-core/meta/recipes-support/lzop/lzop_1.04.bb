@@ -8,7 +8,7 @@ to gzip."
 HOMEPAGE = "http://www.lzop.org/"
 DEPENDS += "lzo"
 
-LICENSE = "GPLv2+"
+LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263 \
                     file://src/lzop.c;beginline=5;endline=21;md5=23d767de7754eb24b9e900b025cf7fc8"
 
@@ -20,7 +20,7 @@ SRC_URI[sha256sum] = "7e72b62a8a60aff5200a047eea0773a8fb205caf7acbe1774d95147f30
 
 inherit autotools
 
-do_configure_prepend () {
+do_configure:prepend () {
     install -Dm 0644 ${WORKDIR}/acinclude.m4 ${S}/acinclude.m4
 }
 

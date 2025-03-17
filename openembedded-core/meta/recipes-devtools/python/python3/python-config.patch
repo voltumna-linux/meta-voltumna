@@ -1,4 +1,4 @@
-From 07df0ae0d70cba6d1847fe1c24a71063930bec60 Mon Sep 17 00:00:00 2001
+From 8632f25ac4e2c53a3c2c8a1b4fc97fc86e8aad5a Mon Sep 17 00:00:00 2001
 From: Tyler Hall <tylerwhall@gmail.com>
 Date: Sun, 4 May 2014 20:06:43 -0400
 Subject: [PATCH] python-config: Revert to using distutils.sysconfig
@@ -14,34 +14,35 @@ as appropriate.
 Upstream-Status: Inappropriate [Embedded Specific]
 
 Signed-off-by: Tyler Hall <tylerwhall@gmail.com>
-:
 
 ---
- Misc/python-config.in | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ Misc/python-config.in | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
 diff --git a/Misc/python-config.in b/Misc/python-config.in
-index 727c4a8..c702829 100644
+index ebd99da..0492e08 100644
 --- a/Misc/python-config.in
 +++ b/Misc/python-config.in
-@@ -6,7 +6,7 @@
+@@ -6,7 +6,9 @@
  import getopt
  import os
  import sys
 -import sysconfig
++import warnings
++warnings.filterwarnings("ignore", category=DeprecationWarning)
 +from distutils import sysconfig
  
  valid_opts = ['prefix', 'exec-prefix', 'includes', 'libs', 'cflags',
                'ldflags', 'extension-suffix', 'help', 'abiflags', 'configdir',
-@@ -35,14 +35,14 @@ if '--help' in opt_flags:
+@@ -35,14 +37,14 @@ if '--help' in opt_flags:
  
  for opt in opt_flags:
      if opt == '--prefix':
--        print(sysconfig.get_config_var('prefix'))
+-        print(getvar('prefix'))
 +        print(sysconfig.PREFIX)
  
      elif opt == '--exec-prefix':
--        print(sysconfig.get_config_var('exec_prefix'))
+-        print(getvar('exec_prefix'))
 +        print(sysconfig.EXEC_PREFIX)
  
      elif opt in ('--includes', '--cflags'):

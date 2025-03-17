@@ -1,13 +1,10 @@
 require timezone.inc
 
-#
 SUMMARY = "tzcode, timezone zoneinfo utils -- zic, zdump, tzselect"
-
-S = "${WORKDIR}"
 
 inherit native
 
-EXTRA_OEMAKE += "cc='${CC}'"
+EXTRA_OEMAKE += "CC='${CC}'"
 
 do_install () {
         install -d ${D}${bindir}/

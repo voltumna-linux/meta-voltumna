@@ -1,7 +1,7 @@
 SUMMARY = "XML::Parser - A perl module for parsing XML documents"
 HOMEPAGE = "https://libexpat.github.io/"
 SECTION = "libs"
-LICENSE = "Artistic-1.0 | GPL-1.0+"
+LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 LIC_FILES_CHKSUM = "file://Parser.pm;beginline=1;endline=7;md5=d12cc778c80fc4c518f0e5dee29fd5fb"
 
 DEPENDS += "expat"
@@ -21,13 +21,13 @@ inherit cpan ptest-perl
 
 # fix up sub MakeMaker project as arguments don't get propagated though
 # see https://rt.cpan.org/Public/Bug/Display.html?id=28632
-do_configure_append_class-target() {
+do_configure:append:class-target() {
 	sed -E \
 	    -e 's:-L${STAGING_LIBDIR}::g' -e 's:-I${STAGING_INCDIR}::g' \
 	    -i Makefile Expat/Makefile
 }
 
-do_configure_append() {
+do_configure:append() {
 	sed -e 's:--sysroot=.*\(\s\|$\):--sysroot=${STAGING_DIR_TARGET} :g' \
 	    -i Makefile Expat/Makefile
 	sed 's:^FULL_AR = .*:FULL_AR = ${AR}:g' -i Expat/Makefile
@@ -40,7 +40,7 @@ do_compile() {
 	cpan_do_compile
 }
 
-do_compile_class-native() {
+do_compile:class-native() {
 	cpan_do_compile
 }
 
@@ -53,7 +53,7 @@ do_install_ptest() {
 	chown -R root:root ${D}${PTEST_PATH}/samples
 }
 
-RDEPENDS_${PN} += "perl-module-carp perl-module-file-spec"
-RDEPENDS_${PN}-ptest += "perl-module-filehandle perl-module-if perl-module-test perl-module-test-more"
+RDEPENDS:${PN} += "perl-module-carp perl-module-file-spec"
+RDEPENDS:${PN}-ptest += "perl-module-filehandle perl-module-if perl-module-test perl-module-test-more"
 
 BBCLASSEXTEND="native nativesdk"

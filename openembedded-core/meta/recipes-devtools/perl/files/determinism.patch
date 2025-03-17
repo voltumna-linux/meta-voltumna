@@ -21,32 +21,6 @@ RP 2020/2/7
 Upstream-Status: Pending [75% submitted]
 Signed-off-by: Richard Purdie <richard.purdie@linuxfoundation.org
 
-Index: perl-5.30.1/cnf/configure_attr.sh
-===================================================================
---- perl-5.30.1.orig/cnf/configure_attr.sh
-+++ perl-5.30.1/cnf/configure_attr.sh
-@@ -131,7 +131,7 @@ if not hinted d_c99_variadic_macros 'sup
- 	try_start
- 	try_add '#include <stdio.h>'
- 	try_add '#define foo(fmt, ...) printf(fmt, __VA_ARGS__)'
--	try_add 'int main(void) { foo("%i\n", 1234); return 0; }'
-+	try_add 'int main(void) { foo("%i", 1234); return 0; }'
- 	try_compile
- 	resdef d_c99_variadic_macros 'supported' 'missing'
- fi
-Index: perl-5.30.1/cnf/configure_mods.sh
-===================================================================
---- perl-5.30.1.orig/cnf/configure_mods.sh
-+++ perl-5.30.1/cnf/configure_mods.sh
-@@ -82,7 +82,7 @@ extonlyif() {
- }
- 
- definetrimspaces() {
--	v=`echo "$2" | sed -r -e 's/\s+/ /g' -e 's/^\s+//' -e 's/\s+$//'`
-+	v=`echo "$2" | sed -r -e 's/\s+/ /g' -e 's/^\s+//' -e 's/\s+$//' | xargs -n1 | LANG=C sort | xargs`
- 	define $1 "$v"
- }
- 
 Index: perl-5.30.1/cpan/Encode/Byte/Makefile.PL
 ===================================================================
 --- perl-5.30.1.orig/cpan/Encode/Byte/Makefile.PL
@@ -69,13 +43,3 @@ Index: perl-5.30.1/cpan/Encode/Byte/Makefile.PL
      {
          print FILELIST $self->catfile($dir,$file) . "\n";
      }
-Index: perl-5.30.1/cnf/configure
-===================================================================
---- perl-5.30.1.orig/cnf/configure
-+++ perl-5.30.1/cnf/configure
-@@ -1,4 +1,4 @@
--#!/bin/sh
-+#!/bin/bash
- 
- base=${0%/*}; test -z "$base" && base=.
- 

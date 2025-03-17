@@ -64,31 +64,6 @@ def _cmpkey(release, patch_l, pre_l, pre_v):
         _pre = float(pre_v) if pre_v else float('-inf')
     return _release, _patch, _pre
 
-def cve_check_merge_jsons(output, data):
-    """
-    Merge the data in the "package" property to the main data file
-    output
-    """
-    if output["version"] != data["version"]:
-        bb.error("Version mismatch when merging JSON outputs")
-        return
-
-    for product in output["package"]:
-        if product["name"] == data["package"][0]["name"]:
-            bb.error("Error adding the same package %s twice" % product["name"])
-            return
-
-    output["package"].append(data["package"][0])
-
-def update_symlinks(target_path, link_path):
-    """
-    Update a symbolic link link_path to point to target_path.
-    Remove the link and recreate it if exist and is different.
-    """
-    if link_path != target_path and os.path.exists(target_path):
-        if os.path.exists(os.path.realpath(link_path)):
-            os.remove(link_path)
-        os.symlink(os.path.basename(target_path), link_path)
 
 def get_patched_cves(d):
     """
@@ -98,20 +73,19 @@ def get_patched_cves(d):
     import re
     import oe.patch
 
-    pn = d.getVar("PN")
-    cve_match = re.compile("CVE:( CVE\-\d{4}\-\d+)+")
+    cve_match = re.compile(r"CVE:( CVE-\d{4}-\d+)+")
 
     # Matches the last "CVE-YYYY-ID" in the file name, also if written
     # in lowercase. Possible to have multiple CVE IDs in a single
     # file name, but only the last one will be detected from the file name.
     # However, patch files contents addressing multiple CVE IDs are supported
     # (cve_match regular expression)
-
-    cve_file_name_match = re.compile(".*([Cc][Vv][Ee]\-\d{4}\-\d+)")
+    cve_file_name_match = re.compile(r".*(CVE-\d{4}-\d+)", re.IGNORECASE)
 
     patched_cves = set()
-    bb.debug(2, "Looking for patches that solves CVEs for %s" % pn)
-    for url in oe.patch.src_patches(d):
+    patches = oe.patch.src_patches(d)
+    bb.debug(2, "Scanning %d patches for CVEs" % len(patches))
+    for url in patches:
         patch_file = bb.fetch.decodeurl(url)[2]
 
         # Check patch file name for CVE ID
@@ -119,7 +93,7 @@ def get_patched_cves(d):
         if fname_match:
             cve = fname_match.group(1).upper()
             patched_cves.add(cve)
-            bb.debug(2, "Found CVE %s from patch file name %s" % (cve, patch_file))
+            bb.debug(2, "Found %s from patch file name %s" % (cve, patch_file))
 
         # Remote patches won't be present and compressed patches won't be
         # unpacked, so say we're not scanning them
@@ -174,6 +148,33 @@ def get_cpe_ids(cve_product, version):
 
     return cpe_ids
 
+def cve_check_merge_jsons(output, data):
+    """
+    Merge the data in the "package" property to the main data file
+    output
+    """
+    if output["version"] != data["version"]:
+        bb.error("Version mismatch when merging JSON outputs")
+        return
+
+    for product in output["package"]:
+        if product["name"] == data["package"][0]["name"]:
+            bb.error("Error adding the same package %s twice" % product["name"])
+            return
+
+    output["package"].append(data["package"][0])
+
+def update_symlinks(target_path, link_path):
+    """
+    Update a symbolic link link_path to point to target_path.
+    Remove the link and recreate it if exist and is different.
+    """
+    if link_path != target_path and os.path.exists(target_path):
+        if os.path.exists(os.path.realpath(link_path)):
+            os.remove(link_path)
+        os.symlink(os.path.basename(target_path), link_path)
+
+
 def convert_cve_version(version):
     """
     This function converts from CVE format to Yocto version format.
@@ -210,3 +211,4 @@ def convert_cve_version(version):
         return version + '-' + update
 
     return version + update
+

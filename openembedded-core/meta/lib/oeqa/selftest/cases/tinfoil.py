@@ -9,7 +9,6 @@ import logging
 import bb.tinfoil
 
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import runCmd
 
 class TinfoilTests(OESelftestTestCase):
     """ Basic tests for the tinfoil API """
@@ -114,9 +113,9 @@ class TinfoilTests(OESelftestTestCase):
             eventreceived = False
             commandcomplete = False
             start = time.time()
-            # Wait for maximum 120s in total so we'd detect spurious heartbeat events for example
+            # Wait for maximum 60s in total so we'd detect spurious heartbeat events for example
             while (not (eventreceived == True and commandcomplete == True) 
-                    and (time.time() - start < 120)):
+                    and (time.time() - start < 60)):
                 # if we received both events (on let's say a good day), we are done  
                 event = tinfoil.wait_event(1)
                 if event:
@@ -187,8 +186,8 @@ class TinfoilTests(OESelftestTestCase):
             self.assertEqual(value, 'origvalue', 'Variable renamed using config_data.renameVar() does not appear with new name')
             # Test overrides
             tinfoil.config_data.setVar('TESTVAR', 'original')
-            tinfoil.config_data.setVar('TESTVAR_overrideone', 'one')
-            tinfoil.config_data.setVar('TESTVAR_overridetwo', 'two')
+            tinfoil.config_data.setVar('TESTVAR:overrideone', 'one')
+            tinfoil.config_data.setVar('TESTVAR:overridetwo', 'two')
             tinfoil.config_data.appendVar('OVERRIDES', ':overrideone')
             value = tinfoil.config_data.getVar('TESTVAR')
             self.assertEqual(value, 'one', 'Variable overrides not functioning correctly')

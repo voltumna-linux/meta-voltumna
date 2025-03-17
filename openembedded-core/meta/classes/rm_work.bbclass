@@ -13,7 +13,7 @@
 # Recipes can also configure which entries in their ${WORKDIR}
 # are preserved besides temp, which already gets excluded by default
 # because it contains logs:
-# do_install_append () {
+# do_install:append () {
 #     echo "bar" >${WORKDIR}/foo
 # }
 # RM_WORK_EXCLUDE_ITEMS += "foo"
@@ -24,7 +24,7 @@ RM_WORK_EXCLUDE_ITEMS = "temp"
 BB_SCHEDULER ?= "completion"
 
 # Run the rm_work task in the idle scheduling class
-BB_TASK_IONICE_LEVEL_task-rm_work = "3.0"
+BB_TASK_IONICE_LEVEL:task-rm_work = "3.0"
 
 do_rm_work () {
     # Force using the HOSTTOOLS 'rm' - otherwise the SYSROOT_NATIVE 'rm' can be selected depending on PATH
@@ -113,6 +113,8 @@ do_rm_work () {
         fi
     done
 }
+do_rm_work[vardepsexclude] += "SSTATETASKS"
+
 do_rm_work_all () {
     :
 }
@@ -179,7 +181,7 @@ python inject_rm_work() {
         # other recipes and thus will typically run much later than completion of
         # work in the recipe itself.
         # In practice, addtask() here merely updates the dependencies.
-        bb.build.addtask('do_rm_work', 'do_build', ' '.join(deps), d)
+        bb.build.addtask('do_rm_work', 'do_rm_work_all do_build', ' '.join(deps), d)
 
     # Always update do_build_without_rm_work dependencies.
     bb.build.addtask('do_build_without_rm_work', '', ' '.join(deps), d)

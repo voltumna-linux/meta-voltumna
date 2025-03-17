@@ -5,20 +5,18 @@ are three major components: a kernel component, a utility to record the i/o \
 trace information for the kernel to user space, and utilities to analyse and \
 view the trace information."
 HOMEPAGE = "http://brick.kernel.dk/snaps/"
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=393a5ca445f6965873eca0259a17f833"
 
 DEPENDS = "libaio"
 
-SRCREV = "cca113f2fe0759b91fd6a0e10fdcda2c28f18a7e"
+SRCREV = "366d30b9cdb20345c5d064af850d686da79b89eb"
 
-PV = "1.2.0+git${SRCPV}"
+PV = "1.3.0+git${SRCPV}"
 
 SRC_URI = "git://git.kernel.dk/blktrace.git;branch=master \
-           file://ldflags.patch \
-           file://CVE-2018-10689.patch \
-           file://make-btt-scripts-python3-ready.patch \
-"
+           file://0001-bno_plot.py-btt_plot.py-Ask-for-python3-specifically.patch \
+           "
 
 S = "${WORKDIR}/git"
 

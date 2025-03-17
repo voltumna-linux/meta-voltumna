@@ -8,9 +8,12 @@ but is visibly different than normal and bold, and reasonably pleasing."
 SECTION = "x11/fonts"
 LICENSE = "BitstreamVera"
 LIC_FILES_CHKSUM = "file://COPYRIGHT.TXT;md5=27d7484b1e18d0ee4ce538644a3f04be"
-PR = "r7"
+PR = "r8"
 
 inherit allarch fontcache
+
+# remove at next version upgrade or when output changes
+HASHEQUIV_HASH_VERSION .= ".1"
 
 FONT_PACKAGES = "${PN}"
 
@@ -30,4 +33,4 @@ do_install () {
         done
 }
 
-FILES_${PN} = "${datadir}/fonts"
+FILES:${PN} = "${datadir}/fonts"

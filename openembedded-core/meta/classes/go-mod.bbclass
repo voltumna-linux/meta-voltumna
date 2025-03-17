@@ -12,9 +12,13 @@
 
 # The '-modcacherw' option ensures we have write access to the cached objects so
 # we avoid errors during clean task as well as when removing the TMPDIR.
-export GOBUILDFLAGS ?= "-v ${GO_LDFLAGS} -modcacherw"
+GOBUILDFLAGS:append = " -modcacherw"
 
 inherit go
 
 GO_WORKDIR ?= "${GO_IMPORT}"
 do_compile[dirs] += "${B}/src/${GO_WORKDIR}"
+
+export GOMODCACHE = "${B}/.mod"
+
+do_compile[cleandirs] += "${B}/.mod"

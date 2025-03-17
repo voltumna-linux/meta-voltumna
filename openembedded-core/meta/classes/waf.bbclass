@@ -6,8 +6,9 @@ DISABLE_STATIC = ""
 WAF_PYTHON ?= "python3"
 
 B = "${WORKDIR}/build"
+do_configure[cleandirs] += "${B}"
 
-EXTRA_OECONF_append = " ${PACKAGECONFIG_CONFARGS}"
+EXTRA_OECONF:append = " ${PACKAGECONFIG_CONFARGS}"
 
 EXTRA_OEWAF_BUILD ??= ""
 # In most cases, you want to pass the same arguments to `waf build` and `waf
@@ -38,18 +39,17 @@ def waflock_hash(d):
 # directory (e.g. if the source is coming from externalsrc and was previously
 # configured elsewhere).
 export WAFLOCK = ".lock-waf_oe_${@waflock_hash(d)}_build"
-BB_HASHBASE_WHITELIST += "WAFLOCK"
+BB_BASEHASH_IGNORE_VARS += "WAFLOCK"
 
 python waf_preconfigure() {
     import subprocess
-    from distutils.version import StrictVersion
     subsrcdir = d.getVar('S')
     python = d.getVar('WAF_PYTHON')
     wafbin = os.path.join(subsrcdir, 'waf')
     try:
         result = subprocess.check_output([python, wafbin, '--version'], cwd=subsrcdir, stderr=subprocess.STDOUT)
         version = result.decode('utf-8').split()[1]
-        if StrictVersion(version) >= StrictVersion("1.8.7"):
+        if bb.utils.vercmp_string_op(version, "1.8.7", ">="):
             d.setVar("WAF_EXTRA_CONF", "--bindir=${bindir} --libdir=${libdir}")
     except subprocess.CalledProcessError as e:
         bb.warn("Unable to execute waf --version, exit code %d. Assuming waf version without bindir/libdir support." % e.returncode)

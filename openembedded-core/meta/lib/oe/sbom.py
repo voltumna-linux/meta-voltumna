@@ -1,6 +1,4 @@
 #
-# Copyright OpenEmbedded Contributors
-#
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
@@ -12,10 +10,6 @@ DepSource = collections.namedtuple("DepSource", ("doc", "doc_sha1", "recipe", "f
 
 def get_recipe_spdxid(d):
     return "SPDXRef-%s-%s" % ("Recipe", d.getVar("PN"))
-
-
-def get_download_spdxid(d, idx):
-    return "SPDXRef-Download-%s-%d" % (d.getVar("PN"), idx)
 
 
 def get_package_spdxid(pkg):

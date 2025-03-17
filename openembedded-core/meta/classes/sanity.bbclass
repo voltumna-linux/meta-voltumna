@@ -185,37 +185,6 @@ def raise_sanity_error(msg, d, network_error=False):
     
     %s""" % msg)
 
-# Check flags associated with a tuning.
-def check_toolchain_tune_args(data, tune, multilib, errs):
-    found_errors = False
-    if check_toolchain_args_present(data, tune, multilib, errs, 'CCARGS'):
-        found_errors = True
-    if check_toolchain_args_present(data, tune, multilib, errs, 'ASARGS'):
-        found_errors = True
-    if check_toolchain_args_present(data, tune, multilib, errs, 'LDARGS'):
-        found_errors = True
-
-    return found_errors
-
-def check_toolchain_args_present(data, tune, multilib, tune_errors, which):
-    args_set = (data.getVar("TUNE_%s" % which) or "").split()
-    args_wanted = (data.getVar("TUNEABI_REQUIRED_%s_tune-%s" % (which, tune)) or "").split()
-    args_missing = []
-
-    # If no args are listed/required, we are done.
-    if not args_wanted:
-        return
-    for arg in args_wanted:
-        if arg not in args_set:
-            args_missing.append(arg)
-
-    found_errors = False
-    if args_missing:
-        found_errors = True
-        tune_errors.append("TUNEABI for %s requires '%s' in TUNE_%s (%s)." %
-                       (tune, ' '.join(args_missing), which, ' '.join(args_set)))
-    return found_errors
-
 # Check a single tune for validity.
 def check_toolchain_tune(data, tune, multilib):
     tune_errors = []
@@ -227,7 +196,7 @@ def check_toolchain_tune(data, tune, multilib):
         overrides = localdata.getVar("OVERRIDES", False) + ":virtclass-multilib-" + multilib
         localdata.setVar("OVERRIDES", overrides)
     bb.debug(2, "Sanity-checking tuning '%s' (%s) features:" % (tune, multilib))
-    features = (localdata.getVar("TUNE_FEATURES_tune-%s" % tune) or "").split()
+    features = (localdata.getVar("TUNE_FEATURES:tune-%s" % tune) or "").split()
     if not features:
         return "Tuning '%s' has no defined features, and cannot be used." % tune
     valid_tunes = localdata.getVarFlags('TUNEVALID') or {}
@@ -247,17 +216,6 @@ def check_toolchain_tune(data, tune, multilib):
             bb.debug(2, "  %s: %s" % (feature, valid_tunes[feature]))
         else:
             tune_errors.append("Feature '%s' is not defined." % feature)
-    whitelist = localdata.getVar("TUNEABI_WHITELIST")
-    if whitelist:
-        tuneabi = localdata.getVar("TUNEABI_tune-%s" % tune)
-        if not tuneabi:
-            tuneabi = tune
-        if True not in [x in whitelist.split() for x in tuneabi.split()]:
-            tune_errors.append("Tuning '%s' (%s) cannot be used with any supported tuning/ABI." %
-                (tune, tuneabi))
-        else:
-            if not check_toolchain_tune_args(localdata, tuneabi, multilib, tune_errors):
-                bb.debug(2, "Sanity check: Compiler args OK for %s." % tune)
     if tune_errors:
         return "Tuning '%s' has the following errors:\n" % tune + '\n'.join(tune_errors)
 
@@ -281,7 +239,7 @@ def check_toolchain(data):
                 seen_libs.append(lib)
             if not lib in global_multilibs:
                 tune_error_set.append("Multilib %s is not present in MULTILIB_GLOBAL_VARIANTS" % lib)
-            tune = data.getVar("DEFAULTTUNE_virtclass-multilib-%s" % lib)
+            tune = data.getVar("DEFAULTTUNE:virtclass-multilib-%s" % lib)
             if tune in seen_tunes:
                 tune_error_set.append("The tuning '%s' appears in more than one multilib." % tune)
             else:
@@ -393,6 +351,7 @@ def check_connectivity(d):
             if len(msg) == 0:
                 msg = "%s.\n" % err
                 msg += "    Please ensure your host's network is configured correctly.\n"
+                msg += "    Please ensure CONNECTIVITY_CHECK_URIS is correct and specified URIs are available.\n"
                 msg += "    If your ISP or network is blocking the above URL,\n"
                 msg += "    try with another domain name, for example by setting:\n"
                 msg += "    CONNECTIVITY_CHECK_URIS = \"https://www.example.com/\""
@@ -462,23 +421,20 @@ def check_sanity_validmachine(sanity_data):
 # Patch before 2.7 can't handle all the features in git-style diffs.  Some
 # patches may incorrectly apply, and others won't apply at all.
 def check_patch_version(sanity_data):
-    from distutils.version import LooseVersion
     import re, subprocess
 
     try:
         result = subprocess.check_output(["patch", "--version"], stderr=subprocess.STDOUT).decode('utf-8')
         version = re.search(r"[0-9.]+", result.splitlines()[0]).group()
-        if LooseVersion(version) < LooseVersion("2.7"):
+        if bb.utils.vercmp_string_op(version, "2.7", "<"):
             return "Your version of patch is older than 2.7 and has bugs which will break builds. Please install a newer version of patch.\n"
         else:
             return None
     except subprocess.CalledProcessError as e:
         return "Unable to execute patch --version, exit code %d:\n%s\n" % (e.returncode, e.output)
 
-# Unpatched versions of make 3.82 are known to be broken.  See GNU Savannah Bug 30612.
-# Use a modified reproducer from http://savannah.gnu.org/bugs/?30612 to validate.
+# Glibc needs make 4.0 or later, we may as well match at this point
 def check_make_version(sanity_data):
-    from distutils.version import LooseVersion
     import subprocess
 
     try:
@@ -486,31 +442,14 @@ def check_make_version(sanity_data):
     except subprocess.CalledProcessError as e:
         return "Unable to execute make --version, exit code %d\n%s\n" % (e.returncode, e.output)
     version = result.split()[2]
-    if LooseVersion(version) == LooseVersion("3.82"):
-        # Construct a test file
-        f = open("makefile_test", "w")
-        f.write("makefile_test.a: makefile_test_a.c makefile_test_b.c makefile_test.a( makefile_test_a.c makefile_test_b.c)\n")
-        f.write("\n")
-        f.write("makefile_test_a.c:\n")
-        f.write("	touch $@\n")
-        f.write("\n")
-        f.write("makefile_test_b.c:\n")
-        f.write("	touch $@\n")
-        f.close()
+    if bb.utils.vercmp_string_op(version, "4.0", "<"):
+        return "Please install a make version of 4.0 or later.\n"
 
-        # Check if make 3.82 has been patched
-        try:
-            subprocess.check_call(['make', '-f', 'makefile_test'])
-        except subprocess.CalledProcessError as e:
-            return "Your version of make 3.82 is broken. Please revert to 3.81 or install a patched version.\n"
-        finally:
-            os.remove("makefile_test")
-            if os.path.exists("makefile_test_a.c"):
-                os.remove("makefile_test_a.c")
-            if os.path.exists("makefile_test_b.c"):
-                os.remove("makefile_test_b.c")
-            if os.path.exists("makefile_test.a"):
-                os.remove("makefile_test.a")
+    if bb.utils.vercmp_string_op(version, "4.2.1", "=="):
+        distro = oe.lsb.distro_identifier()
+        if "ubuntu" in distro or "debian" in distro or "linuxmint" in distro:
+            return None
+        return "make version 4.2.1 is known to have issues on Centos/OpenSUSE and other non-Ubuntu systems. Please use a buildtools-make-tarball or a newer version of make.\n"
     return None
 
 
@@ -530,7 +469,30 @@ def check_wsl(d):
             bb.warn("You are running bitbake under WSLv2, this works properly but you should optimize your VHDX file eventually to avoid running out of storage space")
     return None
 
-# Require at least gcc version 5.0.
+def check_userns():
+    """
+    Check that user namespaces are functional, as they're used for network isolation.
+    """
+
+    # There is a known failure case with AppAmrmor where the unshare() call
+    # succeeds (at which point the uid is nobody) but writing to the uid_map
+    # fails (so the uid isn't reset back to the user's uid). We can detect this.
+    parentuid = os.getuid()
+    pid = os.fork()
+    if not pid:
+        try:
+            bb.utils.disable_network()
+        except:
+            pass
+        os._exit(parentuid != os.getuid())
+
+    ret = os.waitpid(pid, 0)[1]
+    if ret:
+        bb.fatal("User namespaces are not usable by BitBake, possibly due to AppArmor.\n"
+                 "See https://discourse.ubuntu.com/t/ubuntu-24-04-lts-noble-numbat-release-notes/39890#unprivileged-user-namespace-restrictions for more information.")
+
+
+# Require at least gcc version 7.5.
 #
 # This can be fixed on CentOS-7 with devtoolset-6+
 # https://www.softwarecollections.org/en/scls/rhscl/devtoolset-6/
@@ -539,27 +501,25 @@ def check_wsl(d):
 # built buildtools-extended-tarball)
 #
 def check_gcc_version(sanity_data):
-    from distutils.version import LooseVersion
     import subprocess
     
     build_cc, version = oe.utils.get_host_compiler_version(sanity_data)
     if build_cc.strip() == "gcc":
-        if LooseVersion(version) < LooseVersion("5.0"):
-            return "Your version of gcc is older than 5.0 and will break builds. Please install a newer version of gcc (you could use the project's buildtools-extended-tarball or use scripts/install-buildtools).\n"
+        if bb.utils.vercmp_string_op(version, "7.5", "<"):
+            return "Your version of gcc is older than 7.5 and will break builds. Please install a newer version of gcc (you could use the project's buildtools-extended-tarball or use scripts/install-buildtools).\n"
     return None
 
 # Tar version 1.24 and onwards handle overwriting symlinks correctly
 # but earlier versions do not; this needs to work properly for sstate
 # Version 1.28 is needed so opkg-build works correctly when reproducibile builds are enabled
 def check_tar_version(sanity_data):
-    from distutils.version import LooseVersion
     import subprocess
     try:
         result = subprocess.check_output(["tar", "--version"], stderr=subprocess.STDOUT).decode('utf-8')
     except subprocess.CalledProcessError as e:
         return "Unable to execute tar --version, exit code %d\n%s\n" % (e.returncode, e.output)
     version = result.split()[3]
-    if LooseVersion(version) < LooseVersion("1.28"):
+    if bb.utils.vercmp_string_op(version, "1.28", "<"):
         return "Your version of tar is older than 1.28 and does not have the support needed to enable reproducible builds. Please install a newer version of tar (you could use the project's buildtools-tarball from our last release or use scripts/install-buildtools).\n"
 
     try:
@@ -575,14 +535,13 @@ def check_tar_version(sanity_data):
 # The kernel tools assume git >= 1.8.3.1 (verified needed > 1.7.9.5) see #6162 
 # The git fetcher also had workarounds for git < 1.7.9.2 which we've dropped
 def check_git_version(sanity_data):
-    from distutils.version import LooseVersion
     import subprocess
     try:
         result = subprocess.check_output(["git", "--version"], stderr=subprocess.DEVNULL).decode('utf-8')
     except subprocess.CalledProcessError as e:
         return "Unable to execute git --version, exit code %d\n%s\n" % (e.returncode, e.output)
     version = result.split()[2]
-    if LooseVersion(version) < LooseVersion("1.8.3.1"):
+    if bb.utils.vercmp_string_op(version, "1.8.3.1", "<"):
         return "Your version of git is older than 1.8.3.1 and has bugs which will break builds. Please install a newer version of git.\n"
     return None
 
@@ -614,6 +573,24 @@ def sanity_check_conffiles(d):
                 bb.fatal(str(e))
             d.setVar("BB_INVALIDCONF", True)
 
+def drop_v14_cross_builds(d):
+    import glob
+    indexes = glob.glob(d.expand("${SSTATE_MANIFESTS}/index-${BUILD_ARCH}_*"))
+    for i in indexes:
+        with open(i, "r") as f:
+            lines = f.readlines()
+            for l in reversed(lines):
+                try:
+                    (stamp, manifest, workdir) = l.split()
+                except ValueError:
+                    bb.fatal("Invalid line '%s' in sstate manifest '%s'" % (l, i))
+                for m in glob.glob(manifest + ".*"):
+                    if m.endswith(".postrm"):
+                        continue
+                    sstate_clean_manifest(m, d)
+                bb.utils.remove(stamp + "*")
+                bb.utils.remove(workdir, recurse = True)
+
 def sanity_handle_abichanges(status, d):
     #
     # Check the 'ABI' of TMPDIR
@@ -632,7 +609,10 @@ def sanity_handle_abichanges(status, d):
             status.addresult("The layout of TMPDIR changed for Recipe Specific Sysroots.\nConversion doesn't make sense and this change will rebuild everything so please delete TMPDIR (%s).\n" % d.getVar("TMPDIR"))
         elif int(abi) <= 13 and current_abi == "14":
             status.addresult("TMPDIR changed to include path filtering from the pseudo database.\nIt is recommended to use a clean TMPDIR with the new pseudo path filtering so TMPDIR (%s) would need to be removed to continue.\n" % d.getVar("TMPDIR"))
-
+        elif int(abi) == 14 and current_abi == "15":
+            drop_v14_cross_builds(d)
+            with open(abifile, "w") as f:
+                f.write(current_abi)
         elif (abi != current_abi):
             # Code to convert from one ABI to another could go here if possible.
             status.addresult("Error, TMPDIR has changed its layout version number (%s to %s) and you need to either rebuild, revert or adjust it at your own risk.\n" % (abi, current_abi))
@@ -677,6 +657,7 @@ def check_sanity_version_change(status, d):
     status.addresult(check_git_version(d))
     status.addresult(check_perl_modules(d))
     status.addresult(check_wsl(d))
+    status.addresult(check_userns())
 
     missing = ""
 
@@ -798,15 +779,14 @@ def check_sanity_everybuild(status, d):
     if 0 == os.getuid():
         raise_sanity_error("Do not use Bitbake as root.", d)
 
-    # Check the Python version, we now have a minimum of Python 3.4
+    # Check the Python version, we now have a minimum of Python 3.6
     import sys
-    if sys.hexversion < 0x030500F0:
-        status.addresult('The system requires at least Python 3.5 to run. Please update your Python interpreter.\n')
+    if sys.hexversion < 0x030600F0:
+        status.addresult('The system requires at least Python 3.6 to run. Please update your Python interpreter.\n')
 
     # Check the bitbake version meets minimum requirements
-    from distutils.version import LooseVersion
     minversion = d.getVar('BB_MIN_VERSION')
-    if (LooseVersion(bb.__version__) < LooseVersion(minversion)):
+    if bb.utils.vercmp_string_op(bb.__version__, minversion, "<"):
         status.addresult('Bitbake version %s is required and version %s was found\n' % (minversion, bb.__version__))
 
     sanity_check_locale(d)
@@ -911,7 +891,7 @@ def check_sanity_everybuild(status, d):
     mirror_vars = ['MIRRORS', 'PREMIRRORS', 'SSTATE_MIRRORS']
     protocols = ['http', 'ftp', 'file', 'https', \
                  'git', 'gitsm', 'hg', 'osc', 'p4', 'svn', \
-                 'bzr', 'cvs', 'npm', 'sftp', 'ssh', 's3' ]
+                 'bzr', 'cvs', 'npm', 'sftp', 'ssh', 's3', 'az', 'ftps', 'crate']
     for mirror_var in mirror_vars:
         mirrors = (d.getVar(mirror_var) or '').replace('\\n', ' ').split()
 
@@ -948,6 +928,11 @@ def check_sanity_everybuild(status, d):
                     # base directory path
                     mirror_base = urllib.parse.urlparse(mirror[:-1*len('/PATH')]).path
                     check_symlink(mirror_base, d)
+
+    # Check sstate mirrors aren't being used with a local hash server and no remote
+    hashserv = d.getVar("BB_HASHSERVE")
+    if d.getVar("SSTATE_MIRRORS") and hashserv and hashserv.startswith("unix://") and not d.getVar("BB_HASHSERVE_UPSTREAM"):
+        bb.warn("You are using a local hash equivalence server but have configured an sstate mirror. This will likely mean no sstate will match from the mirror. You may wish to disable the hash equivalence use (BB_HASHSERVE), or use a hash equivalence server alongside the sstate mirror.")
 
     # Check that TMPDIR hasn't changed location since the last time we were run
     tmpdir = d.getVar('TMPDIR')
@@ -1038,13 +1023,6 @@ def check_sanity(sanity_data):
     if status.messages != "":
         raise_sanity_error(sanity_data.expand(status.messages), sanity_data, status.network_error)
 
-# Create a copy of the datastore and finalise it to ensure appends and 
-# overrides are set - the datastore has yet to be finalised at ConfigParsed
-def copy_data(e):
-    sanity_data = bb.data.createCopy(e.data)
-    sanity_data.finalize()
-    return sanity_data
-
 addhandler config_reparse_eventhandler
 config_reparse_eventhandler[eventmask] = "bb.event.ConfigParsed"
 python config_reparse_eventhandler() {
@@ -1055,13 +1033,13 @@ addhandler check_sanity_eventhandler
 check_sanity_eventhandler[eventmask] = "bb.event.SanityCheck bb.event.NetworkTest"
 python check_sanity_eventhandler() {
     if bb.event.getName(e) == "SanityCheck":
-        sanity_data = copy_data(e)
+        sanity_data = bb.data.createCopy(e.data)
         check_sanity(sanity_data)
         if e.generateevents:
             sanity_data.setVar("SANITY_USE_EVENTS", "1")
         bb.event.fire(bb.event.SanityCheckPassed(), e.data)
     elif bb.event.getName(e) == "NetworkTest":
-        sanity_data = copy_data(e)
+        sanity_data = bb.data.createCopy(e.data)
         if e.generateevents:
             sanity_data.setVar("SANITY_USE_EVENTS", "1")
         bb.event.fire(bb.event.NetworkTestFailed() if check_connectivity(sanity_data) else bb.event.NetworkTestPassed(), e.data)
