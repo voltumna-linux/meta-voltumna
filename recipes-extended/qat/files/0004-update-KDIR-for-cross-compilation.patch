@@ -1,0 +1,39 @@
+From 2d73ce79ef1b05d11868c89f0095ce5920171593 Mon Sep 17 00:00:00 2001
+From: "Tan, Raymond" <raymond.tan@intel.com>
+Date: Wed, 30 May 2018 22:17:58 +0800
+Subject: [PATCH 04/11] update KDIR for cross-compilation
+
+Upstream-Status: Inappropriate [Configuration]
+
+This patch updates the kernel path for cross-compilation, avoid using the host
+machine path.
+
+Signed-off-by: Tan, Raymond <raymond.tan@intel.com>
+---
+ quickassist/qat/Makefile | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/quickassist/qat/Makefile b/quickassist/qat/Makefile
+index b31829a..2e490ba 100644
+--- a/quickassist/qat/Makefile
++++ b/quickassist/qat/Makefile
+@@ -63,13 +63,13 @@ $(info Compiling with Heartbeat Failure Simulation feature)
+ endif
+ 
+ ifeq ($(KERNELRELEASE),)
+-KDIR ?= $(INSTALL_MOD_PATH)/lib/modules/$(shell uname -r)/build
+-ifneq ($(shell if [ -e $(KDIR)/include/config/auto.conf ]; then echo 1; fi),1)
++KDIR ?= $(KERNEL_SOURCE_ROOT)
++ifneq ($(shell if [ -e $(KERNEL_BUILDDIR)/include/config/auto.conf ]; then echo 1; fi),1)
+   $(error ERROR: Kernel header files not found.  Install the appropriate \
+     kernel development package necessary for building external kernel modules \
+     or run 'make oldconfig && make modules_prepare' on kernel src to fix it)
+ endif
+-include $(KDIR)/include/config/auto.conf
++include $(KERNEL_BUILDDIR)/include/config/auto.conf
+ INSTALL_FW_PATH ?= $(INSTALL_MOD_PATH)/lib/firmware
+ 
+ default: modules
+-- 
+2.14.5
+

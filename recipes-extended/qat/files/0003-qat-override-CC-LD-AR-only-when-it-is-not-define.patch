@@ -1,0 +1,35 @@
+From 0a881aefea89006f21b82fcafc5a422b04fc0c9a Mon Sep 17 00:00:00 2001
+From: Rahul Kumar Gupta <rahul.kumarxx.gupta@intel.com>
+Date: Mon, 12 Apr 2021 08:40:47 +0800
+Subject: [PATCH 03/11] qat: override CC LD AR only when it is not define
+
+Upstream-Status: Pending
+
+To make sure that compiler linker and archiver will override only when
+it is not defined by the environment.
+
+Signed-off-by: Rahul Kumar Gupta <rahul.kumarxx.gupta@intel.com>
+---
+ quickassist/build_system/build_files/Core/ia.mk | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/quickassist/build_system/build_files/Core/ia.mk b/quickassist/build_system/build_files/Core/ia.mk
+index 230ee0f..f6fc755 100644
+--- a/quickassist/build_system/build_files/Core/ia.mk
++++ b/quickassist/build_system/build_files/Core/ia.mk
+@@ -67,9 +67,9 @@
+ # e.g. setenv CROSS_COMPILE x86_64-linux
+ ifdef CROSS_COMPILE
+ ifdef MACHINE
+-CC = $(CROSS_COMPILE)gcc
+-LD = $(CROSS_COMPILE)ld
+-AR = $(CROSS_COMPILE)ar
++CC ?= $(CROSS_COMPILE)gcc
++LD ?= $(CROSS_COMPILE)ld
++AR ?= $(CROSS_COMPILE)ar
+ else
+ $(error MACHINE is undefined. Please set your target i.e. x86_64 \
+ 	"-> setenv MACHINE x86_64 or export MACHINE=x86_64")
+-- 
+2.14.5
+
