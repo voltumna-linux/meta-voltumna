@@ -28,14 +28,17 @@ EXTRA_OEMAKE += " \
     ta-targets=ta_${OPTEE_ARCH} \
     O=${B} \
 "
+EXTRA_OEMAKE += " HOST_PREFIX=${HOST_PREFIX}"
+EXTRA_OEMAKE += " CROSS_COMPILE64=${HOST_PREFIX}"
 
-CFLAGS[unexport] = "1"
 LDFLAGS[unexport] = "1"
 CPPFLAGS[unexport] = "1"
 AS[unexport] = "1"
 LD[unexport] = "1"
 
-do_configure[noexec] = "1"
+do_compile:prepend() {
+	PLAT_LIBGCC_PATH=$(${CC} -print-libgcc-file-name)
+}
 
 do_compile() {
     oe_runmake -C ${S} all
@@ -46,6 +49,10 @@ do_install() {
     #install core in firmware
     install -d ${D}${nonarch_base_libdir}/firmware/
     install -m 644 ${B}/core/*.bin ${B}/core/tee.elf ${D}${nonarch_base_libdir}/firmware/
+
+    #install tas in optee_armtz
+    install -d ${D}${nonarch_base_libdir}/optee_armtz/
+    install -m 444 ${B}/ta/*/*.ta ${D}${nonarch_base_libdir}/optee_armtz
 }
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
@@ -53,17 +60,24 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 do_deploy() {
     install -d ${DEPLOYDIR}/${MLPREFIX}optee
     install -m 644 ${D}${nonarch_base_libdir}/firmware/* ${DEPLOYDIR}/${MLPREFIX}optee
+
+    install -d ${DEPLOYDIR}/${MLPREFIX}optee/ta
+    install -m 644 ${B}/ta/*/*.elf ${DEPLOYDIR}/${MLPREFIX}optee/ta
 }
 
 addtask deploy before do_build after do_install
 
 SYSROOT_DIRS += "${nonarch_base_libdir}/firmware"
 
+PACKAGES += "${PN}-ta"
 FILES:${PN} = "${nonarch_base_libdir}/firmware/"
+FILES:${PN}-ta = "${nonarch_base_libdir}/optee_armtz/*"
+
 
 # note: "textrel" is not triggered on all archs
 INSANE_SKIP:${PN} = "textrel"
+# Build paths are currently embedded
+INSANE_SKIP:${PN} += "buildpaths"
 INSANE_SKIP:${PN}-dev = "staticdev"
-
 INHIBIT_PACKAGE_STRIP = "1"
 

@@ -1,18 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/siemens/kas/master/kas/schema-kas.json
+
 header:
-  version: 11
+  version: 14
   includes:
     - ci/base.yml
 
 machine: qemuarm64-secureboot
 
-local_conf_header:
-  failing_tests: |
-    # software IO TLB: Cannot allocate buffer
-    DEFAULT_TEST_SUITES:remove = "parselogs"
-
 target:
   - core-image-base
-  - optee-examples
-  - optee-test
-  - optee-spdevkit
-  - optee-os-tadevkit
+
+local_conf_header:
+  optee: |
+    IMAGE_INSTALL:append = " optee-test optee-client optee-os-ta"
+    TEST_SUITES:append = " optee ftpm"

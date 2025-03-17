@@ -5,7 +5,7 @@ HOMEPAGE = "https://github.com/microsoft/ms-tpm-20-ref/"
 COMPATIBLE_MACHINE ?= "invalid"
 COMPATIBLE_MACHINE:qemuarm64 = "qemuarm64"
 COMPATIBLE_MACHINE:qemuarm64-secureboot = "qemuarm64"
-COMPATIBLE_MACHINE:qemu-generic-arm64 = "qemu-generic-arm64"
+COMPATIBLE_MACHINE:qemuarm-secureboot = "qemuarm"
 
 #FIXME - doesn't currently work with clang
 TOOLCHAIN = "gcc"
@@ -13,7 +13,7 @@ TOOLCHAIN = "gcc"
 inherit deploy python3native
 
 LICENSE = "MIT"
-LIC_FILES_CHKSUM = "file://${S}/LICENSE;md5=5a3925ece0806073ae9ebbb08ff6f11e"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=5a3925ece0806073ae9ebbb08ff6f11e"
 
 DEPENDS = "python3-pyelftools-native optee-os-tadevkit python3-cryptography-native "
 
@@ -21,8 +21,9 @@ FTPM_UUID="bc50d971-d4c9-42c4-82cb-343fb7f37896"
 
 SRC_URI = "gitsm://github.com/Microsoft/ms-tpm-20-ref;branch=main;protocol=https \
            file://0001-add-enum-to-ta-flags.patch"
+SRCREV = "e9fc7b89d865536c46deb63f9c7d0121a3ded49c"
 
-SRCREV = "d638536d0fe01acd5e39ffa1bd100b3da82d92c7"
+UPSTREAM_CHECK_COMMITS = "1"
 
 S = "${WORKDIR}/git"
 

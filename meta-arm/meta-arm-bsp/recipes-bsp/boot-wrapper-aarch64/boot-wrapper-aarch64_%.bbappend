@@ -1,4 +1,1 @@
-MACHINE_BOOT_WRAPPER_AARCH64_REQUIRE ?= ""
-MACHINE_BOOT_WRAPPER_AARCH64_REQUIRE:fvp-baser-aemv8r64 ?= "boot-wrapper-aarch64-fvp-baser-aemv8r64.inc"
-
-require ${MACHINE_BOOT_WRAPPER_AARCH64_REQUIRE}
+COMPATIBLE_MACHINE:fvp-base = "fvp-base"

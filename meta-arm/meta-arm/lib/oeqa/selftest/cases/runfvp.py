@@ -1,20 +1,22 @@
-import asyncio
 import os
+import json
 import pathlib
 import subprocess
 import tempfile
 import unittest.mock
 
 from oeqa.selftest.case import OESelftestTestCase
+from oeqa.core.decorator import OETestTag
 
 runfvp = pathlib.Path(__file__).parents[5] / "scripts" / "runfvp"
 testdir = pathlib.Path(__file__).parent / "tests"
 
+@OETestTag("meta-arm")
 class RunFVPTests(OESelftestTestCase):
     def setUpLocal(self):
         self.assertTrue(runfvp.exists())
 
-    def run_fvp(self, *args, should_succeed=True):
+    def run_fvp(self, *args, env=None, should_succeed=True):
         """
         Call runfvp passing any arguments. If check is True verify return stdout
         on exit code 0 or fail the test, otherwise return the CompletedProcess
@@ -23,7 +25,7 @@ class RunFVPTests(OESelftestTestCase):
         cli = [runfvp,] + list(args)
         print(f"Calling {cli}")
         # Set cwd to testdir so that any mock FVPs are found
-        ret = subprocess.run(cli, cwd=testdir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        ret = subprocess.run(cli, cwd=testdir, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
         if should_succeed:
             self.assertEqual(ret.returncode, 0, f"runfvp exit {ret.returncode}, output: {ret.stdout}")
             return ret.stdout
@@ -50,6 +52,11 @@ class RunFVPTests(OESelftestTestCase):
         # test-parameter sets one argument, add another manually
         self.run_fvp(testdir / "test-parameter.json", "--", "--parameter", "board.dog=woof")
 
+    def test_fvp_environment(self):
+        output = self.run_fvp(testdir / "test-environment.json", env={"DISPLAY": "test_fvp_environment:42"})
+        self.assertEqual(output.strip(), "Found expected DISPLAY")
+
+@OETestTag("meta-arm")
 class ConfFileTests(OESelftestTestCase):
     def test_no_exe(self):
         from fvp import conffile
@@ -79,31 +86,67 @@ class ConfFileTests(OESelftestTestCase):
             self.assertTrue("env" in conf)
 
 
+@OETestTag("meta-arm")
 class RunnerTests(OESelftestTestCase):
     def create_mock(self):
-        return unittest.mock.patch("asyncio.create_subprocess_exec")
+        return unittest.mock.patch("subprocess.Popen")
 
+    @unittest.mock.patch.dict(os.environ, {"PATH": "/path-42:/usr/sbin:/usr/bin:/sbin:/bin"})
     def test_start(self):
         from fvp import runner
         with self.create_mock() as m:
             fvp = runner.FVPRunner(self.logger)
-            asyncio.run(fvp.start({
-                "fvp-bindir": "/usr/bin",
-                "exe": "FVP_Binary",
-                "parameters": {'foo': 'bar'},
-                "data": ['data1'],
-                "applications": {'a1': 'file'},
-                "terminals": {},
-                "args": ['--extra-arg'],
-                "env": {"FOO": "BAR"}
-            }))
+            config = {"fvp-bindir": "/usr/bin",
+                    "exe": "FVP_Binary",
+                    "parameters": {'foo': 'bar'},
+                    "data": ['data1'],
+                    "applications": {'a1': 'file'},
+                    "terminals": {},
+                    "args": ['--extra-arg'],
+                    "env": {"FOO": "BAR"}
+                     }
 
-            m.assert_called_once_with('/usr/bin/FVP_Binary',
+            with tempfile.NamedTemporaryFile('w') as fvpconf:
+                json.dump(config, fvpconf)
+                fvpconf.flush()
+                cwd_mock = os.path.dirname(fvpconf.name)
+                fvp.start(fvpconf.name)
+
+            m.assert_called_once_with(['/usr/bin/FVP_Binary',
                 '--parameter', 'foo=bar',
                 '--data', 'data1',
                 '--application', 'a1=file',
-                '--extra-arg',
+                '--extra-arg'],
                 stdin=unittest.mock.ANY,
                 stdout=unittest.mock.ANY,
                 stderr=unittest.mock.ANY,
-                env={"FOO":"BAR"})
+                env={"FOO":"BAR", "PATH": "/path-42:/usr/sbin:/usr/bin:/sbin:/bin"},
+                cwd=cwd_mock)
+
+    @unittest.mock.patch.dict(os.environ, {"DISPLAY": ":42", "WAYLAND_DISPLAY": "wayland-42", "PATH": "/path-42:/usr/sbin:/usr/bin:/sbin:/bin"})
+    def test_env_passthrough(self):
+        from fvp import runner
+        with self.create_mock() as m:
+            fvp = runner.FVPRunner(self.logger)
+            config = {"fvp-bindir": "/usr/bin",
+                      "exe": "FVP_Binary",
+                      "parameters": {},
+                      "data": [],
+                      "applications": {},
+                      "terminals": {},
+                      "args": [],
+                      "env": {"FOO": "BAR"}
+                     }
+
+            with tempfile.NamedTemporaryFile('w') as fvpconf:
+                json.dump(config, fvpconf)
+                fvpconf.flush()
+                cwd_mock = os.path.dirname(fvpconf.name)
+                fvp.start(fvpconf.name)
+
+            m.assert_called_once_with(['/usr/bin/FVP_Binary'],
+                stdin=unittest.mock.ANY,
+                stdout=unittest.mock.ANY,
+                stderr=unittest.mock.ANY,
+                env={"DISPLAY":":42", "FOO": "BAR", "WAYLAND_DISPLAY": "wayland-42", "PATH": "/path-42:/usr/sbin:/usr/bin:/sbin:/bin"},
+                cwd=cwd_mock)

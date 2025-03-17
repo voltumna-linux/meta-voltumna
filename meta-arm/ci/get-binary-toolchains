@@ -1,20 +1,21 @@
 #!/bin/bash
 set -u -e
 
-BASENAME=gcc-arm
-VER=${VER:-10.3-2021.07}
+BASENAME=arm-gnu-toolchain
+VER=${VER:-13.2.Rel1}
 HOST_ARCH=${HOST_ARCH:-$(uname -m)}
 
-DOWNLOAD_DIR=$1
-TOOLCHAIN_DIR=$2
-TOOLCHAIN_LINK_DIR=$3
+# Use the standard kas container locations if nothing is passed into the script
+DOWNLOAD_DIR="${1:-/builds/persist/downloads/}"
+TOOLCHAIN_DIR="${2:-/builds/persist//toolchains/}"
+TOOLCHAIN_LINK_DIR="${3:-build/toolchains/}"
 
 # These should be already created by .gitlab-ci.yml, but do here if run outside of that env
 mkdir -p $DOWNLOAD_DIR $TOOLCHAIN_DIR $TOOLCHAIN_LINK_DIR
 
 download() {
 	TRIPLE=$1
-	URL=https://developer.arm.com/-/media/Files/downloads/gnu-a/$VER/binrel/$BASENAME-$VER-$HOST_ARCH-$TRIPLE.tar.xz
+	URL=https://developer.arm.com/-/media/Files/downloads/gnu/$VER/binrel/$BASENAME-$VER-$HOST_ARCH-$TRIPLE.tar.xz
 	wget -P $DOWNLOAD_DIR -nc $URL
 }
 

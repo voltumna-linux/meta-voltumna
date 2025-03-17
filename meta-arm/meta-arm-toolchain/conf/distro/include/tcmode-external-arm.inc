@@ -4,6 +4,9 @@
 
 EXTERNAL_TOOLCHAIN ?= "/usr/local/arm-binary-toolchain/${TARGET_ARCH}"
 
+# oe-core passes this by default because it assumes GCC 13. This can be removed when Arm GCC is 13.1+.
+DEBUG_PREFIX_MAP:remove = "-fcanon-prefix-map"
+
 TOOLCHAIN_PATH_ADD = "${EXTERNAL_TOOLCHAIN}/bin:"
 PATH =. "${TOOLCHAIN_PATH_ADD}"
 
@@ -11,6 +14,11 @@ EAT_TARGET_SYS:arm ?= "${@ 'arm-none-linux-gnueabihf' if os.path.exists('${EXTER
 EAT_TARGET_SYS:aarch64 ?= "${@ 'aarch64-none-linux-gnu' if os.path.exists('${EXTERNAL_TOOLCHAIN}/bin/aarch64-none-linux-gnu-gcc') else 'aarch64-linux-gnu'}"
 EAT_TARGET_SYS = "${TARGET_SYS}"
 TARGET_PREFIX = "${EAT_TARGET_SYS}-"
+
+EXTERNAL_TOOLCHAIN_LIBDIR = "${@bb.utils.contains('DISTRO_FEATURES', 'usrmerge', '/usr/lib', '/lib', d)}"
+EXTERNAL_TOOLCHAIN_DYN_LINKER_PATH:arm ?= " -Wl,--dynamic-linker=${EXTERNAL_TOOLCHAIN_LIBDIR}/ld-linux-armhf.so.3"
+EXTERNAL_TOOLCHAIN_DYN_LINKER_PATH:aarch64 ?= " -Wl,--dynamic-linker=${EXTERNAL_TOOLCHAIN_LIBDIR}/ld-linux-aarch64.so.1"
+TARGET_LDFLAGS:append:class-target = "${EXTERNAL_TOOLCHAIN_DYN_LINKER_PATH}"
 
 EAT_LIBDIR:arm = "lib"
 EAT_LIBDIR:aarch64 = "lib64"
@@ -74,12 +82,13 @@ python toolchain_metadata_setup () {
 
     d = e.data
     l = d.createCopy()
-    l.finalize()
-    oe_import(l)
 
     external_toolchain = l.getVar('EXTERNAL_TOOLCHAIN', True)
     if not external_toolchain or external_toolchain == 'UNDEFINED':
         bb.fatal("Error: EXTERNAL_TOOLCHAIN must be set to the path to your arm toolchain")
+
+    if not os.path.isabs(external_toolchain):
+        bb.fatal("Error: EXTERNAL_TOOLCHAIN path '%s' must be absolute path" % external_toolchain)
 
     if not os.path.exists(external_toolchain):
         bb.fatal("Error: EXTERNAL_TOOLCHAIN path '%s' does not exist" % external_toolchain)
@@ -99,7 +108,6 @@ def populate_toolchain_links(d):
     from glob import glob
 
     d = d.createCopy()
-    d.finalize()
 
     pattern = bb.data.expand('${EXTERNAL_TOOLCHAIN}/bin/${TARGET_PREFIX}*', d)
     files = glob(pattern)

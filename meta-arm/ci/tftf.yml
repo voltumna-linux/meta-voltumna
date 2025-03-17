@@ -1,7 +1,10 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/siemens/kas/master/kas/schema-kas.json
+
 header:
-  version: 9
+  version: 14
 
 local_conf_header:
   tftf: |
     TFA_UBOOT = "0"
+    TFA_UEFI = "0"
     TFTF_TESTS = "1"
