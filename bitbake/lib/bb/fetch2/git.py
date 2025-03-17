@@ -147,6 +147,7 @@ class Git(FetchMethod):
             # github stopped supporting git protocol
             # https://github.blog/2021-09-01-improving-git-protocol-security-github/#no-more-unauthenticated-git
             ud.proto = "https"
+            bb.warn("URL: %s uses git protocol which is no longer supported by github. Please change to ;protocol=https in the url." % ud.url)
 
         if not ud.proto in ('git', 'file', 'ssh', 'http', 'https', 'rsync'):
             raise bb.fetch2.ParameterError("Invalid protocol type", ud.url)
@@ -170,11 +171,18 @@ class Git(FetchMethod):
             ud.nocheckout = 1
   
         ud.unresolvedrev = {}
-        branches = ud.parm.get("branch", "master").split(',')
+        branches = ud.parm.get("branch", "").split(',')
+        if branches == [""] and not ud.nobranch:
+            bb.warn("URL: %s does not set any branch parameter. The future default branch used by tools and repositories is uncertain and we will therefore soon require this is set in all git urls." % ud.url)
+            branches = ["master"]
         if len(branches) != len(ud.names):
             raise bb.fetch2.ParameterError("The number of name and branch parameters is not balanced", ud.url)
 
-        ud.cloneflags = "-s -n"
+        ud.noshared = d.getVar("BB_GIT_NOSHARED") == "1"
+
+        ud.cloneflags = "-n"
+        if not ud.noshared:
+            ud.cloneflags += " -s"
         if ud.bareclone:
             ud.cloneflags += " --mirror"
 
@@ -233,7 +241,7 @@ class Git(FetchMethod):
             for name in ud.names:
                 ud.unresolvedrev[name] = 'HEAD'
 
-        ud.basecmd = d.getVar("FETCHCMD_git") or "git -c core.fsyncobjectfiles=0"
+        ud.basecmd = d.getVar("FETCHCMD_git") or "git -c core.fsyncobjectfiles=0 -c gc.autoDetach=false -c core.pager=cat"
 
         write_tarballs = d.getVar("BB_GENERATE_MIRROR_TARBALLS") or "0"
         ud.write_tarballs = write_tarballs != "0" or ud.rebaseable
@@ -299,7 +307,10 @@ class Git(FetchMethod):
         return ud.clonedir
 
     def need_update(self, ud, d):
-        return self.clonedir_need_update(ud, d) or self.shallow_tarball_need_update(ud) or self.tarball_need_update(ud)
+        return self.clonedir_need_update(ud, d) \
+                or self.shallow_tarball_need_update(ud) \
+                or self.tarball_need_update(ud) \
+                or self.lfs_need_update(ud, d)
 
     def clonedir_need_update(self, ud, d):
         if not os.path.exists(ud.clonedir):
@@ -308,6 +319,15 @@ class Git(FetchMethod):
             return True
         for name in ud.names:
             if not self._contains_ref(ud, d, name, ud.clonedir):
+                return True
+        return False
+
+    def lfs_need_update(self, ud, d):
+        if self.clonedir_need_update(ud, d):
+            return True
+
+        for name in ud.names:
+            if not self._lfs_objects_downloaded(ud, d, name, ud.clonedir):
                 return True
         return False
 
@@ -351,9 +371,13 @@ class Git(FetchMethod):
 
         # If the repo still doesn't exist, fallback to cloning it
         if not os.path.exists(ud.clonedir):
-            # We do this since git will use a "-l" option automatically for local urls where possible
+            # We do this since git will use a "-l" option automatically for local urls where possible,
+            # but it doesn't work when git/objects is a symlink, only works when it is a directory.
             if repourl.startswith("file://"):
-                repourl = repourl[7:]
+                repourl_path = repourl[7:]
+                objects = os.path.join(repourl_path, 'objects')
+                if os.path.isdir(objects) and not os.path.islink(objects):
+                    repourl = repourl_path
             clone_cmd = "LANG=C %s clone --bare --mirror %s %s --progress" % (ud.basecmd, shlex.quote(repourl), ud.clonedir)
             if ud.proto.lower() != 'file':
                 bb.fetch2.check_network_access(d, clone_cmd, ud.url)
@@ -394,9 +418,9 @@ class Git(FetchMethod):
             if missing_rev:
                 raise bb.fetch2.FetchError("Unable to find revision %s even from upstream" % missing_rev)
 
-        if self._contains_lfs(ud, d, ud.clonedir) and self._need_lfs(ud):
+        if self.lfs_need_update(ud, d):
             # Unpack temporary working copy, use it to run 'git checkout' to force pre-fetching
-            # of all LFS blobs needed at the the srcrev.
+            # of all LFS blobs needed at the srcrev.
             #
             # It would be nice to just do this inline here by running 'git-lfs fetch'
             # on the bare clonedir, but that operation requires a working copy on some
@@ -459,7 +483,10 @@ class Git(FetchMethod):
 
             logger.info("Creating tarball of git repository")
             with create_atomic(ud.fullmirror) as tfile:
-                runfetchcmd("tar -czf %s ." % tfile, d, workdir=ud.clonedir)
+                mtime = runfetchcmd("git log --all -1 --format=%cD", d,
+                        quiet=True, workdir=ud.clonedir)
+                runfetchcmd("tar -czf %s --owner oe:0 --group oe:0 --mtime \"%s\" ."
+                        % (tfile, mtime), d, workdir=ud.clonedir)
             runfetchcmd("touch %s.done" % ud.fullmirror, d)
 
     def clone_shallow_local(self, ud, dest, d):
@@ -521,13 +548,24 @@ class Git(FetchMethod):
     def unpack(self, ud, destdir, d):
         """ unpack the downloaded src to destdir"""
 
-        subdir = ud.parm.get("subpath", "")
-        if subdir != "":
-            readpathspec = ":%s" % subdir
-            def_destsuffix = "%s/" % os.path.basename(subdir.rstrip('/'))
-        else:
-            readpathspec = ""
-            def_destsuffix = "git/"
+        subdir = ud.parm.get("subdir")
+        subpath = ud.parm.get("subpath")
+        readpathspec = ""
+        def_destsuffix = "git/"
+
+        if subpath:
+            readpathspec = ":%s" % subpath
+            def_destsuffix = "%s/" % os.path.basename(subpath.rstrip('/'))
+
+        if subdir:
+            # If 'subdir' param exists, create a dir and use it as destination for unpack cmd
+            if os.path.isabs(subdir):
+                if not os.path.realpath(subdir).startswith(os.path.realpath(destdir)):
+                    raise bb.fetch2.UnpackError("subdir argument isn't a subdirectory of unpack root %s" % destdir, ud.url)
+                destdir = subdir
+            else:
+                destdir = os.path.join(destdir, subdir)
+            def_destsuffix = ""
 
         destsuffix = ud.parm.get("destsuffix", def_destsuffix)
         destdir = ud.destdir = os.path.join(destdir, destsuffix)
@@ -574,7 +612,7 @@ class Git(FetchMethod):
                 bb.note("Repository %s has LFS content but it is not being fetched" % (repourl))
 
         if not ud.nocheckout:
-            if subdir != "":
+            if subpath:
                 runfetchcmd("%s read-tree %s%s" % (ud.basecmd, ud.revisions[ud.names[0]], readpathspec), d,
                             workdir=destdir)
                 runfetchcmd("%s checkout-index -q -f -a" % ud.basecmd, d, workdir=destdir)
@@ -623,6 +661,35 @@ class Git(FetchMethod):
             raise bb.fetch2.FetchError("The command '%s' gave output with more then 1 line unexpectedly, output: '%s'" % (cmd, output))
         return output.split()[0] != "0"
 
+    def _lfs_objects_downloaded(self, ud, d, name, wd):
+        """
+        Verifies whether the LFS objects for requested revisions have already been downloaded
+        """
+        # Bail out early if this repository doesn't use LFS
+        if not self._need_lfs(ud) or not self._contains_lfs(ud, d, wd):
+            return True
+
+        # The Git LFS specification specifies ([1]) the LFS folder layout so it should be safe to check for file
+        # existence.
+        # [1] https://github.com/git-lfs/git-lfs/blob/main/docs/spec.md#intercepting-git
+        cmd = "%s lfs ls-files -l %s" \
+                % (ud.basecmd, ud.revisions[name])
+        output = runfetchcmd(cmd, d, quiet=True, workdir=wd).rstrip()
+        # Do not do any further matching if no objects are managed by LFS
+        if not output:
+            return True
+
+        # Match all lines beginning with the hexadecimal OID
+        oid_regex = re.compile("^(([a-fA-F0-9]{2})([a-fA-F0-9]{2})[A-Fa-f0-9]+)")
+        for line in output.split("\n"):
+            oid = re.search(oid_regex, line)
+            if not oid:
+                bb.warn("git lfs ls-files output '%s' did not match expected format." % line)
+            if not os.path.exists(os.path.join(wd, "lfs", "objects", oid.group(2), oid.group(3), oid.group(1))):
+                return False
+
+        return True
+
     def _need_lfs(self, ud):
         return ud.parm.get("lfs", "1") == "1"
 
@@ -664,6 +731,11 @@ class Git(FetchMethod):
         """
         Return the repository URL
         """
+        # Note that we do not support passwords directly in the git urls. There are several
+        # reasons. SRC_URI can be written out to things like buildhistory and people don't
+        # want to leak passwords like that. Its also all too easy to share metadata without 
+        # removing the password. ssh keys, ~/.netrc and ~/.ssh/config files can be used as
+        # alternatives so we will not take patches adding password support here.
         if ud.user:
             username = ud.user + '@'
         else:
@@ -708,6 +780,12 @@ class Git(FetchMethod):
         """
         Compute the HEAD revision for the url
         """
+        if not d.getVar("__BBSEENSRCREV"):
+            raise bb.fetch2.FetchError("Recipe uses a floating tag/branch '%s' for repo '%s' without a fixed SRCREV yet doesn't call bb.fetch2.get_srcrev() (use SRCPV in PV for OE)." % (ud.unresolvedrev[name], ud.host+ud.path))
+
+        # Ensure we mark as not cached
+        bb.fetch2.get_autorev(d)
+
         output = self._lsremote(ud, d, "")
         # Tags of the form ^{} may not work, need to fallback to other form
         if ud.unresolvedrev[name][:5] == "refs/" or ud.usehead:
@@ -783,9 +861,8 @@ class Git(FetchMethod):
             commits = None
         else:
             if not os.path.exists(rev_file) or not os.path.getsize(rev_file):
-                from pipes import quote
                 commits = bb.fetch2.runfetchcmd(
-                        "git rev-list %s -- | wc -l" % quote(rev),
+                        "git rev-list %s -- | wc -l" % shlex.quote(rev),
                         d, quiet=True).strip().lstrip('0')
                 if commits:
                     open(rev_file, "w").write("%d\n" % int(commits))

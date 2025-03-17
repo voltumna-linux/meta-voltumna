@@ -1,4 +1,6 @@
 #
+# Copyright BitBake Contributors
+#
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
@@ -195,6 +197,26 @@ class BufferedLogger(Logger):
                 self.target.handle(record)
         self.buffer = []
 
+class DummyLogger():
+    def flush(self):
+        return
+
+
+# Starting with Python 3.8, the ast module exposes all string nodes as a
+# Constant. While earlier versions of the module also have the Constant type
+# those use the Str type to encapsulate strings.
+if sys.version_info < (3, 8):
+    def node_str_value(node):
+        if isinstance(node, ast.Str):
+            return node.s
+        return None
+else:
+    def node_str_value(node):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+        return None
+
+
 class PythonParser():
     getvars = (".getVar", ".appendVar", ".prependVar", "oe.utils.conditional")
     getvarflags = (".getVarFlag", ".appendVarFlag", ".prependVarFlag")
@@ -212,26 +234,29 @@ class PythonParser():
             funcstr = codegen.to_source(func)
             argstr = codegen.to_source(arg)
         except TypeError:
-            self.log.debug(2, 'Failed to convert function and argument to source form')
+            self.log.debug2('Failed to convert function and argument to source form')
         else:
-            self.log.debug(1, self.unhandled_message % (funcstr, argstr))
+            self.log.debug(self.unhandled_message % (funcstr, argstr))
 
     def visit_Call(self, node):
         name = self.called_node_name(node.func)
         if name and (name.endswith(self.getvars) or name.endswith(self.getvarflags) or name in self.containsfuncs or name in self.containsanyfuncs):
-            if isinstance(node.args[0], ast.Str):
-                varname = node.args[0].s
-                if name in self.containsfuncs and isinstance(node.args[1], ast.Str):
+            varname = node_str_value(node.args[0])
+            if varname is not None:
+                arg_str_value = None
+                if len(node.args) >= 2:
+                    arg_str_value = node_str_value(node.args[1])
+                if name in self.containsfuncs and arg_str_value is not None:
                     if varname not in self.contains:
                         self.contains[varname] = set()
-                    self.contains[varname].add(node.args[1].s)
-                elif name in self.containsanyfuncs and isinstance(node.args[1], ast.Str):
+                    self.contains[varname].add(arg_str_value)
+                elif name in self.containsanyfuncs and arg_str_value is not None:
                     if varname not in self.contains:
                         self.contains[varname] = set()
-                    self.contains[varname].update(node.args[1].s.split())
+                    self.contains[varname].update(arg_str_value.split())
                 elif name.endswith(self.getvarflags):
-                    if isinstance(node.args[1], ast.Str):
-                        self.references.add('%s[%s]' % (varname, node.args[1].s))
+                    if arg_str_value is not None:
+                        self.references.add('%s[%s]' % (varname, arg_str_value))
                     else:
                         self.warn(node.func, node.args[1])
                 else:
@@ -239,10 +264,10 @@ class PythonParser():
             else:
                 self.warn(node.func, node.args[0])
         elif name and name.endswith(".expand"):
-            if isinstance(node.args[0], ast.Str):
-                value = node.args[0].s
+            arg_str_value = node_str_value(node.args[0])
+            if arg_str_value is not None:
                 d = bb.data.init()
-                parser = d.expandWithRefs(value, self.name)
+                parser = d.expandWithRefs(arg_str_value, self.name)
                 self.references |= parser.references
                 self.execs |= parser.execs
                 for varname in parser.contains:
@@ -250,8 +275,9 @@ class PythonParser():
                         self.contains[varname] = set()
                     self.contains[varname] |= parser.contains[varname]
         elif name in self.execfuncs:
-            if isinstance(node.args[0], ast.Str):
-                self.var_execs.add(node.args[0].s)
+            arg_str_value = node_str_value(node.args[0])
+            if arg_str_value is not None:
+                self.var_execs.add(arg_str_value)
             else:
                 self.warn(node.func, node.args[0])
         elif name and isinstance(node.func, (ast.Name, ast.Attribute)):
@@ -276,7 +302,9 @@ class PythonParser():
         self.contains = {}
         self.execs = set()
         self.references = set()
-        self.log = BufferedLogger('BitBake.Data.PythonParser', logging.DEBUG, log)
+        self._log = log
+        # Defer init as expensive
+        self.log = DummyLogger()
 
         self.unhandled_message = "in call of %s, argument '%s' is not a string literal"
         self.unhandled_message = "while parsing %s, %s" % (name, self.unhandled_message)
@@ -303,6 +331,9 @@ class PythonParser():
                 self.contains[i] = set(codeparsercache.pythoncacheextras[h].contains[i])
             return
 
+        # Need to parse so take the hit on the real log buffer
+        self.log = BufferedLogger('BitBake.Data.PythonParser', logging.DEBUG, self._log)
+
         # We can't add to the linenumbers for compile, we can pad to the correct number of blank lines though
         node = "\n" * int(lineno) + node
         code = compile(check_indent(str(node)), filename, "exec",
@@ -321,7 +352,11 @@ class ShellParser():
         self.funcdefs = set()
         self.allexecs = set()
         self.execs = set()
-        self.log = BufferedLogger('BitBake.Data.%s' % name, logging.DEBUG, log)
+        self._name = name
+        self._log = log
+        # Defer init as expensive
+        self.log = DummyLogger()
+
         self.unhandled_template = "unable to handle non-literal command '%s'"
         self.unhandled_template = "while parsing %s, %s" % (name, self.unhandled_template)
 
@@ -339,6 +374,9 @@ class ShellParser():
         if h in codeparsercache.shellcacheextras:
             self.execs = set(codeparsercache.shellcacheextras[h].execs)
             return self.execs
+
+        # Need to parse so take the hit on the real log buffer
+        self.log = BufferedLogger('BitBake.Data.%s' % self._name, logging.DEBUG, self._log)
 
         self._parse_shell(value)
         self.execs = set(cmd for cmd in self.allexecs if cmd not in self.funcdefs)
@@ -450,7 +488,7 @@ class ShellParser():
 
                 cmd = word[1]
                 if cmd.startswith("$"):
-                    self.log.debug(1, self.unhandled_template % cmd)
+                    self.log.debug(self.unhandled_template % cmd)
                 elif cmd == "eval":
                     command = " ".join(word for _, word in words[1:])
                     self._parse_shell(command)

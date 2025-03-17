@@ -40,7 +40,7 @@ class HeartbeatEvent(Event):
     """Triggered at regular time intervals of 10 seconds. Other events can fire much more often
        (runQueueTaskStarted when there are many short tasks) or not at all for long periods
        of time (again runQueueTaskStarted, when there is just one long-running task), so this
-       event is more suitable for doing some task-independent work occassionally."""
+       event is more suitable for doing some task-independent work occasionally."""
     def __init__(self, time):
         Event.__init__(self)
         self.time = time
@@ -118,6 +118,8 @@ def fire_class_handlers(event, d):
             if _eventfilter:
                 if not _eventfilter(name, handler, event, d):
                     continue
+            if d is not None and not name in (d.getVar("__BBHANDLERS_MC") or set()):
+                continue
             execute_handler(name, handler, event, d)
 
 ui_queue = []
@@ -130,8 +132,14 @@ def print_ui_queue():
     if not _uiready:
         from bb.msg import BBLogFormatter
         # Flush any existing buffered content
-        sys.stdout.flush()
-        sys.stderr.flush()
+        try:
+            sys.stdout.flush()
+        except:
+            pass
+        try:
+            sys.stderr.flush()
+        except:
+            pass
         stdout = logging.StreamHandler(sys.stdout)
         stderr = logging.StreamHandler(sys.stderr)
         formatter = BBLogFormatter("%(levelname)s: %(message)s")
@@ -227,11 +235,19 @@ def fire_from_worker(event, d):
     fire_ui_handlers(event, d)
 
 noop = lambda _: None
-def register(name, handler, mask=None, filename=None, lineno=None):
+def register(name, handler, mask=None, filename=None, lineno=None, data=None):
     """Register an Event handler"""
+
+    if data is not None and data.getVar("BB_CURRENT_MC"):
+        mc = data.getVar("BB_CURRENT_MC")
+        name = '%s%s' % (mc.replace('-', '_'), name)
 
     # already registered
     if name in _handlers:
+        if data is not None:
+            bbhands_mc = (data.getVar("__BBHANDLERS_MC") or set())
+            bbhands_mc.add(name)
+            data.setVar("__BBHANDLERS_MC", bbhands_mc)
         return AlreadyRegistered
 
     if handler is not None:
@@ -268,16 +284,32 @@ def register(name, handler, mask=None, filename=None, lineno=None):
                     _event_handler_map[m] = {}
                 _event_handler_map[m][name] = True
 
+        if data is not None:
+            bbhands_mc = (data.getVar("__BBHANDLERS_MC") or set())
+            bbhands_mc.add(name)
+            data.setVar("__BBHANDLERS_MC", bbhands_mc)
+
         return Registered
 
-def remove(name, handler):
+def remove(name, handler, data=None):
     """Remove an Event handler"""
+    if data is not None:
+        if data.getVar("BB_CURRENT_MC"):
+            mc = data.getVar("BB_CURRENT_MC")
+            name = '%s%s' % (mc.replace('-', '_'), name)
+
     _handlers.pop(name)
     if name in _catchall_handlers:
         _catchall_handlers.pop(name)
     for event in _event_handler_map.keys():
         if name in _event_handler_map[event]:
             _event_handler_map[event].pop(name)
+
+    if data is not None:
+        bbhands_mc = (data.getVar("__BBHANDLERS_MC") or set())
+        if name in bbhands_mc:
+            bbhands_mc.remove(name)
+            data.setVar("__BBHANDLERS_MC", bbhands_mc)
 
 def get_handlers():
     return _handlers
@@ -389,6 +421,10 @@ class RecipeEvent(Event):
 class RecipePreFinalise(RecipeEvent):
     """ Recipe Parsing Complete but not yet finalised"""
 
+class RecipePostKeyExpansion(RecipeEvent):
+    """ Recipe Parsing Complete but not yet finalised"""
+
+
 class RecipeTaskPreProcess(RecipeEvent):
     """
     Recipe Tasks about to be finalised
@@ -456,7 +492,7 @@ class BuildCompleted(BuildBase, OperationCompleted):
         BuildBase.__init__(self, n, p, failures)
 
 class DiskFull(Event):
-    """Disk full case build aborted"""
+    """Disk full case build halted"""
     def __init__(self, dev, type, freespace, mountpoint):
         Event.__init__(self)
         self._dev = dev
@@ -640,6 +676,17 @@ class ReachableStamps(Event):
         Event.__init__(self)
         self.stamps = stamps
 
+class StaleSetSceneTasks(Event):
+    """
+    An event listing setscene tasks which are 'stale' and will
+    be rerun. The metadata may use to clean up stale data.
+    tasks is a mapping of tasks and matching stale stamps.
+    """
+
+    def __init__(self, tasks):
+        Event.__init__(self)
+        self.tasks = tasks
+
 class FilesMatchingFound(Event):
     """
     Event when a list of files matching the supplied pattern has
@@ -723,7 +770,7 @@ class LogHandler(logging.Handler):
 class MetadataEvent(Event):
     """
     Generic event that target for OE-Core classes
-    to report information during asynchrous execution
+    to report information during asynchronous execution
     """
     def __init__(self, eventtype, eventdata):
         Event.__init__(self)

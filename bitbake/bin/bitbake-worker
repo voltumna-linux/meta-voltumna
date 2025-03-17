@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 #
+# Copyright BitBake Contributors
+#
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
 import os
 import sys
 import warnings
+warnings.simplefilter("default")
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(sys.argv[0])), 'lib'))
 from bb import fetch2
 import logging
@@ -16,11 +19,12 @@ import signal
 import pickle
 import traceback
 import queue
+import shlex
+import subprocess
 from multiprocessing import Lock
 from threading import Thread
 
-if sys.getfilesystemencoding() != "utf-8":
-    sys.exit("Please use a locale setting which supports UTF-8 (such as LANG=en_US.UTF-8).\nPython can't change the filesystem locale after loading so we need a UTF-8 when Python starts or things won't work.")
+bb.utils.check_system_locale()
 
 # Users shouldn't be running this code directly
 if len(sys.argv) != 2 or not sys.argv[1].startswith("decafbad"):
@@ -87,19 +91,19 @@ def worker_fire_prepickled(event):
 worker_thread_exit = False
 
 def worker_flush(worker_queue):
-    worker_queue_int = b""
+    worker_queue_int = bytearray()
     global worker_pipe, worker_thread_exit
 
     while True:
         try:
-            worker_queue_int = worker_queue_int + worker_queue.get(True, 1)
+            worker_queue_int.extend(worker_queue.get(True, 1))
         except queue.Empty:
             pass
         while (worker_queue_int or not worker_queue.empty()):
             try:
                 (_, ready, _) = select.select([], [worker_pipe], [], 1)
                 if not worker_queue.empty():
-                    worker_queue_int = worker_queue_int + worker_queue.get()
+                    worker_queue_int.extend(worker_queue.get())
                 written = os.write(worker_pipe, worker_queue_int)
                 worker_queue_int = worker_queue_int[written:]
             except (IOError, OSError) as e:
@@ -118,7 +122,9 @@ def worker_child_fire(event, d):
     data = b"<event>" + pickle.dumps(event) + b"</event>"
     try:
         worker_pipe_lock.acquire()
-        worker_pipe.write(data)
+        while(len(data)):
+            written = worker_pipe.write(data)
+            data = data[written:]
         worker_pipe_lock.release()
     except IOError:
         sigterm_handler(None, None)
@@ -143,21 +149,31 @@ def fork_off_task(cfg, data, databuilder, workerdata, fn, task, taskname, taskha
     # a fork() or exec*() activates PSEUDO...
 
     envbackup = {}
+    fakeroot = False
     fakeenv = {}
     umask = None
 
+    uid = os.getuid()
+    gid = os.getgid()
+
+
     taskdep = workerdata["taskdeps"][fn]
     if 'umask' in taskdep and taskname in taskdep['umask']:
+        umask = taskdep['umask'][taskname]
+    elif workerdata["umask"]:
+        umask = workerdata["umask"]
+    if umask:
         # umask might come in as a number or text string..
         try:
-             umask = int(taskdep['umask'][taskname],8)
+             umask = int(umask, 8)
         except TypeError:
-             umask = taskdep['umask'][taskname]
+             pass
 
     dry_run = cfg.dry_run or dry_run_exec
 
     # We can't use the fakeroot environment in a dry run as it possibly hasn't been built
     if 'fakeroot' in taskdep and taskname in taskdep['fakeroot'] and not dry_run:
+        fakeroot = True
         envvars = (workerdata["fakerootenv"][fn] or "").split()
         for key, value in (var.split('=') for var in envvars):
             envbackup[key] = os.environ.get(key)
@@ -167,7 +183,7 @@ def fork_off_task(cfg, data, databuilder, workerdata, fn, task, taskname, taskha
         fakedirs = (workerdata["fakerootdirs"][fn] or "").split()
         for p in fakedirs:
             bb.utils.mkdirhier(p)
-        logger.debug(2, 'Running %s:%s under fakeroot, fakedirs: %s' %
+        logger.debug2('Running %s:%s under fakeroot, fakedirs: %s' %
                         (fn, taskname, ', '.join(fakedirs)))
     else:
         envvars = (workerdata["fakerootnoenv"][fn] or "").split()
@@ -226,6 +242,7 @@ def fork_off_task(cfg, data, databuilder, workerdata, fn, task, taskname, taskha
                 the_data = databuilder.mcdata[mc]
                 the_data.setVar("BB_WORKERCONTEXT", "1")
                 the_data.setVar("BB_TASKDEPDATA", taskdepdata)
+                the_data.setVar('BB_CURRENTTASK', taskname.replace("do_", ""))
                 if cfg.limited_deps:
                     the_data.setVar("BB_LIMITEDDEPS", "1")
                 the_data.setVar("BUILDNAME", workerdata["buildname"])
@@ -244,6 +261,13 @@ def fork_off_task(cfg, data, databuilder, workerdata, fn, task, taskname, taskha
                 the_data.setVar('BB_UNIHASH', unihash)
 
                 bb.utils.set_process_name("%s:%s" % (the_data.getVar("PN"), taskname.replace("do_", "")))
+
+                if not the_data.getVarFlag(taskname, 'network', False):
+                    if bb.utils.is_local_uid(uid):
+                        logger.debug("Attempting to disable network for %s" % taskname)
+                        bb.utils.disable_network(uid, gid)
+                    else:
+                        logger.debug("Skipping disable network for %s since %s is not a local uid." % (taskname, uid))
 
                 # exported_vars() returns a generator which *cannot* be passed to os.environ.update() 
                 # successfully. We also need to unset anything from the environment which shouldn't be there 
@@ -276,7 +300,13 @@ def fork_off_task(cfg, data, databuilder, workerdata, fn, task, taskname, taskha
             try:
                 if dry_run:
                     return 0
-                return bb.build.exec_task(fn, taskname, the_data, cfg.profile)
+                try:
+                    ret = bb.build.exec_task(fn, taskname, the_data, cfg.profile)
+                finally:
+                    if fakeroot:
+                        fakerootcmd = shlex.split(the_data.getVar("FAKEROOTCMD"))
+                        subprocess.run(fakerootcmd + ['-S'], check=True, stdout=subprocess.PIPE)
+                return ret
             except:
                 os._exit(1)
         if not profiling:
@@ -308,12 +338,12 @@ class runQueueWorkerPipe():
         if pipeout:
             pipeout.close()
         bb.utils.nonblockingfd(self.input)
-        self.queue = b""
+        self.queue = bytearray()
 
     def read(self):
         start = len(self.queue)
         try:
-            self.queue = self.queue + (self.input.read(102400) or b"")
+            self.queue.extend(self.input.read(102400) or b"")
         except (OSError, IOError) as e:
             if e.errno != errno.EAGAIN:
                 raise
@@ -321,7 +351,9 @@ class runQueueWorkerPipe():
         end = len(self.queue)
         index = self.queue.find(b"</event>")
         while index != -1:
-            worker_fire_prepickled(self.queue[:index+8])
+            msg = self.queue[:index+8]
+            assert msg.startswith(b"<event>") and msg.count(b"<event>") == 1
+            worker_fire_prepickled(msg)
             self.queue = self.queue[index+8:]
             index = self.queue.find(b"</event>")
         return (end > start)
@@ -339,7 +371,7 @@ class BitbakeWorker(object):
     def __init__(self, din):
         self.input = din
         bb.utils.nonblockingfd(self.input)
-        self.queue = b""
+        self.queue = bytearray()
         self.cookercfg = None
         self.databuilder = None
         self.data = None
@@ -373,7 +405,7 @@ class BitbakeWorker(object):
                     if len(r) == 0:
                         # EOF on pipe, server must have terminated
                         self.sigterm_exception(signal.SIGTERM, None)
-                    self.queue = self.queue + r
+                    self.queue.extend(r)
                 except (OSError, IOError):
                     pass
             if len(self.queue):
@@ -398,14 +430,18 @@ class BitbakeWorker(object):
         if self.queue.startswith(b"<" + item + b">"):
             index = self.queue.find(b"</" + item + b">")
             while index != -1:
-                func(self.queue[(len(item) + 2):index])
+                try:
+                    func(self.queue[(len(item) + 2):index])
+                except pickle.UnpicklingError:
+                    workerlog_write("Unable to unpickle data: %s\n" % ":".join("{:02x}".format(c) for c in self.queue))
+                    raise
                 self.queue = self.queue[(index + len(item) + 3):]
                 index = self.queue.find(b"</" + item + b">")
 
     def handle_cookercfg(self, data):
         self.cookercfg = pickle.loads(data)
         self.databuilder = bb.cookerdata.CookerDataBuilder(self.cookercfg, worker=True)
-        self.databuilder.parseBaseConfiguration()
+        self.databuilder.parseBaseConfiguration(worker=True)
         self.data = self.databuilder.data
 
     def handle_extraconfigdata(self, data):

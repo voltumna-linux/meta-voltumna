@@ -13,6 +13,7 @@ import errno
 import logging
 import bb
 import bb.msg
+import locale
 import multiprocessing
 import fcntl
 import importlib
@@ -27,6 +28,9 @@ import errno
 import signal
 import collections
 import copy
+import ctypes
+import random
+import tempfile
 from subprocess import getstatusoutput
 from contextlib import contextmanager
 from ctypes import cdll
@@ -130,6 +134,7 @@ def vercmp(ta, tb):
     return r
 
 def vercmp_string(a, b):
+    """ Split version strings and compare them """
     ta = split_version(a)
     tb = split_version(b)
     return vercmp(ta, tb)
@@ -248,6 +253,12 @@ def explode_dep_versions2(s, *, sort=True):
     return r
 
 def explode_dep_versions(s):
+    """
+    Take an RDEPENDS style string of format:
+    "DEPEND1 (optional version) DEPEND2 (optional version) ..."
+    skip null value and items appeared in dependency string multiple times
+    and return a dictionary of dependencies and versions.
+    """
     r = explode_dep_versions2(s)
     for d in r:
         if not r[d]:
@@ -373,7 +384,7 @@ def _print_exception(t, value, tb, realfile, text, context):
 
         error.append("Exception: %s" % ''.join(exception))
 
-        # If the exception is from spwaning a task, let's be helpful and display
+        # If the exception is from spawning a task, let's be helpful and display
         # the output (which hopefully includes stderr).
         if isinstance(value, subprocess.CalledProcessError) and value.output:
             error.append("Subprocess output:")
@@ -394,7 +405,7 @@ def better_exec(code, context, text = None, realfile = "<code>", pythonexception
         code = better_compile(code, realfile, realfile)
     try:
         exec(code, get_context(), context)
-    except (bb.BBHandledException, bb.parse.SkipRecipe, bb.data_smart.ExpansionError):
+    except (bb.BBHandledException, bb.parse.SkipRecipe, bb.data_smart.ExpansionError, bb.process.ExecutionError):
         # Error already shown so passthrough, no need for traceback
         raise
     except Exception as e:
@@ -403,8 +414,8 @@ def better_exec(code, context, text = None, realfile = "<code>", pythonexception
         (t, value, tb) = sys.exc_info()
         try:
             _print_exception(t, value, tb, realfile, text, context)
-        except Exception as e:
-            logger.error("Exception handler error: %s" % str(e))
+        except Exception as e2:
+            logger.error("Exception handler error: %s" % str(e2))
 
         e = bb.BBHandledException(e)
         raise e
@@ -435,20 +446,6 @@ def fileslocked(files, *args, **kwargs):
     finally:
         for lock in locks:
             bb.utils.unlockfile(lock)
-
-@contextmanager
-def timeout(seconds):
-    def timeout_handler(signum, frame):
-        pass
-
-    original_handler = signal.signal(signal.SIGALRM, timeout_handler)
-
-    try:
-        signal.alarm(seconds)
-        yield
-    finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, original_handler)
 
 def lockfile(name, shared=False, retry=True, block=False):
     """
@@ -549,7 +546,12 @@ def md5_file(filename):
     Return the hex string representation of the MD5 checksum of filename.
     """
     import hashlib
-    return _hasher(hashlib.md5(), filename)
+    try:
+        sig = hashlib.new('MD5', usedforsecurity=False)
+    except TypeError:
+        # Some configurations don't appear to support two arguments
+        sig = hashlib.new('MD5')
+    return _hasher(sig, filename)
 
 def sha256_file(filename):
     """
@@ -590,7 +592,6 @@ def preserved_envvars_exported():
         'PATH',
         'PWD',
         'SHELL',
-        'TERM',
         'USER',
         'LC_ALL',
         'BBSERVER',
@@ -601,10 +602,25 @@ def preserved_envvars():
     v = [
         'BBPATH',
         'BB_PRESERVE_ENV',
-        'BB_ENV_WHITELIST',
-        'BB_ENV_EXTRAWHITE',
+        'BB_ENV_PASSTHROUGH',
+        'BB_ENV_PASSTHROUGH_ADDITIONS',
     ]
     return v + preserved_envvars_exported()
+
+def check_system_locale():
+    """Make sure the required system locale are available and configured"""
+    default_locale = locale.getlocale(locale.LC_CTYPE)
+
+    try:
+        locale.setlocale(locale.LC_CTYPE, ("en_US", "UTF-8"))
+    except:
+        sys.exit("Please make sure locale 'en_US.UTF-8' is available on your system")
+    else:
+        locale.setlocale(locale.LC_CTYPE, default_locale)
+
+    if sys.getfilesystemencoding() != "utf-8":
+        sys.exit("Please use a locale setting which supports UTF-8 (such as LANG=en_US.UTF-8).\n"
+                 "Python can't change the filesystem locale after loading so we need a UTF-8 when Python starts or things won't work.")
 
 def filter_environment(good_vars):
     """
@@ -627,27 +643,27 @@ def filter_environment(good_vars):
     os.environ["LC_ALL"] = "en_US.UTF-8"
 
     if removed_vars:
-        logger.debug(1, "Removed the following variables from the environment: %s", ", ".join(removed_vars.keys()))
+        logger.debug("Removed the following variables from the environment: %s", ", ".join(removed_vars.keys()))
 
     return removed_vars
 
 def approved_variables():
     """
-    Determine and return the list of whitelisted variables which are approved
+    Determine and return the list of variables which are approved
     to remain in the environment.
     """
     if 'BB_PRESERVE_ENV' in os.environ:
         return os.environ.keys()
     approved = []
-    if 'BB_ENV_WHITELIST' in os.environ:
-        approved = os.environ['BB_ENV_WHITELIST'].split()
-        approved.extend(['BB_ENV_WHITELIST'])
+    if 'BB_ENV_PASSTHROUGH' in os.environ:
+        approved = os.environ['BB_ENV_PASSTHROUGH'].split()
+        approved.extend(['BB_ENV_PASSTHROUGH'])
     else:
         approved = preserved_envvars()
-    if 'BB_ENV_EXTRAWHITE' in os.environ:
-        approved.extend(os.environ['BB_ENV_EXTRAWHITE'].split())
-        if 'BB_ENV_EXTRAWHITE' not in approved:
-            approved.extend(['BB_ENV_EXTRAWHITE'])
+    if 'BB_ENV_PASSTHROUGH_ADDITIONS' in os.environ:
+        approved.extend(os.environ['BB_ENV_PASSTHROUGH_ADDITIONS'].split())
+        if 'BB_ENV_PASSTHROUGH_ADDITIONS' not in approved:
+            approved.extend(['BB_ENV_PASSTHROUGH_ADDITIONS'])
     return approved
 
 def clean_environment():
@@ -701,8 +717,8 @@ def remove(path, recurse=False, ionice=False):
         return
     if recurse:
         for name in glob.glob(path):
-            if _check_unsafe_delete_path(path):
-                raise Exception('bb.utils.remove: called with dangerous path "%s" and recurse=True, refusing to delete!' % path)
+            if _check_unsafe_delete_path(name):
+                raise Exception('bb.utils.remove: called with dangerous path "%s" and recurse=True, refusing to delete!' % name)
         # shutil.rmtree(name) would be ideal but its too slow
         cmd = []
         if ionice:
@@ -717,7 +733,7 @@ def remove(path, recurse=False, ionice=False):
                 raise
 
 def prunedir(topdir, ionice=False):
-    # Delete everything reachable from the directory named in 'topdir'.
+    """ Delete everything reachable from the directory named in 'topdir'. """
     # CAUTION:  This is dangerous!
     if _check_unsafe_delete_path(topdir):
         raise Exception('bb.utils.prunedir: called with dangerous path "%s", refusing to delete!' % topdir)
@@ -728,8 +744,10 @@ def prunedir(topdir, ionice=False):
 # but thats possibly insane and suffixes is probably going to be small
 #
 def prune_suffix(var, suffixes, d):
-    # See if var ends with any of the suffixes listed and
-    # remove it if found
+    """ 
+    See if var ends with any of the suffixes listed and
+    remove it if found 
+    """
     for suffix in suffixes:
         if suffix and var.endswith(suffix):
             return var[:-len(suffix)]
@@ -758,7 +776,7 @@ def movefile(src, dest, newmtime = None, sstat = None):
         if not sstat:
             sstat = os.lstat(src)
     except Exception as e:
-        print("movefile: Stating source file failed...", e)
+        logger.warning("movefile: Stating source file failed...", e)
         return None
 
     destexists = 1
@@ -786,7 +804,7 @@ def movefile(src, dest, newmtime = None, sstat = None):
             os.unlink(src)
             return os.lstat(dest)
         except Exception as e:
-            print("movefile: failed to properly create symlink:", dest, "->", target, e)
+            logger.warning("movefile: failed to properly create symlink:", dest, "->", target, e)
             return None
 
     renamefailed = 1
@@ -798,12 +816,12 @@ def movefile(src, dest, newmtime = None, sstat = None):
 
     if sstat[stat.ST_DEV] == dstat[stat.ST_DEV]:
         try:
-            os.rename(src, destpath)
+            bb.utils.rename(src, destpath)
             renamefailed = 0
         except Exception as e:
             if e.errno != errno.EXDEV:
                 # Some random error.
-                print("movefile: Failed to move", src, "to", dest, e)
+                logger.warning("movefile: Failed to move", src, "to", dest, e)
                 return None
             # Invalid cross-device-link 'bind' mounted or actually Cross-Device
 
@@ -812,16 +830,16 @@ def movefile(src, dest, newmtime = None, sstat = None):
         if stat.S_ISREG(sstat[stat.ST_MODE]):
             try: # For safety copy then move it over.
                 shutil.copyfile(src, destpath + "#new")
-                os.rename(destpath + "#new", destpath)
+                bb.utils.rename(destpath + "#new", destpath)
                 didcopy = 1
             except Exception as e:
-                print('movefile: copy', src, '->', dest, 'failed.', e)
+                logger.warning('movefile: copy', src, '->', dest, 'failed.', e)
                 return None
         else:
             #we don't yet handle special, so we need to fall back to /bin/mv
             a = getstatusoutput("/bin/mv -f " + "'" + src + "' '" + dest + "'")
             if a[0] != 0:
-                print("movefile: Failed to move special file:" + src + "' to '" + dest + "'", a)
+                logger.warning("movefile: Failed to move special file:" + src + "' to '" + dest + "'", a)
                 return None # failure
         try:
             if didcopy:
@@ -829,7 +847,7 @@ def movefile(src, dest, newmtime = None, sstat = None):
                 os.chmod(destpath, stat.S_IMODE(sstat[stat.ST_MODE])) # Sticky is reset on chown
                 os.unlink(src)
         except Exception as e:
-            print("movefile: Failed to chown/chmod/unlink", dest, e)
+            logger.warning("movefile: Failed to chown/chmod/unlink", dest, e)
             return None
 
     if newmtime:
@@ -890,7 +908,7 @@ def copyfile(src, dest, newmtime = None, sstat = None):
 
             # For safety copy then move it over.
             shutil.copyfile(src, dest + "#new")
-            os.rename(dest + "#new", dest)
+            bb.utils.rename(dest + "#new", dest)
         except Exception as e:
             logger.warning("copyfile: copy %s to %s failed (%s)" % (src, dest, e))
             return False
@@ -981,8 +999,15 @@ def umask(new_mask):
         os.umask(current_mask)
 
 def to_boolean(string, default=None):
+    """ 
+    Check input string and return boolean value True/False/None
+    depending upon the checks 
+    """
     if not string:
         return default
+
+    if isinstance(string, int):
+        return string != 0
 
     normalized = string.lower()
     if normalized in ("y", "yes", "1", "true"):
@@ -1024,6 +1049,23 @@ def contains(variable, checkvalues, truevalue, falsevalue, d):
     return falsevalue
 
 def contains_any(variable, checkvalues, truevalue, falsevalue, d):
+    """Check if a variable contains any values specified.
+
+    Arguments:
+
+    variable -- the variable name. This will be fetched and expanded (using
+    d.getVar(variable)) and then split into a set().
+
+    checkvalues -- if this is a string it is split on whitespace into a set(),
+    otherwise coerced directly into a set().
+
+    truevalue -- the value to return if checkvalues is a subset of variable.
+
+    falsevalue -- the value to return if variable is empty or if checkvalues is
+    not a subset of variable.
+
+    d -- the data store.
+    """
     val = d.getVar(variable)
     if not val:
         return falsevalue
@@ -1107,21 +1149,20 @@ def process_profilelog(fn, pout = None):
     # Either call with a list of filenames and set pout or a filename and optionally pout.
     if not pout:
         pout = fn + '.processed'
-    pout = open(pout, 'w')
-   
-    import pstats
-    if isinstance(fn, list):
-        p = pstats.Stats(*fn, stream=pout)
-    else:
-        p = pstats.Stats(fn, stream=pout)
-    p.sort_stats('time')
-    p.print_stats()
-    p.print_callers()
-    p.sort_stats('cumulative')
-    p.print_stats()
 
-    pout.flush()
-    pout.close()  
+    with open(pout, 'w') as pout:
+        import pstats
+        if isinstance(fn, list):
+            p = pstats.Stats(*fn, stream=pout)
+        else:
+            p = pstats.Stats(fn, stream=pout)
+        p.sort_stats('time')
+        p.print_stats()
+        p.print_callers()
+        p.sort_stats('cumulative')
+        p.print_stats()
+
+        pout.flush()
 
 #
 # Was present to work around multiprocessing pool bugs in python < 2.7.3
@@ -1174,7 +1215,7 @@ def edit_metadata(meta_lines, variables, varfunc, match_overrides=False):
         variables: a list of variable names to look for. Functions
             may also be specified, but must be specified with '()' at
             the end of the name. Note that the function doesn't have
-            any intrinsic understanding of _append, _prepend, _remove,
+            any intrinsic understanding of :append, :prepend, :remove,
             or overrides, so these are considered as part of the name.
             These values go into a regular expression, so regular
             expression syntax is allowed.
@@ -1494,13 +1535,19 @@ def edit_bblayers_conf(bblayers_conf, add, remove, edit_cb=None):
 
     return (notadded, notremoved)
 
-
-def get_file_layer(filename, d):
-    """Determine the collection (as defined by a layer's layer.conf file) containing the specified file"""
+def get_collection_res(d):
     collections = (d.getVar('BBFILE_COLLECTIONS') or '').split()
     collection_res = {}
     for collection in collections:
         collection_res[collection] = d.getVar('BBFILE_PATTERN_%s' % collection) or ''
+
+    return collection_res
+
+
+def get_file_layer(filename, d, collection_res={}):
+    """Determine the collection (as defined by a layer's layer.conf file) containing the specified file"""
+    if not collection_res:
+        collection_res = get_collection_res(d)
 
     def path_to_layer(path):
         # Use longest path so we handle nested layers
@@ -1513,12 +1560,13 @@ def get_file_layer(filename, d):
         return match
 
     result = None
-    bbfiles = (d.getVar('BBFILES') or '').split()
+    bbfiles = (d.getVar('BBFILES_PRIORITIZED') or '').split()
     bbfilesmatch = False
     for bbfilesentry in bbfiles:
-        if fnmatch.fnmatch(filename, bbfilesentry):
+        if fnmatch.fnmatchcase(filename, bbfilesentry):
             bbfilesmatch = True
             result = path_to_layer(bbfilesentry)
+            break
 
     if not bbfilesmatch:
         # Probably a bbclass
@@ -1579,14 +1627,42 @@ def set_process_name(name):
     except:
         pass
 
-# export common proxies variables from datastore to environment
+def disable_network(uid=None, gid=None):
+    """
+    Disable networking in the current process if the kernel supports it, else
+    just return after logging to debug. To do this we need to create a new user
+    namespace, then map back to the original uid/gid.
+    """
+    libc = ctypes.CDLL('libc.so.6')
+
+    # From sched.h
+    # New user namespace
+    CLONE_NEWUSER = 0x10000000
+    # New network namespace
+    CLONE_NEWNET = 0x40000000
+
+    if uid is None:
+        uid = os.getuid()
+    if gid is None:
+        gid = os.getgid()
+
+    ret = libc.unshare(CLONE_NEWNET | CLONE_NEWUSER)
+    if ret != 0:
+        logger.debug("System doesn't suport disabling network without admin privs")
+        return
+    with open("/proc/self/uid_map", "w") as f:
+        f.write("%s %s 1" % (uid, uid))
+    with open("/proc/self/setgroups", "w") as f:
+        f.write("deny")
+    with open("/proc/self/gid_map", "w") as f:
+        f.write("%s %s 1" % (gid, gid))
+
 def export_proxies(d):
     """ export common proxies variables from datastore to environment """
 
     variables = ['http_proxy', 'HTTP_PROXY', 'https_proxy', 'HTTPS_PROXY',
                     'ftp_proxy', 'FTP_PROXY', 'no_proxy', 'NO_PROXY',
                     'GIT_PROXY_COMMAND', 'SSL_CERT_FILE', 'SSL_CERT_DIR']
-    exported = False
 
     origenv = d.getVar("BB_ORIGENV")
 
@@ -1596,21 +1672,19 @@ def export_proxies(d):
             value = origenv.getVar(name)
         if value:
             os.environ[name] = value
-            exported = True
 
-    return exported
 
 
 def load_plugins(logger, plugins, pluginpath):
     def load_plugin(name):
-        logger.debug(1, 'Loading plugin %s' % name)
+        logger.debug('Loading plugin %s' % name)
         spec = importlib.machinery.PathFinder.find_spec(name, path=[pluginpath] )
         if spec:
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             return mod
 
-    logger.debug(1, 'Loading plugins from %s...' % pluginpath)
+    logger.debug('Loading plugins from %s...' % pluginpath)
 
     expanded = (glob.glob(os.path.join(pluginpath, '*' + ext))
                 for ext in python_extensions)
@@ -1661,3 +1735,66 @@ def is_semver(version):
         return False
 
     return True
+
+# Wrapper around os.rename which can handle cross device problems
+# e.g. from container filesystems
+def rename(src, dst):
+    try:
+        os.rename(src, dst)
+    except OSError as err:
+        if err.errno == 18:
+            # Invalid cross-device link error
+            shutil.move(src, dst)
+        else:
+            raise err
+
+@contextmanager
+def environment(**envvars):
+    """
+    Context manager to selectively update the environment with the specified mapping.
+    """
+    backup = dict(os.environ)
+    try:
+        os.environ.update(envvars)
+        yield
+    finally:
+        for var in envvars:
+            if var in backup:
+                os.environ[var] = backup[var]
+            elif var in os.environ:
+                del os.environ[var]
+
+def is_local_uid(uid=''):
+    """
+    Check whether uid is a local one or not.
+    Can't use pwd module since it gets all UIDs, not local ones only.
+    """
+    if not uid:
+        uid = os.getuid()
+    with open('/etc/passwd', 'r') as f:
+        for line in f:
+            line_split = line.split(':')
+            if len(line_split) < 3:
+                continue
+            if str(uid) == line_split[2]:
+                return True
+    return False
+
+def mkstemp(suffix=None, prefix=None, dir=None, text=False):
+    """
+    Generates a unique filename, independent of time.
+
+    mkstemp() in glibc (at least) generates unique file names based on the
+    current system time. When combined with highly parallel builds, and
+    operating over NFS (e.g. shared sstate/downloads) this can result in
+    conflicts and race conditions.
+
+    This function adds additional entropy to the file name so that a collision
+    is independent of time and thus extremely unlikely.
+    """
+    entropy = "".join(random.choices("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890", k=20))
+    if prefix:
+        prefix = prefix + entropy
+    else:
+        prefix = tempfile.gettempprefix() + entropy
+    return tempfile.mkstemp(suffix=suffix, prefix=prefix, dir=dir, text=text)

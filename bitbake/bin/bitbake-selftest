@@ -7,6 +7,8 @@
 
 import os
 import sys, logging
+import warnings
+warnings.simplefilter("default")
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lib'))
 
 import unittest
@@ -18,6 +20,7 @@ except RuntimeError as exc:
     sys.exit(str(exc))
 
 tests = ["bb.tests.codeparser",
+         "bb.tests.color",
          "bb.tests.cooker",
          "bb.tests.cow",
          "bb.tests.data",
@@ -26,7 +29,9 @@ tests = ["bb.tests.codeparser",
          "bb.tests.parse",
          "bb.tests.persist_data",
          "bb.tests.runqueue",
+         "bb.tests.siggen",
          "bb.tests.utils",
+         "bb.tests.compression",
          "hashserv.tests",
          "layerindexlib.tests.layerindexobj",
          "layerindexlib.tests.restapi",
