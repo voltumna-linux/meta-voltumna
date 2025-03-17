@@ -1,0 +1,20 @@
+[Unit]
+Description=Tango Starter service
+Requires=network-online.target nss-lookup.target
+Wants=tangorc.service
+After=network-online.target tangorc.service nss-lookup.target
+Conflicts=shutdown.target
+RequiresMountsFor=/runtime/site/%H
+ConditionPathIsDirectory=/runtime/site/%H/log
+
+[Service]
+User=root
+Group=root
+EnvironmentFile=/run/tango/corba
+ExecStart=/usr/bin/Starter %H
+KillMode=process
+RestartSec=5s
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

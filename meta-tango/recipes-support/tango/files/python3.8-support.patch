@@ -1,0 +1,73 @@
+diff --git a/tango/utils.py b/tango/utils.py
+index 9866f371..2691b03b 100644
+--- a/tango/utils.py
++++ b/tango/utils.py
+@@ -32,20 +32,22 @@ import weakref
+ import typing
+ import numpy as np
+ 
+ from argparse import HelpFormatter
+ from collections import namedtuple
+ from contextvars import ContextVar
+ from urllib.parse import urlparse, urlunparse
+ 
+ from packaging.version import Version
+ 
++from typing import Dict
++
+ from tango._tango import (
+     AttrQuality,
+     StdStringVector,
+     StdDoubleVector,
+     DbData,
+     DbDatum,
+     DbDevInfos,
+     DbDevExportInfos,
+     CmdArgType,
+     AttrDataFormat,
+@@ -2245,21 +2247,21 @@ try:
+             TraceContextTextMapPropagator().inject(carrier)
+             traceparent = carrier.get("traceparent", "")
+             tracestate = carrier.get("tracestate", "")
+             # create C++ TraceContextScope and set context from Python context
+             with _telemetry.TraceContextScope(name, traceparent, tracestate):
+                 yield
+ 
+         def _default_telemetry_tracer_provider_factory(
+             service_name: str,
+             service_instance_id: typing.Union[None, str] = None,
+-            extra_resource_attributes: typing.Union[None, dict[str, str]] = None,
++            extra_resource_attributes: typing.Union[None, Dict[str, str]] = None,
+         ) -> trace_api.TracerProvider:
+             """Create default telemetry TracerProvider for a device.
+ 
+             A TraceProvider is not used directly, but rather used to create a Tracer.
+ 
+             See also OpenTelemetry's OTEL_EXPERIMENTAL_RESOURCE_DETECTORS environment
+             variable, and other resource detectors. It may be possible to add additional
+             information just using this environment variable.
+             """
+             if _telemetry_sdk_available and SpanExporter is not None:
+@@ -2433,21 +2435,21 @@ if not _telemetry_active:
+ _current_telemetry_tracer = ContextVar("current_telemetry_tracer")
+ 
+ _current_telemetry_tracer_provider_factory = _default_telemetry_tracer_provider_factory
+ 
+ 
+ class _TracerProviderFactory(typing.Protocol):
+     def __call__(
+         self,
+         service_name: str,
+         service_instance_id: typing.Union[None, str] = None,
+-        extra_resource_attributes: typing.Union[None, dict[str, str]] = None,
++        extra_resource_attributes: typing.Union[None, Dict[str, str]] = None,
+     ) -> "opentelemetry.trace.TracerProvider":  # noqa: F821
+         ...
+ 
+ 
+ def set_telemetry_tracer_provider_factory(provider_factory: _TracerProviderFactory):
+     """Change the factory that will be used to create tracer providers.
+ 
+     The factory is called when a tracer provider needs to be created.
+     I.e., once for client access, and once for each device.
+     """
