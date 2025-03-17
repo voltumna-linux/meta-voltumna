@@ -18,9 +18,9 @@ DEPENDS += "\
     ${PYTHON_PN}-numpy-native \
     "
 
-INSANE_SKIP_${PN} += "file-rdeps"
+INSANE_SKIP:${PN} += "file-rdeps"
 
-RDEPENDS_${PN} += "\
+RDEPENDS:${PN} += "\
     ${PYTHON_PN}-numpy \
     ${PYTHON_PN}-six \
     "

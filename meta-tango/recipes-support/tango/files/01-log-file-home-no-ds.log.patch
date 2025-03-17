@@ -5,11 +5,11 @@ index 553a346..1508546 100644
 @@ -104,8 +104,8 @@ public:
  #endif
  #define	LogPath(s,home)		\
-		s  = home;	\
+ 		s  = home;	\
 -		s += slash;		\
 -		s += "ds.log";
 +		s += slash;
 +//		s += "ds.log";
-
+ 
  #define STARTER_LOG_DEPTH	400
  #define STARTER_STAT_DEPTH	2000

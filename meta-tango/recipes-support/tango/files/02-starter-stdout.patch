@@ -8,6 +8,6 @@ index 84dee82..1cf61ce 100644
                          close(1);
 -                        open("/dev/null", O_RDWR | O_CREAT, 0664);
 +//                        open("/dev/null", O_RDWR | O_CREAT, 0664);
-
+ 
                          //	Close the stderr and re-open it on a log file.
                          close(2);
