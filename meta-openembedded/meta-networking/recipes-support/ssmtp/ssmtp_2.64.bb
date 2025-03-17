@@ -1,6 +1,6 @@
 SUMMARY = "extremely simple MTA to get mail off the system to a mail hub"
 HOMEPAGE = "http://packages.qa.debian.org/s/ssmtp.html"
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=0c56db0143f4f80c369ee3af7425af6e"
 
 SRC_URI = "${DEBIAN_MIRROR}/main/s/${BPN}/${BPN}_${PV}.orig.tar.bz2 \
@@ -25,7 +25,7 @@ EXTRA_OEMAKE = "GEN_CONFIG='/bin/true'"
 
 LDFLAGS += "${@bb.utils.contains('PACKAGECONFIG', 'ssl', '-lssl -lcrypto', '', d)}"
 
-do_install_append () {
+do_install:append () {
     install -d ${D}${mandir}/
     mv ${D}${exec_prefix}/man/* ${D}${mandir}/
     rmdir ${D}${exec_prefix}/man
@@ -36,7 +36,7 @@ do_install_append () {
 
 ALTERNATIVE_PRIORITY_${PN} = "100"
 
-ALTERNATIVE_${PN} = "mailq newaliases sendmail"
+ALTERNATIVE:${PN} = "mailq newaliases sendmail"
 ALTERNATIVE_LINK_NAME[sendmail] = "${sbindir}/sendmail"
 ALTERNATIVE_LINK_NAME[newaliases] = "${sbindir}/newaliases"
 ALTERNATIVE_LINK_NAME[mailq] = "${sbindir}/mailq"

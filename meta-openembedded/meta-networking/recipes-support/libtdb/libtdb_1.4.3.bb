@@ -1,13 +1,14 @@
 SUMMARY = "The tdb library"
 HOMEPAGE = "http://tdb.samba.org/"
 SECTION = "libs"
-LICENSE = "LGPL-3.0+ & GPL-3.0+"
+LICENSE = "LGPL-3.0-or-later & GPL-3.0-or-later"
 
 LIC_FILES_CHKSUM = "file://tools/tdbdump.c;endline=18;md5=b59cd45aa8624578126a8c98f48018c4 \
                     file://include/tdb.h;endline=27;md5=f5bb544641d3081821bcc1dd58310be6"
 
 SRC_URI = "https://samba.org/ftp/tdb/tdb-${PV}.tar.gz \
            file://tdb-Add-configure-options-for-packages.patch \
+           file://0001-Fix-pyext_PATTERN-for-cross-compilation.patch \
 "
 
 SRC_URI[md5sum] = "e638e8890f743624a754304b3f994f4d"
@@ -39,18 +40,12 @@ EXTRA_OECONF += "--disable-rpath \
                  --with-libiconv=${STAGING_DIR_HOST}${prefix}\
                 "
 
-do_install_append() {
-     # add this link for cross check python module existence. eg: on x86-64 host, check python module
-     # under recipe-sysroot which is mips64.
-     cd ${D}${PYTHON_SITEPACKAGES_DIR}; ln -s tdb.*.so tdb.so
-}
-
 PACKAGES += "tdb-tools python3-tdb"
 
-RPROVIDES_${PN}-dbg += "python3-tdb-dbg"
+RPROVIDES:${PN}-dbg += "python3-tdb-dbg"
 
-FILES_${PN} = "${libdir}/*.so.*"
-FILES_tdb-tools = "${bindir}/*"
-FILES_python3-tdb = "${libdir}/python${PYTHON_BASEVERSION}/site-packages/*"
-RDEPENDS_python3-tdb = "python3"
-INSANE_SKIP_${MLPREFIX}python3-tdb = "dev-so"
+FILES:${PN} = "${libdir}/*.so.*"
+FILES:tdb-tools = "${bindir}/*"
+FILES:python3-tdb = "${libdir}/python${PYTHON_BASEVERSION}/site-packages/*"
+RDEPENDS:python3-tdb = "python3"
+INSANE_SKIP:${MLPREFIX}python3-tdb = "dev-so"

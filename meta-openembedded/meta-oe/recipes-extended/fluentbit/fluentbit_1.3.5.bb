@@ -16,15 +16,22 @@ SRC_URI = "http://fluentbit.io/releases/1.3/fluent-bit-${PV}.tar.gz \
            file://cross-build-init-system-detection.patch \
            file://builtin-nan.patch \
            file://0001-ppc-Fix-signature-for-co_create-API.patch \
-          "
+           file://0001-bin-fix-SIGSEGV-caused-by-using-flb_free-instead-of-.patch \
+           file://0002-parser-Fix-SIGSEGV-caused-by-using-flb_free-instead-.patch \
+           file://0001-Control-sytemd-unit-install-location-with-SYSTEM_DIR.patch \
+           "
 SRC_URI[md5sum] = "6eae6dfd0a874e5dd270c36e9c68f747"
 SRC_URI[sha256sum] = "e037c76c89269c8dc4027a08e442fefd2751b0f1e0f9c38f9a4b12d781a9c789"
 
 S = "${WORKDIR}/fluent-bit-${PV}"
 DEPENDS = "zlib bison-native flex-native"
-DEPENDS_append_libc-musl = " fts "
+DEPENDS += "${@bb.utils.filter('DISTRO_FEATURES', 'systemd', d)}"
 
-INSANE_SKIP_${PN}-dev += "dev-elf"
+DEPENDS:append:libc-musl = " fts "
+
+INSANE_SKIP:${PN}-dev += "dev-elf"
+
+LTO = ""
 
 # Use CMake 'Unix Makefiles' generator
 OECMAKE_GENERATOR ?= "Unix Makefiles"
@@ -41,9 +48,11 @@ EXTRA_OECMAKE += "-DFLB_LUAJIT=Off -DFLB_FILTER_LUA=Off "
 # Disable Library and examples
 EXTRA_OECMAKE += "-DFLB_SHARED_LIB=Off -DFLB_EXAMPLES=Off "
 
-EXTRA_OECMAKE += "${@bb.utils.contains('DISTRO_FEATURES','systemd','-DFLB_SYSTEMD=On','',d)}"
+# Enable systemd iff systemd is in DISTRO_FEATURES
+EXTRA_OECMAKE += "${@bb.utils.contains('DISTRO_FEATURES','systemd','-DFLB_SYSTEMD=On -DSYSTEMD_DIR=${systemd_system_unitdir}','-DFLB_SYSTEMD=Off',d)}"
 
-EXTRA_OECMAKE_append_riscv64 = " -DFLB_DEPS='atomic'"
+EXTRA_OECMAKE:append:riscv64 = " -DFLB_DEPS='atomic'"
+EXTRA_OECMAKE:append:riscv32 = " -DFLB_DEPS='atomic'"
 
 # Kafka Output plugin (disabled by default): note that when
 # enabling Kafka output plugin, the backend library librdkafka
@@ -52,7 +61,9 @@ EXTRA_OECMAKE_append_riscv64 = " -DFLB_DEPS='atomic'"
 # DEPENDS += "openssl "
 # EXTRA_OECMAKE += "-DFLB_OUT_KAFKA=On "
 
-inherit cmake systemd features_check
+inherit cmake systemd
 
-SYSTEMD_SERVICE_${PN} = "td-agent-bit.service"
-TARGET_CC_ARCH_append = " ${SELECTED_OPTIMIZATION}"
+CFLAGS += "-fcommon"
+
+SYSTEMD_SERVICE:${PN} = "td-agent-bit.service"
+TARGET_CC_ARCH:append = " ${SELECTED_OPTIMIZATION}"

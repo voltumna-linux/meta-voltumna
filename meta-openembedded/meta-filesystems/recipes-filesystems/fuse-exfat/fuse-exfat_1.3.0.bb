@@ -5,14 +5,14 @@ is provided under the name mount.exfat-fuse. \
 "
 HOMEPAGE = "https://github.com/relan/exfat"
 SECTION = "universe/otherosfs"
-LICENSE = "GPLv2+"
+LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263"
 SRC_URI = "https://github.com/relan/exfat/releases/download/v${PV}/${BP}.tar.gz"
 
 UPSTREAM_CHECK_URI = "https://github.com/relan/exfat/releases"
 
 DEPENDS = "fuse virtual/libc"
-RRECOMMENDS_${PN} = "util-linux-mount"
+RRECOMMENDS:${PN} = "util-linux-mount"
 
 inherit autotools pkgconfig
 

@@ -2,7 +2,7 @@ SUMMARY = "Common macros for building GNOME applications"
 HOMEPAGE = "http://www.gnome.org/"
 BUGTRACKER = "https://bugzilla.gnome.org/"
 
-LICENSE = "GPLv2+"
+LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263"
 
 SECTION = "x11/gnome"
@@ -18,7 +18,7 @@ DEPENDS = ""
 PACKAGECONFIG ??= "autoconf-archive"
 PACKAGECONFIG[autoconf-archive] = "--with-autoconf-archive, --without-autoconf-archive, autoconf-archive"
 
-FILES_${PN} += "${datadir}/aclocal"
-FILES_${PN}-dev = ""
+FILES:${PN} += "${datadir}/aclocal"
+FILES:${PN}-dev = ""
 
 BBCLASSEXTEND = "native"

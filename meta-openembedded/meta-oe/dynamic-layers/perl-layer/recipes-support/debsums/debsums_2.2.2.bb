@@ -1,13 +1,13 @@
 SUMMARY = "Miscellaneous utilities specific to Debian"
-SUMMARY_${PN}-cron = "Cron scripts to control automatic debsum checking"
+SUMMARY:${PN}-cron = "Cron scripts to control automatic debsum checking"
 DESCRIPTION = "A tool for verification of installed package files against \
 MD5 checksums debsums can verify the integrity of installed package files \
 against MD5 checksums installed by the package, or generated from a .deb \
 archive."
-DESCRIPTION_${PN}-cron = "Cron scripts to control automatic system integrity \
+DESCRIPTION:${PN}-cron = "Cron scripts to control automatic system integrity \
 checking via debsums."
 SECTION = "base"
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://debian/copyright;md5=770d751553e6559e9eaefd2e11ccf7e9"
 
 SRC_URI = "http://snapshot.debian.org/archive/debian/20170530T212108Z/pool/main/d/debsums/debsums_2.2.2.tar.xz"
@@ -44,7 +44,7 @@ do_install() {
 
 PACKAGES =+ "${PN}-cron"
 
-RDEPENDS_${PN} = "dpkg dpkg-perl libfile-fnmatch-perl perl \
+RDEPENDS:${PN} = "dpkg dpkg-perl libfile-fnmatch-perl perl \
                   perl-module-constant perl-module-digest-md5 \
                   perl-module-errno perl-module-fcntl \
                   perl-module-file-basename perl-module-file-copy \
@@ -53,4 +53,4 @@ RDEPENDS_${PN} = "dpkg dpkg-perl libfile-fnmatch-perl perl \
                   perl-module-file-temp perl-module-getopt-long \
                   perl-module-posix"
 
-FILES_${PN}-cron = "${sysconfdir}/cron.*"
+FILES:${PN}-cron = "${sysconfdir}/cron.*"

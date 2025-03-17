@@ -10,7 +10,9 @@ its lifecycle. CFEngine takes systems from Build to Deploy, Manage and Audit."
 
 HOMEPAGE = "http://cfengine.com"
 
-LICENSE = "GPLv3"
+SKIP_RECIPE[cfengine] ?= "Needs porting to openssl 3.x"
+
+LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=233aa25e53983237cf0bd4c238af255f"
 
 DEPENDS = "attr tokyocabinet bison-native"
@@ -25,11 +27,11 @@ inherit autotools-brokensep systemd
 
 export EXPLICIT_VERSION="${PV}"
 
-SYSTEMD_SERVICE_${PN} = "cfengine3.service cf-apache.service cf-hub.service cf-postgres.service \
+SYSTEMD_SERVICE:${PN} = "cfengine3.service cf-apache.service cf-hub.service cf-postgres.service \
                          cf-runalerts.service cf-execd.service \
                          cf-monitord.service  cf-serverd.service \
 "
-SYSTEMD_AUTO_ENABLE_${PN} = "disable"
+SYSTEMD_AUTO_ENABLE:${PN} = "disable"
 
 PACKAGECONFIG ??= "libpcre openssl \
                    ${@bb.utils.filter('DISTRO_FEATURES', 'pam systemd', d)} \
@@ -48,7 +50,7 @@ PACKAGECONFIG[libcurl] = "--with-libcurl,--without-libcurl,curl,"
 
 EXTRA_OECONF = "hw_cv_func_va_copy=yes --with-init-script=${sysconfdir}/init.d --with-tokyocabinet"
 
-do_install_append() {
+do_install:append() {
     install -d ${D}${localstatedir}/${BPN}/bin
     for f in `ls ${D}${bindir}`; do
         ln -s ${bindir}/`basename $f` ${D}${localstatedir}/${BPN}/bin/
@@ -69,4 +71,4 @@ EOF
     rm -rf ${D}${datadir}/cfengine/modules/packages/zypper
 }
 
-RDEPENDS_${PN} += "${BPN}-masterfiles"
+RDEPENDS:${PN} += "${BPN}-masterfiles"

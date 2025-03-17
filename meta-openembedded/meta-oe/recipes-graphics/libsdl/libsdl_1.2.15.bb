@@ -7,7 +7,7 @@ BUGTRACKER = "http://bugzilla.libsdl.org/"
 
 SECTION = "libs"
 
-LICENSE = "LGPLv2.1"
+LICENSE = "LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=27818cd7fd83877a8e3ef82b82798ef4"
 
 PROVIDES = "virtual/libsdl"
@@ -56,8 +56,8 @@ EXTRA_OECONF = "--disable-static --enable-cdrom --enable-threads --enable-timers
 
 PACKAGECONFIG ??= "${@bb.utils.filter('DISTRO_FEATURES', 'alsa directfb pulseaudio x11', d)} \
                    ${@bb.utils.contains('DISTRO_FEATURES', 'x11 opengl', 'opengl', '', d)}"
-PACKAGECONFIG_class-native = "x11"
-PACKAGECONFIG_class-nativesdk = "${@bb.utils.filter('DISTRO_FEATURES', 'x11', d)}"
+PACKAGECONFIG:class-native = "x11"
+PACKAGECONFIG:class-nativesdk = "${@bb.utils.filter('DISTRO_FEATURES', 'x11', d)}"
 
 PACKAGECONFIG[alsa] = "--enable-alsa --disable-alsatest,--disable-alsa,alsa-lib"
 PACKAGECONFIG[pulseaudio] = "--enable-pulseaudio,--disable-pulseaudio,pulseaudio"
@@ -72,7 +72,7 @@ PACKAGECONFIG[directx] = "--enable-directx,--disable-directx"
 
 EXTRA_AUTORECONF += "--include=acinclude --exclude=autoheader"
 
-do_configure_prepend() {
+do_configure:prepend() {
         # Remove old libtool macros.
         MACROS="libtool.m4 lt~obsolete.m4 ltoptions.m4 ltsugar.m4 ltversion.m4"
         for i in ${MACROS}; do
@@ -82,3 +82,6 @@ do_configure_prepend() {
 }
 
 BBCLASSEXTEND = "native nativesdk"
+
+#CVE-2019-14906 is a RHEL specific vulnerability.
+CVE_CHECK_IGNORE += "CVE-2019-14906"

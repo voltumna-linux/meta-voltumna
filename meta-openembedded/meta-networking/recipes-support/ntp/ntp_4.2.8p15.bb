@@ -13,6 +13,8 @@ DEPENDS = "libevent"
 SRC_URI = "http://www.eecis.udel.edu/~ntp/ntp_spool/ntp4/ntp-4.2/ntp-${PV}.tar.gz \
            file://ntp-4.2.4_p6-nano.patch \
            file://reproducibility-fixed-path-to-posix-shell.patch \
+           file://0001-libntp-Do-not-use-PTHREAD_STACK_MIN-on-glibc.patch \
+           file://0001-test-Fix-build-with-new-compiler-defaults-to-fno-com.patch \
            file://ntpd \
            file://ntp.conf \
            file://ntpdate \
@@ -22,9 +24,39 @@ SRC_URI = "http://www.eecis.udel.edu/~ntp/ntp_spool/ntp4/ntp-4.2/ntp-${PV}.tar.g
            file://sntp.service \
            file://sntp \
            file://ntpd.list \
-           file://CVE-2023-2655x.patch \
+           file://CVE-2023-2655x.patch;striplevel=0 \
 "
+
 SRC_URI[sha256sum] = "f65840deab68614d5d7ceb2d0bb9304ff70dcdedd09abb79754a87536b849c19"
+
+# CVE-2016-9312 is only for windows.
+# CVE-2019-11331 is inherent to RFC 5905 and cannot be fixed without breaking compatibility
+# The other CVEs are not correctly identified because cve-check
+# is not able to check the version correctly (it only checks for 4.2.8 omitting p15 that makes the difference)
+CVE_CHECK_IGNORE += "\
+    CVE-2016-9312 \
+    CVE-2015-5146 \
+    CVE-2015-5300 \
+    CVE-2015-7975 \
+    CVE-2015-7976 \
+    CVE-2015-7977 \
+    CVE-2015-7978 \
+    CVE-2015-7979 \
+    CVE-2015-8138 \
+    CVE-2015-8139 \
+    CVE-2015-8140 \
+    CVE-2015-8158 \
+    CVE-2016-1547 \
+    CVE-2016-2516 \
+    CVE-2016-2517 \
+    CVE-2016-2519 \
+    CVE-2016-7429 \
+    CVE-2016-7433 \
+    CVE-2016-9310 \
+    CVE-2016-9311 \
+    CVE-2019-11331 \
+"
+
 
 inherit autotools update-rc.d useradd systemd pkgconfig
 
@@ -37,11 +69,11 @@ EXTRA_OECONF += "--with-net-snmp-config=no \
                  --with-locfile=redhat \
                  --without-rpath \
                  "
-CFLAGS_append = " -DPTYS_ARE_GETPT -DPTYS_ARE_SEARCHED"
+CFLAGS:append = " -DPTYS_ARE_GETPT -DPTYS_ARE_SEARCHED"
 
 USERADD_PACKAGES = "${PN}"
 NTP_USER_HOME ?= "/var/lib/ntp"
-USERADD_PARAM_${PN} = "--system --home-dir ${NTP_USER_HOME} \
+USERADD_PARAM:${PN} = "--system --home-dir ${NTP_USER_HOME} \
                        --no-create-home \
                        --shell /bin/false --user-group ntp"
 
@@ -61,7 +93,7 @@ PACKAGECONFIG[debug] = "--enable-debugging,--disable-debugging"
 PACKAGECONFIG[mdns] = "ac_cv_header_dns_sd_h=yes,ac_cv_header_dns_sd_h=no,mdns"
 PACKAGECONFIG[ipv6] = "--enable-ipv6,--disable-ipv6,"
 
-do_configure_append() {
+do_configure:append() {
     # tests are generated but also checked-in to source control
     # when CVE-2023-2655x.patch changes timestamp of test source file, Makefile detects it and tries to regenerate it
     # however it fails because of missing ruby interpretter; adding ruby-native as dependency fixes it
@@ -69,7 +101,7 @@ do_configure_append() {
     touch ${S}/tests/libntp/run-strtolfp.c
 }
 
-do_install_append() {
+do_install:append() {
     install -d ${D}${sysconfdir}/init.d
     install -m 644 ${WORKDIR}/ntp.conf ${D}${sysconfdir}
     install -m 755 ${WORKDIR}/ntpd ${D}${sysconfdir}/init.d
@@ -116,60 +148,60 @@ PACKAGES += "ntpdate sntp ntpdc ntpq ${PN}-tickadj ${PN}-utils"
 
 # ntp originally includes tickadj. It's split off for inclusion in small firmware images on platforms
 # with wonky clocks (e.g. OpenSlug)
-RDEPENDS_${PN} = "${PN}-tickadj"
+RDEPENDS:${PN} = "${PN}-tickadj"
 # ntpd require libgcc for execution
-RDEPENDS_${PN} += "libgcc"
+RDEPENDS:${PN} += "libgcc"
 # Handle move from bin to utils package
-RPROVIDES_${PN}-utils = "${PN}-bin"
-RREPLACES_${PN}-utils = "${PN}-bin"
-RCONFLICTS_${PN}-utils = "${PN}-bin"
+RPROVIDES:${PN}-utils = "${PN}-bin"
+RREPLACES:${PN}-utils = "${PN}-bin"
+RCONFLICTS:${PN}-utils = "${PN}-bin"
 # ntpdc and ntpq were split out of ntp-utils
-RDEPENDS_${PN}-utils = "ntpdc ntpq"
+RDEPENDS:${PN}-utils = "ntpdc ntpq"
 
 SYSTEMD_PACKAGES = "${PN} ntpdate sntp"
-SYSTEMD_SERVICE_${PN} = "ntpd.service"
-SYSTEMD_SERVICE_ntpdate = "ntpdate.service"
-SYSTEMD_SERVICE_sntp = "sntp.service"
-SYSTEMD_AUTO_ENABLE_sntp = "disable"
+SYSTEMD_SERVICE:${PN} = "ntpd.service"
+SYSTEMD_SERVICE:ntpdate = "ntpdate.service"
+SYSTEMD_SERVICE:sntp = "sntp.service"
+SYSTEMD_AUTO_ENABLE:sntp = "disable"
 
-RPROVIDES_${PN} += "${PN}-systemd"
-RREPLACES_${PN} += "${PN}-systemd"
-RCONFLICTS_${PN} += "${PN}-systemd"
+RPROVIDES:${PN} += "${PN}-systemd"
+RREPLACES:${PN} += "${PN}-systemd"
+RCONFLICTS:${PN} += "${PN}-systemd"
 
-RPROVIDES_ntpdate += "ntpdate-systemd"
-RREPLACES_ntpdate += "ntpdate-systemd"
-RCONFLICTS_ntpdate += "ntpdate-systemd"
+RPROVIDES:ntpdate += "ntpdate-systemd"
+RREPLACES:ntpdate += "ntpdate-systemd"
+RCONFLICTS:ntpdate += "ntpdate-systemd"
 
-RSUGGESTS_${PN} = "iana-etc"
+RSUGGESTS:${PN} = "iana-etc"
 
-FILES_${PN} = "${sbindir}/ntpd.ntp ${sysconfdir}/ntp.conf ${sysconfdir}/init.d/ntpd \
+FILES:${PN} = "${sbindir}/ntpd.ntp ${sysconfdir}/ntp.conf ${sysconfdir}/init.d/ntpd \
     ${NTP_USER_HOME} \
     ${systemd_unitdir}/ntp-units.d/60-ntpd.list \
 "
-FILES_${PN}-tickadj = "${sbindir}/tickadj"
-FILES_${PN}-utils = "${sbindir} ${datadir}/ntp/lib"
-RDEPENDS_${PN}-utils += "perl"
-FILES_ntpdate = "${sbindir}/ntpdate \
+FILES:${PN}-tickadj = "${sbindir}/tickadj"
+FILES:${PN}-utils = "${sbindir} ${datadir}/ntp/lib"
+RDEPENDS:${PN}-utils += "perl"
+FILES:ntpdate = "${sbindir}/ntpdate \
     ${sysconfdir}/network/if-up.d/ntpdate-sync \
     ${bindir}/ntpdate-sync \
     ${sysconfdir}/default/ntpdate \
     ${systemd_unitdir}/system/ntpdate.service \
 "
-FILES_sntp = "${sbindir}/sntp \
+FILES:sntp = "${sbindir}/sntp \
               ${sysconfdir}/default/sntp \
               ${systemd_unitdir}/system/sntp.service \
              "
-FILES_ntpdc = "${sbindir}/ntpdc"
-FILES_ntpq = "${sbindir}/ntpq"
+FILES:ntpdc = "${sbindir}/ntpdc"
+FILES:ntpq = "${sbindir}/ntpq"
 
-CONFFILES_${PN} = "${sysconfdir}/ntp.conf"
-CONFFILES_ntpdate = "${sysconfdir}/default/ntpdate"
+CONFFILES:${PN} = "${sysconfdir}/ntp.conf"
+CONFFILES:ntpdate = "${sysconfdir}/default/ntpdate"
 
 INITSCRIPT_NAME = "ntpd"
 # No dependencies, so just go in at the standard level (20)
 INITSCRIPT_PARAMS = "defaults"
 
-pkg_postinst_ntpdate() {
+pkg_postinst:ntpdate() {
     if ! grep -q -s ntpdate $D/var/spool/cron/root; then
         echo "adding crontab"
         test -d $D/var/spool/cron || mkdir -p $D/var/spool/cron
@@ -181,5 +213,5 @@ inherit update-alternatives
 
 ALTERNATIVE_PRIORITY = "100"
 
-ALTERNATIVE_${PN} = "ntpd"
+ALTERNATIVE:${PN} = "ntpd"
 ALTERNATIVE_LINK_NAME[ntpd] = "${sbindir}/ntpd"

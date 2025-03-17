@@ -17,7 +17,7 @@ SRC_URI[sha256sum] = "d59142e067cbd603aaf66151a04e9fa34330219680b8827c953d20821b
 UPSTREAM_CHECK_URI = "https://pagure.io/dlm/releases"
 UPSTREAM_CHECK_REGEX = "dlm-(?P<pver>\d+(\.\d+)+)"
 
-LICENSE = "LGPLv2+ & GPLv2 & GPLv2+"
+LICENSE = "LGPL-2.0-or-later & GPL-2.0-only & GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://README.license;md5=8f0bbcdd678df1bce9863492b6c8832d"
 
 S = "${WORKDIR}/dlm-dlm-${PV}"
@@ -30,14 +30,14 @@ PACKAGECONFIG ??= ""
 
 PACKAGECONFIG[pacemaker] = ",,pacemaker"
 
-SYSTEMD_SERVICE_${PN} = "dlm.service"
+SYSTEMD_SERVICE:${PN} = "dlm.service"
 SYSTEMD_AUTO_ENABLE = "enable"
 
 export EXTRA_OEMAKE = ""
 
 DONTBUILD = "${@bb.utils.contains('PACKAGECONFIG', 'pacemaker', '', 'fence', d)}"
 
-do_compile_prepend_toolchain-clang() {
+do_compile:prepend:toolchain-clang() {
     sed -i -e "s/-fstack-clash-protection//g" ${S}/*/Makefile
 }
 

@@ -1,6 +1,6 @@
 DESCRIPTION = "C utility functions for OpenWrt"
 SECTION = "libs"
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "\
     file://avl.c;endline=39;md5=00810155fed3d604816ec5814523d60a \
     file://avl-cmp.c;endline=15;md5=1603e6094b432a5f3f320877a06f41b5 \
@@ -24,7 +24,7 @@ PV = "1.0.1+git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-inherit cmake
+inherit cmake pkgconfig
 
 DEPENDS = "json-c"
 

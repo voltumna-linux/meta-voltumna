@@ -1,7 +1,7 @@
 SUMMARY = "lm_sensors configuration files"
 DESCRIPTION = "Hardware health monitoring configuration files"
 HOMEPAGE = "http://www.lm-sensors.org/"
-LICENSE = "MIT-X"
+LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
@@ -17,7 +17,7 @@ S = "${WORKDIR}"
 PACKAGECONFIG ??= "sensord"
 PACKAGECONFIG[sensord] = ",,"
 
-RDEPENDS_${PN}-dev = ""
+RDEPENDS:${PN}-dev = ""
 
 do_install() {
     # Install fancontrol configuration file
@@ -51,18 +51,18 @@ PACKAGES =+ "${PN}-fancontrol"
 
 # sensord web cgi support
 PACKAGES =+ "${@bb.utils.contains('PACKAGECONFIG', 'sensord', '${PN}-cgi', '', d)}"
-RRECOMMENDS_${PN}-cgi = "lighttpd lighttpd-module-cgi"
-RDEPENDS_${PN}-cgi = "${PN}-sensord rrdtool"
-FILES_${PN}-cgi = "/www/*"
+RRECOMMENDS:${PN}-cgi = "lighttpd lighttpd-module-cgi"
+RDEPENDS:${PN}-cgi = "${PN}-sensord rrdtool"
+FILES:${PN}-cgi = "/www/*"
 
 # libsensors configuration file
-FILES_${PN}-libsensors = "${sysconfdir}/sensors.d/sensors.conf"
+FILES:${PN}-libsensors = "${sysconfdir}/sensors.d/sensors.conf"
 
 # sensord logging daemon configuration files
-FILES_${PN}-sensord = "\
+FILES:${PN}-sensord = "\
     ${sysconfdir}/sensord.conf \
     ${sysconfdir}/sysconfig/sensord \
 "
 
 # fancontrol script configuration file
-FILES_${PN}-fancontrol = "${sysconfdir}/fancontrol"
+FILES:${PN}-fancontrol = "${sysconfdir}/fancontrol"

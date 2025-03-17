@@ -4,7 +4,7 @@ DESCRIPTION = "Libao is a cross-platform audio library that allows programs to \
 SECTION = "multimedia"
 HOMEPAGE = "https://www.xiph.org/ao/"
 
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f"
 
 SRC_URI="http://downloads.xiph.org/releases/ao/${BP}.tar.gz"
@@ -16,18 +16,18 @@ inherit autotools
 PACKAGES += "${BPN}-ckport"
 PACKAGES_DYNAMIC += "^${BPN}-plugin-.*"
 
-do_install_append () {
+do_install:append () {
     find "${D}" -name '*.la' -exec rm -f {} +
 }
 
-python populate_packages_prepend () {
+python populate_packages:prepend () {
     rootdir = bb.data.expand('${libdir}/ao/plugins-4', d)
     rootdir_dbg = bb.data.expand('${libdir}/ao/plugins-4/.debug', d)
-    do_split_packages(d, rootdir, '^(.*)\.so$', output_pattern='${BPN}-plugin-%s', description='AO %s plugin')
-    do_split_packages(d, rootdir_dbg, '^(.*)\.so$', output_pattern='${BPN}-plugin-%s-dbg', description='AO %s plugin debug data')
+    do_split_packages(d, rootdir, r'^(.*)\.so$', output_pattern='${BPN}-plugin-%s', description='AO %s plugin')
+    do_split_packages(d, rootdir_dbg, r'^(.*)\.so$', output_pattern='${BPN}-plugin-%s-dbg', description='AO %s plugin debug data')
 }
 
 PACKAGECONFIG ?= "${@bb.utils.filter('DISTRO_FEATURES', 'alsa pulseaudio', d)}"
 PACKAGECONFIG[alsa] = "--enable-alsa,--disable-alsa,alsa-lib"
 PACKAGECONFIG[pulseaudio] = "--enable-pulse,--disable-pulse,pulseaudio"
-FILES_${BPN}-ckport = "${libdir}/ckport"
+FILES:${BPN}-ckport = "${libdir}/ckport"

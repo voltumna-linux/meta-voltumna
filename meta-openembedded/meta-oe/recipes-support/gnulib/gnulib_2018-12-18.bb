@@ -8,23 +8,20 @@ as a collection of portable idioms to be used in other projects."
 
 HOMEPAGE = "http://www.gnu.org/software/gnulib/"
 SECTION = "devel"
-LICENSE = "LGPLv2+"
+LICENSE = "LGPL-2.0-or-later"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=56a22a6e5bcce45e2c8ac184f81412b5"
 SRCREV = "0d6e3307bbdb8df4d56043d5f373eeeffe4cbef3"
 
-SRC_URI = "git://git.sv.gnu.org/gnulib.git;branch=master \
+SRC_URI = "git://git.savannah.gnu.org/git/gnulib.git;branch=master \
 "
 
 S = "${WORKDIR}/git"
 
-inherit utils
-
 do_install () {
-    cd ${S}
-    check_git_config
-    git checkout master
-    git clone ${S} ${D}/${datadir}/gnulib
+    install -d ${D}/${datadir}/gnulib
+    cp --no-preserve=ownership --recursive ${S}/* ${D}/${datadir}/gnulib/
+    cp --no-preserve=ownership --recursive ${S}/.git ${D}/${datadir}/gnulib/
 }
 
 do_patch[noexec] = "1"

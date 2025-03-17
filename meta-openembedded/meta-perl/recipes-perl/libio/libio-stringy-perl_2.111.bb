@@ -5,7 +5,7 @@ filehandles; in particular, IO::Scalar, IO::ScalarArray, and IO::Lines."
 
 HOMEPAGE = "http://www.zeegee.com/products/IO-stringy/"
 SECTION = "devel"
-LICENSE = "Artistic-1.0 | GPL-1.0+"
+LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=01406e4ff2e60d88d42ef1caebdd0011"
 
 
@@ -17,7 +17,7 @@ S = "${WORKDIR}/IO-stringy-${PV}"
 
 inherit cpan
 
-RPROVIDES_${PN} += " libio-atomicfile-perl \
+RPROVIDES:${PN} += " libio-atomicfile-perl \
     libio-innerfile-perl \
     libio-lines-perl \
     libio-scalar-perl \

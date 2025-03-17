@@ -1,7 +1,7 @@
 SUMMARY = "openbox Window Manager"
 SECTION = "x11/wm"
 DEPENDS = "glib-2.0 pango libxml2 virtual/libx11 libcroco librsvg gdk-pixbuf"
-LICENSE = "GPLv2+"
+LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f"
 
 SRC_URI = " \
@@ -17,7 +17,7 @@ inherit autotools gettext update-alternatives pkgconfig features_check
 # depends on virtual/libx11
 REQUIRED_DISTRO_FEATURES = "x11"
 
-ALTERNATIVE_${PN}-core = "x-window-manager x-session-manager"
+ALTERNATIVE:${PN}-core = "x-window-manager x-session-manager"
 ALTERNATIVE_TARGET[x-window-manager] = "${bindir}/openbox"
 ALTERNATIVE_PRIORITY[x-window-manager] = "10"
 ALTERNATIVE_TARGET[x-session-manager] = "${bindir}/openbox-session"
@@ -34,25 +34,25 @@ PACKAGES =+ "${PN}-core ${PN}-lxde ${PN}-gnome ${PN}-config"
 
 PACKAGES_DYNAMIC += "^${PN}-theme-.*"
 
-python populate_packages_prepend() {
+python populate_packages:prepend() {
     theme_dir = d.expand('${datadir}/themes/')
     theme_name = d.expand('${PN}-theme-%s')
     do_split_packages(d, theme_dir, '(.*)', theme_name, '${PN} theme for %s', extra_depends='', allow_dirs=True)
 }
 
-FILES_${PN}-core = "${bindir}/openbox ${bindir}/openbox-session ${libdir}/*${SOLIBS}"
+FILES:${PN}-core = "${bindir}/openbox ${bindir}/openbox-session ${libdir}/*${SOLIBS}"
 
-FILES_${PN}-lxde += "${datadir}/lxde/ \
+FILES:${PN}-lxde += "${datadir}/lxde/ \
                      ${datadir}/lxpanel \
                      ${datadir}/xsessions \
                      ${datadir}/icons"
 
-FILES_${PN}-gnome += " \
+FILES:${PN}-gnome += " \
     ${bindir}/openbox-gnome-session \
     ${datadir}/gnome \
     ${datadir}/gnome-session \
 "
 
-FILES_${PN}-config += "${sysconfdir}"
+FILES:${PN}-config += "${sysconfdir}"
 
-RDEPENDS_${PN} += "${PN}-core ${PN}-config ${PN}-theme-clearlooks python3 python3-shell pyxdg"
+RDEPENDS:${PN} += "${PN}-core ${PN}-config ${PN}-theme-clearlooks python3 python3-shell pyxdg"

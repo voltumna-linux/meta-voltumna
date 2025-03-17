@@ -1,14 +1,14 @@
 DESCRIPTION = "Different utilities from Android"
 SECTION = "console/utils"
-LICENSE = "Apache-2.0 & GPL-2.0 & BSD-2-Clause & BSD-3-Clause"
+LICENSE = "Apache-2.0 & GPL-2.0-only & BSD-2-Clause & BSD-3-Clause"
 LIC_FILES_CHKSUM = " \
     file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10 \
-    file://${COMMON_LICENSE_DIR}/GPL-2.0;md5=801f80980d171dd6425610833a22dbe6 \
+    file://${COMMON_LICENSE_DIR}/GPL-2.0-only;md5=801f80980d171dd6425610833a22dbe6 \
     file://${COMMON_LICENSE_DIR}/BSD-2-Clause;md5=cb641bc04cda31daea161b1bc15da69f \
     file://${COMMON_LICENSE_DIR}/BSD-3-Clause;md5=550794465ba0ec5312d6919e203a55f9 \
 "
 DEPENDS = "libbsd libpcre zlib libcap"
-DEPENDS_append_class-target = " openssl"
+DEPENDS:append:class-target = " openssl"
 
 ANDROID_MIRROR = "android.googlesource.com"
 
@@ -40,6 +40,7 @@ SRC_URI = " \
     file://core/0012-Fix-implicit-declaration-of-stlcat-strlcopy-function.patch;patchdir=system/core \
     file://core/adb_libssl_11.diff;patchdir=system/core \
     file://core/0013-adb-Support-riscv64.patch;patchdir=system/core \
+    file://core/0014-add-u3-ss-descriptor-support-for-adb.patch;patchdir=system/core \
     file://extras/0001-ext4_utils-remove-selinux-extensions.patch;patchdir=system/extras \
     file://extras/0002-ext4_utils-add-o-argument-to-preserve-ownership.patch;patchdir=system/extras \
     file://libselinux/0001-Remove-bionic-specific-calls.patch;patchdir=external/libselinux \
@@ -59,26 +60,27 @@ S = "${WORKDIR}/git"
 B = "${WORKDIR}/${BPN}"
 
 # http://errors.yoctoproject.org/Errors/Details/133881/
-ARM_INSTRUCTION_SET_armv4 = "arm"
-ARM_INSTRUCTION_SET_armv5 = "arm"
+ARM_INSTRUCTION_SET:armv4 = "arm"
+ARM_INSTRUCTION_SET:armv5 = "arm"
 
-COMPATIBLE_HOST_powerpc = "(null)"
-COMPATIBLE_HOST_powerpc64 = "(null)"
-COMPATIBLE_HOST_powerpc64le = "(null)"
+COMPATIBLE_HOST:powerpc = "(null)"
+COMPATIBLE_HOST:powerpc64 = "(null)"
+COMPATIBLE_HOST:powerpc64le = "(null)"
 
 inherit systemd
 
-SYSTEMD_SERVICE_${PN} = "android-tools-adbd.service"
+SYSTEMD_PACKAGES = "${PN}-adbd"
+SYSTEMD_SERVICE:${PN}-adbd = "android-tools-adbd.service"
 
 # Find libbsd headers during native builds
-CC_append_class-native = " -I${STAGING_INCDIR}"
-CC_append_class-nativesdk = " -I${STAGING_INCDIR}"
+CC:append:class-native = " -I${STAGING_INCDIR}"
+CC:append:class-nativesdk = " -I${STAGING_INCDIR}"
 
 TOOLS = "adb fastboot ext4_utils mkbootimg adbd"
 
 # Adb needs sys/capability.h, which is not available for native*
-TOOLS_class-native = "fastboot ext4_utils mkbootimg"
-TOOLS_class-nativesdk = "fastboot ext4_utils mkbootimg"
+TOOLS:class-native = "fastboot ext4_utils mkbootimg"
+TOOLS:class-nativesdk = "fastboot ext4_utils mkbootimg"
 
 do_compile() {
     cp ${WORKDIR}/gitignore ${S}/.gitignore
@@ -133,7 +135,7 @@ do_install() {
         install -m0755 ${B}/ext4_utils/simg2simg ${D}${bindir}
     fi
 
-    if echo ${TOOLS} | grep -q "adb " ; then
+    if echo ${TOOLS} | grep -q "adb\>" ; then
         install -d ${D}${bindir}
         install -m0755 ${B}/adb/adb ${D}${bindir}
     fi
@@ -158,11 +160,17 @@ do_install() {
     fi
 }
 
-PACKAGES += "${PN}-fstools"
+PACKAGES =+ "${PN}-fstools ${PN}-adbd"
 
-RDEPENDS_${BPN} = "${BPN}-conf bash"
+RDEPENDS:${PN}-adbd = "${PN}-conf"
+RDEPENDS:${PN}-fstools = "bash"
 
-FILES_${PN}-fstools = "\
+FILES:${PN}-adbd = "\
+    ${bindir}/adbd \
+    ${systemd_unitdir}/system/android-tools-adbd.service \
+"
+
+FILES:${PN}-fstools = "\
     ${bindir}/ext2simg \
     ${bindir}/ext4fixup \
     ${bindir}/img2simg \
@@ -174,3 +182,9 @@ FILES_${PN}-fstools = "\
 "
 
 BBCLASSEXTEND = "native"
+
+android_tools_enable_devmode() {
+    touch ${IMAGE_ROOTFS}/etc/usb-debugging-enabled
+}
+
+ROOTFS_POSTPROCESS_COMMAND_${PN}-adbd += "${@bb.utils.contains("USB_DEBUGGING_ENABLED", "1", "android_tools_enable_devmode;", "", d)}"

@@ -3,7 +3,7 @@ DESCRIPTION = "Small sized tools from mtd-utils for use with initramfs."
 SECTION = "base"
 DEPENDS = "zlib lzo e2fsprogs util-linux"
 HOMEPAGE = "http://www.linux-mtd.infradead.org/"
-LICENSE = "GPLv2+"
+LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=0636e73ff0215e8d672dc4c32c317bb3 \
                     file://include/common.h;beginline=1;endline=17;md5=ba05b07912a44ea2bf81ce409380049c"
 
@@ -16,6 +16,7 @@ SRC_URI = "git://git.infradead.org/mtd-utils.git;branch=master \
              file://0003-Makefile.am-only-build-ubi-utils.patch \
              file://0004-mtd-utils-common.h-no-features.h-for-klibc-builds.patch \
              file://0005-common.h-replace-getline-with-fgets.patch \
+             file://0001-make-Add-compiler-includes-in-cflags.patch \
              "
 
 S = "${WORKDIR}/git"
@@ -37,16 +38,16 @@ PACKAGES =+ "mtdinfo-klibc ubiattach-klibc ubiblock-klibc ubicrc32-klibc ubideta
              ubiformat-klibc ubimkvol-klibc ubinfo-klibc ubinize-klibc ubirename-klibc \
              ubirmvol-klibc ubirsvol-klibc ubiupdatevol-klibc"
 
-FILES_mtdinfo-klibc = "${sbindir}/mtdinfo"
-FILES_ubiattach-klibc = "${sbindir}/ubiattach"
-FILES_ubiblock-klibc = "${sbindir}/ubiblock"
-FILES_ubicrc32-klibc = "${sbindir}/ubicrc32"
-FILES_ubidetach-klibc = "${sbindir}/ubidetach"
-FILES_ubiformat-klibc = "${sbindir}/ubiformat"
-FILES_ubimkvol-klibc = "${sbindir}/ubimkvol"
-FILES_ubinfo-klibc = "${sbindir}/ubinfo"
-FILES_ubinize-klibc = "${sbindir}/ubinize"
-FILES_ubirename-klibc = "${sbindir}/ubirename"
-FILES_ubirmvol-klibc = "${sbindir}/ubirmvol"
-FILES_ubirsvol-klibc = "${sbindir}/ubirsvol"
-FILES_ubiupdatevol-klibc = "${sbindir}/ubiupdatevol"
+FILES:mtdinfo-klibc = "${sbindir}/mtdinfo"
+FILES:ubiattach-klibc = "${sbindir}/ubiattach"
+FILES:ubiblock-klibc = "${sbindir}/ubiblock"
+FILES:ubicrc32-klibc = "${sbindir}/ubicrc32"
+FILES:ubidetach-klibc = "${sbindir}/ubidetach"
+FILES:ubiformat-klibc = "${sbindir}/ubiformat"
+FILES:ubimkvol-klibc = "${sbindir}/ubimkvol"
+FILES:ubinfo-klibc = "${sbindir}/ubinfo"
+FILES:ubinize-klibc = "${sbindir}/ubinize"
+FILES:ubirename-klibc = "${sbindir}/ubirename"
+FILES:ubirmvol-klibc = "${sbindir}/ubirmvol"
+FILES:ubirsvol-klibc = "${sbindir}/ubirsvol"
+FILES:ubiupdatevol-klibc = "${sbindir}/ubiupdatevol"

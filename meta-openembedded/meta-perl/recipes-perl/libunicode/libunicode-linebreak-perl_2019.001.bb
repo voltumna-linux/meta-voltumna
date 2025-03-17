@@ -7,7 +7,7 @@ SECTION = "libs"
 
 HOMEPAGE = "https://metacpan.org/release/Unicode-LineBreak"
 
-LICENSE = "Artistic-1.0 | GPL-1.0+"
+LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 LIC_FILES_CHKSUM = "file://README;beginline=5;endline=9;md5=b5e8b1099b86b86fbc315b50484231ab"
 
 SRC_URI = "${CPAN_MIRROR}/authors/id/N/NE/NEZUMI/Unicode-LineBreak-${PV}.tar.gz"
@@ -26,7 +26,7 @@ do_install_ptest() {
     chown -R root:root ${D}${PTEST_PATH}
 }
 
-RDEPENDS_${PN} += " \
+RDEPENDS:${PN} += " \
     libmime-charset-perl \
     libsombok3 \
     perl-module-carp \
@@ -40,14 +40,14 @@ RDEPENDS_${PN} += " \
     perl-module-xsloader \
 "
 
-RDEPENDS_${PN}-ptest += " \
+RDEPENDS:${PN}-ptest += " \
     perl-module-findbin \
     perl-module-lib \
     perl-module-strict \
     perl-module-test-more \
 "
 
-RPROVIDES_${PN} += " \
+RPROVIDES:${PN} += " \
     libtext-linefold-perl \
     libunicode-gcstring-perl \
 "

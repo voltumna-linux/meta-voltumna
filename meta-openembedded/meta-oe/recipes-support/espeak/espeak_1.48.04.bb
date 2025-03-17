@@ -1,6 +1,6 @@
 DESCRIPTION = "eSpeak is a compact open source software speech synthesizer"
 SECTION = "base"
-LICENSE = "GPLv3"
+LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://License.txt;md5=cb7a20edb4c9f5f478de6523dcd7362c"
 
 SRC_URI = "http://downloads.sourceforge.net/espeak/espeak-1.48.04-source.zip \
@@ -19,7 +19,7 @@ inherit siteinfo qemu
 CXXFLAGS += "-DUSE_PORTAUDIO"
 TARGET_CC_ARCH += "${LDFLAGS}"
 
-FILES_${PN} += "${datadir}/espeak-data"
+FILES:${PN} += "${datadir}/espeak-data"
 
 do_configure() {
     #  "speak" binary, a TTS engine, uses portaudio in either APIs V18 or V19, use V19
@@ -64,4 +64,4 @@ do_install() {
     cp -R --no-dereference --preserve=mode,links ${S}/espeak-data/* ${D}${datadir}/espeak-data
 }
 
-RDEPENDS_${PN} = "portaudio-v19"
+RDEPENDS:${PN} = "portaudio-v19"

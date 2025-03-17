@@ -1,7 +1,7 @@
 SUMMARY = "network auditing tool"
 DESCRIPTION = "Nmap ("Network Mapper") is a free and open source (license) utility for network discovery and security auditing.\nGui support via appending to IMAGE_FEATURES x11-base in local.conf"
 SECTION = "security"
-LICENSE = "GPL-2.0"
+LICENSE = "GPL-2.0-only"
 
 LIC_FILES_CHKSUM = "file://COPYING;beginline=7;endline=12;md5=66938a7e5b4c118eda78271de14874c2"
 
@@ -49,12 +49,14 @@ do_configure() {
     oe_runconf
 }
 
-do_install_append() {
-    if [ -f "${D}${bindir}/ndiff" ]; then
-       sed -i 's@^#!.*$@#!/usr/bin/env python3@g'   ${D}${bindir}/ndiff
-    fi
+do_install:append() {
+    for f in ndiff uninstall_ndiff; do
+        if [ -f ${D}${bindir}/$f ]; then
+            sed -i 's@^#!.*$@#!/usr/bin/env python3@g' ${D}${bindir}/$f
+        fi
+    done
 }
 
-FILES_${PN} += "${PYTHON_SITEPACKAGES_DIR} ${datadir}/ncat"
+FILES:${PN} += "${PYTHON_SITEPACKAGES_DIR} ${datadir}/ncat"
 
-RDEPENDS_${PN} += "python3-core"
+RDEPENDS:${PN} += "python3-core"

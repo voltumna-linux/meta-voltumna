@@ -1,6 +1,6 @@
 SUMMARY = "library to access web services that claim to be "RESTful""
-HOMPAGE = "https://wiki.gnome.org/Projects/Librest"
-LICENSE = "LGPLv2.1"
+HOMEPAGE = "https://wiki.gnome.org/Projects/Librest"
+LICENSE = "LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=2d5025d4aa3495befef8f17206a5b0a1"
 
 GNOMEBASEBUILDCLASS = "autotools"
@@ -14,20 +14,20 @@ DEPENDS = " \
 
 inherit gnomebase gobject-introspection gtk-doc vala
 
-SRC_URI[archive.md5sum] = "ece4547298a81105f307369d73c21b9d"
-SRC_URI[archive.sha256sum] = "0513aad38e5d3cedd4ae3c551634e3be1b9baaa79775e53b2dba9456f15b01c9"
+PV .= "+git${SRCPV}"
+SRCREV = "7b46065dea860ef09861f4d70124728b8270c8b7"
+SRC_URI = "git://gitlab.gnome.org/GNOME/librest;protocol=https;branch=master \
+    file://0001-Use-GUri-instead-of-SoupURI.patch \
+    file://0002-Port-to-libsoup3.patch \
+"
+S = "${WORKDIR}/git"
 
-# * gnome environment requires libsoup build with in gnome PACKAGECONFIG
-# * libsoup-gnome support was removed upstream three years ago [1]
-# [1] https://gitlab.gnome.org/GNOME/librest/commit/8f904a8e2bb38a7bf72245cdf2f1ecad17e9a720
-EXTRA_OECONF = "--without-gnome"
-
-do_configure_prepend() {
+do_configure:prepend() {
     # rest expects introspection.m4 at custom location (see aclocal.m4).
     cp -f ${STAGING_DIR_TARGET}/${datadir}/aclocal/introspection.m4 ${S}/build
 }
 
-do_compile_prepend() {
+do_compile:prepend() {
     export GIR_EXTRA_LIBS_PATH="${B}/rest/.libs"
 }
 

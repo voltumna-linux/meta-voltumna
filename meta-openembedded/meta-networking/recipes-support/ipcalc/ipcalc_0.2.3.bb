@@ -3,13 +3,13 @@ HOMEPAGE = "https://github.com/nmav/ipcalc"
 
 SECTION = "net"
 
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263"
 
 S = "${WORKDIR}/git"
 SRCREV = "c3ee70c878b9c5833a77a1f339f1ca4dc6f225c5"
 SRC_URI = "\
-    git://github.com/nmav/ipcalc.git;protocol=https;branch=master \
+    git://github.com/nmav/ipcalc.git;protocol=https;;branch=master \
     file://0001-Makefile-pass-extra-linker-flags.patch \
 "
 

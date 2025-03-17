@@ -6,16 +6,15 @@ HOMEPAGE = "http://tomoyo.sourceforge.jp/"
 SECTION = "System Environment/Kernel"
 
 SRC_URI = "http://jaist.dl.sourceforge.jp/tomoyo/53357/${BP}-20170102.tar.gz"
-SRC_URI[md5sum] = "888804d58742452fe213a68f7eadd0ad"
 SRC_URI[sha256sum] = "00fedfac5e514321250bbe69eaccc732c8a8158596f77a785c2e3ae9f9968283"
 
 S = "${WORKDIR}/${BPN}"
 
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING.tomoyo;md5=751419260aa954499f7abaabaa882bbe"
 
-FILES_${PN}     += "${libdir}/tomoyo"
-FILES_${PN}-dbg += "${libdir}/tomoyo/.debug"
+FILES:${PN}     += "${libdir}/tomoyo"
+FILES:${PN}-dbg += "${libdir}/tomoyo/.debug"
 
 DEPENDS = "linux-libc-headers ncurses"
 
@@ -26,5 +25,5 @@ do_compile () {
 }
 
 do_install() {
-    oe_runmake install INSTALLDIR=${D}
+    oe_runmake install SBINDIR=${base_sbindir} INSTALLDIR=${D}
 }

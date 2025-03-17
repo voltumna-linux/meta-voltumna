@@ -1,6 +1,6 @@
 DESCRIPTION = "a graphical user interface that allows the user to \
 change the default keyboard of the system"
-LICENSE = "GPLv2+"
+LICENSE = "GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263"
 SRC_URI = "https://fedorahosted.org/releases/s/y/${BPN}/${BP}.tar.bz2"
 SRC_URI[md5sum] = "c267db0ee7a2131ba418399dc17f9e72"
@@ -17,11 +17,11 @@ do_install() {
     oe_runmake 'DESTDIR=${D}' install
 }
 
-do_install_append_class-native() {
+do_install:append:class-native() {
     rm -rf ${D}/usr
 }
 
-FILES_${PN} += " \
+FILES:${PN} += " \
    ${libdir}/python${PYTHON_BASEVERSION}/* \
    ${datadir}/* \
 "

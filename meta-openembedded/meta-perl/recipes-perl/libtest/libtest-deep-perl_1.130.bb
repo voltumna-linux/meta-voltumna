@@ -22,7 +22,7 @@ SECTION = "libs"
 
 HOMEPAGE = "http://github.com/rjbs/Test-Deep/"
 
-LICENSE = "Artistic-1.0 | GPL-1.0+"
+LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 LIC_FILES_CHKSUM = "file://lib/Test/Deep.pm;beginline=1817;endline=1826;md5=a897a42bafc3422cab17c2eb94f87a7c"
 
 SRC_URI = "${CPAN_MIRROR}/authors/id/R/RJ/RJBS/Test-Deep-${PV}.tar.gz"
@@ -35,7 +35,7 @@ S = "${WORKDIR}/Test-Deep-${PV}"
 
 inherit cpan ptest-perl
 
-RDEPENDS_${PN} += " \
+RDEPENDS:${PN} += " \
     perl-module-dynaloader \
     perl-module-exporter \
     perl-module-fcntl \
@@ -46,7 +46,7 @@ RDEPENDS_${PN} += " \
     perl-module-warnings \
 "
 
-RDEPENDS_${PN}-ptest += " \
+RDEPENDS:${PN}-ptest += " \
     perl-module-if \
     perl-module-lib \
     perl-module-test-more \

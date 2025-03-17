@@ -9,7 +9,7 @@ SECTION = "libs"
 
 HOMEPAGE = "http://search.cpan.org/~leont/Module-Build-Tiny/"
 
-LICENSE = "Artistic-1.0 | GPL-1.0+"
+LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=57b8100f0b648cd37fbc3725fe3c111a"
 
 DEPENDS = "libextutils-config-perl-native libextutils-helpers-perl-native libextutils-installpaths-perl-native"
@@ -26,7 +26,7 @@ do_install () {
         cpan_build_do_install
 }
 
-RDEPENDS_${PN} = " libextutils-config-perl \
+RDEPENDS:${PN} = " libextutils-config-perl \
                    libextutils-helpers-perl \
                    libextutils-installpaths-perl \
                    perl-module-xsloader \

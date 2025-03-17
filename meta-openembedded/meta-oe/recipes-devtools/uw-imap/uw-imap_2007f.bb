@@ -18,6 +18,10 @@ SRC_URI[sha256sum] = "53e15a2b5c1bc80161d42e9f69792a3fa18332b7b771910131004eb520
 
 S = "${WORKDIR}/imap-${PV}"
 
+CVE_CHECK_IGNORE += "\
+    CVE-2005-0198 \
+"
+
 PACKAGECONFIG ??= "${@bb.utils.filter('DISTRO_FEATURES', 'pam', d)}"
 PACKAGECONFIG[pam] = ",,libpam"
 
@@ -37,9 +41,9 @@ do_install() {
     install c-client/c-client.a ${D}${libdir}/libc-client.a
 }
 
-RPROVIDES_${PN} = "libc-client"
-RREPLACES_${PN} = "libc-client"
-RCONFLICTS_${PN} = "libc-client"
+RPROVIDES:${PN} = "libc-client"
+RREPLACES:${PN} = "libc-client"
+RCONFLICTS:${PN} = "libc-client"
 
-ALLOW_EMPTY_${PN} = "1"
+ALLOW_EMPTY:${PN} = "1"
 

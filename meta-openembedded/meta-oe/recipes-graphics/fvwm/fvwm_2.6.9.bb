@@ -1,7 +1,7 @@
 SUMMARY = "F Virtual Window Manager "
 HOMEPAGE = "http://www.fvwm.org/"
 SECTION = "x11/wm"
-LICENSE = "GPLv2"
+LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=f8204787357db6ea518dcc9b6cf08388"
 
 DEPENDS = " \
@@ -44,7 +44,7 @@ inherit autotools gettext update-alternatives pkgconfig python3native perlnative
 # depends on virtual/libx11
 REQUIRED_DISTRO_FEATURES = "x11"
 
-ALTERNATIVE_${PN} = "x-window-manager"
+ALTERNATIVE:${PN} = "x-window-manager"
 ALTERNATIVE_TARGET[x-window-manager] = "${bindir}/fvwm"
 ALTERNATIVE_PRIORITY[x-window-manager] = "20"
 
@@ -76,7 +76,7 @@ EXTRA_OEMAKE = " \
     V=1 \
 "
 
-do_install_append() {
+do_install:append() {
     install -d -m 0755 ${D}/${sysconfdir}/xdg/fvwm
     # You can install the config file here
 
@@ -97,26 +97,25 @@ PACKAGES = " \
 "
 
 # minimal set of binaries
-FILES_${PN} = " \
+FILES:${PN} = " \
     ${bindir}/fvwm \
     ${bindir}/fvwm-root \
     ${datadir}/fvwm/ConfigFvwmDefaults \
 "
 
-FILES_${PN}-extra = " \
+FILES:${PN}-extra = " \
     ${bindir} \
     ${libexecdir} \
     ${sysconfdir}/xdg/fvwm \
 "
-FILES_${PN}-doc = " \
+FILES:${PN}-doc = " \
     ${mandir} \
     ${datadir}/fvwm \
 "
-
-RDEPENDS_${PN} = " \
+RDEPENDS:${PN} = " \
     xuser-account \
 "
-RDEPENDS_${PN}-extra += "\
+RDEPENDS:${PN}-extra += "\
     perl \
     python3-core \
 "
