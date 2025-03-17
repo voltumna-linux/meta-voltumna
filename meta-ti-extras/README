@@ -1,0 +1,31 @@
+OpenEmbedded/Yocto layer that extends and supplements Texas Instruments BSP layer.
+
+It is hosted on http://git.yoctoproject.org/cgit/cgit.cgi/meta-ti/ with the
+source repository at git://git.yoctoproject.org/meta-ti
+
+
+This layer depends on:
+
+URI: git://git.openembedded.org/openembedded-core
+layers: meta
+branch: kirkstone
+
+URI: git://git.yoctoproject.org/meta-arm
+layers: meta-arm
+branch: kirkstone
+
+URI: git://git.yoctoproject.org/meta-ti
+branch: kirkstone
+revision: HEAD
+layers: meta-ti-bsp
+
+
+Send pull requests, patches, comments or questions to:
+meta-ti@lists.yoctoproject.org
+
+Please note - meta-ti mailing list requires subscription for posting:
+https://lists.yoctoproject.org/g/meta-ti
+
+Maintainers:
+Ryan Eatmon <reatmon@ti.com>
+Denys Dmytriyenko <denys@konsulko.com>

@@ -1,0 +1,6 @@
+INHIBIT_PACKAGE_STRIP = "1"
+
+ALLOW_EMPTY:${PN} = "1"
+ALLOW_EMPTY:${PN}-dev = "1"
+
+

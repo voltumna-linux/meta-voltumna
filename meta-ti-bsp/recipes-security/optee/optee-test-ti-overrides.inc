@@ -1,0 +1,2 @@
+EXTRA_OEMAKE:append = " OPTEE_OPENSSL_EXPORT=${STAGING_INCDIR}"
+DEPENDS:append = " openssl"
