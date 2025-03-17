@@ -1,0 +1,17 @@
+meta-mingw
+==========
+
+OpenEmbedded meta layer for mingw based SDKs
+
+For dylan you need to patch OE-Core with oecore.patch
+
+This layer depends on:
+
+ URI: git://git.openembedded.org/openembedded-core
+ layers: meta
+ branch: master
+
+Layer Maintainer: Joshua Watt <jpewhacker@gmail.com>
+
+Please send changes to the yocto mailing list with [meta-mingw] in the subject line,
+cc'ing the maintainer.
