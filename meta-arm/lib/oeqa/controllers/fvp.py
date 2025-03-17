@@ -1,131 +1,119 @@
-import asyncio
+import contextlib
+import enum
 import pathlib
 import pexpect
 import os
+import time
 
 from oeqa.core.target.ssh import OESSHTarget
-from fvp import conffile, runner
+from fvp import runner
+
+class OEFVPTargetState(str, enum.Enum):
+    OFF = "off"
+    ON = "on"
+    LINUX = "linux"
 
 
-class OEFVPSSHTarget(OESSHTarget):
+class OEFVPTarget(OESSHTarget):
     """
-    Base class for meta-arm FVP targets.
-    Contains common logic to start and stop an FVP.
+    For compatibility with OE-core test cases, this target's start() method
+    waits for a Linux shell before returning to ensure that SSH commands work
+    with the default test dependencies.
     """
+    DEFAULT_CONSOLE = "default"
+
     def __init__(self, logger, target_ip, server_ip, timeout=300, user='root',
-                 port=None, dir_image=None, rootfs=None, **kwargs):
+                 port=None, dir_image=None, rootfs=None, bootlog=None, **kwargs):
         super().__init__(logger, target_ip, server_ip, timeout, user, port)
         image_dir = pathlib.Path(dir_image)
         # rootfs may have multiple extensions so we need to strip *all* suffixes
         basename = pathlib.Path(rootfs)
         basename = basename.name.replace("".join(basename.suffixes), "")
         self.fvpconf = image_dir / (basename + ".fvpconf")
-        self.config = conffile.load(self.fvpconf)
-
         if not self.fvpconf.exists():
             raise FileNotFoundError(f"Cannot find {self.fvpconf}")
 
-    async def boot_fvp(self):
-        self.fvp = runner.FVPRunner(self.logger)
-        await self.fvp.start(self.config)
-        self.logger.debug(f"Started FVP PID {self.fvp.pid()}")
-        await self._after_start()
+        self.bootlog = bootlog
+        self.terminals = {}
+        self.stack = None
+        self.state = OEFVPTargetState.OFF
 
-    async def _after_start(self):
-        pass
+    def transition(self, state, timeout=10*60):
+        if state == self.state:
+            return
 
-    async def _after_stop(self):
-        pass
+        if state == OEFVPTargetState.OFF:
+            returncode = self.fvp.stop()
+            self.logger.debug(f"Stopped FVP with return code {returncode}")
+            self.stack.close()
+        elif state == OEFVPTargetState.ON:
+            self.transition(OEFVPTargetState.OFF, timeout)
+            self.stack = contextlib.ExitStack()
+            self.fvp = runner.FVPRunner(self.logger)
+            self.fvp_log = self._create_logfile("fvp", "wb")
+            self.fvp.start(self.fvpconf, stdout=self.fvp_log)
+            self.logger.debug(f"Started FVP PID {self.fvp.pid()}")
+            self._setup_consoles()
+        elif state == OEFVPTargetState.LINUX:
+            self.transition(OEFVPTargetState.ON, timeout)
+            try:
+                self.expect(OEFVPTarget.DEFAULT_CONSOLE, "login\\:", timeout=timeout)
+                self.logger.debug("Found login prompt")
+                self.state = OEFVPTargetState.LINUX
+            except pexpect.TIMEOUT:
+                self.logger.info("Timed out waiting for login prompt.")
+                self.logger.info("Boot log follows:")
+                self.logger.info(b"\n".join(self.before(OEFVPTarget.DEFAULT_CONSOLE).splitlines()[-200:]).decode("utf-8", errors="replace"))
+                raise RuntimeError("Failed to start FVP.")
 
-    async def stop_fvp(self):
-        returncode = await self.fvp.stop()
-        await self._after_stop()
-
-        self.logger.debug(f"Stopped FVP with return code {returncode}")
+        self.logger.info(f"Transitioned to {state}")
+        self.state = state
 
     def start(self, **kwargs):
-        # When we can assume Py3.7+, this can simply be asyncio.run()
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.gather(self.boot_fvp()))
+        # No-op - put the FVP in the required state lazily
+        pass
 
     def stop(self, **kwargs):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.gather(self.stop_fvp()))
+        self.transition(OEFVPTargetState.OFF)
 
+    def run(self, cmd, timeout=None):
+        # Running a command implies the LINUX state
+        self.transition(OEFVPTargetState.LINUX)
+        return super().run(cmd, timeout)
 
-class OEFVPTarget(OEFVPSSHTarget):
-    """
-    For compatibility with OE-core test cases, this target's start() method
-    waits for a Linux shell before returning to ensure that SSH commands work
-    with the default test dependencies.
-    """
-    def __init__(self, logger, target_ip, server_ip, bootlog=None, **kwargs):
-        super().__init__(logger, target_ip, server_ip, **kwargs)
-        self.logfile = bootlog and open(bootlog, "wb") or None
+    def _setup_consoles(self):
+        with open(self.fvp_log.name, 'rb') as logfile:
+            parser = runner.ConsolePortParser(logfile)
+            config = self.fvp.getConfig()
+            for name, console in config["consoles"].items():
+                logfile = self._create_logfile(name)
+                self.logger.info(f'Creating terminal {name} on {console}')
+                port = parser.parse_port(console)
+                self.terminals[name] = \
+                    self.fvp.create_pexpect(port, logfile=logfile)
 
-        # FVPs boot slowly, so allow ten minutes
-        self.boot_timeout = 10 * 60
+                # testimage.bbclass expects to see a log file at `bootlog`,
+                # so make a symlink to the 'default' log file
+                test_log_suffix = pathlib.Path(self.bootlog).suffix
+                default_test_file = f"{name}_log{test_log_suffix}"
+                if name == 'default' and not os.path.exists(self.bootlog):
+                    os.symlink(default_test_file, self.bootlog)
 
-    async def _after_start(self):
-        self.logger.debug(f"Awaiting console on terminal {self.config['consoles']['default']}")
-        console = await self.fvp.create_pexpect(self.config['consoles']['default'])
-        try:
-            console.expect("login\\:", timeout=self.boot_timeout)
-            self.logger.debug("Found login prompt")
-        except pexpect.TIMEOUT:
-            self.logger.info("Timed out waiting for login prompt.")
-            self.logger.info("Boot log follows:")
-            self.logger.info(b"\n".join(console.before.splitlines()[-200:]).decode("utf-8", errors="replace"))
-            raise RuntimeError("Failed to start FVP.")
+    def _create_logfile(self, name, mode='ab'):
+        if not self.bootlog:
+            return None
 
-
-class OEFVPSerialTarget(OEFVPSSHTarget):
-    """
-    This target is intended for interaction with the target over one or more
-    telnet consoles using pexpect.
-    
-    This still depends on OEFVPSSHTarget so SSH commands can still be run on
-    the target, but note that this class does not inherently guarantee that
-    the SSH server is running prior to running test cases. Test cases that use
-    SSH should first validate that SSH is available, e.g. by depending on the
-    "linuxboot" test case in meta-arm.
-    """
-    DEFAULT_CONSOLE = "default"
-
-    def __init__(self, logger, target_ip, server_ip, bootlog=None, **kwargs):
-        super().__init__(logger, target_ip, server_ip, **kwargs)
-        self.terminals = {}
-
-        self.test_log_path = pathlib.Path(bootlog).parent
-        self.test_log_suffix = pathlib.Path(bootlog).suffix
-        self.bootlog = bootlog
-
-    async def _add_terminal(self, name, fvp_name):
-        logfile = self._create_logfile(name)
-        self.logger.info(f'Creating terminal {name} on {fvp_name}')
-        self.terminals[name] = \
-            await self.fvp.create_pexpect(fvp_name, logfile=logfile)
-
-    def _create_logfile(self, name):
-        fvp_log_file = f"{name}_log{self.test_log_suffix}"
-        fvp_log_path = pathlib.Path(self.test_log_path, fvp_log_file)
-        fvp_log_symlink = pathlib.Path(self.test_log_path, f"{name}_log")
+        test_log_path = pathlib.Path(self.bootlog).parent
+        test_log_suffix = pathlib.Path(self.bootlog).suffix
+        fvp_log_file = f"{name}_log{test_log_suffix}"
+        fvp_log_path = pathlib.Path(test_log_path, fvp_log_file)
+        fvp_log_symlink = pathlib.Path(test_log_path, f"{name}_log")
         try:
             os.remove(fvp_log_symlink)
         except:
             pass
         os.symlink(fvp_log_file, fvp_log_symlink)
-        return open(fvp_log_path, 'wb')
-
-    async def _after_start(self):
-        for name, console in self.config["consoles"].items():
-            await self._add_terminal(name, console)
-
-            # testimage.bbclass expects to see a log file at `bootlog`,
-            # so make a symlink to the 'default' log file
-            if name == 'default':
-                default_test_file = f"{name}_log{self.test_log_suffix}"
-                os.symlink(default_test_file, self.bootlog)
+        return self.stack.enter_context(open(fvp_log_path, mode))
 
     def _get_terminal(self, name):
         return self.terminals[name]
@@ -140,8 +128,22 @@ class OEFVPSerialTarget(OEFVPSSHTarget):
         def call_pexpect(terminal, *args, **kwargs):
             attr = getattr(self.terminals[terminal], name)
             if callable(attr):
-                return attr(*args, **kwargs)
+                self.logger.debug(f"Calling {name} on {terminal} : with arguments -> {args}  :  {kwargs}")
+                start_time = time.monotonic()  # Record the start time
+
+                attr = getattr(self.terminals[terminal], name)
+                result = attr(*args, **kwargs)
+
+                end_time = time.monotonic()  # Record the end time
+                elapsed_time = end_time - start_time
+                self.logger.debug(f"Execution time for result: [ {result} ] - elapsed_time: {elapsed_time} seconds")
             else:
-                return attr
+                result = attr
+
+            return result
 
         return call_pexpect
+
+    @property
+    def config(self):
+        return self.fvp.getConfig()

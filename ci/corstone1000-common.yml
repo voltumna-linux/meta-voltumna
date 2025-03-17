@@ -1,13 +1,13 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/siemens/kas/master/kas/schema-kas.json
+
 header:
-  version: 11
+  version: 14
   includes:
     - ci/base.yml
     - ci/meta-openembedded.yml
-local_conf_header:
-    perf: |
-
-distro: poky-tiny
+    - ci/meta-secure-core.yml
+    - kas/corstone1000-image-configuration.yml
 
 target:
+  - core-image-minimal
   - perf
-  - corstone1000-image

@@ -23,12 +23,15 @@ def eat_get_version(d):
         last_line = stderr.splitlines()[-1]
         return last_line
 
-# Extract the YYYY.MM version
+# Extract the YYYY.MM or release version
 def eat_get_main_version(d):
     version = eat_get_version(d)
     bb.debug(2, 'Trying for parse version info from: %s' % version)
     if version != 'UNKNOWN':
-        if version.split()[4] == '(GNU':
+        if version.split()[4] == '(Arm':
+            # gcc version 11.3.1 20220712 (Arm GNU Toolchain 11.3.Rel1)
+            return version.split()[7].split(')')[0]
+        elif version.split()[4] == '(GNU':
             # gcc version 9.2.1 20191025 (GNU Toolchain for the A-profile Architecture 9.2-2019.12 (arm-9.10))
             # gcc version 8.2.1 20180802 (GNU Toolchain for the A-profile Architecture 8.2-2018.11 (arm-rel-8.26))
             return version.split()[10].split('-')[1]
@@ -120,7 +123,6 @@ python external_arm_toolchain_version_handler () {
         return
     d = e.data
     ld = d.createCopy()
-    ld.finalize()
 
     d.setVar('EAT_VER_MAIN', eat_get_main_version(ld))
     d.setVar('EAT_VER_GCC', eat_get_gcc_version(ld))

@@ -1,16 +1,18 @@
 # N1SDP specific SCP configurations and build instructions
 
-SCP_PLATFORM  = "n1sdp"
-SCP_LOG_LEVEL = "INFO"
-
-# master branch at n1sdp: Introduce trusted board boot
-SRCREV  = "3e4c34ceccc1c960eb3a4adaa922f2a0c6b36be3"
-PV .= "+git${SRCPV}"
-
 COMPATIBLE_MACHINE:n1sdp = "n1sdp"
+
+SCP_LOG_LEVEL = "INFO"
 
 DEPENDS += "fiptool-native"
 DEPENDS += "trusted-firmware-a"
+DEPENDS += "n1sdp-board-firmware"
+
+# The n1sdp sensor library is needed for building SCP N1SDP Platform
+# https://github.com/ARM-software/SCP-firmware/tree/master/product/n1sdp
+EXTRA_OECMAKE:append = " \
+    -DSCP_N1SDP_SENSOR_LIB_PATH=${RECIPE_SYSROOT}/n1sdp-board-firmware_source/LIB/sensor.a \
+"
 
 do_install:append() {
    fiptool \

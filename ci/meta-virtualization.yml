@@ -1,8 +1,10 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/siemens/kas/master/kas/schema-kas.json
+
 header:
-  version: 11
+  version: 14
   includes:
     - ci/meta-openembedded.yml
 
 repos:
   meta-virtualization:
-    url: git://git.yoctoproject.org/meta-virtualization
+    url: https://git.yoctoproject.org/meta-virtualization

@@ -5,9 +5,11 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 inherit deploy
 
-SRC_URI = "git://git.trustedfirmware.org/TF-A/trusted-firmware-a.git;protocol=https;name=tfa;branch=master \
-           file://ssl.patch"
-UPSTREAM_CHECK_GITTAGREGEX = "^v(?P<pver>\d+(\.\d+)+)$"
+SRC_URI_TRUSTED_FIRMWARE_A ?= "git://git.trustedfirmware.org/TF-A/trusted-firmware-a.git;protocol=https"
+SRCBRANCH = "master"
+SRC_URI = "${SRC_URI_TRUSTED_FIRMWARE_A};name=tfa;branch=${SRCBRANCH}"
+
+UPSTREAM_CHECK_GITTAGREGEX = "^(lts-)?v(?P<pver>\d+(\.\d+)+)$"
 
 SRCREV_FORMAT = "tfa"
 
@@ -166,7 +168,7 @@ BUILD_DIR .= "/${@'debug' if d.getVar("TFA_DEBUG") == '1' else 'release'}"
 do_compile() {
     # This is still needed to have the native tools executing properly by
     # setting the RPATH
-    sed -i '/^LDLIBS/ s,$, \$\{BUILD_LDFLAGS},' ${S}/tools/fiptool/Makefile
+    sed -i '/^LDOPTS/ s,$, \$\{BUILD_LDFLAGS},' ${S}/tools/fiptool/Makefile
     sed -i '/^INCLUDE_PATHS/ s,$, \$\{BUILD_CFLAGS},' ${S}/tools/fiptool/Makefile
     sed -i '/^LIB/ s,$, \$\{BUILD_LDFLAGS},' ${S}/tools/cert_create/Makefile
 
@@ -231,7 +233,10 @@ SYSROOT_DIRS += "/firmware"
 
 FILES:${PN}-dbg = "/firmware/*.elf"
 # Skip QA check for relocations in .text of elf binaries
-INSANE_SKIP:${PN}-dbg = "textrel"
+INSANE_SKIP:${PN}-dbg += "textrel"
+# Build paths are currently embedded
+INSANE_SKIP:${PN} += "buildpaths"
+INSANE_SKIP:${PN}-dbg += "buildpaths"
 
 do_deploy() {
     cp -rf ${D}/firmware/* ${DEPLOYDIR}/

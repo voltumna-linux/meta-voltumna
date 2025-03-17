@@ -1,5 +1,7 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/siemens/kas/master/kas/schema-kas.json
+
 header:
-  version: 11
+  version: 14
 
 repos:
   meta-openembedded:
@@ -9,3 +11,4 @@ repos:
       meta-networking:
       meta-oe:
       meta-python:
+      meta-perl:

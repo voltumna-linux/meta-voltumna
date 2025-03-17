@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/siemens/kas/master/kas/schema-kas.json
+
+header:
+  version: 14
+
+repos:
+  meta-secure-core:
+    url: https://github.com/Wind-River/meta-secure-core.git
+    layers:
+      meta-secure-core-common:
+      meta-signing-key:
+      meta-efi-secure-boot:
+      

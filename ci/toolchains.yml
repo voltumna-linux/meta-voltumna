@@ -1,5 +1,7 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/siemens/kas/master/kas/schema-kas.json
+
 header:
-  version: 11
+  version: 14
   includes:
     - ci/base.yml
 
@@ -16,4 +18,3 @@ target:
   - nativesdk-gcc-aarch64-none-elf
   - gcc-arm-none-eabi
   - nativesdk-gcc-arm-none-eabi
-  - nativesdk-androidclang

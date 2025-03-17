@@ -6,10 +6,6 @@ This repository contains the Arm layers for OpenEmbedded.
 
   This layer contains general recipes for the Arm architecture, such as firmware, FVPs, and Arm-specific integration.
 
-* meta-arm-autonomy
-
-  This layer is the distribution for a reference stack for autonomous systems.
-
 * meta-arm-bsp
 
   This layer contains machines for Arm reference platforms, for example FVP Base, N1SDP, and Juno.
@@ -17,15 +13,6 @@ This repository contains the Arm layers for OpenEmbedded.
 * meta-arm-toolchain
 
   This layer contains recipes for Arm's binary toolchains (GCC and Clang for -A and -M), and a recipe to build Arm's GCC.
-
-* meta-atp
-
-  This layer contains recipes for the Adaptive Traffic Generation integration into meta-gem5.
-
-* meta-gem5
-
-  This layer contains recipes and machines for gem5, a system-level and processor simulator.
-
 
 Other Directories
 -----------------
@@ -41,6 +28,13 @@ Other Directories
 * scripts
 
   This directory contains scripts used in running the CI tests
+
+Mailing List
+------------
+To interact with the meta-arm developer community, please email the meta-arm mailing list at meta-arm@lists.yoctoproject.org
+Currently, it is configured to only allow emails to members from those subscribed.
+To subscribe to the meta-arm mailing list, please go to
+https://lists.yoctoproject.org/g/meta-arm
 
 Contributing
 ------------
@@ -61,6 +55,13 @@ The component being changed in the shortlog should be prefixed with the layer na
   arm-bsp/trusted-firmware-a: decrease frobbing level
 
   arm-toolchain/gcc: enable foobar v2
+
+Releases and Release Schedule
+--------------
+We follow the Yocto Project release methodology, schedule, and stable/LTS support timelines.  For more information on these, please reference:
+https://docs.yoctoproject.org/ref-manual/release-process.html
+https://wiki.yoctoproject.org/wiki/Releases
+https://wiki.yoctoproject.org/wiki/Stable_Release_and_LTS
 
 Reporting bugs
 --------------
