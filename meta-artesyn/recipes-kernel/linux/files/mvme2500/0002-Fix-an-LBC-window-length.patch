@@ -1,0 +1,25 @@
+From 3814ceacdfb0287559f0588dbd0012f622366e53 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Mon, 13 Jun 2016 09:11:04 +0200
+Subject: [PATCH 2/9] Fix an LBC window length
+
+---
+ arch/powerpc/boot/dts/fsl/mvme2500.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/powerpc/boot/dts/fsl/mvme2500.dts b/arch/powerpc/boot/dts/fsl/mvme2500.dts
+index e0f048a03956..f1d1b23e6f76 100644
+--- a/arch/powerpc/boot/dts/fsl/mvme2500.dts
++++ b/arch/powerpc/boot/dts/fsl/mvme2500.dts
+@@ -155,7 +155,7 @@
+ 			  0x3 0x0 0x0 0xffc60000 0x00010000
+ 			  0x4 0x0 0x0 0xffc70000 0x00010000
+ 			  0x6 0x0 0x0 0xffc80000 0x00010000
+-			  0x5 0x0 0x0 0xffdf0000 0x00008000>;
++			  0x5 0x0 0x0 0xffdf0000 0x00001000>;
+ 
+ 		serial2: serial@1,0 {
+ 			device_type = "serial";
+-- 
+2.24.4
+
