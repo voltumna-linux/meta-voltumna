@@ -15,7 +15,13 @@ INSANE_SKIP:${PN} = "already-stripped"
 
 do_extract_data() {
 	install -d ${S}
+<<<<<<< HEAD
+	tar zxf ${WORKDIR}/*_Linux.tar.gz -C "${S}"
+||||||| parent of 303703e (Migrate to walnascar)
+	tar zxf ${WORKDIR}/*_Linux.tar.gz -C "${S}"
+=======
 	tar zxf ${UNPACKDIR}/*_Linux.tar.gz -C "${S}"
+>>>>>>> 303703e (Migrate to walnascar)
 }
 
 python do_unpack:append() {

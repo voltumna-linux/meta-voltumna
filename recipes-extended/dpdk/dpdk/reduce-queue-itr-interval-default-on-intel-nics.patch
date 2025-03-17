@@ -3,6 +3,7 @@ From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
 Date: Thu, 30 Nov 2023 09:04:33 +0100
 Subject: [PATCH] Optimize DPDK on Intel boards
 
+Upstream-Status: Inappropriate
 ---
  drivers/net/i40e/i40e_ethdev.h   | 4 ++--
  drivers/net/iavf/iavf.h          | 2 +-

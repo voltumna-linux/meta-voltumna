@@ -15,5 +15,5 @@ do_install:append() {
 	chmod 755 ${D}${sysconfdir}/polkit-1/rules.d ${D}${datadir}/polkit-1/rules.d
 
 	# Add additional rules files
-        install -m 0644 ${WORKDIR}/00-log-access.rules ${D}${datadir}/polkit-1/rules.d
+        install -m 0644 ${UNPACKDIR}/00-log-access.rules ${D}${datadir}/polkit-1/rules.d
 }
