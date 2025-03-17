@@ -1,4 +1,6 @@
 #
+# Copyright BitBake Contributors
+#
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
@@ -7,6 +9,7 @@ import signal
 import subprocess
 import errno
 import select
+import bb
 
 logger = logging.getLogger('BitBake.Process')
 
@@ -41,6 +44,7 @@ class ExecutionError(CmdError):
         self.exitcode = exitcode
         self.stdout = stdout
         self.stderr = stderr
+        self.extra_message = None
 
     def __str__(self):
         message = ""
@@ -51,14 +55,14 @@ class ExecutionError(CmdError):
         if message:
             message = ":\n" + message
         return (CmdError.__str__(self) +
-                " with exit code %s" % self.exitcode + message)
+                " with exit code %s" % self.exitcode + message + (self.extra_message or ""))
 
 class Popen(subprocess.Popen):
     defaults = {
         "close_fds": True,
         "preexec_fn": subprocess_setup,
         "stdout": subprocess.PIPE,
-        "stderr": subprocess.STDOUT,
+        "stderr": subprocess.PIPE,
         "stdin": subprocess.PIPE,
         "shell": False,
     }
@@ -140,7 +144,7 @@ def _logged_communicate(pipe, log, input, extrafiles):
         while pipe.poll() is None:
             read_all_pipes(log, rin, outdata, errdata)
 
-        # Pocess closed, drain all pipes...
+        # Process closed, drain all pipes...
         read_all_pipes(log, rin, outdata, errdata)
     finally:
         log.flush()

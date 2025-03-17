@@ -14,7 +14,8 @@ import logging
 import os
 import sys
 import argparse
-import signal
+import warnings
+warnings.simplefilter("default")
 
 bindir = os.path.dirname(__file__)
 topdir = os.path.dirname(bindir)
@@ -26,7 +27,6 @@ import bb.msg
 logger = bb.msg.logger_create('bitbake-layers', sys.stdout)
 
 def main():
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     parser = argparse.ArgumentParser(
         description="BitBake layers utility",
         epilog="Use %(prog)s <subcommand> --help to get help on a specific command",
@@ -68,11 +68,11 @@ def main():
 
         registered = False
         for plugin in plugins:
+            if hasattr(plugin, 'tinfoil_init'):
+                plugin.tinfoil_init(tinfoil)
             if hasattr(plugin, 'register_commands'):
                 registered = True
                 plugin.register_commands(subparsers)
-            if hasattr(plugin, 'tinfoil_init'):
-                plugin.tinfoil_init(tinfoil)
 
         if not registered:
             logger.error("No commands registered - missing plugins?")

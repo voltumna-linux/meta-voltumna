@@ -78,7 +78,7 @@ class GitSM(Git):
                     module_hash = ""
 
                 if not module_hash:
-                    logger.debug(1, "submodule %s is defined, but is not initialized in the repository. Skipping", m)
+                    logger.debug("submodule %s is defined, but is not initialized in the repository. Skipping", m)
                     continue
 
                 submodules.append(m)
@@ -88,7 +88,7 @@ class GitSM(Git):
                 subrevision[m] = module_hash.split()[2]
 
                 # Convert relative to absolute uri based on parent uri
-                if uris[m].startswith('..'):
+                if  uris[m].startswith('..') or uris[m].startswith('./'):
                     newud = copy.copy(ud)
                     newud.path = os.path.realpath(os.path.join(newud.path, uris[m]))
                     uris[m] = Git._get_repo_url(self, newud)
@@ -115,6 +115,9 @@ class GitSM(Git):
                     # This has to be a file reference
                     proto = "file"
                     url = "gitsm://" + uris[module]
+            if url.endswith("{}{}".format(ud.host, ud.path)):
+                raise bb.fetch2.FetchError("Submodule refers to the parent repository. This will cause deadlock situation in current version of Bitbake." \
+                                           "Consider using git fetcher instead.")
 
             url += ';protocol=%s' % proto
             url += ";name=%s" % module
@@ -136,19 +139,40 @@ class GitSM(Git):
 
         return submodules != []
 
+    def call_process_submodules(self, ud, d, extra_check, subfunc):
+        # If we're using a shallow mirror tarball it needs to be
+        # unpacked temporarily so that we can examine the .gitmodules file
+        if ud.shallow and os.path.exists(ud.fullshallow) and extra_check:
+            tmpdir = tempfile.mkdtemp(dir=d.getVar("DL_DIR"))
+            try:
+                runfetchcmd("tar -xzf %s" % ud.fullshallow, d, workdir=tmpdir)
+                self.process_submodules(ud, tmpdir, subfunc, d)
+            finally:
+                shutil.rmtree(tmpdir)
+        else:
+            self.process_submodules(ud, ud.clonedir, subfunc, d)
+
     def need_update(self, ud, d):
         if Git.need_update(self, ud, d):
             return True
 
-        try:
-            # Check for the nugget dropped by the download operation
-            known_srcrevs = runfetchcmd("%s config --get-all bitbake.srcrev" % \
-                            (ud.basecmd), d, workdir=ud.clonedir)
+        need_update_list = []
+        def need_update_submodule(ud, url, module, modpath, workdir, d):
+            url += ";bareclone=1;nobranch=1"
 
-            if ud.revisions[ud.names[0]] not in known_srcrevs.split():
-                return True
-        except bb.fetch2.FetchError:
-            # No srcrev nuggets, so this is new and needs to be updated
+            try:
+                newfetch = Fetch([url], d, cache=False)
+                new_ud = newfetch.ud[url]
+                if new_ud.method.need_update(new_ud, d):
+                    need_update_list.append(modpath)
+            except Exception as e:
+                logger.error('gitsm: submodule update check failed: %s %s' % (type(e).__name__, str(e)))
+                need_update_result = True
+
+        self.call_process_submodules(ud, d, not os.path.exists(ud.clonedir), need_update_submodule)
+
+        if need_update_list:
+            logger.debug('gitsm: Submodules requiring update: %s' % (' '.join(need_update_list)))
             return True
 
         return False
@@ -163,24 +187,12 @@ class GitSM(Git):
             try:
                 newfetch = Fetch([url], d, cache=False)
                 newfetch.download()
-                # Drop a nugget to add each of the srcrevs we've fetched (used by need_update)
-                runfetchcmd("%s config --add bitbake.srcrev %s" % \
-                            (ud.basecmd, ud.revisions[ud.names[0]]), d, workdir=workdir)
             except Exception as e:
                 logger.error('gitsm: submodule download failed: %s %s' % (type(e).__name__, str(e)))
                 raise
 
         Git.download(self, ud, d)
-
-        # If we're using a shallow mirror tarball it needs to be unpacked
-        # temporarily so that we can examine the .gitmodules file
-        if ud.shallow and os.path.exists(ud.fullshallow) and self.need_update(ud, d):
-            tmpdir = tempfile.mkdtemp(dir=d.getVar("DL_DIR"))
-            runfetchcmd("tar -xzf %s" % ud.fullshallow, d, workdir=tmpdir)
-            self.process_submodules(ud, tmpdir, download_submodule, d)
-            shutil.rmtree(tmpdir)
-        else:
-            self.process_submodules(ud, ud.clonedir, download_submodule, d)
+        self.call_process_submodules(ud, d, self.need_update(ud, d), download_submodule)
 
     def unpack(self, ud, destdir, d):
         def unpack_submodules(ud, url, module, modpath, workdir, d):
@@ -223,3 +235,16 @@ class GitSM(Git):
             # up the configuration and checks out the files.  The main project config should remain
             # unmodified, and no download from the internet should occur.
             runfetchcmd("%s submodule update --recursive --no-fetch" % (ud.basecmd), d, quiet=True, workdir=ud.destdir)
+
+    def implicit_urldata(self, ud, d):
+        import shutil, subprocess, tempfile
+
+        urldata = []
+        def add_submodule(ud, url, module, modpath, workdir, d):
+            url += ";bareclone=1;nobranch=1"
+            newfetch = Fetch([url], d, cache=False)
+            urldata.extend(newfetch.expanded_urldata())
+
+        self.call_process_submodules(ud, d, ud.method.need_update(ud, d), add_submodule)
+
+        return urldata

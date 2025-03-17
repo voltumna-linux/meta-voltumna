@@ -6,6 +6,7 @@
 import datetime
 
 import logging
+import os
 
 from collections import OrderedDict
 from layerindexlib.plugin import LayerIndexPluginUrlError
@@ -69,7 +70,7 @@ class LayerIndex():
 
         if self.__class__ != newIndex.__class__ or \
            other.__class__ != newIndex.__class__:
-            raise TypeException("Can not add different types.")
+            raise TypeError("Can not add different types.")
 
         for indexEnt in self.indexes:
             newIndex.indexes.append(indexEnt)
@@ -92,7 +93,7 @@ class LayerIndex():
            if not param:
                continue
            item = param.split('=', 1)
-           logger.debug(1, item)
+           logger.debug(item)
            param_dict[item[0]] = item[1]
 
         return param_dict
@@ -121,7 +122,7 @@ class LayerIndex():
         up = urlparse(url)
 
         if username:
-            logger.debug(1, "Configuring authentication for %s..." % url)
+            logger.debug("Configuring authentication for %s..." % url)
             password_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
             password_mgr.add_password(None, "%s://%s" % (up.scheme, up.netloc), username, password)
             handler = urllib.request.HTTPBasicAuthHandler(password_mgr)
@@ -131,20 +132,20 @@ class LayerIndex():
 
         urllib.request.install_opener(opener)
 
-        logger.debug(1, "Fetching %s (%s)..." % (url, ["without authentication", "with authentication"][bool(username)]))
+        logger.debug("Fetching %s (%s)..." % (url, ["without authentication", "with authentication"][bool(username)]))
 
         try:
             res = urlopen(Request(url, headers={'User-Agent': 'Mozilla/5.0 (bitbake/lib/layerindex)'}, unverifiable=True))
         except urllib.error.HTTPError as e:
-            logger.debug(1, "HTTP Error: %s: %s" % (e.code, e.reason))
-            logger.debug(1, " Requested: %s" % (url))
-            logger.debug(1, " Actual:    %s" % (e.geturl()))
+            logger.debug("HTTP Error: %s: %s" % (e.code, e.reason))
+            logger.debug(" Requested: %s" % (url))
+            logger.debug(" Actual:    %s" % (e.geturl()))
 
             if e.code == 404:
-                logger.debug(1, "Request not found.")
+                logger.debug("Request not found.")
                 raise LayerIndexFetchError(url, e)
             else:
-                logger.debug(1, "Headers:\n%s" % (e.headers))
+                logger.debug("Headers:\n%s" % (e.headers))
                 raise LayerIndexFetchError(url, e)
         except OSError as e:
             error = 0
@@ -168,7 +169,7 @@ class LayerIndex():
                 raise LayerIndexFetchError(url, "Unable to fetch OSError exception: %s" % e)
 
         finally:
-            logger.debug(1, "...fetching %s (%s), done." % (url, ["without authentication", "with authentication"][bool(username)]))
+            logger.debug("...fetching %s (%s), done." % (url, ["without authentication", "with authentication"][bool(username)]))
 
         return res
 
@@ -197,20 +198,20 @@ The format of the indexURI:
 
   For example:
 
-  http://layers.openembedded.org/layerindex/api/;branch=master;desc=OpenEmbedded%20Layer%20Index
+  https://layers.openembedded.org/layerindex/api/;branch=master;desc=OpenEmbedded%20Layer%20Index
   cooker://
 '''
         if reload:
             self.indexes = []
 
-        logger.debug(1, 'Loading: %s' % indexURI)
+        logger.debug('Loading: %s' % indexURI)
 
         if not self.plugins:
             raise LayerIndexException("No LayerIndex Plugins available")
 
         for plugin in self.plugins:
             # Check if the plugin was initialized
-            logger.debug(1, 'Trying %s' % plugin.__class__)
+            logger.debug('Trying %s' % plugin.__class__)
             if not hasattr(plugin, 'type') or not plugin.type:
                 continue
             try:
@@ -218,11 +219,11 @@ The format of the indexURI:
                 indexEnt = plugin.load_index(indexURI, load)
                 break
             except LayerIndexPluginUrlError as e:
-                logger.debug(1, "%s doesn't support %s" % (plugin.type, e.url))
+                logger.debug("%s doesn't support %s" % (plugin.type, e.url))
             except NotImplementedError:
                 pass
         else:
-            logger.debug(1, "No plugins support %s" % indexURI)
+            logger.debug("No plugins support %s" % indexURI)
             raise LayerIndexException("No plugins support %s" % indexURI)
 
         # Mark CONFIG data as something we've added...
@@ -253,20 +254,20 @@ will write out the individual elements split by layer and related components.
 
         for plugin in self.plugins:
             # Check if the plugin was initialized
-            logger.debug(1, 'Trying %s' % plugin.__class__)
+            logger.debug('Trying %s' % plugin.__class__)
             if not hasattr(plugin, 'type') or not plugin.type:
                 continue
             try:
                 plugin.store_index(indexURI, index)
                 break
             except LayerIndexPluginUrlError as e:
-                logger.debug(1, "%s doesn't support %s" % (plugin.type, e.url))
+                logger.debug("%s doesn't support %s" % (plugin.type, e.url))
             except NotImplementedError:
-                logger.debug(1, "Store not implemented in %s" % plugin.type)
+                logger.debug("Store not implemented in %s" % plugin.type)
                 pass
         else:
-            logger.debug(1, "No plugins support %s" % url)
-            raise LayerIndexException("No plugins support %s" % url)
+            logger.debug("No plugins support %s" % indexURI)
+            raise LayerIndexException("No plugins support %s" % indexURI)
 
 
     def is_empty(self):
@@ -290,7 +291,7 @@ layerBranches set.  If not, they are effectively blank.'''
            the default configuration until the first vcs_url/branch match.'''
 
         for index in self.indexes:
-            logger.debug(1, ' searching %s' % index.config['DESCRIPTION'])
+            logger.debug(' searching %s' % index.config['DESCRIPTION'])
             layerBranch = index.find_vcs_url(vcs_url, [branch])
             if layerBranch:
                 return layerBranch
@@ -302,7 +303,7 @@ layerBranches set.  If not, they are effectively blank.'''
            If a branch has not been specified, we will iterate over the branches in
            the default configuration until the first collection/branch match.'''
 
-        logger.debug(1, 'find_collection: %s (%s) %s' % (collection, version, branch))
+        logger.debug('find_collection: %s (%s) %s' % (collection, version, branch))
 
         if branch:
             branches = [branch]
@@ -310,12 +311,12 @@ layerBranches set.  If not, they are effectively blank.'''
             branches = None
 
         for index in self.indexes:
-            logger.debug(1, ' searching %s' % index.config['DESCRIPTION'])
+            logger.debug(' searching %s' % index.config['DESCRIPTION'])
             layerBranch = index.find_collection(collection, version, branches)
             if layerBranch:
                 return layerBranch
         else:
-            logger.debug(1, 'Collection %s (%s) not found for branch (%s)' % (collection, version, branch))
+            logger.debug('Collection %s (%s) not found for branch (%s)' % (collection, version, branch))
         return None
 
     def find_layerbranch(self, name, branch=None):
@@ -406,7 +407,7 @@ layerBranches set.  If not, they are effectively blank.'''
                                               version=deplayerbranch.version
                                           )
                         if rdeplayerbranch != deplayerbranch:
-                                logger.debug(1, 'Replaced %s:%s:%s with %s:%s:%s' % \
+                                logger.debug('Replaced %s:%s:%s with %s:%s:%s' % \
                                       (deplayerbranch.index.config['DESCRIPTION'],
                                        deplayerbranch.branch.name,
                                        deplayerbranch.layer.name,
@@ -575,7 +576,7 @@ This function is used to implement debugging and provide the user info.
 #   index['config'] - configuration data for this index
 #   index['branches'] - dictionary of Branch objects, by id number
 #   index['layerItems'] - dictionary of layerItem objects, by id number
-#   ...etc...  (See: http://layers.openembedded.org/layerindex/api/)
+#   ...etc...  (See: https://layers.openembedded.org/layerindex/api/)
 #
 # The class needs to manage the 'index' entries and allow easily adding
 # of new items, as well as simply loading of the items.
@@ -656,7 +657,7 @@ class LayerIndexObj():
             if obj.id in self._index[indexname]:
                 if self._index[indexname][obj.id] == obj:
                     continue
-                raise LayerIndexError('Conflict adding object %s(%s) to index' % (indexname, obj.id))
+                raise LayerIndexException('Conflict adding object %s(%s) to index' % (indexname, obj.id))
             self._index[indexname][obj.id] = obj
 
     def add_raw_element(self, indexname, objtype, rawobjs):
@@ -841,11 +842,11 @@ class LayerIndexObj():
 
         def _resolve_dependencies(layerbranches, ignores, dependencies, invalid):
             for layerbranch in layerbranches:
-                if ignores and layerBranch.layer.name in ignores:
+                if ignores and layerbranch.layer.name in ignores:
                     continue
 
-                for layerdependency in layerbranch.index.layerDependencies_layerBranchId[layerBranch.id]:
-                    deplayerbranch = layerDependency.dependency_layerBranch
+                for layerdependency in layerbranch.index.layerDependencies_layerBranchId[layerbranch.id]:
+                    deplayerbranch = layerdependency.dependency_layerBranch
 
                     if ignores and deplayerbranch.layer.name in ignores:
                         continue
@@ -1119,7 +1120,7 @@ class LayerBranch(LayerIndexItemObj):
     @property
     def branch(self):
         try:
-            logger.debug(1, "Get branch object from branches[%s]" % (self.branch_id))
+            logger.debug("Get branch object from branches[%s]" % (self.branch_id))
             return self.index.branches[self.branch_id]
         except KeyError:
             raise AttributeError('Unable to find branches in index to map branch_id %s' % self.branch_id)
@@ -1147,7 +1148,7 @@ class LayerBranch(LayerIndexItemObj):
 
     @actual_branch.setter
     def actual_branch(self, value):
-        logger.debug(1, "Set actual_branch to %s .. name is %s" % (value, self.branch.name))
+        logger.debug("Set actual_branch to %s .. name is %s" % (value, self.branch.name))
         if value != self.branch.name:
             self._setattr('actual_branch', value, prop=False)
         else:
@@ -1277,7 +1278,7 @@ class Recipe(LayerIndexItemObj_LayerBranch):
                     filename, filepath, pn, pv, layerbranch,
                     summary="", description="", section="", license="",
                     homepage="", bugtracker="", provides="", bbclassextend="",
-                    inherits="", blacklisted="", updated=None):
+                    inherits="", disallowed="", updated=None):
         self.id = id
         self.filename = filename
         self.filepath = filepath
@@ -1293,7 +1294,7 @@ class Recipe(LayerIndexItemObj_LayerBranch):
         self.bbclassextend = bbclassextend
         self.inherits = inherits
         self.updated = updated or datetime.datetime.today().isoformat()
-        self.blacklisted = blacklisted
+        self.disallowed = disallowed
         if isinstance(layerbranch, LayerBranch):
             self.layerbranch = layerbranch
         else:

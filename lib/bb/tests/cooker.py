@@ -1,6 +1,8 @@
 #
 # BitBake Tests for cooker.py
 #
+# Copyright BitBake Contributors
+#
 # SPDX-License-Identifier: GPL-2.0-only
 #
 
@@ -60,7 +62,7 @@ class CookerTest(unittest.TestCase):
         log_handler = LogHandler()
         logger.addHandler(log_handler)
         collection = bb.cooker.CookerCollectFiles(bbfile_config_priorities)
-        collection.collection_priorities(pkgfns, self.d)
+        collection.collection_priorities(pkgfns, pkgfns, self.d)
         logger.removeHandler(log_handler)
 
         # Should be empty (no generated messages)
