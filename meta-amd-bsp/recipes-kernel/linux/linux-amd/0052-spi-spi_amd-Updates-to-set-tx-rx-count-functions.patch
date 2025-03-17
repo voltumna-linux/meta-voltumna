@@ -1,0 +1,39 @@
+From b81f6897f7298e3814f5095dfb4ebbf2816976a2 Mon Sep 17 00:00:00 2001
+From: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Date: Mon, 2 Sep 2024 14:17:57 +0530
+Subject: [PATCH 05/13] spi: spi_amd: Updates to set tx/rx count functions
+
+AMD SPI TX and RX counter registers are 1-byte length registers. The
+existing value will be overwritten during register write, so masking is not
+required.
+
+Co-developed-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Signed-off-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Signed-off-by: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Change-Id: Ie1dc3ef77eee0db15bfe8187d2de908cd3342a90
+---
+ drivers/spi/spi-amd.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/spi/spi-amd.c b/drivers/spi/spi-amd.c
+index 11ae910bb420..eb16063ba121 100644
+--- a/drivers/spi/spi-amd.c
++++ b/drivers/spi/spi-amd.c
+@@ -165,12 +165,12 @@ static int amd_spi_set_opcode(struct amd_spi *amd_spi, u8 cmd_opcode)
+ 
+ static inline void amd_spi_set_rx_count(struct amd_spi *amd_spi, u8 rx_count)
+ {
+-	amd_spi_setclear_reg8(amd_spi, AMD_SPI_RX_COUNT_REG, rx_count, 0xff);
++	amd_spi_writereg8(amd_spi, AMD_SPI_RX_COUNT_REG, rx_count);
+ }
+ 
+ static inline void amd_spi_set_tx_count(struct amd_spi *amd_spi, u8 tx_count)
+ {
+-	amd_spi_setclear_reg8(amd_spi, AMD_SPI_TX_COUNT_REG, tx_count, 0xff);
++	amd_spi_writereg8(amd_spi, AMD_SPI_TX_COUNT_REG, tx_count);
+ }
+ 
+ static int amd_spi_busy_wait(struct amd_spi *amd_spi)
+-- 
+2.17.1
+

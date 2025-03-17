@@ -1,0 +1,107 @@
+From 141851448f1ab853d453aba707f384fc7aa69aee Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Tue, 30 Jan 2024 14:15:19 -0600
+Subject: [PATCH 31/38] x86/resctrl: Introdruce l3_sdciae_write
+
+x86/resctrl: Introdruce l3_sdciae_write
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ arch/x86/kernel/cpu/resctrl/internal.h |  3 ++
+ arch/x86/kernel/cpu/resctrl/rdtgroup.c | 49 +++++++++++++++++++++++++-
+ 2 files changed, 51 insertions(+), 1 deletion(-)
+
+diff --git a/arch/x86/kernel/cpu/resctrl/internal.h b/arch/x86/kernel/cpu/resctrl/internal.h
+index 4a13be32ac86..5092cef2d1db 100644
+--- a/arch/x86/kernel/cpu/resctrl/internal.h
++++ b/arch/x86/kernel/cpu/resctrl/internal.h
+@@ -56,6 +56,9 @@
+ /* L3 SDCIAE ENABLE */
+ #define SDCIAE_ENABLE			BIT(1)
+ 
++/* L3 SDCIAE CLOSID */
++#define SDCIAE_CLOSID			15
++
+ struct rdt_fs_context {
+ 	struct kernfs_fs_context	kfc;
+ 	bool				enable_cdpl2;
+diff --git a/arch/x86/kernel/cpu/resctrl/rdtgroup.c b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+index 7865ea30a36f..4420babda413 100644
+--- a/arch/x86/kernel/cpu/resctrl/rdtgroup.c
++++ b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+@@ -152,6 +152,16 @@ void closid_free(int closid)
+ 	closid_free_map |= 1 << closid;
+ }
+ 
++static int closid_alloc_sdciae(void)
++{
++	if (closid_free_map & (1 << SDCIAE_CLOSID)) {
++		closid_free_map &= ~(1 << SDCIAE_CLOSID);
++		return SDCIAE_CLOSID;
++	} else {
++		return -ENOSPC;
++	}
++}
++
+ /**
+  * closid_allocated - test if provided closid is in use
+  * @closid: closid to be tested
+@@ -1837,6 +1847,42 @@ int resctrl_arch_set_sdciae_enabled(enum resctrl_res_level l, bool enable)
+ 	return 0;
+ }
+ 
++static ssize_t resctrl_sdciae_enable_write(struct kernfs_open_file *of,
++					   char *buf, size_t nbytes, loff_t off)
++{
++	struct resctrl_schema *s = of->kn->parent->priv;
++	struct rdt_resource *r = s->res;
++	struct rdt_hw_resource *hw_res;
++	unsigned int enable;
++	int ret;
++
++	hw_res = resctrl_to_arch_res(r);
++
++	if (!r->sdciae_capable)
++		return -ENOENT;
++
++	ret = kstrtouint(buf, 0, &enable);
++	if (ret)
++		return ret;
++
++	/* Update the MSR only when there is a change */
++	if (hw_res->sdciae_enabled != enable) {
++		if (enable) {
++			ret = closid_alloc_sdciae();
++			if (ret < 0) {
++				rdt_last_cmd_puts("SDCIAE CLOSID is not available\n");
++				return ret;
++			}
++		} else {
++			closid_free(SDCIAE_CLOSID);
++		}
++
++		resctrl_arch_set_sdciae_enabled(RDT_RESOURCE_L3, enable);
++	}
++
++	return ret ?: nbytes;
++}
++
+ /* rdtgroup information files for one cache resource. */
+ static struct rftype res_common_files[] = {
+ 	{
+@@ -1997,9 +2043,10 @@ static struct rftype res_common_files[] = {
+ 	},
+ 	{
+ 		.name		= "sdciae_enable",
+-		.mode		= 0444,
++		.mode		= 0644,
+ 		.kf_ops		= &rdtgroup_kf_single_ops,
+ 		.seq_show	= resctrl_sdciae_enable_show,
++		.write		= resctrl_sdciae_enable_write,
+ 	},
+ 	{
+ 		.name		= "mode",
+-- 
+2.25.1
+

@@ -1,6 +1,6 @@
 DESCRIPTION = "Stream Benchmark"
 HOMEPAGE = "http://www.cs.virginia.edu/stream/"
-LICENSE = "Stream_Benchmark_License"
+LICENSE = "CLOSED"
 LIC_FILES_CHKSUM = "file://LICENSE.txt;md5=bca8cbe07976fe64c8946378d08314b0"
 SECTION = "system"
 
@@ -14,6 +14,11 @@ SRC_URI = "git://git.ti.com/git/arago-project-org/stream.git;protocol=https;bran
 S = "${WORKDIR}/git"
 
 PACKAGES =+ "${PN}-openmp"
+
+FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
+SRC_URI:append = " \
+            file://gcc_issue.patch \
+		"
 
 do_compile() {
 	# build the release version

@@ -1,8 +1,0 @@
-patch 0002-amd-xgbe-fix-for-the-crash-which-happens-during-SFP-.patch
-patch 0003-amd-xgbe-Fix-NETDEV-WATCHDOG-transmit-queue-timed-ou.patch
-patch 0005-amd-xgbe-Fix-for-Network-fluctuations.patch
-patch 0006-amd-xgbe-sets-XGBE_LINK_INIT-when-there-is-a-link-fa.patch
-patch 0007-amd-xgbe-improved-KR-training-sequence.patch
-patch 0008-amd-xgbe-rrc-is-required-only-for-Fixed-PHY-configur.patch
-patch 0009-amd-xgbe-increased-cdr-delay.patch
-patch 0010-amd-xgbe-synchronization-between-AN-state-machine-an.patch

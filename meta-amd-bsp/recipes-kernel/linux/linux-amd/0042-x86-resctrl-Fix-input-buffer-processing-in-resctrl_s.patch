@@ -1,0 +1,85 @@
+From 63e434e28fc13f11a5c1e95dd99c7fc3c6b21122 Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Tue, 6 Feb 2024 14:29:45 -0600
+Subject: [PATCH 34/38] x86/resctrl: Fix input buffer processing in
+ resctrl_sdciae_cbm_write
+
+The input token was not initiazed causing kernel panic.
+Fix parameter passing and remove the unused variable token.
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ arch/x86/kernel/cpu/resctrl/rdtgroup.c | 25 +++++++++++++++----------
+ 1 file changed, 15 insertions(+), 10 deletions(-)
+
+diff --git a/arch/x86/kernel/cpu/resctrl/rdtgroup.c b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+index f26c84db47f4..c2097d44912d 100644
+--- a/arch/x86/kernel/cpu/resctrl/rdtgroup.c
++++ b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+@@ -1974,47 +1974,52 @@ ssize_t resctrl_sdciae_cbm_write(struct kernfs_open_file *of, char *buf,
+ {
+ 	struct resctrl_schema *s = of->kn->parent->priv;
+ 	struct rdt_resource *r = s->res;
+-	char *tok, *resname;
++	struct rdt_hw_resource *hw_res;
++	char *resname;
+ 	int ret = 0;
+ 
+ 	/* Valid input requires a trailing newline */
+ 	if (nbytes == 0 || buf[nbytes - 1] != '\n')
+ 		return -EINVAL;
+ 
+-	mutex_lock(&rdtgroup_mutex);
+-
+ 	buf[nbytes - 1] = '\0';
+ 
++	hw_res = resctrl_to_arch_res(r);
++	if (!hw_res->sdciae_enabled) {
++		rdt_last_cmd_puts("SDCIAE is not enabled\n");
++		return -EINVAL;
++	}
++
++	mutex_lock(&rdtgroup_mutex);
+ 	rdt_last_cmd_clear();
+ 	rdt_staged_configs_clear();
+ 
+-	resname = strim(strsep(&tok, ":"));
+-	if (!tok) {
++	resname = strim(strsep(&buf, ":"));
++	if (!buf) {
+ 		rdt_last_cmd_puts("Missing ':'\n");
+ 		ret = -EINVAL;
+ 		goto out;
+ 	}
+ 	if (strcmp(resname, "L3")) {
+-		rdt_last_cmd_printf("Unsupported resource name '%s'\n",
+-				    resname);
++		rdt_last_cmd_printf("Unsupported resource name '%s'\n", resname);
+ 		ret = -EINVAL;
+ 		goto out;
+ 	}
+-	if (tok[0] == '\0') {
++	if (buf[0] == '\0') {
+ 		rdt_last_cmd_printf("Missing '%s' value\n", resname);
+ 		ret = -EINVAL;
+ 		goto out;
+ 	}
+ 
+-	ret = resctrl_parse_line(tok, r, s);
++	ret = resctrl_parse_line(buf, r, s);
+ 	if (ret)
+ 		goto out;
+ 
+ 	ret = resctrl_arch_update_domains(r, SDCIAE_CLOSID);
+ 
+ out:
++	rdt_staged_configs_clear();
+ 	mutex_unlock(&rdtgroup_mutex);
+-
+ 	return ret ?: nbytes;
+ }
+ 
+-- 
+2.25.1
+

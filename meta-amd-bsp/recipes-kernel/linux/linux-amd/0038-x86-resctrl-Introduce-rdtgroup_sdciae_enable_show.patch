@@ -1,0 +1,64 @@
+From b4998dcb14a494bf4c1d93fa5386bccf0d44615d Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Tue, 30 Jan 2024 14:15:18 -0600
+Subject: [PATCH 30/38] x86/resctrl: Introduce rdtgroup_sdciae_enable_show
+
+Introduce rdtgroup_sdciae_enable_show.
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ arch/x86/kernel/cpu/resctrl/rdtgroup.c | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/arch/x86/kernel/cpu/resctrl/rdtgroup.c b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+index ae006f1e3a5c..7865ea30a36f 100644
+--- a/arch/x86/kernel/cpu/resctrl/rdtgroup.c
++++ b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+@@ -821,6 +821,19 @@ static int resctrl_sdciae_capable_show(struct kernfs_open_file *of,
+ 	return 0;
+ }
+ 
++static int resctrl_sdciae_enable_show(struct kernfs_open_file *of,
++				      struct seq_file *seq, void *v)
++{
++	struct resctrl_schema *s = of->kn->parent->priv;
++	struct rdt_resource *r = s->res;
++	struct rdt_hw_resource *hw_res;
++
++	hw_res = resctrl_to_arch_res(r);
++
++	seq_printf(seq, "%x\n", hw_res->sdciae_enabled);
++	return 0;
++}
++
+ #ifdef CONFIG_PROC_CPU_RESCTRL
+ 
+ /*
+@@ -1982,6 +1995,12 @@ static struct rftype res_common_files[] = {
+ 		.kf_ops		= &rdtgroup_kf_single_ops,
+ 		.seq_show	= resctrl_sdciae_capable_show,
+ 	},
++	{
++		.name		= "sdciae_enable",
++		.mode		= 0444,
++		.kf_ops		= &rdtgroup_kf_single_ops,
++		.seq_show	= resctrl_sdciae_enable_show,
++	},
+ 	{
+ 		.name		= "mode",
+ 		.mode		= 0644,
+@@ -2088,6 +2107,10 @@ void __init resctrl_sdciae_rftype_init(void)
+ 	rft = rdtgroup_get_rftype_by_name("sdciae_capable");
+ 	if (rft)
+ 		rft->fflags = RFTYPE_CTRL_INFO | RFTYPE_RES_CACHE;
++
++	rft = rdtgroup_get_rftype_by_name("sdciae_enable");
++	if (rft)
++		rft->fflags = RFTYPE_CTRL_INFO | RFTYPE_RES_CACHE;
+ }
+ 
+ /**
+-- 
+2.25.1
+

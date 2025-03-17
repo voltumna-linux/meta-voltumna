@@ -1,0 +1,89 @@
+From 334447d9ce10cc8201e287d541bdd1107429ca4a Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Mon, 16 Oct 2023 19:23:07 -0500
+Subject: [PATCH 25/38] x86/resctrl: Add support for the files of MON groups
+ only
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Files unique to monitoring groups have the RFTYPE_MON flag. When a new
+monitoring group is created the resctrl files with flags RFTYPE_BASE
+(files common to all resource groups) and RFTYPE_MON (files unique to
+monitoring groups) are created to support interacting with the new
+monitoring group.
+
+A resource group can support both monitoring and control, also termed
+a CTRL_MON resource group. CTRL_MON groups should get both monitoring
+and control resctrl files but that is not the case. Only the
+RFTYPE_BASE and RFTYPE_CTRL files are created for CTRL_MON groups.
+
+Ensure that files with the RFTYPE_MON flag are created for CTRL_MON groups.
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+Signed-off-by: Borislav Petkov (AMD) <bp@alien8.de>
+Reviewed-by: Peter Newman <peternewman@google.com>
+Reviewed-by: Tan Shaopeng <tan.shaopeng@jp.fujitsu.com>
+Reviewed-by: Fenghua Yu <fenghua.yu@intel.com>
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Reviewed-by: Reinette Chatre <reinette.chatre@intel.com>
+Tested-by: Peter Newman <peternewman@google.com>
+Tested-by: Tan Shaopeng <tan.shaopeng@jp.fujitsu.com>
+Link: https://lore.kernel.org/r/20231017002308.134480-9-babu.moger@amd.com
+---
+ arch/x86/kernel/cpu/resctrl/rdtgroup.c | 15 +++++++++++----
+ 1 file changed, 11 insertions(+), 4 deletions(-)
+
+diff --git a/arch/x86/kernel/cpu/resctrl/rdtgroup.c b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+index 069a9c395f6c..910db69f9fa5 100644
+--- a/arch/x86/kernel/cpu/resctrl/rdtgroup.c
++++ b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+@@ -2553,6 +2553,7 @@ static void schemata_list_destroy(void)
+ static int rdt_get_tree(struct fs_context *fc)
+ {
+ 	struct rdt_fs_context *ctx = rdt_fc2context(fc);
++	unsigned long flags = RFTYPE_CTRL_BASE;
+ 	struct rdt_domain *dom;
+ 	struct rdt_resource *r;
+ 	int ret;
+@@ -2583,7 +2584,10 @@ static int rdt_get_tree(struct fs_context *fc)
+ 
+ 	closid_init();
+ 
+-	ret = rdtgroup_add_files(rdtgroup_default.kn, RFTYPE_CTRL_BASE);
++	if (rdt_mon_capable)
++		flags |= RFTYPE_MON;
++
++	ret = rdtgroup_add_files(rdtgroup_default.kn, flags);
+ 	if (ret)
+ 		goto out_schemata_free;
+ 
+@@ -3273,8 +3277,8 @@ static int mkdir_rdt_prepare(struct kernfs_node *parent_kn,
+ 			     enum rdt_group_type rtype, struct rdtgroup **r)
+ {
+ 	struct rdtgroup *prdtgrp, *rdtgrp;
++	unsigned long files = 0;
+ 	struct kernfs_node *kn;
+-	uint files = 0;
+ 	int ret;
+ 
+ 	prdtgrp = rdtgroup_kn_lock_live(parent_kn);
+@@ -3326,10 +3330,13 @@ static int mkdir_rdt_prepare(struct kernfs_node *parent_kn,
+ 		goto out_destroy;
+ 	}
+ 
+-	if (rtype == RDTCTRL_GROUP)
++	if (rtype == RDTCTRL_GROUP) {
+ 		files = RFTYPE_BASE | RFTYPE_CTRL;
+-	else
++		if (rdt_mon_capable)
++			files |= RFTYPE_MON;
++	} else {
+ 		files = RFTYPE_BASE | RFTYPE_MON;
++	}
+ 
+ 	ret = rdtgroup_add_files(kn, files);
+ 	if (ret) {
+-- 
+2.25.1
+
