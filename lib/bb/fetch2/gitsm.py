@@ -150,7 +150,10 @@ class GitSM(Git):
     def call_process_submodules(self, ud, d, extra_check, subfunc):
         # If we're using a shallow mirror tarball it needs to be
         # unpacked temporarily so that we can examine the .gitmodules file
-        if ud.shallow and os.path.exists(ud.fullshallow) and extra_check:
+        # Unpack even when ud.clonedir is not available,
+        # which may occur during a fast shallow clone
+        unpack = extra_check or not os.path.exists(ud.clonedir)
+        if ud.shallow and os.path.exists(ud.fullshallow) and unpack:
             tmpdir = tempfile.mkdtemp(dir=d.getVar("DL_DIR"))
             try:
                 runfetchcmd("tar -xzf %s" % ud.fullshallow, d, workdir=tmpdir)
@@ -249,9 +252,22 @@ class GitSM(Git):
             # should also be skipped as these files were already smudged in the fetch stage if lfs
             # was enabled.
             runfetchcmd("GIT_LFS_SKIP_SMUDGE=1 %s submodule update --recursive --no-fetch" % (ud.basecmd), d, quiet=True, workdir=ud.destdir)
+    def clean(self, ud, d):
+        def clean_submodule(ud, url, module, modpath, workdir, d):
+            url += ";bareclone=1;nobranch=1"
+            try:
+                newfetch = Fetch([url], d, cache=False)
+                newfetch.clean()
+            except Exception as e:
+                logger.warning('gitsm: submodule clean failed: %s %s' % (type(e).__name__, str(e)))
+
+        self.call_process_submodules(ud, d, True, clean_submodule)
+
+        # Clean top git dir
+        Git.clean(self, ud, d)
 
     def implicit_urldata(self, ud, d):
-        import shutil, subprocess, tempfile
+        import subprocess
 
         urldata = []
         def add_submodule(ud, url, module, modpath, workdir, d):
