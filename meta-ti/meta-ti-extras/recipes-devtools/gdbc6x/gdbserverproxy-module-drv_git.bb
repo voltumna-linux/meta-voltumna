@@ -2,12 +2,12 @@ DESCRIPTION = "Interface for GDB to commincate witha TI C66X DSP"
 LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING.txt;md5=75859989545e37968a99b631ef42722e"
 
-# This package builds a kernel module, use kernel PR as base and append a local
-MACHINE_KERNEL_PR:append = "b"
-PR = "${MACHINE_KERNEL_PR}"
-PV:append = "+git${SRCPV}"
+PV:append = "+git"
 
-SRC_URI:append = " file://0001-Support-Linux-kernels-v5.15.patch;patchdir=../.."
+SRC_URI:append = "\
+    file://0001-Support-Linux-kernels-v5.15.patch;patchdir=../.. \
+    file://0002-Support-Linux-kernels-v6.6.patch;patchdir=../.. \
+"
 
 S = "${WORKDIR}/git/kernel_module/gdbproxy-mod"
 

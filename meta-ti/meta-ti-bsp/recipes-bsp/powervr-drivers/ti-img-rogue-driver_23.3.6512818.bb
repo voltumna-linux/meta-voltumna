@@ -7,9 +7,6 @@ inherit module
 
 PROVIDES = "virtual/gpudriver"
 
-MACHINE_KERNEL_PR:append = "b"
-PR = "${MACHINE_KERNEL_PR}"
-
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 COMPATIBLE_MACHINE = "j721e|j721s2|j784s4|am62xx|am62pxx|j722s"
@@ -22,7 +19,7 @@ SRC_URI = "git://git.ti.com/git/graphics/ti-img-rogue-driver.git;protocol=https;
 
 S = "${WORKDIR}/git"
 
-SRCREV = "c89c1efa4a1ee5da64fd525f45e9e33728cf6181"
+SRCREV = "c838bc06a163abad46dcc193c8fb9a4fb9e2e356"
 
 TARGET_PRODUCT:j721e = "j721e_linux"
 TARGET_PRODUCT:j721s2 = "j721s2_linux"

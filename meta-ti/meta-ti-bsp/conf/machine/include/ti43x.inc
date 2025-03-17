@@ -4,17 +4,11 @@ SOC_FAMILY:append = ":ti43x"
 DEFAULTTUNE ?= "armv7athf-neon"
 require conf/machine/include/arm/armv7a/tune-cortexa9.inc
 
-# Increase this everytime you change something in the kernel
-MACHINE_KERNEL_PR = "r3"
-
-# Default providers, may need to override for specific machines
-PREFERRED_PROVIDER_virtual/kernel ?= "linux-ti-staging"
-PREFERRED_PROVIDER_virtual/bootloader ?= "u-boot-ti-staging"
-PREFERRED_PROVIDER_u-boot ?= "u-boot-ti-staging"
+require conf/machine/include/ti-bsp.inc
 
 # Graphics providers and variables
 require conf/machine/include/mesa-pvr.inc
-PREFERRED_PROVIDER_virtual/gpudriver ?= "ti-sgx-ddk-km"
+PREFERRED_PROVIDER_virtual/gpudriver ?= "${BSP_SGX_DRIVER_PROVIDER}"
 PVR_DISPLAY_CONTROLLER_ALIAS ?= "omapdrm"
 
 KERNEL_IMAGETYPE = "zImage"
@@ -27,10 +21,12 @@ KERNEL_DEVICETREE_PREFIX = " \
 "
 
 KERNEL_DEVICETREE = " \
-    am437x-gp-evm.dtb \
-    am437x-sk-evm.dtb \
-    am437x-idk-evm.dtb \
-    am43x-epos-evm.dtb \
+    ti/omap/am437x-cm-t43.dtb \
+    ti/omap/am437x-gp-evm.dtb \
+    ti/omap/am437x-idk-evm.dtb \
+    ti/omap/am437x-sbc-t43.dtb \
+    ti/omap/am437x-sk-evm.dtb \
+    ti/omap/am43x-epos-evm.dtb \
 "
 
 KERNEL_DEVICETREE += "${@oe.utils.conditional('ENABLE_TI_UIO_DEVICES', '1', 'am437x-idk-pru-excl-uio.dtb', '', d)}"
@@ -41,13 +37,15 @@ UBOOT_MACHINE = "am43xx_evm_config"
 UBOOT_ENTRYPOINT = "0x80008000"
 UBOOT_LOADADDRESS = "0x80008000"
 
+DEVICETREE_FILE = "${@(d.getVar('KERNEL_DEVICETREE') or "").replace("ti/omap/","")}"
+
 # Generate an extlinux.conf file
 UBOOT_EXTLINUX = "1"
 UBOOT_EXTLINUX_ROOT = "root=PARTUUID=${uuid}"
 UBOOT_EXTLINUX_BOOT_FILES = " \
     extlinux.conf;extlinux/extlinux.conf \
     ${KERNEL_IMAGETYPE} \
-    ${KERNEL_DEVICETREE} \
+    ${DEVICETREE_FILE} \
 "
 
 SPL_BINARY = "MLO"

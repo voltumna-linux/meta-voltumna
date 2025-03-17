@@ -10,11 +10,13 @@ JH_CELL_FILES ?= "*.cell"
 JH_CELL_FILES:k3 ?= "k3-*.cell"
 JH_CELL_FILES:am62xx ?= "k3-am625-*.cell"
 JH_CELL_FILES:am62pxx ?= "k3-am62p5-*.cell"
+JH_CELL_FILES:am62lxx ?= "k3-am62l*.cell"
 
 JH_INMATE_DTB ?= ""
 JH_INMATE_DTB:am62xx ?= "inmate-k3-am625-sk.dtb"
 JH_INMATE_DTB:am65xx ?= "inmate-k3-am654-idk.dtb"
 JH_INMATE_DTB:am62pxx ?= "inmate-k3-am62p5-sk.dtb"
+JH_INMATE_DTB:am62lxx ?= "inmate-k3-am62l3-evm.dtb"
 JH_INMATE_DTB:j7 ?= "inmate-k3-j721e-evm.dtb"
 JH_INMATE_DTB:j7200-evm ?= "inmate-k3-j7200-evm.dtb"
 
@@ -22,6 +24,7 @@ JH_LINUX_DEMO_CELL ?= ""
 JH_LINUX_DEMO_CELL:am62xx ?= "k3-am625-sk-linux-demo.cell"
 JH_LINUX_DEMO_CELL:am65xx ?= "k3-am654-idk-linux-demo.cell"
 JH_LINUX_DEMO_CELL:am62pxx ?= "k3-am62p5-sk-linux-demo.cell"
+JH_LINUX_DEMO_CELL:am62lxx ?= "k3-am62l3-evm-linux-demo.cell"
 JH_LINUX_DEMO_CELL:j7 ?= "k3-j721e-evm-linux-demo.cell"
 JH_LINUX_DEMO_CELL:j7200-evm ?= "k3-j7200-evm-linux-demo.cell"
 
@@ -31,6 +34,7 @@ JH_RAMFS_IMAGE ?= "${INITRAMFS_IMAGE}"
 JH_CMDLINE ?= ""
 JH_CMDLINE:am62xx ?= "console=ttyS3,115200n8 earlycon=ns16550a,mmio32,0x02810000"
 JH_CMDLINE:am62pxx ?= "console=ttyS1,115200n8"
+JH_CMDLINE:am62lxx ?= "console=ttyS3,115200n8"
 JH_CMDLINE:am65xx ?= "console=ttyS1,115200n8"
 JH_CMDLINE:j7 ?= "console=ttyS3,115200n8"
 JH_CMDLINE:j7200-evm ?= "console=ttyS3,115200n8"
@@ -51,11 +55,11 @@ do_install() {
 	install -d ${D}/boot
 	if [ -n "${JH_RAMFS_IMAGE}" ]
 	then
-		if [ -f ${DEPLOY_DIR_IMAGE}/${JH_RAMFS_IMAGE}-${MACHINE}.cpio ]
+		if [ -f ${DEPLOY_DIR_IMAGE}/${JH_RAMFS_IMAGE}*-${MACHINE}.rootfs.cpio ]
 		then
-			install -m 0644 ${DEPLOY_DIR_IMAGE}/${JH_RAMFS_IMAGE}-${MACHINE}.cpio ${D}/boot
+			install -m 0644 ${DEPLOY_DIR_IMAGE}/${JH_RAMFS_IMAGE}*-${MACHINE}.rootfs.cpio ${D}/boot
 		else
-			bberror "Could not find JH_RAMFS_IMAGE (${JH_RAMFS_IMAGE}-${MACHINE}.cpio)!"
+			bberror "Could not find JH_RAMFS_IMAGE (${JH_RAMFS_IMAGE}*-${MACHINE}.rootfs.cpio)!"
 			bberror "Please make sure that \"cpio\" is in IMAGE_FSTYPES."
 		fi
 	fi
@@ -68,7 +72,7 @@ do_install() {
 		./jailhouse-cell-linux -w ${D}${JH_DATADIR}/${JH_INMATE_DTB} \
 			-a ${JH_ARCH} -c "${JH_CMDLINE}" \
 			-d ../configs/${JH_ARCH}/dts/${JH_INMATE_DTB} \
-			-i ${D}/boot/${JH_RAMFS_IMAGE}-${MACHINE}.cpio \
+			-i ${D}/boot/${JH_RAMFS_IMAGE}*-${MACHINE}.rootfs.cpio \
 			${D}${CELL_DIR}/${JH_LINUX_DEMO_CELL} \
 			${DEPLOY_DIR_IMAGE}/Image \
 			| tr -cd '\11\12\15\40-\176' \
@@ -96,7 +100,8 @@ RDEPENDS:pyjailhouse = "python3-core python3-ctypes python3-fcntl python3-shell"
 
 RRECOMMENDS:${PN} = "${PN}-tools"
 
-INSANE_SKIP:${PN} = "ldflags"
+INSANE_SKIP:${PN} = "ldflags usrmerge"
+INSANE_SKIP:${PN}-dbg = "usrmerge buildpaths"
 
 KERNEL_MODULE_AUTOLOAD += "jailhouse"
 
@@ -117,10 +122,7 @@ python __anonymous () {
 }
 
 FILES:${PN} = " \
-    /boot/* \
-    /usr/libexec \
-    /usr/sbin/* \
-    /usr/libexec/* \
-    /usr/share/* \
-    /lib/firmware/* \
+    /boot \
+    /usr \
+    /lib \
 "
