@@ -28,18 +28,18 @@ UPSTREAM_CHECK_REGEX = "(?P<pver>9.(\d*[02468])+(\.\d+)+(-P\d+)*)/"
 
 # Issue only affects dhcpd with recent bind versions. We don't ship dhcpd anymore
 # so the issue doesn't affect us.
-CVE_CHECK_IGNORE += "CVE-2019-6470"
+CVE_STATUS[CVE-2019-6470] = "not-applicable-config: Issue only affects dhcpd with recent bind versions and we don't ship dhcpd anymore."
 
 inherit autotools update-rc.d systemd useradd pkgconfig multilib_header update-alternatives
 
 # PACKAGECONFIGs readline and libedit should NOT be set at same time
 PACKAGECONFIG ?= "readline"
-PACKAGECONFIG[httpstats] = "--with-libxml2=${STAGING_DIR_HOST}${prefix},--without-libxml2,libxml2"
+PACKAGECONFIG[httpstats] = "--with-libxml2,--without-libxml2,libxml2"
 PACKAGECONFIG[readline] = "--with-readline=readline,,readline"
 PACKAGECONFIG[libedit] = "--with-readline=libedit,,libedit"
 PACKAGECONFIG[dns-over-http] = "--enable-doh,--disable-doh,nghttp2"
 
-EXTRA_OECONF = "  --disable-auto-validation  \
+EXTRA_OECONF = " --disable-auto-validation \
                  --with-gssapi=no --with-lmdb=no --with-zlib \
                  --sysconfdir=${sysconfdir}/bind \
                  --with-openssl=${STAGING_DIR_HOST}${prefix} \
@@ -109,6 +109,5 @@ PACKAGE_BEFORE_PN += "${PN}-libs"
 # https://github.com/isc-projects/bind9/commit/0e25af628cd776f98c04fc4cc59048f5448f6c88
 FILES_SOLIBSDEV = "${libdir}/*[!0-9].so ${libdir}/libbind9.so"
 FILES:${PN}-libs = "${libdir}/named/*.so* ${libdir}/*-${PV}.so"
-FILES:${PN}-staticdev += "${libdir}/*.la"
 
-RDEPENDS:${PN}-dev = ""
+DEV_PKG_DEPENDENCY = ""

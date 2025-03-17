@@ -8,15 +8,15 @@ LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 # but is not provided inside the release tarballs
 LIC_FILES_CHKSUM = "file://${WORKDIR}/README.md;md5=252fcce2026b765fee1ad74d2fb07a3b"
 
-inherit allarch
+inherit allarch github-releases
 
-SRC_URI = "https://github.com/arsv/perl-cross/releases/download/${PV}/perl-cross-${PV}.tar.gz;name=perl-cross \
+SRC_URI = "${GITHUB_BASE_URI}/download/${PV}/perl-cross-${PV}.tar.gz;name=perl-cross \
            file://README.md \
            file://0001-perl-cross-add-LDFLAGS-when-linking-libperl.patch \
            file://determinism.patch \
            file://0001-Makefile-check-the-file-if-patched-or-not.patch \
            "
-UPSTREAM_CHECK_URI = "https://github.com/arsv/perl-cross/releases/"
+GITHUB_BASE_URI = "https://github.com/arsv/perl-cross/releases/"
 
 SRC_URI[perl-cross.sha256sum] = "584dc54c48dca25e032b676a15bef377c1fed9de318b4fc140292a5dbf326e90"
 

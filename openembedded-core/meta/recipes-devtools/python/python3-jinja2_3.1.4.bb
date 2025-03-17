@@ -1,4 +1,4 @@
-DESCRIPTION = "Python Jinja2: A small but fast and easy to use stand-alone template engine written in pure python."
+SUMMARY = "Python Jinja2: A small but fast and easy to use stand-alone template engine written in pure python."
 HOMEPAGE = "https://pypi.org/project/Jinja2/"
 
 LICENSE = "BSD-3-Clause"
@@ -12,8 +12,7 @@ CVE_PRODUCT = "jinja2 jinja"
 
 CLEANBROKEN = "1"
 
-inherit pypi python_flit_core
-inherit ${@bb.utils.filter('DISTRO_FEATURES', 'ptest', d)}
+inherit pypi python_flit_core ptest
 
 SRC_URI += " \
 	file://run-ptest \
@@ -25,24 +24,25 @@ do_install_ptest() {
 }
 
 RDEPENDS:${PN}-ptest += " \
-	${PYTHON_PN}-pytest \
-        ${PYTHON_PN}-toml \
-	${PYTHON_PN}-unixadmin \
+    python3-pytest \
+    python3-unittest-automake-output \
+    python3-toml \
+    python3-unixadmin \
 "
 
 RDEPENDS:${PN} += " \
-    ${PYTHON_PN}-asyncio \
-    ${PYTHON_PN}-crypt \
-    ${PYTHON_PN}-io \
-    ${PYTHON_PN}-json \
-    ${PYTHON_PN}-markupsafe \
-    ${PYTHON_PN}-math \
-    ${PYTHON_PN}-netclient \
-    ${PYTHON_PN}-numbers\
-    ${PYTHON_PN}-pickle \
-    ${PYTHON_PN}-pprint \
-    ${PYTHON_PN}-shell \
-    ${PYTHON_PN}-threading \
+    python3-asyncio \
+    python3-crypt \
+    python3-io \
+    python3-json \
+    python3-markupsafe \
+    python3-math \
+    python3-netclient \
+    python3-numbers\
+    python3-pickle \
+    python3-pprint \
+    python3-shell \
+    python3-threading \
 "
 
 BBCLASSEXTEND = "native nativesdk"

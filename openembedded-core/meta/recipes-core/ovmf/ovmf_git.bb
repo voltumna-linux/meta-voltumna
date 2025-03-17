@@ -22,41 +22,29 @@ BUILD_CFLAGS += "-Wno-error=stringop-overflow"
 SRC_URI = "gitsm://github.com/tianocore/edk2.git;branch=master;protocol=https \
            file://0001-ovmf-update-path-to-native-BaseTools.patch \
            file://0002-BaseTools-makefile-adjust-to-build-in-under-bitbake.patch \
-           file://0003-ovmf-Update-to-latest.patch \
-           file://0005-debug-prefix-map.patch \
-           file://0006-reproducible.patch \
-           file://0001-BaseTools-fix-gcc12-warning.patch \
-           file://0001-BaseTools-fix-gcc12-warning-1.patch \
-           file://CVE-2022-36763-0001.patch \
-           file://CVE-2022-36763-0002.patch \
-           file://CVE-2022-36763-0003.patch \
-           file://CVE-2022-36764-0001.patch \
-           file://CVE-2022-36764-0002.patch \
-           file://CVE-2022-36764-0003.patch \
-           file://CVE-2023-45230-0001.patch \
-           file://CVE-2023-45230-0002.patch \
-           file://CVE-2023-45231-0001.patch \
-           file://CVE-2023-45231-0002.patch \
-           file://CVE-2023-45232-CVE-2023-45233-0001.patch \
-           file://CVE-2023-45232-CVE-2023-45233-0002.patch \
-           file://CVE-2023-45234-0001.patch \
-           file://CVE-2023-45234-0002.patch \
-           file://CVE-2023-45235-0001.patch \
-           file://CVE-2023-45235-0002.patch \
-           file://CVE-2023-45229-0001.patch \
-           file://CVE-2023-45229-0002.patch \
-           file://CVE-2023-45229-0003.patch \
-           file://CVE-2023-45229-0004.patch \
-           file://CVE-2022-36765-0001.patch \
-           file://CVE-2022-36765-0002.patch \
-           file://CVE-2022-36765-0003.patch \
+           file://0003-debug-prefix-map.patch \
+           file://0004-reproducible.patch \
            file://0001-MdePkg-Fix-overflow-issue-in-BasePeCoffLib.patch \
            file://0001-MdeModulePkg-Potential-UINT32-overflow-in-S3-ResumeC.patch \
            "
 
-PV = "edk2-stable202202"
-SRCREV = "b24306f15daa2ff8510b06702114724b33895d3c"
+PV = "edk2-stable202402"
+SRCREV = "edc6681206c1a8791981a2f911d2fb8b3d2f5768"
 UPSTREAM_CHECK_GITTAGREGEX = "(?P<pver>edk2-stable.*)"
+
+CVE_PRODUCT = "edk2"
+CVE_VERSION = "${@d.getVar('PV').split('stable')[1]}"
+
+CVE_STATUS[CVE-2014-8271] = "fixed-version: Fixed in svn_16280, which is an unusual versioning breaking version comparison."
+CVE_STATUS[CVE-2014-4859] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
+CVE_STATUS[CVE-2014-4860] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
+CVE_STATUS[CVE-2019-14553] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
+CVE_STATUS[CVE-2019-14559] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
+CVE_STATUS[CVE-2019-14562] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
+CVE_STATUS[CVE-2019-14563] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
+CVE_STATUS[CVE-2019-14575] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
+CVE_STATUS[CVE-2019-14586] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
+CVE_STATUS[CVE-2019-14587] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
 
 inherit deploy
 
@@ -150,7 +138,7 @@ fix_toolchain:append:class-native() {
 # --debug-prefix-map to nasm (we carry a patch to nasm for this). The
 # tools definitions are built by ovmf-native so we need to pass this in
 # at target build time when we know the right values.
-export NASM_PREFIX_MAP = "--debug-prefix-map=${WORKDIR}=/usr/src/debug/ovmf/${EXTENDPE}${PV}-${PR}"
+export NASM_PREFIX_MAP = "--debug-prefix-map=${WORKDIR}=${TARGET_DBGSRC_DIR}"
 export GCC_PREFIX_MAP = "${DEBUG_PREFIX_MAP} -Wno-stringop-overflow -Wno-maybe-uninitialized"
 
 GCC_VER="$(${CC} -v 2>&1 | tail -n1 | awk '{print $3}')"

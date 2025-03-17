@@ -28,11 +28,7 @@ SRC_URI = "https://download.samba.org/pub/${BPN}/src/${BP}.tar.gz \
            file://CVE-2024-12088.patch \
            file://CVE-2024-12747.patch \
            "
-
 SRC_URI[sha256sum] = "4e7d9d3f6ed10878c58c5fb724a67dacf4b6aac7340b13e488fb2dc41346f2bb"
-
-# -16548 required for v3.1.3pre1. Already in v3.1.3.
-CVE_CHECK_IGNORE += " CVE-2017-16548 "
 
 inherit autotools-brokensep
 

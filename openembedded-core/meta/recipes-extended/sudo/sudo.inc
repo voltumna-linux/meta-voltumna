@@ -22,6 +22,8 @@ inherit autotools
 PACKAGECONFIG ??= ""
 PACKAGECONFIG[zlib] = "--enable-zlib,--disable-zlib,zlib"
 PACKAGECONFIG[pam-wheel] = ",,,pam-plugin-wheel"
+PACKAGECONFIG[audit] = "--with-linux-audit,--without-linux-audit,audit"
+PACKAGECONFIG[selinux] = "--with-selinux,--without-selinux,libselinux"
 
 EXTRA_OECONF = "--with-editor=${base_bindir}/vi --with-env-editor"
 
@@ -33,7 +35,7 @@ do_compile:prepend () {
            -e 's,--with-libtool-sysroot=${STAGING_DIR_TARGET},,g' \
            -e 's,--build=${BUILD_SYS},,g' \
            -e 's,--host=${HOST_SYS},,g' \
-	   ${B}/config.h
+           ${B}/config.h
 }
 
 # Explicitly create ${localstatedir}/lib before do_install to ensure
