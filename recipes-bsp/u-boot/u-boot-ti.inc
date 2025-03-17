@@ -1,1 +1,0 @@
-../../meta-ti/recipes-bsp/u-boot/u-boot-ti.inc

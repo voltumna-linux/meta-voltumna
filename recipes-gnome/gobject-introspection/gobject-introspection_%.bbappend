@@ -1,2 +1,0 @@
-GTKDOC_ENABLED = "False"
-

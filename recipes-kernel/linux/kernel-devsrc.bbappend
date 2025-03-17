@@ -1,4 +1,4 @@
-do_install_append_beaglebone() {
+do_install:append:beaglebone() {
     kerneldir=${D}${KERNEL_BUILD_ROOT}${KERNEL_VERSION}
     install -d $kerneldir/build/arch/arm/boot/dts
 

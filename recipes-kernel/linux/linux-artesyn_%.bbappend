@@ -1,6 +1,6 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI_append += " \
+SRC_URI:append = " \
 	file://log.cfg \
 	file://zram.cfg \
 	file://initrd.cfg \
@@ -11,17 +11,18 @@ SRC_URI_append += " \
 	file://disable_ptp.cfg \
 	file://remove_martian_source_warning.cfg \
 	file://enable_ebpf_xpd.cfg \
+	file://disable_lttng.cfg \
 	\
 	file://vme.cfg \
 	"
 
-SRC_URI_append_mvme5100 += " \
+SRC_URI:append:mvme5100 = " \
 	file://cmdline.cfg \
 	"
 
-SRC_URI_append_mvme7100 += " \
+SRC_URI:append:mvme7100 = " \
 	file://cmdline.cfg \
 	"
 
-KERNEL_FEATURES_remove = " features/security/security.scc"
+KERNEL_FEATURES:remove = " features/security/security.scc"
 

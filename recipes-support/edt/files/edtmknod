@@ -1,0 +1,18 @@
+#!/bin/sh
+
+rm -f /dev/pdv* /dev/edt*
+modprobe -qr edt
+modprobe edt
+MAJOR=`grep edt /proc/devices | cut -d" " -f1`
+
+mknod /dev/edt0 c $MAJOR 0
+ln -s /dev/edt0 /dev/edt
+ln -s /dev/edt0 /dev/pdv0
+for MINOR in 0 1 2
+do
+	mknod /dev/edt0_$MINOR c $MAJOR $MINOR
+	ln -s /dev/edt0_$MINOR /dev/pdv0_$MINOR
+done
+
+chown root:controls /dev/edt*
+chmod 660 /dev/edt*

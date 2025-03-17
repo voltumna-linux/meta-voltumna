@@ -1,3 +1,0 @@
-part /boot --source bootimg-partition-w-uEnv --sourceparams="loader=u-boot" --ondisk mmcblk0 --label boot --active --align 1024 --fixed-size 32
-part / --source rootfs --ondisk mmcblk0 --fstype=ext4 --label root --align 1024
-bootloader --ptable msdos --configfile="${DEPLOY_DIR_IMAGE}/uEnv.txt"

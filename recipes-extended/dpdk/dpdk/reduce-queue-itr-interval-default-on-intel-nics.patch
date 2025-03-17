@@ -1,8 +1,29 @@
+From 46cfe12d1afb130676b3e750491f2dcbaf370a62 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Thu, 30 Nov 2023 09:04:33 +0100
+Subject: [PATCH] Optimize DPDK on Intel boards
+
+---
+ drivers/net/i40e/i40e_ethdev.h   | 4 ++--
+ drivers/net/iavf/iavf.h          | 2 +-
+ drivers/net/ice/ice_dcf_ethdev.c | 2 +-
+ drivers/net/ixgbe/ixgbe_ethdev.h | 2 +-
+ drivers/net/ngbe/ngbe_ethdev.h   | 2 +-
+ drivers/net/txgbe/txgbe_ethdev.h | 2 +-
+ 6 files changed, 7 insertions(+), 7 deletions(-)
+
 diff --git a/drivers/net/i40e/i40e_ethdev.h b/drivers/net/i40e/i40e_ethdev.h
-index 4de21cd64a..037d3466da 100644
+index 9b806d130e..7e045f5a4a 100644
 --- a/drivers/net/i40e/i40e_ethdev.h
 +++ b/drivers/net/i40e/i40e_ethdev.h
-@@ -191,9 +191,9 @@ enum i40e_flxpld_layer_idx {
+@@ -186,23 +186,23 @@ enum i40e_flxpld_layer_idx {
+ 	(1ULL << I40E_FILTER_PCTYPE_FCOE_RX) | \
+ 	(1ULL << I40E_FILTER_PCTYPE_FCOE_OTHER) | \
+ 	(1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD))
+ 
+ #define I40E_MISC_VEC_ID                RTE_INTR_VEC_ZERO_OFFSET
+ #define I40E_RX_VEC_START               RTE_INTR_VEC_RXTX_OFFSET
+ 
  /* Default queue interrupt throttling time in microseconds */
  #define I40E_ITR_INDEX_DEFAULT          0
  #define I40E_ITR_INDEX_NONE             3
@@ -14,11 +35,25 @@ index 4de21cd64a..037d3466da 100644
  /* Special FW support this floating VEB feature */
  #define FLOATING_VEB_SUPPORTED_FW_MAJ 5
  #define FLOATING_VEB_SUPPORTED_FW_MIN 0
+ 
+ #define I40E_GL_SWT_L2TAGCTRL(_i)             (0x001C0A70 + ((_i) * 4))
+ #define I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT 16
+ #define I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_MASK  \
+ 	I40E_MASK(0xFFFF, I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT)
+ 
+ #define I40E_RSS_TYPE_NONE           0ULL
 diff --git a/drivers/net/iavf/iavf.h b/drivers/net/iavf/iavf.h
-index 297c69775b..604cad5676 100644
+index aa18650ffa..3c69533888 100644
 --- a/drivers/net/iavf/iavf.h
 +++ b/drivers/net/iavf/iavf.h
-@@ -49,7 +49,7 @@
+@@ -63,21 +63,21 @@
+ 	RTE_ETH_RSS_NONFRAG_IPV6_TCP | \
+ 	RTE_ETH_RSS_NONFRAG_IPV6_UDP | \
+ 	RTE_ETH_RSS_NONFRAG_IPV6_SCTP | \
+ 	RTE_ETH_RSS_NONFRAG_IPV6_OTHER)
+ 
+ #define IAVF_MISC_VEC_ID                RTE_INTR_VEC_ZERO_OFFSET
+ #define IAVF_RX_VEC_START               RTE_INTR_VEC_RXTX_OFFSET
  
  /* Default queue interrupt throttling time in microseconds */
  #define IAVF_ITR_INDEX_DEFAULT          0
@@ -26,12 +61,53 @@ index 297c69775b..604cad5676 100644
 +#define IAVF_QUEUE_ITR_INTERVAL_DEFAULT 0 /* 32 us */
  #define IAVF_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
  
+ #define IAVF_ALARM_INTERVAL 50000 /* us */
+ 
  /* The overhead from MTU to max frame size.
+  * Considering QinQ packet, the VLAN tag needs to be counted twice.
+  */
+ #define IAVF_ETH_OVERHEAD \
+ 	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + RTE_VLAN_HLEN * 2)
+ #define IAVF_ETH_MAX_LEN (RTE_ETHER_MTU + IAVF_ETH_OVERHEAD)
+diff --git a/drivers/net/ice/ice_dcf_ethdev.c b/drivers/net/ice/ice_dcf_ethdev.c
+index 223fa39f33..47efa03d9c 100644
+--- a/drivers/net/ice/ice_dcf_ethdev.c
++++ b/drivers/net/ice/ice_dcf_ethdev.c
+@@ -160,21 +160,21 @@ ice_dcf_init_rx_queues(struct rte_eth_dev *dev)
+ 	ice_set_rx_function(dev);
+ 	ice_set_tx_function(dev);
+ 
+ 	return 0;
+ }
+ 
+ #define IAVF_MISC_VEC_ID                RTE_INTR_VEC_ZERO_OFFSET
+ #define IAVF_RX_VEC_START               RTE_INTR_VEC_RXTX_OFFSET
+ 
+ #define IAVF_ITR_INDEX_DEFAULT          0
+-#define IAVF_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
++#define IAVF_QUEUE_ITR_INTERVAL_DEFAULT 0 /* 32 us */
+ #define IAVF_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
+ 
+ static inline uint16_t
+ iavf_calc_itr_interval(int16_t interval)
+ {
+ 	if (interval < 0 || interval > IAVF_QUEUE_ITR_INTERVAL_MAX)
+ 		interval = IAVF_QUEUE_ITR_INTERVAL_DEFAULT;
+ 
+ 	/* Convert to hardware count, as writing each 1 represents 2 us */
+ 	return interval / 2;
 diff --git a/drivers/net/ixgbe/ixgbe_ethdev.h b/drivers/net/ixgbe/ixgbe_ethdev.h
-index 77ed07cf4c..f89894e4a7 100644
+index 48290af512..764ddee1cc 100644
 --- a/drivers/net/ixgbe/ixgbe_ethdev.h
 +++ b/drivers/net/ixgbe/ixgbe_ethdev.h
-@@ -62,7 +62,7 @@
+@@ -55,21 +55,21 @@
+ #endif
+ #define IXGBE_HWSTRIP_BITMAP_SIZE (IXGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
+ 
+ /* EITR Interval is in 2048ns uinits for 1G and 10G link */
+ #define IXGBE_EITR_INTERVAL_UNIT_NS	2048
+ #define IXGBE_EITR_ITR_INT_SHIFT       3
+ #define IXGBE_EITR_INTERVAL_US(us) \
  	(((us) * 1000 / IXGBE_EITR_INTERVAL_UNIT_NS << IXGBE_EITR_ITR_INT_SHIFT) & \
  		IXGBE_EITR_ITR_INT_MASK)
  
@@ -40,3 +116,64 @@ index 77ed07cf4c..f89894e4a7 100644
  
  /* Loopback operation modes */
  #define IXGBE_LPBK_NONE   0x0 /* Default value. Loopback is disabled. */
+ #define IXGBE_LPBK_TX_RX  0x1 /* Tx->Rx loopback operation is enabled. */
+ /* X540-X550 specific loopback operations */
+ #define IXGBE_MII_AUTONEG_ENABLE        0x1000 /* Auto-negotiation enable (default = 1) */
+ 
+ #define IXGBE_MAX_JUMBO_FRAME_SIZE      0x2600 /* Maximum Jumbo frame size. */
+ 
+ #define IXGBE_RTTBCNRC_RF_INT_MASK_BASE 0x000003FF
+diff --git a/drivers/net/ngbe/ngbe_ethdev.h b/drivers/net/ngbe/ngbe_ethdev.h
+index d6c56dcce4..fdf36bd7cc 100644
+--- a/drivers/net/ngbe/ngbe_ethdev.h
++++ b/drivers/net/ngbe/ngbe_ethdev.h
+@@ -22,21 +22,21 @@
+ #define NGBE_HKEY_MAX_INDEX 10
+ /*Default value of Max Rx Queue*/
+ #define NGBE_MAX_RX_QUEUE_NUM	8
+ 
+ #ifndef NBBY
+ #define NBBY	8	/* number of bits in a byte */
+ #endif
+ #define NGBE_HWSTRIP_BITMAP_SIZE \
+ 	(NGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
+ 
+-#define NGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
++#define NGBE_QUEUE_ITR_INTERVAL_DEFAULT	0 /* 500us */
+ 
+ #define NGBE_MAX_MTU		9414
+ /* The overhead from MTU to max frame size. */
+ #define NGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
+ 
+ #define NGBE_RSS_OFFLOAD_ALL ( \
+ 	RTE_ETH_RSS_IPV4 | \
+ 	RTE_ETH_RSS_NONFRAG_IPV4_TCP | \
+ 	RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
+ 	RTE_ETH_RSS_IPV6 | \
+diff --git a/drivers/net/txgbe/txgbe_ethdev.h b/drivers/net/txgbe/txgbe_ethdev.h
+index 4625236cb7..1715ed1a8e 100644
+--- a/drivers/net/txgbe/txgbe_ethdev.h
++++ b/drivers/net/txgbe/txgbe_ethdev.h
+@@ -41,21 +41,21 @@
+ #define TXGBE_MAX_RX_QUEUE_NUM	128
+ #define TXGBE_VMDQ_DCB_NB_QUEUES     TXGBE_MAX_RX_QUEUE_NUM
+ #define TXGBE_NONE_MODE_TX_NB_QUEUES 64
+ 
+ #ifndef NBBY
+ #define NBBY	8	/* number of bits in a byte */
+ #endif
+ #define TXGBE_HWSTRIP_BITMAP_SIZE \
+ 	(TXGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
+ 
+-#define TXGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
++#define TXGBE_QUEUE_ITR_INTERVAL_DEFAULT	0 /* 500us */
+ 
+ #define TXGBE_MAX_QUEUE_NUM_PER_VF  8
+ 
+ #define TXGBE_5TUPLE_MAX_PRI            7
+ #define TXGBE_5TUPLE_MIN_PRI            1
+ 
+ #define TXGBE_MAX_MTU			9414
+ /* The overhead from MTU to max frame size. */
+ #define TXGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
+ 

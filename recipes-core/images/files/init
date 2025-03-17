@@ -108,7 +108,7 @@ if [ -n "${network}" ]; then
 	done
 
 	if [ "${autoconf}" = "dhcp" ]; then
-		eval $(udhcpc -n -q -i ${interface} -O rootpath -O usrpath -O runtimepath -O homepath -s /etc/udhcpc.d/60elettra 2>/dev/null)
+		eval $(udhcpc -n -q -i ${interface} -O rootpath -O usrpath -O runtimepath -O homepath -s /etc/udhcpc.d/60voltumna 2>/dev/null)
 	fi
 
 	ip addr add ${ip}/${mask} dev ${interface} >/dev/null 2>&1

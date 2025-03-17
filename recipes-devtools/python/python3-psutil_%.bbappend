@@ -1,3 +1,3 @@
 BBCLASSEXTEND = "nativesdk"
 
-RDEPENDS_${PN}-tests_class-nativesdk = ""
+RDEPENDS:${PN}-tests:class-nativesdk = ""

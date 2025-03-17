@@ -11,7 +11,7 @@ create_sdk_files() {
 	toolchain_create_post_relocate_script ${SDK_OUTPUT}/${SDKPATH}/post-relocate-setup.sh ${SDKPATH}
 }
 
-create_sdk_files_append() {
+create_sdk_files:append() {
 	# Create environment setup script.  Remember that $SDKTARGETSYSROOT should
 	# only be expanded on the target at runtime.
 	base_sbindir=${10:-${base_sbindir_nativesdk}}
@@ -85,6 +85,7 @@ create_sdk_files_append() {
 	echo 'export OECORE_SDK_VERSION="${SDK_VERSION}"' >> $script
 	echo 'export ARCH=x86' >> $script
 	echo 'export CROSS_COMPILE='${sdk_target_prefix} >> $script
+	echo 'export OECORE_TUNE_CCARGS=""' >> $script
 
     cat >> $script <<EOF
 

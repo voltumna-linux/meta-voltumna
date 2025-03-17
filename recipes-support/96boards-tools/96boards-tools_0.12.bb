@@ -2,10 +2,10 @@ SUMMARY = "Useful bits an pieces to make 96Boards more standard across the board
 HOMEPAGE = "https://github.com/96boards/96boards-tools"
 SECTION = "devel"
 
-LICENSE = "GPLv2+"
-LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/GPL-2.0;md5=801f80980d171dd6425610833a22dbe6"
+LICENSE = "GPL-2.0-or-later"
+LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/GPL-2.0-or-later;md5=fed54355545ffd980b814dab4a3b312c"
 
-SRCREV = "147e3a97050fdea7c389deb8dfe06314cf82c9ba"
+SRCREV = "52ad42bb74ba4b3fcece2483f0d496494d60715f"
 SRC_URI = "git://github.com/96boards/96boards-tools;branch=master;protocol=https \
            "
 
@@ -29,5 +29,5 @@ do_install () {
 INITSCRIPT_NAME = "resize-disk"
 INITSCRIPT_PARAMS = "start 99 5 2 . stop 20 0 1 6 ."
 
-SYSTEMD_SERVICE_${PN} = "resize-helper.service"
-RDEPENDS_${PN} += "e2fsprogs-resize2fs gptfdisk parted util-linux udev"
+SYSTEMD_SERVICE:${PN} = "resize-helper.service"
+RDEPENDS:${PN} += "e2fsprogs-resize2fs gptfdisk parted util-linux udev"

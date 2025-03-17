@@ -12,7 +12,7 @@ Wants=rpcbind.target
 
 [Service]
 Type=notify
-EnvironmentFile=-/usr/sbin/rpcbind.conf
+EnvironmentFile=-/etc/rpcbind.conf
 ExecStart=/usr/sbin/rpcbind $RPCBIND_OPTIONS -w -f
 
 [Install]

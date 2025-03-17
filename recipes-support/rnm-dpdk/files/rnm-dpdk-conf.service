@@ -1,0 +1,14 @@
+[Unit]
+Description=RNM (DPDK) configuration service
+Requires=network-online.target nss-lookup.target
+After=network-online.target nss-lookup.target
+Conflicts=shutdown.target
+RequiresMountsFor=/run
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/rnm-dpdk-conf.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 SUMMARY = "Sintruments"
 HOMEPAGE = "https://github.com/tiagocoutinho/sinstruments"
-LICENSE = "GPL-3.0"
+LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=1ebbd3e34237af26da5dc08a4e440464"
 
 SRC_URI = " \
@@ -11,7 +11,7 @@ SRCREV = "2662f9f60babbed581d149554da030f25508b838"
 S = "${WORKDIR}/git"
 
 DEPENDS += "${PYTHON_PN}-pytest-runner-native"
-RDEPENDS_${PN} += "\
+RDEPENDS:${PN} += "\
 	${PYTHON_PN}-gevent \
 	${PYTHON_PN}-pyyaml \
 	${PYTHON_PN}-click \

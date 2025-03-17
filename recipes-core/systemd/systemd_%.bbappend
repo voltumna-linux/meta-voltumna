@@ -1,19 +1,18 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI += " \
+SRC_URI:append = " \
 	file://99-default.link \
 	file://sulogin-force.conf \
-	file://nsswitch.conf \
-        file://energy_perf_bias \
-        file://energy_perf_bias.service \
+	file://energy_perf_bias \
+	file://energy_perf_bias.service \
 	file://systemd-journal-upload.service \
 	"
 
-DEPENDS_append = " curl"
-RDEPENDS_${PN}_remove = "volatile-binds"
-RRECOMMENDS_${PN}_remove = "os-release"
+DEPENDS:append = " curl"
+RDEPENDS:${PN}:remove = "volatile-binds"
+RRECOMMENDS:${PN}:remove = "os-release"
 
-PACKAGECONFIG_remove = " \
+PACKAGECONFIG:remove = " \
 	firstboot \
 	hibernate \
 	ima \
@@ -21,7 +20,7 @@ PACKAGECONFIG_remove = " \
 	sysvinit \
 "
 
-PACKAGECONFIG_append = " \
+PACKAGECONFIG:append = " \
 	coredump \
 	elfutils \
 	serial-getty-generator \
@@ -32,9 +31,15 @@ EXTRA_OEMESON += "-Dnobody-user=nobody \
                   -Dnobody-group=nogroup \
                   "
 
-FILES_${PN} += " ${sbindir} ${systemd_unitdir}/system"
+FILES:${PN}:append = " ${sbindir} ${systemd_unitdir}/system"
 
-do_install_append() {
+do_install:append() {
+	# Disable parsing of the ip kernel command line parameter
+	sed -i 's/enable systemd-network-generator.service/disable systemd-network-generator.service/' \
+		${D}${systemd_unitdir}/system-preset/90-systemd.preset
+	sed -i 's/Also=systemd-network-generator.service/#Also=systemd-network-generator.service/'  \
+		${D}${systemd_unitdir}/system/systemd-networkd.service
+
 	# Copy file to set NamePolicy for network interfaces
 	install -m 0644 ${WORKDIR}/99-default.link ${D}${systemd_unitdir}/network/
 
@@ -59,6 +64,9 @@ do_install_append() {
 	# Adjust shadow files
 	echo 'Z /etc/{g,}shadow 0640 root shadow - -' >>${D}${exec_prefix}/lib/tmpfiles.d/etc.conf
 	
+	# Enforce /run/lock creation
+	echo 'd /run/lock 0755 root root - -' >>${D}${exec_prefix}/lib/tmpfiles.d/tmp.conf
+
 	# Set the right permission
 	chmod 755 ${D}${datadir}/polkit-1/rules.d
 
@@ -68,21 +76,18 @@ do_install_append() {
 		${D}${datadir}/factory/etc/pam.d/system-auth
 	rmdir ${D}${datadir}/factory/etc/pam.d
 
-	# Overwrite nsswitch.conf
-	cp ${WORKDIR}/nsswitch.conf ${D}${datadir}/factory/etc/
-
-        # Add script energy_perf_bias
-        install -d ${D}${sbindir}
-        install -m 0755 ${WORKDIR}/energy_perf_bias \
-                ${D}${sbindir}
-        install -d ${D}${systemd_unitdir}/system \
-                ${D}${sysconfdir}/systemd/system/multi-user.target.wants
-        install -m 0644 ${WORKDIR}/energy_perf_bias.service \
-                ${D}${systemd_unitdir}/system
-        ln -sf ${systemd_unitdir}/system/energy_perf_bias.service \
-                ${D}${sysconfdir}/systemd/system/multi-user.target.wants/energy_perf_bias.service
+	# Add script energy_perf_bias
+	install -d ${D}${sbindir}
+	install -m 0755 ${WORKDIR}/energy_perf_bias \
+		${D}${sbindir}
+	install -d ${D}${systemd_unitdir}/system \
+		${D}${sysconfdir}/systemd/system/multi-user.target.wants
+	install -m 0644 ${WORKDIR}/energy_perf_bias.service \
+		${D}${systemd_unitdir}/system
+	ln -sf ${systemd_unitdir}/system/energy_perf_bias.service \
+		${D}${sysconfdir}/systemd/system/multi-user.target.wants/energy_perf_bias.service
 
 	# Replace systemd-journal-upload.service 
-        install -m 0644 ${WORKDIR}/systemd-journal-upload.service \
-                ${D}${systemd_unitdir}/system
+	install -m 0644 ${WORKDIR}/systemd-journal-upload.service \
+		${D}${systemd_unitdir}/system
 }

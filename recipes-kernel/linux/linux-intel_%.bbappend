@@ -1,6 +1,6 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI_append += " \
+SRC_URI:append = " \
 	file://log.cfg \
 	file://zram.cfg \
 	file://initrd.cfg \
@@ -11,6 +11,7 @@ SRC_URI_append += " \
 	file://disable_ptp.cfg \
 	file://remove_martian_source_warning.cfg \
 	file://enable_ebpf_xpd.cfg \
+	file://disable_lttng.cfg \
 	\
 	file://numa.cfg \
 	file://dpdk.cfg \
@@ -19,9 +20,17 @@ SRC_URI_append += " \
 	file://hpet.cfg \
 	file://vtd.cfg \
 	file://serial_console.cfg \
+	file://ipmi.cfg \
+	\
 	file://static_intel_drivers.cfg \
+	file://0001-igb-Stop-PTP-related-workqueues-if-aren-t-necessary.patch \
+	file://resctrl.cfg \
+	file://0001-sched-core-Fix-arch_scale_freq_tick-on-tickless-syst.patch \
+	file://0001-hugetlbfs-extend-the-definition-of-hugepages-paramet.patch \
 	"
 
-KERNEL_FEATURES_remove = " features/security/security.scc"
+SRC_URI:append:kvm = " \
+	file://virtualization.cfg \
+	"
 
-# COMPATIBLE_MACHINE_append = "|nu93-2930"
+KERNEL_FEATURES:remove = " features/security/security.scc"

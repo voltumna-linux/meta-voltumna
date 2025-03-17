@@ -2,7 +2,7 @@ DESCRIPTION = "OS Updater"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-RDEPENDS_${PN} = "bash curl ca-certificates nginx diffutils rsync python3 python3-requests python3-dbus pam-plugin-succeed-if"
+RDEPENDS:${PN} = "bash curl ca-certificates nginx diffutils rsync python3 python3-requests python3-dbus pam-plugin-succeed-if"
 
 SRC_URI = " \
 	file://firmware \
@@ -14,7 +14,7 @@ SRC_URI = " \
 	file://os-netconfig \
 	"
 
-SYSTEMD_SERVICE_${PN} = "firmware.service"
+SYSTEMD_SERVICE:${PN} = "firmware.service"
 SYSTEMD_AUTO_ENABLE = "enable"
 
 do_install[vardeps] += "PRIMARY_NETIF"

@@ -1,13 +1,13 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI_append += "file://80-diskless.network \
+SRC_URI:append = "file://80-diskless.network \
 		file://80-standalone.network \
 		"
 
-FILES_${PN} += "${systemd_unitdir}"
+FILES:${PN} += "${systemd_unitdir}"
 
 do_install[vardeps] += "PRIMARY_NETIF"
-do_install_append() {
+do_install:append() {
 	rm -f ${D}${systemd_unitdir}/network/80-wired.network
 
 	install -d ${D}${systemd_unitdir}/network

@@ -1,1 +1,0 @@
-linux-ti-staging_%.bbappend

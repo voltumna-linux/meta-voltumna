@@ -1,0 +1,1 @@
+RDEPENDS:packagegroup-base-acpi = ""

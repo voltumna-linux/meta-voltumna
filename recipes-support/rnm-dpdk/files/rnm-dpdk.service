@@ -1,0 +1,11 @@
+[Unit]
+Description=RNM (DPDK) service
+Requires=local-fs.target rnm-dpdk-conf.service
+After=rnm-dpdk-conf.service
+
+[Service]
+EnvironmentFile=/run/rnm-dpdk/rnm.conf
+ExecStart=/usr/sbin/rnm-dpdk -l ${RNM_LCORE} -n 1 -m 128 --in-memory -a ${RNM_NETIF}${RNM_DEVARGS} -- --client-id ${CLIENTID}
+
+[Install]
+WantedBy=multi-user.target

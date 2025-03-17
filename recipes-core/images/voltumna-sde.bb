@@ -1,21 +1,22 @@
 require include/voltumna.inc
 VARIANT = "Voltumna (Development)"
 
-IMAGE_FEATURES += "debug-tweaks \
+IMAGE_FEATURES:append = " debug-tweaks \
 	${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
 
-IMAGE_INSTALL_append += " info man-pages"
+IMAGE_INSTALL:append = " info man-pages"
 
 # To keep in sync with SDK
-IMAGE_INSTALL_append = " binutils cpp gcc libgcc-dev g++ libstdc++-dev libgomp-dev libasan-dev libubsan-dev"
-IMAGE_INSTALL_append_arm += " dtc"
-IMAGE_INSTALL_append_x86-64 += " liblsan-dev libtsan-dev"
+IMAGE_INSTALL:append = " binutils cpp gcc libgcc-dev g++ libstdc++-dev libgomp-dev libasan-dev libubsan-dev \
+	clang python3-pylint"
+IMAGE_INSTALL:append:arm = " dtc"
+IMAGE_INSTALL:append:intel-x86-common = " liblsan-dev libtsan-dev"
 
 # Specific to SDE
-IMAGE_INSTALL_append += " binutils-symlinks cpp-symlinks gcc-symlinks g++-symlinks \
-	autoconf automake gettext libtool pkgconfig diffutils quilt git make cmake meson \
-	devmem2 gzip kernel-devsrc prepare-kernel-devsrc glib-2.0-utils \
-	powertop gdbserver valgrind"
+IMAGE_INSTALL:append = " binutils-symlinks cpp-symlinks gcc-symlinks g++-symlinks \
+       autoconf automake gettext libtool pkgconfig diffutils quilt git make cmake meson \
+       devmem2 gzip kernel-devsrc prepare-kernel-devsrc glib-2.0-utils \
+       powertop gdbserver valgrind"
 
 install_sdk_sh() {
 	install -d ${IMAGE_ROOTFS}${sysconfdir}/profile.d
@@ -69,5 +70,5 @@ set_killuserprocess() {
 	sed -ie 's,#KillUserProcesses=yes,KillUserProcesses=no,g' ${IMAGE_ROOTFS}${sysconfdir}/systemd/logind.conf
 }
 
-ROOTFS_POSTPROCESS_COMMAND += " install_sdk_sh; install_environment_setup_sh; set_killuserprocess;"
+ROOTFS_POSTPROCESS_COMMAND:append = " install_sdk_sh; install_environment_setup_sh; set_killuserprocess;"
 MACHINE_FEATURES:remove = "qemu-usermode"

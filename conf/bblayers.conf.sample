@@ -11,12 +11,14 @@ BBLAYERS ?= " \
   ##OEROOT##/../meta-tango \
   ##OEROOT##/../meta-mingw \
   ##OEROOT##/../meta-artesyn \
-  ##OEROOT##/../meta-altera \
+  ##OEROOT##/../meta-intel-fpga \
   ##OEROOT##/../meta-intel \
   ##OEROOT##/../meta-intel-qat \
   ##OEROOT##/../meta-arm/meta-arm \
   ##OEROOT##/../meta-arm/meta-arm-toolchain \
-  ##OEROOT##/../meta-ti \
+  ##OEROOT##/../meta-ti/meta-ti-bsp \
+  ##OEROOT##/../meta-ti/meta-ti-extras \
+  ##OEROOT##/../meta-amd/meta-amd-bsp \
   ##OEROOT##/../meta-clang \
   ##OEROOT##/../meta-openembedded/meta-oe \
   ##OEROOT##/../meta-openembedded/meta-filesystems \

@@ -4,7 +4,7 @@ KernelCommandLine=!rootfstype=nfs
 
 [Network]
 DHCP=ipv4
-LinkLocalAddressing=ipv4-fallback
+LinkLocalAddressing=ipv4
 MulticastDNS=true
 LLDP=true
 EmitLLDP=true

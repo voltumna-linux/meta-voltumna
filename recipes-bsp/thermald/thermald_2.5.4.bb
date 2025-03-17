@@ -30,13 +30,13 @@ EXTRA_OECONF = " \
                  --with-systemdsystemunitdir=${systemd_system_unitdir} \
                  "
 
-FILES_${PN} += "${datadir}/dbus-1"
+FILES:${PN} += "${datadir}/dbus-1"
 
-SYSTEMD_SERVICE_${PN} = "thermald.service"
+SYSTEMD_SERVICE:${PN} = "thermald.service"
 
 COMPATIBLE_HOST = '(i.86|x86_64).*-linux'
 
-CONFFILES_${PN} = " \
+CONFFILES:${PN} = " \
                    ${sysconfdir}/thermald/thermal-conf.xml \
                    ${sysconfdir}/thermald/thermal-cpu-cdev-order.xml \
                   "

@@ -1,0 +1,15 @@
+diff -ruNp edt-module-5.6.6.0.orig/pdv/module/driver_rules.mk edt-module-5.6.6.0/pdv/module/driver_rules.mk
+--- edt-module-5.6.6.0.orig/pdv/module/driver_rules.mk	2022-11-28 17:08:14.000000000 +0000
++++ edt-module-5.6.6.0/pdv/module/driver_rules.mk	2023-04-07 09:45:35.116407828 +0000
+@@ -80,9 +80,9 @@ EXTRA_CFLAGS += -Wno-error=date-time
+ endif
+ 
+ # hack for Ubuntu 10.10+
+-ifneq ($(shell ls /lib/modules/`uname -r`/build/include/generated/autoconf.h 2> /dev/null),)
++#ifneq ($(shell ls /lib/modules/`uname -r`/build/include/generated/autoconf.h 2> /dev/null),)
+ EXTRA_CFLAGS += -DGENERATED_AUTOCONF -Wno-error 
+-endif
++#endif
+ 
+ #hack for Redhat 9
+ REMAP_VERSION = $(shell grep remap_page_range $(INCLUDEDIR)/linux/mm.h | grep vm_ )

@@ -1,17 +1,18 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI += " \
+SRC_URI:append = " \
 	file://fstab \
 	file://factory-reset \
 	file://etcdiff \
+	file://nsswitch.conf \
 	"
 
-FILES_${PN} += "${sysconfdir}/profile.d/environment-setup.sh"
+FILES:${PN} += "${sysconfdir}/profile.d/environment-setup.sh"
 
 volatiles = ""
 dirs1777 = "/tmp ${localstatedir}/tmp"
-dirs755_remove = "${localstatedir}/local ${localstatedir}/volatile"
-conffiles_remove = "${sysconfdir}/issue.net"
+dirs755:remove = "${localstatedir}/local ${localstatedir}/volatile"
+conffiles:remove = "${sysconfdir}/issue.net"
 
 # Unset hostname  otherwise hostnamed refuses to set it when passed by DHCP
 hostname = ""
@@ -24,9 +25,9 @@ do_install_basefilesissue () {
 }
 
 do_install[vardeps] += "PRIMARY_NETIF"
-do_install_append() {
+do_install:append() {
 	# Add an additional link to lib
-	lnr ${D}/lib ${D}/lib${SITEINFO_BITS}
+	ln -sr ${D}/lib ${D}/lib${SITEINFO_BITS}
 
 	# Install issue
 	install -d ${D}${sysconfdir}
@@ -37,6 +38,7 @@ do_install_append() {
 	# Add two scripts
 	install -m 755 ${WORKDIR}/factory-reset ${D}/usr/sbin
 	install -m 755 ${WORKDIR}/etcdiff ${D}/usr/bin
-}
 
-PACKAGE_ARCH = "${TUNE_PKGARCH}"
+	# Use systemd's nsswitch.conf file instead of the base-files's one
+	cp ${WORKDIR}/nsswitch.conf ${D}${sysconfdir}
+}
