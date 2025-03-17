@@ -1,5 +1,5 @@
 #!/bin/bash
-YOCTO_BRANCH="kirkstone"
+YOCTO_BRANCH="scarthgap"
 MACHINE='siena'
 source ./oe-init-build-env build-${MACHINE}-${YOCTO_BRANCH}
 

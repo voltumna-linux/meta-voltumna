@@ -1,0 +1,122 @@
+From 37069f7863f2d234887d7c2878eab7ddd5758aa4 Mon Sep 17 00:00:00 2001
+From: Wei Huang <wei.huang2@amd.com>
+Date: Sun, 28 Jan 2024 17:24:26 -0600
+Subject: [PATCH 01/38] PCI: Introduce PCIe TPH support framework
+
+This patch implements the framework for PCIe TPH support. It introduces
+tph.c source file, along with CONFIG_PCIE_TPH, to Linux PCIe subsystem.
+A new member, named tph_cap, is also introduced in pci_dev to cache TPH
+capability offset.
+
+Co-developed-by: Wei Huang <wei.huang2@amd.com>
+Signed-off-by: Wei Huang <wei.huang2@amd.com>
+Signed-off-by: Eric Van Tassell <Eric.VanTassell@amd.com>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ drivers/pci/pci.h         |  6 ++++++
+ drivers/pci/pcie/Kconfig  |  8 ++++++++
+ drivers/pci/pcie/Makefile |  1 +
+ drivers/pci/pcie/tph.c    | 20 ++++++++++++++++++++
+ drivers/pci/probe.c       |  1 +
+ include/linux/pci.h       |  4 ++++
+ 6 files changed, 40 insertions(+)
+ create mode 100644 drivers/pci/pcie/tph.c
+
+diff --git a/drivers/pci/pci.h b/drivers/pci/pci.h
+index 2cc032e8cbb9..4f6f2a388d54 100644
+--- a/drivers/pci/pci.h
++++ b/drivers/pci/pci.h
+@@ -495,6 +495,12 @@ static inline int pci_iov_bus_range(struct pci_bus *bus)
+ 
+ #endif /* CONFIG_PCI_IOV */
+ 
++#ifdef CONFIG_PCIE_TPH
++void pcie_tph_init(struct pci_dev *dev);
++#else
++static inline void pcie_tph_init(struct pci_dev *dev) {}
++#endif
++
+ #ifdef CONFIG_PCIE_PTM
+ void pci_ptm_init(struct pci_dev *dev);
+ void pci_save_ptm_state(struct pci_dev *dev);
+diff --git a/drivers/pci/pcie/Kconfig b/drivers/pci/pcie/Kconfig
+index 228652a59f27..27525ecd66c1 100644
+--- a/drivers/pci/pcie/Kconfig
++++ b/drivers/pci/pcie/Kconfig
+@@ -146,3 +146,11 @@ config PCIE_EDR
+ 	  the PCI Firmware Specification r3.2.  Enable this if you want to
+ 	  support hybrid DPC model which uses both firmware and OS to
+ 	  implement DPC.
++
++config PCIE_TPH
++	bool "TLP Processing Hints"
++	default n
++	help
++	  This option adds support for PCIE TLP Processing Hints (TPH).
++	  TPH allows endpoint devices to provide optimization hints, such as
++	  desired caching behavior, for requests that target memory space.
+diff --git a/drivers/pci/pcie/Makefile b/drivers/pci/pcie/Makefile
+index 8de4ed5f98f1..434bacfd6899 100644
+--- a/drivers/pci/pcie/Makefile
++++ b/drivers/pci/pcie/Makefile
+@@ -13,3 +13,4 @@ obj-$(CONFIG_PCIE_PME)		+= pme.o
+ obj-$(CONFIG_PCIE_DPC)		+= dpc.o
+ obj-$(CONFIG_PCIE_PTM)		+= ptm.o
+ obj-$(CONFIG_PCIE_EDR)		+= edr.o
++obj-$(CONFIG_PCIE_TPH)		+= tph.o
+diff --git a/drivers/pci/pcie/tph.c b/drivers/pci/pcie/tph.c
+new file mode 100644
+index 000000000000..3e62d4847a20
+--- /dev/null
++++ b/drivers/pci/pcie/tph.c
+@@ -0,0 +1,20 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * TPH (TLP Processing Hints) support
++ *
++ * Copyright (C) 2023 Advanced Micro Devices, Inc.
++ *     Eric van Tassell <Eric.VanTassell@amd.com>
++ *     Wei Huang <wei.huang2@amd.com>
++ */
++#include <uapi/linux/pci_regs.h>
++#include <linux/kernel.h>
++#include <linux/errno.h>
++#include <linux/pci.h>
++
++#ifdef CONFIG_PCIE_TPH
++
++void pcie_tph_init(struct pci_dev *dev)
++{
++	dev->tph_cap = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_TPH);
++}
++#endif
+diff --git a/drivers/pci/probe.c b/drivers/pci/probe.c
+index 43159965e09e..4af39063f0c0 100644
+--- a/drivers/pci/probe.c
++++ b/drivers/pci/probe.c
+@@ -2487,6 +2487,7 @@ static void pci_init_capabilities(struct pci_dev *dev)
+ 	pci_dpc_init(dev);		/* Downstream Port Containment */
+ 	pci_rcec_init(dev);		/* Root Complex Event Collector */
+ 	pci_doe_init(dev);		/* Data Object Exchange */
++	pcie_tph_init(dev);             /* TLP Processing Hints */
+ 
+ 	pcie_report_downtraining(dev);
+ 	pci_init_reset_methods(dev);
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+index 7b18a4b3efb0..95c756d30423 100644
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -529,6 +529,10 @@ struct pci_dev {
+ 
+ 	/* These methods index pci_reset_fn_methods[] */
+ 	u8 reset_methods[PCI_NUM_RESET_METHODS]; /* In priority order */
++
++#ifdef CONFIG_PCIE_TPH
++	u16 tph_cap; /* TPH capability offset */
++#endif
+ };
+ 
+ static inline struct pci_dev *pci_physfn(struct pci_dev *dev)
+-- 
+2.25.1
+

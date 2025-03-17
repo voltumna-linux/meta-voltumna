@@ -1,0 +1,36 @@
+From 9d7e0d42d002170e250f6c754aa020f499faaa81 Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Fri, 22 Mar 2024 19:40:17 +0000
+Subject: [PATCH 36/38] SDXI: Add print info during system
+
+Print the TPH mode for end-users
+
+Signed-off-by: Wei Huang <wei.huang2@amd.com>
+---
+ drivers/pci/pcie/tph.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/pci/pcie/tph.c b/drivers/pci/pcie/tph.c
+index 7a4dc2a607f9..c7729339360e 100644
+--- a/drivers/pci/pcie/tph.c
++++ b/drivers/pci/pcie/tph.c
+@@ -496,6 +496,8 @@ int tph_set_dev_nostmode(struct pci_dev *dev)
+ {
+ 	int ret;
+ 
++	pci_info(dev, "set tph no_st mode\n");
++
+ 	/* set ST Mode Select to "No ST Mode" */
+ 	ret = tph_set_reg_field_u32(dev, PCI_TPH_CTRL,
+ 				    PCI_TPH_CTRL_MODE_SEL_MASK,
+@@ -515,6 +517,7 @@ int tph_set_dev_nostmode(struct pci_dev *dev)
+ 
+ int pcie_tph_disable(struct pci_dev *dev)
+ {
++	pci_info(dev, "disable tph support\n");
+ 	return  tph_set_reg_field_u32(dev, PCI_TPH_CTRL,
+ 				      PCI_TPH_CTRL_REQ_EN_MASK,
+ 				      PCI_TPH_CTRL_REQ_EN_SHIFT,
+-- 
+2.25.1
+

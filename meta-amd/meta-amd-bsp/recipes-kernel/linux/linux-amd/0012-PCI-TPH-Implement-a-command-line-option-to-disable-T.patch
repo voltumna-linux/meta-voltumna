@@ -1,0 +1,179 @@
+From 33d2af31c5398ea4f587dd6ec697e8a8839151f7 Mon Sep 17 00:00:00 2001
+From: Wei Huang <wei.huang2@amd.com>
+Date: Sun, 28 Jan 2024 23:46:45 -0600
+Subject: [PATCH 03/38] PCI/TPH: Implement a command line option to disable TPH
+
+Provide a kernel option, with related helper functions, to completely
+disable TPH so that no TPH headers are generated.
+
+Co-developed-by: Wei Huang <wei.huang2@amd.com>
+Signed-off-by: Wei Huang <wei.huang2@amd.com>
+Signed-off-by: Eric Van Tassell <Eric.VanTassell@amd.com>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ .../admin-guide/kernel-parameters.txt         |  1 +
+ drivers/pci/pci-driver.c                      |  6 +++-
+ drivers/pci/pci.c                             | 11 +++++++
+ drivers/pci/pcie/tph.c                        | 30 +++++++++++++++++++
+ include/linux/pci-tph.h                       | 19 ++++++++++++
+ include/linux/pci.h                           |  1 +
+ 6 files changed, 67 insertions(+), 1 deletion(-)
+ create mode 100644 include/linux/pci-tph.h
+
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index a7fe11389736..8c532ebff3d4 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -4477,6 +4477,7 @@
+ 		nomio		[S390] Do not use MIO instructions.
+ 		norid		[S390] ignore the RID field and force use of
+ 				one PCI domain per PCI function
++		notph		[PCIE] Do not use PCIe TPH
+ 
+ 	pcie_aspm=	[PCIE] Forcibly enable or disable PCIe Active State Power
+ 			Management.
+diff --git a/drivers/pci/pci-driver.c b/drivers/pci/pci-driver.c
+index 9c59bf03d657..3387ad9c5055 100644
+--- a/drivers/pci/pci-driver.c
++++ b/drivers/pci/pci-driver.c
+@@ -21,6 +21,7 @@
+ #include <linux/acpi.h>
+ #include <linux/dma-map-ops.h>
+ #include <linux/iommu.h>
++#include <linux/pci-tph.h>
+ #include "pci.h"
+ #include "pcie/portdrv.h"
+ 
+@@ -322,8 +323,11 @@ static long local_pci_probe(void *_ddi)
+ 	pm_runtime_get_sync(dev);
+ 	pci_dev->driver = pci_drv;
+ 	rc = pci_drv->probe(pci_dev, ddi->id);
+-	if (!rc)
++	if (!rc) {
++		if (pci_tph_disabled())
++			pcie_tph_disable(pci_dev);
+ 		return rc;
++	}
+ 	if (rc < 0) {
+ 		pci_dev->driver = NULL;
+ 		pm_runtime_put_sync(dev);
+diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
+index a5f61bbf03e1..5b55cb24e2cb 100644
+--- a/drivers/pci/pci.c
++++ b/drivers/pci/pci.c
+@@ -158,6 +158,9 @@ static bool pcie_ari_disabled;
+ /* If set, the PCIe ATS capability will not be used. */
+ static bool pcie_ats_disabled;
+ 
++/* If set, the PCIe TPH capability will not be used. */
++static bool pcie_tph_disabled;
++
+ /* If set, the PCI config space of each device is printed during boot. */
+ bool pci_early_dump;
+ 
+@@ -167,6 +170,12 @@ bool pci_ats_disabled(void)
+ }
+ EXPORT_SYMBOL_GPL(pci_ats_disabled);
+ 
++bool pci_tph_disabled(void)
++{
++	return pcie_tph_disabled;
++}
++EXPORT_SYMBOL_GPL(pci_tph_disabled);
++
+ /* Disable bridge_d3 for all PCIe ports */
+ static bool pci_bridge_d3_disable;
+ /* Force bridge_d3 for all PCIe ports */
+@@ -7053,6 +7062,8 @@ static int __init pci_setup(char *str)
+ 				pci_no_domains();
+ 			} else if (!strncmp(str, "noari", 5)) {
+ 				pcie_ari_disabled = true;
++			} else if (!strcmp(str, "notph")) {
++				pcie_tph_disabled = true;
+ 			} else if (!strncmp(str, "cbiosize=", 9)) {
+ 				pci_cardbus_io_size = memparse(str + 9, &str);
+ 			} else if (!strncmp(str, "cbmemsize=", 10)) {
+diff --git a/drivers/pci/pcie/tph.c b/drivers/pci/pcie/tph.c
+index 3e62d4847a20..9a14e371c9f2 100644
+--- a/drivers/pci/pcie/tph.c
++++ b/drivers/pci/pcie/tph.c
+@@ -10,9 +10,39 @@
+ #include <linux/kernel.h>
+ #include <linux/errno.h>
+ #include <linux/pci.h>
++#include <linux/pci-tph.h>
+ 
+ #ifdef CONFIG_PCIE_TPH
+ 
++static int tph_set_reg_field_u32(struct pci_dev *dev, u8 offset, u32 mask,
++				 u8 shift, u32 field)
++{
++	u32 reg_val;
++	int ret;
++
++	if (!dev->tph_cap)
++		return -EINVAL;
++
++	ret = pci_read_config_dword(dev, dev->tph_cap + offset, &reg_val);
++	if (ret)
++		return ret;
++
++	reg_val &= ~mask;
++	reg_val |= (field << shift) & mask;
++
++	ret = pci_write_config_dword(dev, dev->tph_cap + offset, reg_val);
++
++	return ret;
++}
++
++int pcie_tph_disable(struct pci_dev *dev)
++{
++	return  tph_set_reg_field_u32(dev, PCI_TPH_CTRL,
++				      PCI_TPH_CTRL_REQ_EN_MASK,
++				      PCI_TPH_CTRL_REQ_EN_SHIFT,
++				      PCI_TPH_REQ_DISABLE);
++}
++
+ void pcie_tph_init(struct pci_dev *dev)
+ {
+ 	dev->tph_cap = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_TPH);
+diff --git a/include/linux/pci-tph.h b/include/linux/pci-tph.h
+new file mode 100644
+index 000000000000..bbc1981514f8
+--- /dev/null
++++ b/include/linux/pci-tph.h
+@@ -0,0 +1,19 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * TPH (TLP Processing Hints)
++ *
++ * Copyright (C) 2023 Advanced Micro Devices, Inc.
++ *     Eric Van Tassell <Eric.VanTassell@amd.com>
++ *     Wei Huang <wei.huang2@amd.com>
++ */
++#ifndef LINUX_PCI_TPH_H
++#define LINUX_PCI_TPH_H
++
++#ifdef CONFIG_PCIE_TPH
++int pcie_tph_disable(struct pci_dev *dev);
++#else
++static inline int pcie_tph_disable(struct pci_dev *dev)
++{ return -EOPNOTSUPP; }
++#endif
++
++#endif /* LINUX_PCI_TPH_H */
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+index 95c756d30423..69835efd4772 100644
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -1838,6 +1838,7 @@ static inline bool pci_aer_available(void) { return false; }
+ #endif
+ 
+ bool pci_ats_disabled(void);
++bool pci_tph_disabled(void);
+ 
+ #ifdef CONFIG_PCIE_PTM
+ int pci_enable_ptm(struct pci_dev *dev, u8 *granularity);
+-- 
+2.25.1
+

@@ -1,0 +1,207 @@
+From 0f29ca0139ba239256b14ed1894c2502749a7ed2 Mon Sep 17 00:00:00 2001
+From: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Date: Sun, 19 Jan 2025 20:29:40 +0530
+Subject: [PATCH 35/38] bnxt_en: Add forced tag support
+
+This patch adds a sysfs interface to force tag values as part of
+experiments. It modifies both bnxt driver and TPH code to support
+this feature.
+
+Signed-off-by: Manoj Panicker <manoj.panicker2@amd.com>
+
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ drivers/net/ethernet/broadcom/bnxt/bnxt.c | 85 ++++++++++++++++++++++-
+ drivers/pci/pcie/tph.c                    | 10 ++-
+ include/linux/pci-tph.h                   |  4 +-
+ 3 files changed, 93 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt.c b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+index fa8bdaf3b180..e9dd3873eda7 100644
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+@@ -55,6 +55,8 @@
+ #include <linux/hwmon.h>
+ #include <linux/hwmon-sysfs.h>
+ #include <net/page_pool/helpers.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
+ #include <linux/align.h>
+ #include <net/netdev_queues.h>
+ #include <linux/pci-tph.h>
+@@ -86,6 +88,10 @@ MODULE_DESCRIPTION("Broadcom BCM573xx network driver");
+ 
+ #define BNXT_TX_PUSH_THRESH 164
+ 
++
++/* By Manoj: for force tag experiment */
++static int newtag = -1;
++
+ /* indexed by enum board_idx */
+ static const struct {
+ 	char *name;
+@@ -9307,8 +9313,18 @@ static void bnxt_irq_affinity_notify(struct irq_affinity_notify *notify,
+ 
+ 	if (!pcie_tph_set_st(irq->bp->pdev, irq->msix_nr,
+ 			     cpumask_first(irq->cpu_mask),
+-			     TPH_MEM_TYPE_VM, PCI_TPH_REQ_TPH_ONLY))
++			     TPH_MEM_TYPE_VM, PCI_TPH_REQ_TPH_ONLY, newtag))
+ 		pr_err("Error configuring steering tag\n");
++
++	if (netif_running(irq->bp->dev)) {
++		int rc;
++
++		pr_info("Performing close+open nic() calls\n");
++		bnxt_close_nic(irq->bp, false, false);
++		rc = bnxt_open_nic(irq->bp, false, false);
++		if (rc)
++			printk("%s:%d bnxt_open_nic returned %d\n", __FUNCTION__, __LINE__, rc);
++	}
+ }
+ 
+ static void bnxt_irq_affinity_release(struct kref __always_unused *ref)
+@@ -9384,7 +9400,8 @@ static int bnxt_request_irq(struct bnxt *bp)
+ 
+ 			if (!pcie_tph_set_st(bp->pdev, i,
+ 					     cpumask_first(irq->cpu_mask),
+-					     TPH_MEM_TYPE_VM, PCI_TPH_REQ_TPH_ONLY)) {
++					     TPH_MEM_TYPE_VM, PCI_TPH_REQ_TPH_ONLY,
++					     newtag)) {
+ 				netdev_err(bp->dev, "error in setting steering tag\n");
+ 			} else {
+ 				irq->bp = bp;
+@@ -13215,6 +13232,66 @@ int bnxt_get_port_parent_id(struct net_device *dev,
+ 	return 0;
+ }
+ 
++#define SDCI_EXP_SYSFS
++
++#if defined(SDCI_EXP_SYSFS)
++
++static ssize_t tag_show(struct device *dev, struct device_attribute *attr,
++			char *buf)
++{
++	return sysfs_emit(buf, "%d\n", newtag);
++}
++
++static ssize_t tag_store(struct device *dev, struct device_attribute *attr,
++			 const char *buf, size_t count)
++{
++	sscanf(buf, "%d", &newtag);
++	printk("\n\n >>>> Forcing tag value to %d\n", newtag);
++	return count;
++}
++
++static DEVICE_ATTR_RW(tag);
++
++static struct attribute *mp_device_attrs[] = {
++	&dev_attr_tag.attr,
++	NULL,
++};
++
++static const struct attribute_group mp_attr_group = {
++	.name = "ST_Tag",
++	.attrs = mp_device_attrs,
++};
++
++
++static int bnxt_sysfs_register(struct bnxt *bp)
++{
++	struct device *dev = &bp->pdev->dev;
++	int err;
++
++	err = sysfs_create_group(&dev->kobj, &mp_attr_group);
++	if (err) {
++		printk("!!!!!!  failed to create sysfs group\n");
++		return err;
++	}
++
++	return 0;
++}
++
++static void bnxt_sysfs_unregister(struct bnxt *bp)
++{
++	struct device *dev = &bp->pdev->dev;
++
++	sysfs_remove_group(&dev->kobj, &mp_attr_group);
++}
++
++#else
++
++static inline void bnxt_sysfs_register(struct bnxt *bp) {}
++static inline void bnxt_sysfs_unregister(struct bnxt *bp) {}
++
++#endif /* SDCI_EXP_SYSFS */
++
++
+ static const struct net_device_ops bnxt_netdev_ops = {
+ 	.ndo_open		= bnxt_open,
+ 	.ndo_start_xmit		= bnxt_start_xmit,
+@@ -13258,6 +13335,8 @@ static void bnxt_remove_one(struct pci_dev *pdev)
+ 
+ 	bnxt_rdma_aux_device_uninit(bp);
+ 
++	bnxt_sysfs_unregister(bp);
++
+ 	bnxt_ptp_clear(bp);
+ 	unregister_netdev(dev);
+ 	clear_bit(BNXT_STATE_IN_FW_RESET, &bp->state);
+@@ -13857,6 +13936,8 @@ static int bnxt_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 
+ 	bnxt_print_device_info(bp);
+ 
++	bnxt_sysfs_register(bp);
++
+ 	pci_save_state(pdev);
+ 
+ 	return 0;
+diff --git a/drivers/pci/pcie/tph.c b/drivers/pci/pcie/tph.c
+index 7925361dd3a0..7a4dc2a607f9 100644
+--- a/drivers/pci/pcie/tph.c
++++ b/drivers/pci/pcie/tph.c
+@@ -540,12 +540,18 @@ void pcie_tph_init(struct pci_dev *dev)
+  */
+ bool pcie_tph_set_st(struct pci_dev *dev, unsigned int msix_nr,
+ 		     unsigned int cpu, enum tph_mem_type tag_type,
+-		     u8 req_enable)
++		     u8 req_enable, int force_tagval)
+ {
+ 	u16 tag;
+ 	bool ret;
+ 
+-	tag = pcie_tph_retrieve_st(dev, cpu, tag_type, req_enable);
++	if (force_tagval != -1)
++		tag = (u16)force_tagval;
++	else
++		tag = pcie_tph_retrieve_st(dev, cpu, tag_type, req_enable);
++
++	printk("%s:%d Writing tag %d for MSIX Intr%d (CPU: %d)\n", __FUNCTION__, __LINE__, tag, msix_nr, cpu);
++
+ 	ret = pcie_tph_write_st(dev, msix_nr, req_enable, tag);
+ 
+ 	return ret;
+diff --git a/include/linux/pci-tph.h b/include/linux/pci-tph.h
+index b90a122ebc55..688ade664e70 100644
+--- a/include/linux/pci-tph.h
++++ b/include/linux/pci-tph.h
+@@ -53,7 +53,7 @@ int pcie_tph_disable(struct pci_dev *dev);
+ int tph_set_dev_nostmode(struct pci_dev *dev);
+ bool pcie_tph_set_st(struct pci_dev *dev, unsigned int msix_nr,
+ 		     unsigned int cpu, enum tph_mem_type tag_type,
+-		     u8 req_enable);
++		     u8 req_enable, int force_tag);
+ #else
+ static inline int pcie_tph_disable(struct pci_dev *dev)
+ { return -EOPNOTSUPP; }
+@@ -61,7 +61,7 @@ static inline int tph_set_dev_nostmode(struct pci_dev *dev)
+ { return -EOPNOTSUPP; }
+ static inline bool pcie_tph_set_st(struct pci_dev *dev, unsigned int msix_nr,
+ 				   unsigned int cpu, enum tph_mem_type tag_type,
+-				   u8 req_enable)
++				   u8 req_enable, int force_tag)
+ { return true; }
+ #endif
+ 
+-- 
+2.25.1
+

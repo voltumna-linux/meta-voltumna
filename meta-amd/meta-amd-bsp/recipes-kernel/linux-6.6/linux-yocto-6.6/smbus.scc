@@ -1,2 +1,0 @@
-# out-of-tree
-patch 9011-i2c-amd-mp2-avoid-using-pci_intx-if-msi-or-msix-is-s.patch
