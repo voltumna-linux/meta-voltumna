@@ -1,0 +1,13 @@
+[Unit]
+Description=Prepare kernel development source
+Requires=local-fs.target
+ConditionPathExists=!/usr/src/kernel/scripts/mod/modpost
+
+[Service]
+ExecStart=make -C /usr/src/kernel prepare scripts tools
+Type=oneshot
+RemainAfterExit=yes
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

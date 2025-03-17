@@ -1,0 +1,217 @@
+#!/bin/sh
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+do_reboot() {
+	umount -a 2>/dev/null
+	echo -n "Rebooting in 10 sec. "
+	sleep 10
+	reboot -f
+}
+
+# Mounting proc filesystem
+mount -n -t proc none /proc || do_reboot
+
+# Symlinking mtab to make "umount -a" works
+ln -s /proc/self/mounts /etc/mtab >/dev/null 2>&1
+
+# Mounting dev filesystem
+mount -t devtmpfs none /dev || do_reboot
+
+# Mounting sys filesystem
+mount -t sysfs none /sys || do_reboot
+
+# Defaults
+rootflags=noatime,async
+
+# Parse command line options
+for arg in $(cat /proc/cmdline)
+do
+	case $arg in
+		*fstab=* | nfsroot=* | rootwait )
+					echo "The $arg parameter is ignored...";;
+		debug)			export debug=true
+					set -x;;
+		break=*)		export break="${arg//break=}";;
+		ip=*)			export network=true
+					for idx in $(seq 1 10); do
+						param=$(echo "${arg//ip=}" | cut -d":" -f${idx})
+						case $idx in
+							1)  export ip="${param}";;
+							2)  export siaddr="${param}";;
+							3)  export router="${param}";;
+							4)  export mask="${param}";;
+							5)  export hostname="${param}";;
+							6)  export interface="${param}";;
+							7)  export autoconf="${param}";;
+							8)  export dns1="${param}";;
+							9)  export dns2="${param}";;
+							10) export ntp="${param}";;
+						esac
+					done;;
+		root=*)			export rootpath="${arg//root=}";;
+		rootfstype=*)		export rootfstype="${arg//rootfstype=}";;
+		rootflags=*)		export rootflags="${arg//rootflags=}";;
+		mount.usr=*)		export usrpath="${arg//mount.usr=}";;
+		mount.usrfstype=*)	export usrfstype="${arg//mount.usrfstype=}";;
+		mount.usrflags=*)	export usrflags="${arg//mount.usrflags=}";;
+		systemd.volatile=*)	echo "The $arg paramter is not implemented yet...";;
+	esac
+done
+
+# The usrfstype/flags defaults are the same of the root's ones
+if [ -z "${usrfstype}" ]; then
+	usrfstype=${rootfstype}
+fi
+
+if [ -z "${usrflags}" ]; then
+	usrflags=${rootflags}
+fi
+
+# Rename network interfaces
+SYSCLASSNET=/sys/class/net/
+for NIC in $(ls ${SYSCLASSNET})
+do
+	UDEVADM_OUTPUT=$(udevadm test-builtin net_id ${SYSCLASSNET}${NIC} 2>/dev/null)
+	ID_NET_NAME_ONBOARD=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_ONBOARD=\(.*\)/\1/p')
+	if [ -n "${ID_NET_NAME_ONBOARD}" ]; then
+		ip link set ${NIC} name ${ID_NET_NAME_ONBOARD} >/dev/null 2>&1
+	fi
+	ID_NET_NAME_PATH=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_PATH=\(.*\)/\1/p')
+	if [ -n "${ID_NET_NAME_PATH}" ]; then
+		ip link set ${NIC} name ${ID_NET_NAME_PATH} >/dev/null 2>&1
+	fi
+done
+
+# Drop into a shell...
+if [ "${break}" = "top" ]; then
+	sh
+fi
+
+# Retrieve parameters from network if it is the case...
+if [ -n "${network}" ]; then
+	if [ -z "${interface}" ]; then
+		echo -n "Fail to retrieve interface! "
+		do_reboot
+	fi
+
+	ip link set "${interface}" up >/dev/null 2>&1
+	counter=0
+	while [ "$(cat /sys/class/net/${interface}/operstate)" != "up" ]
+	do
+		counter=$(($counter+1))
+		sleep 1
+		if [ "$counter" -gt 60 ]; then
+			echo -n "Fail to bring up interface! "
+			do_reboot
+		fi
+	done
+
+	if [ "${autoconf}" = "dhcp" ]; then
+		eval $(udhcpc -n -q -i ${interface} -O rootpath -O usrpath -O runtimepath -O homepath -s /etc/udhcpc.d/60elettra 2>/dev/null)
+	fi
+
+	ip addr add ${ip}/${mask} dev ${interface} >/dev/null 2>&1
+	if [ "$?" -ne 0 ]; then
+		echo -n "Fail to configure interface! "
+		do_reboot
+	fi
+	ip route add default via ${router} dev ${interface} >/dev/null 2>&1
+fi
+
+# Set hostname
+if [ -z "$hostname" ]; then
+	hostname localhost
+else
+	hostname $(echo $hostname | cut -d"." -f1)
+fi
+
+# Drop into a shell...
+if [ "${break}" = "middle" ]; then
+	sh
+fi
+
+# Check mandatory parameters...
+if [ -z "${rootfstype}" -o -z "${rootpath}" -o -z "${usrpath}" ]; then
+	echo -n "Missing rootfstype and/or root(path) parameters! "; do_reboot
+fi
+
+# Mount rootpath...
+case $rootfstype in
+	nfs)	mount -t ${rootfstype} ${siaddr}:${rootpath} /mnt/rootfs -o nfsvers=3,${rootflags},ro,nolock;;
+	*)	counter=0
+		while [ ! -b "${rootpath}" ]; do
+			counter=$(($counter+1))
+			sleep 1
+			if [ "$counter" -gt 60 ]; then
+				echo -n "Fail to wait root! "
+				do_reboot
+			fi
+		done
+		# Check rootfs filesystem
+		fsck.ext4 -n ${rootpath} 1>/dev/null 2>&1
+		case "$?" in
+			0|1) ;;
+			2) do_reboot	;;
+			*) fsck.ext4 -p ${rootpath}; do_reboot ;;
+		esac
+		mount -t ${rootfstype} ${rootpath} /mnt/rootfs -o ${rootflags},ro;;
+esac
+if [ "$?" -ne 0 ]; then
+	echo -n "Fail to mount root(path)! "
+	do_reboot
+fi
+
+# Mount usrpath...
+case $usrfstype in
+	nfs)	mount -t ${usrfstype} ${siaddr}:${usrpath} /mnt/rootfs/usr -o nfsvers=3,${usrflags},ro,nolock;;
+	*)	mount -t ${usrfstype} /mnt/rootfs/${usrpath} /mnt/rootfs/usr -o ${usrflags},ro,bind;;
+esac
+if [ "$?" -ne 0 ]; then
+	echo -n "Fail to mount usr(path)! "
+	do_reboot
+fi
+
+#### Mount homepath...
+###case $rootfstype in
+###	nfs)	mount -t ${rootfstype} ${siaddr}:${homepath} /mnt/rootfs/home -o nfsvers=4,${rootflags},rw,nolock;;
+###esac
+###if [ "$?" -ne 0 ]; then
+###	echo -n "Fail to mount home(path)! "
+###	do_reboot
+###fi
+###
+#### Mount runtimepath...
+###case $rootfstype in
+###	nfs)	mount -t ${rootfstype} ${siaddr}:${runtimepath} /mnt/rootfs/runtime -o nfsvers=4,${rootflags},ro,nolock;;
+###esac
+###if [ "$?" -ne 0 ]; then
+###	echo -n "Fail to mount runtime(path)! "
+###	do_reboot
+###fi
+###
+###mount -t ${rootfstype} ${siaddr}:${runtimepath}/site/`hostname -s` /mnt/rootfs/runtime/site/`hostname -s` -o nfsvers=4,${rootflags},rw,nolock 1>/dev/null 2>&1
+
+# Remount usrpath
+case `sed -n 's,VARIANT_ID=".*-\(.*\)",\1,p' /mnt/rootfs/etc/os-release` in
+	sde) mount /mnt/rootfs/usr -o remount,rw;;
+	sre) mount /mnt/rootfs/usr -o remount,ro;;
+esac
+if [ "$?" -ne 0 ]; then
+	echo -n "Fail to remount usr(path) with user defined flags! "
+	do_reboot
+fi
+
+# Remount rootpath
+mount /mnt/rootfs/ -o remount,rw;
+if [ "$?" -ne 0 ]; then
+	echo -n "Fail to remount root(path) with user defined flags! "
+	do_reboot
+fi
+
+# Drop into a shell...
+if [ "${break}" = "bottom" ]; then
+	sh
+fi
+
+exec switch_root /mnt/rootfs /sbin/init

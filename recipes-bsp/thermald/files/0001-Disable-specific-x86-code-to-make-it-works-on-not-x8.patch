@@ -1,0 +1,73 @@
+From 4f49b9f576e1811120d8ade549d830446a3aed18 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Fri, 5 Jan 2024 08:26:24 +0100
+Subject: [PATCH] Disable specific x86 code to make it works on not x86
+ architectures
+
+
+diff --git a/src/thd_engine.cpp b/src/thd_engine.cpp
+index 06cbe3d..77f31df 100644
+--- a/src/thd_engine.cpp
++++ b/src/thd_engine.cpp
+@@ -35,7 +35,9 @@
+ #include <errno.h>
+ #include <sys/types.h>
+ #include <sys/utsname.h>
++#if defined(__i386__) || defined(__x86_64__)
+ #include <cpuid.h>
++#endif
+ #include <locale>
+ #include "thd_engine.h"
+ #include "thd_cdev_therm_sys_fs.h"
+@@ -684,7 +686,7 @@ void cthd_engine::thd_engine_reload_zones() {
+ }
+ 
+ // Add any tested platform ids in this table
+-#ifndef ANDROID
++#if defined(__i386__) || defined(__x86_64__)
+ static supported_ids_t id_table[] = {
+ 		{ 6, 0x2a }, // Sandybridge
+ 		{ 6, 0x3a }, // IvyBridge
+@@ -729,7 +731,7 @@ std::vector<std::string> blocklist_paths {
+ #endif
+ 
+ int cthd_engine::check_cpu_id() {
+-#ifndef ANDROID
++#if defined(__i386__) || defined(__x86_64__)
+ 	// Copied from turbostat program
+ 	unsigned int ebx, ecx, edx, max_level;
+ 	unsigned int fms, family, model, stepping;
+diff --git a/src/thd_engine_default.cpp b/src/thd_engine_default.cpp
+index a81ecb3..987f22d 100644
+--- a/src/thd_engine_default.cpp
++++ b/src/thd_engine_default.cpp
+@@ -867,7 +867,7 @@ void cthd_engine_default::workarounds()
+ 	}
+ }
+ 
+-#ifndef ANDROID
++#if defined(__i386__) || defined(__x86_64__)
+ #include <cpuid.h>
+ #include <sys/mman.h>
+ #define BIT_ULL(nr)	(1ULL << (nr))
+@@ -896,7 +896,7 @@ void cthd_engine_default::workaround_rapl_mmio_power(void)
+ 		}
+ 	}
+ 
+-#ifndef ANDROID
++#if defined(__i386__) || defined(__x86_64__)
+ 	int map_fd;
+ 	void *rapl_mem;
+ 	unsigned char *rapl_pkg_pwr_addr;
+@@ -939,7 +939,7 @@ void cthd_engine_default::workaround_rapl_mmio_power(void)
+ 
+ void cthd_engine_default::workaround_tcc_offset(void)
+ {
+-#ifndef ANDROID
++#if defined(__i386__) || defined(__x86_64__)
+ 	csys_fs sys_fs;
+ 	int tcc;
+ 
+-- 
+2.35.7
+

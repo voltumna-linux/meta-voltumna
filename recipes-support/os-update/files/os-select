@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -e
+# set -x
+
+URL=http://127.0.0.1/api/firmware/publish
+
+ln -sfrn /.osdir/$1 /.osdir/default
+curl -k -s ${URL}/default -d"$1"

@@ -1,0 +1,13 @@
+diff --git a/arch/arm/boot/dts/socfpga_cyclone5_sockit.dts b/arch/arm/boot/dts/socfpga_cyclone5_sockit.dts
+index c155ff02eb6e..cae9ddd5ed38 100644
+--- a/arch/arm/boot/dts/socfpga_cyclone5_sockit.dts
++++ b/arch/arm/boot/dts/socfpga_cyclone5_sockit.dts
+@@ -169,7 +169,7 @@
+ 	flash: flash@0 {
+ 		#address-cells = <1>;
+ 		#size-cells = <1>;
+-		compatible = "n25q00";
++		compatible = "micron,mt25qu02g", "jedec,spi-nor";
+ 		reg = <0>;
+ 		spi-max-frequency = <100000000>;
+ 

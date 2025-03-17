@@ -1,0 +1,3 @@
+#!/bin/sh
+
+diff -d --color -r --no-dereference --suppress-common-lines -a -N  /usr/share/factory/etc /etc -x ld.so.cache -x .updated -x mtab -x machine-id -x hwdb.bin -x '.nfs*' -x '*~'

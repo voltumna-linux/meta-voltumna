@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+import select
+import sys
+import subprocess
+import json
+
+if select.select([sys.stdin,],[],[],0.0)[0]:
+    # Split stdin into lines (if any)
+    line = sys.stdin.readline()
+    if line:
+        # Import json
+        p = json.loads(line)
+
+        # Clean file
+        f = open("/etc/systemd/network/80-standalone.network", "wt")
+        f.write("")
+        f.close()
+
+        # Append
+        f = open("/etc/systemd/network/80-standalone.network", "at")
+        f.write('[Match]\n'
+            'Name=@ETH@\n'
+            'KernelCommandLine=!rootfstype=nfs\n'
+            '\n'
+            '[Network]\n')
+
+        if p['dhcp']:
+            f.write('DHCP=ipv4\n')
+        else:
+            f.write('Address=' + str(p['address']) + "\n")
+            f.write('Gateway=' + str(p['gateway']) + "\n")
+            for dns in p['dns']:
+                f.write('DNS=' + str(dns) + "\n")
+            s = ""
+            for searchdomain in p['search_domains']:
+                s += searchdomain + " "
+            f.write('Domains=' + str(s) + "\n")
+            f.write('NTP=' + str(p['ntp']) + "\n")
+
+        f.write('LinkLocalAddressing=ipv4-fallback\n'
+            'MulticastDNS=true\n'
+            'LLDP=true\n'
+            'EmitLLDP=true\n'
+            '\n'
+            '[DHCPv4]\n'
+            'MaxAttempts=3\n'
+            'RouteMetric=10\n'
+            'ClientIdentifier=mac\n'
+            'UseMTU=true\n'
+            'UseDomains=true\n'
+            'UseTimezone=true\n'
+            '# CriticalConnection=true')
+        f.close()
+        sys.exit()
+
+# Capture networkctl's output
+output = subprocess.run(['/usr/bin/networkctl', 'status', '@ETH@'], capture_output=True)
+lines = output.stdout.decode('utf-8').splitlines()
+
+# Transform the above mentioned output into a Dictionary
+data = {}
+for line in lines[1:]:
+    k = line[0:22].strip().lower()
+    if k:
+        key = k
+    value = line[24:].rstrip()
+    if data.get(key):
+       data[key].append(value)
+    else:
+       data[key] = [value] 
+#print(data)
+
+# Cleanup the values
+a = data["hw address"][0].split(' ')
+macaddress = a[0]
+a = data["address"][0].split(' ')
+address = a[0]
+dhcp = False
+if len(a) == 2:
+    dhcp = True if a[1] == '(DHCP4)' else False
+gateway = data["gateway"][0].split(' ')[0] if data.get('gateway') else ""
+ntp = data["ntp"][0] if data.get('ntp') else ""
+dnss = data["dns"] if data.get('dns') else []
+searchdomains = data["search domains"] if data.get('search domains') else []
+
+# Convert to json
+j = json.dumps({'dhcp': dhcp, 'macaddress': macaddress, 'address': address, 'gateway': gateway, 'ntp': ntp,
+    'dns': dnss, 'search_domains': searchdomains })
+print(j)
