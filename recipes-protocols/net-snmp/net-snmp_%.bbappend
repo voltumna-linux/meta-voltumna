@@ -11,3 +11,5 @@ BBCLASSEXTEND = "nativesdk"
 
 SYSTEMD_AUTO_ENABLE:${PN}-server-snmpd = "disable"
 SYSTEMD_AUTO_ENABLE:${PN}-server-snmptrapd =  "disable"
+
+SRC_URI:remove = "file://0001-unload_all_mibs-fix-memory-leak-by-freeing-tclist.patch"
