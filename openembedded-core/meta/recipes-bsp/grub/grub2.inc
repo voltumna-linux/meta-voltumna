@@ -41,6 +41,24 @@ SRC_URI = "${GNU_MIRROR}/grub/grub-${PV}.tar.gz \
 	   file://CVE-2023-4692.patch \
            file://CVE-2023-4693.patch \
            file://0001-fs-fat-Don-t-error-when-mtime-is-0.patch \
+           file://0001-misc-Implement-grub_strlcpy.patch \
+           file://CVE-2024-45774.patch \
+           file://CVE-2024-45775.patch \
+           file://CVE-2024-45776.patch \
+           file://CVE-2024-45777.patch \
+           file://CVE-2024-45778_CVE-2024-45779.patch \
+           file://CVE-2024-45780.patch \
+           file://CVE-2024-45781.patch \
+           file://CVE-2024-45782_CVE-2024-56737.patch \
+           file://CVE-2024-45783.patch \
+           file://CVE-2025-0622-01.patch \
+           file://CVE-2025-0622-02.patch \
+           file://CVE-2025-0622-03.patch \
+           file://CVE-2025-0624.patch \
+           file://CVE-2025-0677_CVE-2025-0684_CVE-2025-0685_CVE-2025-0686_CVE-2025-0689.patch \
+           file://CVE-2025-0678_CVE-2025-1125.patch \
+           file://CVE-2025-0690.patch \
+           file://CVE-2025-1118.patch \
 "
 
 SRC_URI[sha256sum] = "23b64b4c741569f9426ed2e3d0e6780796fca081bee4c99f62aa3f53ae803f5f"
