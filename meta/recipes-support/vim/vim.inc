@@ -18,8 +18,8 @@ SRC_URI = "git://github.com/vim/vim.git;branch=master;protocol=https \
            file://no-path-adjust.patch \
            "
 
-PV .= ".1115"
-SRCREV = "c0f0e2380e5954f4a52a131bf6b8499838ad1dae"
+PV .= ".1198"
+SRCREV = "f209dcd3defb95bae21b2740910e6aa7bb940531"
 
 # Do not consider .z in x.y.z, as that is updated with every commit
 UPSTREAM_CHECK_GITTAGREGEX = "(?P<pver>\d+\.\d+)\.0"
@@ -127,7 +127,6 @@ FILES:${PN}-data = "${datadir}/${BPN}"
 # We do not want to complain if perl or gawk are not on the target.
 #
 FILES:${PN}-tools = "${datadir}/${BPN}/${VIMDIR}/tools"
-INSANE_SKIP:${PN}-tools = "file-rdeps"
 
 FILES:${PN}-common = " \
     ${datadir}/${BPN}/${VIMDIR}/*.vim \

@@ -11,7 +11,8 @@ CVE_PRODUCT = "gcc"
 inherit autotools gettext texinfo
 
 BPN = "gcc"
-COMPILERDEP = "virtual/${TARGET_PREFIX}gcc:do_gcc_stash_builddir"
+COMPILERDEP = "${MLPREFIX}gcc-cross-${TARGET_ARCH}:do_gcc_stash_builddir"
+COMPILERDEP:class-nativesdk = "gcc-crosssdk-${SDK_SYS}:do_gcc_stash_builddir"
 
 python extract_stashed_builddir () {
     src = d.expand("${COMPONENTS_DIR}/${BUILD_ARCH}/gcc-stashed-builddir-${TARGET_SYS}")
@@ -137,4 +138,8 @@ remove_sysroot_paths_from_checksum_options () {
 	oe_runmake TARGET-gcc=checksum-options all-gcc
 	sed -i "s@${DEBUG_PREFIX_MAP}@@g" ${B}/gcc/checksum-options
 	sed -i "s@$stagingdir@$replacement@g" ${B}/gcc/checksum-options
+}
+
+cleanup_installed_include_fixed () {
+	find ${D}${libdir}/gcc/${TARGET_SYS}/${BINV}/include-fixed -type f -not -name "README" -not -name limits.h -not -name syslimits.h | xargs rm -f
 }

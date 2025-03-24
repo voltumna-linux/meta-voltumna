@@ -24,11 +24,12 @@ TESTIMAGE_AUTO ??= "0"
 
 TESTIMAGE_FAILED_QA_ARTIFACTS = "\
     ${localstatedir}/log \
+    ${localstatedir}/volatile/log \
     ${sysconfdir}/version \
     ${sysconfdir}/os-release"
 
 # If some ptests are run and fail, retrieve corresponding directories
-TESTIMAGE_FAILED_QA_ARTIFACTS += "${@bb.utils.contains('DISTRO_FEATURES', 'ptest', '${libdir}/${MCNAME}/ptest', '', d)}"
+TESTIMAGE_FAILED_QA_ARTIFACTS += "${@bb.utils.contains('DISTRO_FEATURES', 'ptest', '${libdir}/*/ptest', '', d)}"
 
 # You can set (or append to) TEST_SUITES in local.conf to select the tests
 # which you want to run for your target.
@@ -99,7 +100,6 @@ TESTIMAGE_BOOT_PATTERNS ?= ""
 
 TESTIMAGEDEPENDS = ""
 TESTIMAGEDEPENDS:append:qemuall = " qemu-native:do_populate_sysroot qemu-helper-native:do_populate_sysroot qemu-helper-native:do_addto_recipe_sysroot"
-TESTIMAGEDEPENDS += "${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'cpio-native:do_populate_sysroot', '', d)}"
 TESTIMAGEDEPENDS += "${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'dnf-native:do_populate_sysroot', '', d)}"
 TESTIMAGEDEPENDS += "${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'createrepo-c-native:do_populate_sysroot', '', d)}"
 TESTIMAGEDEPENDS += "${@bb.utils.contains('IMAGE_PKGTYPE', 'ipk', 'opkg-utils-native:do_populate_sysroot package-index:do_package_index', '', d)}"
@@ -239,6 +239,8 @@ def testimage_main(d):
             bb.fatal('Unsupported image type built. Add a compatible image to '
                      'IMAGE_FSTYPES. Supported types: %s' %
                      ', '.join(supported_fstypes))
+    elif d.getVar("TEST_TARGET") == "serial":
+        bb.fatal('Serial target is currently only supported in testexport.')
     qfstype = fstypes[0]
     qdeffstype = d.getVar("QB_DEFAULT_FSTYPE")
     if qdeffstype:
@@ -376,7 +378,6 @@ def testimage_main(d):
             bb.error('runqemu failed, shutting down...')
         if results:
             results.stop()
-        results = tc.results
     finally:
         signal.signal(signal.SIGTERM, orig_sigterm_handler)
         tc.target.stop()
@@ -397,9 +398,9 @@ def testimage_main(d):
     os.symlink(d.getVar("BB_LOGFILE"), os.path.join(targetdir, os.path.basename(d.getVar("BB_LOGFILE") + "." + d.getVar('DATETIME'))))
 
     if not results or not complete:
-        bb.fatal('%s - FAILED - tests were interrupted during execution, check the logs in %s' % (pn, d.getVar("LOG_DIR")), forcelog=True)
-    if not results.wasSuccessful():
-        bb.fatal('%s - FAILED - also check the logs in %s' % (pn, d.getVar("LOG_DIR")), forcelog=True)
+        bb.error('%s - FAILED - tests were interrupted during execution, check the logs in %s' % (pn, d.getVar("LOG_DIR")), forcelog=True)
+    if results and not results.wasSuccessful():
+        bb.error('%s - FAILED - also check the logs in %s' % (pn, d.getVar("LOG_DIR")), forcelog=True)
 
 def get_runtime_paths(d):
     """

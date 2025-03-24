@@ -64,11 +64,15 @@ def setUpModule():
             # under COREBASE and we don't want to copy that, so we have
             # to be selective.
             result = runCmd('git status --porcelain', cwd=oldreporoot)
+
+            # Also copy modifications to the 'scripts/' directory
+            canonical_layerpath_scripts = os.path.normpath(canonical_layerpath + "../scripts")
+
             for line in result.output.splitlines():
                 if line.startswith(' M ') or line.startswith('?? '):
                     relpth = line.split()[1]
                     pth = os.path.join(oldreporoot, relpth)
-                    if pth.startswith(canonical_layerpath):
+                    if pth.startswith(canonical_layerpath) or pth.startswith(canonical_layerpath_scripts):
                         if relpth.endswith('/'):
                             destdir = os.path.join(corecopydir, relpth)
                             # avoid race condition by not copying .pyc files YPBZ#13421,13803
@@ -317,7 +321,7 @@ class DevtoolBase(DevtoolTestCase):
         cls.sstate_conf  = 'SSTATE_DIR = "%s"\n' % cls.devtool_sstate
         cls.sstate_conf += ('SSTATE_MIRRORS += "file://.* file:///%s/PATH"\n'
                             % cls.original_sstate)
-        cls.sstate_conf += ('BB_HASHSERVE_UPSTREAM = "hashserv.yocto.io:8687"\n')
+        cls.sstate_conf += ('BB_HASHSERVE_UPSTREAM = "hashserv.yoctoproject.org:8686"\n')
 
     @classmethod
     def tearDownClass(cls):
@@ -898,13 +902,8 @@ class DevtoolModifyTests(DevtoolBase):
         self.add_command_to_tearDown('bitbake -c clean %s' % testrecipe)
         self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
         result = runCmd('devtool modify %s -x %s' % (testrecipe, tempdir))
-        srcfile = os.path.join(tempdir, 'oe-local-files/share/dot.bashrc')
-        srclink = os.path.join(tempdir, 'share/dot.bashrc')
+        srcfile = os.path.join(tempdir, 'share/dot.bashrc')
         self.assertExists(srcfile, 'Extracted source could not be found')
-        if os.path.islink(srclink) and os.path.exists(srclink) and os.path.samefile(srcfile, srclink):
-            correct_symlink = True
-        self.assertTrue(correct_symlink, 'Source symlink to oe-local-files is broken')
-
         matches = glob.glob(os.path.join(self.workspacedir, 'appends', '%s_*.bbappend' % testrecipe))
         self.assertTrue(matches, 'bbappend not created')
         # Test devtool status
@@ -975,9 +974,9 @@ class DevtoolModifyTests(DevtoolBase):
         #    others git:// in SRC_URI
         #    cointains a patch
         testrecipe = 'hello-rs'
-        bb_vars = get_bb_vars(['SRC_URI', 'FILE', 'WORKDIR', 'CARGO_HOME'], testrecipe)
+        bb_vars = get_bb_vars(['SRC_URI', 'FILE', 'UNPACKDIR', 'CARGO_HOME'], testrecipe)
         recipefile = bb_vars['FILE']
-        workdir = bb_vars['WORKDIR']
+        unpackdir = bb_vars['UNPACKDIR']
         cargo_home = bb_vars['CARGO_HOME']
         src_uri = bb_vars['SRC_URI'].split()
         self.assertTrue(src_uri[0].startswith('git://'),
@@ -1028,7 +1027,7 @@ class DevtoolModifyTests(DevtoolBase):
         # Configure the recipe to check that the git dependencies are correctly patched in cargo config
         bitbake('-c configure %s' % testrecipe)
 
-        cargo_config_path = os.path.join(cargo_home, 'config')
+        cargo_config_path = os.path.join(cargo_home, 'config.toml')
         with open(cargo_config_path, "r") as f:
             cargo_config_contents = [line.strip('\n') for line in f.readlines()]
 
@@ -1048,7 +1047,7 @@ class DevtoolModifyTests(DevtoolBase):
             self.assertEqual(parms['type'], 'git-dependency', 'git dependencies uri should have "type=git-dependency"')
             raw_url = raw_url.replace("git://", '%s://' % parms['protocol'])
             patch_line = '[patch."%s"]' % raw_url
-            path_patched = os.path.join(workdir, parms['destsuffix'])
+            path_patched = os.path.join(unpackdir, parms['destsuffix'])
             path_override_line = '%s = { path = "%s" }' % (parms['name'], path_patched)
             # Would have been better to use tomllib to read this file :/
             self.assertIn(patch_line, cargo_config_contents)
@@ -1297,7 +1296,7 @@ class DevtoolUpdateTests(DevtoolBase):
         with open(bbappendfile, 'r') as f:
             self.assertEqual(expectedlines, f.readlines())
         # Drop new commit and check patch gets deleted
-        result = runCmd('git reset HEAD^', cwd=tempsrcdir)
+        result = runCmd('git reset HEAD^ --hard', cwd=tempsrcdir)
         result = runCmd('devtool update-recipe %s -a %s' % (testrecipe, templayerdir))
         self.assertNotExists(patchfile, 'Patch file not deleted')
         expectedlines2 = ['FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"\n',
@@ -1306,6 +1305,7 @@ class DevtoolUpdateTests(DevtoolBase):
             self.assertEqual(expectedlines2, f.readlines())
         # Put commit back and check we can run it if layer isn't in bblayers.conf
         os.remove(bbappendfile)
+        result = runCmd("sed 's!\\(#define VERSION\\W*\"[^\"]*\\)\"!\\1-custom\"!' -i ReadMe.c", cwd=tempsrcdir)
         result = runCmd('git commit -a -m "Add our custom version"', cwd=tempsrcdir)
         result = runCmd('bitbake-layers remove-layer %s' % templayerdir, cwd=self.builddir)
         result = runCmd('devtool update-recipe %s -a %s' % (testrecipe, templayerdir))
@@ -1380,7 +1380,7 @@ class DevtoolUpdateTests(DevtoolBase):
         with open(bbappendfile, 'r') as f:
             self.assertEqual(expectedlines, set(f.readlines()))
         # Drop new commit and check SRCREV changes
-        result = runCmd('git reset HEAD^', cwd=tempsrcdir)
+        result = runCmd('git reset HEAD^ --hard', cwd=tempsrcdir)
         result = runCmd('devtool update-recipe -m srcrev %s -a %s' % (testrecipe, templayerdir))
         self.assertNotExists(os.path.join(appenddir, testrecipe), 'Patch directory should not be created')
         result = runCmd('git rev-parse HEAD', cwd=tempsrcdir)
@@ -1392,6 +1392,7 @@ class DevtoolUpdateTests(DevtoolBase):
             self.assertEqual(expectedlines, set(f.readlines()))
         # Put commit back and check we can run it if layer isn't in bblayers.conf
         os.remove(bbappendfile)
+        result = runCmd('echo "# Additional line" >> Makefile.am', cwd=tempsrcdir)
         result = runCmd('git commit -a -m "Change the Makefile"', cwd=tempsrcdir)
         result = runCmd('bitbake-layers remove-layer %s' % templayerdir, cwd=self.builddir)
         result = runCmd('devtool update-recipe -m srcrev %s -a %s' % (testrecipe, templayerdir))
@@ -1423,11 +1424,12 @@ class DevtoolUpdateTests(DevtoolBase):
         # Try building just to ensure we haven't broken that
         bitbake("%s" % testrecipe)
         # Edit / commit local source
-        runCmd('echo "/* Foobar */" >> oe-local-files/makedevs.c', cwd=tempdir)
-        runCmd('echo "Foo" > oe-local-files/new-local', cwd=tempdir)
+        runCmd('echo "/* Foobar */" >> makedevs.c', cwd=tempdir)
+        runCmd('echo "Foo" > new-local', cwd=tempdir)
         runCmd('echo "Bar" > new-file', cwd=tempdir)
         runCmd('git add new-file', cwd=tempdir)
         runCmd('git commit -m "Add new file"', cwd=tempdir)
+        runCmd('git add new-local', cwd=tempdir)
         runCmd('devtool update-recipe %s' % testrecipe)
         expected_status = [(' M', '.*/%s$' % os.path.basename(recipefile)),
                            (' M', '.*/makedevs/makedevs.c$'),
@@ -1453,8 +1455,8 @@ class DevtoolUpdateTests(DevtoolBase):
         self.assertExists(local_file, 'File makedevs.c not created')
         self.assertExists(patchfile, 'File new_local not created')
 
-    def test_devtool_update_recipe_local_files_2(self):
-        """Check local source files support when oe-local-files is in Git"""
+    def _test_devtool_update_recipe_local_files_2(self):
+        """Check local source files support when editing local files in Git"""
         testrecipe = 'devtool-test-local'
         recipefile = get_bb_var('FILE', testrecipe)
         recipedir = os.path.dirname(recipefile)
@@ -1469,17 +1471,13 @@ class DevtoolUpdateTests(DevtoolBase):
         result = runCmd('devtool modify %s -x %s' % (testrecipe, tempdir))
         # Check git repo
         self._check_src_repo(tempdir)
-        # Add oe-local-files to Git
-        runCmd('rm oe-local-files/.gitignore', cwd=tempdir)
-        runCmd('git add oe-local-files', cwd=tempdir)
-        runCmd('git commit -m "Add local sources"', cwd=tempdir)
         # Edit / commit local sources
-        runCmd('echo "# Foobar" >> oe-local-files/file1', cwd=tempdir)
+        runCmd('echo "# Foobar" >> file1', cwd=tempdir)
         runCmd('git commit -am "Edit existing file"', cwd=tempdir)
-        runCmd('git rm oe-local-files/file2', cwd=tempdir)
+        runCmd('git rm file2', cwd=tempdir)
         runCmd('git commit -m"Remove file"', cwd=tempdir)
-        runCmd('echo "Foo" > oe-local-files/new-local', cwd=tempdir)
-        runCmd('git add oe-local-files/new-local', cwd=tempdir)
+        runCmd('echo "Foo" > new-local', cwd=tempdir)
+        runCmd('git add new-local', cwd=tempdir)
         runCmd('git commit -m "Add new local file"', cwd=tempdir)
         runCmd('echo "Gar" > new-file', cwd=tempdir)
         runCmd('git add new-file', cwd=tempdir)
@@ -1488,7 +1486,7 @@ class DevtoolUpdateTests(DevtoolBase):
                                      os.path.dirname(recipefile))
         # Checkout unmodified file to working copy -> devtool should still pick
         # the modified version from HEAD
-        runCmd('git checkout HEAD^ -- oe-local-files/file1', cwd=tempdir)
+        runCmd('git checkout HEAD^ -- file1', cwd=tempdir)
         runCmd('devtool update-recipe %s' % testrecipe)
         expected_status = [(' M', '.*/%s$' % os.path.basename(recipefile)),
                            (' M', '.*/file1$'),
@@ -1563,7 +1561,7 @@ class DevtoolUpdateTests(DevtoolBase):
         # (don't bother with cleaning the recipe on teardown, we won't be building it)
         result = runCmd('devtool modify %s' % testrecipe)
         # Modify one file
-        runCmd('echo "Another line" >> file2', cwd=os.path.join(self.workspacedir, 'sources', testrecipe, 'oe-local-files'))
+        runCmd('echo "Another line" >> file2', cwd=os.path.join(self.workspacedir, 'sources', testrecipe))
         self.add_command_to_tearDown('cd %s; rm %s/*; git checkout %s %s' % (os.path.dirname(recipefile), testrecipe, testrecipe, os.path.basename(recipefile)))
         result = runCmd('devtool update-recipe %s' % testrecipe)
         expected_status = [(' M', '.*/%s/file2$' % testrecipe)]
@@ -1759,6 +1757,8 @@ class DevtoolExtractTests(DevtoolBase):
         self.assertExists(os.path.join(tempdir, 'Makefile.am'), 'Extracted source could not be found')
         self._check_src_repo(tempdir)
 
+class DevtoolResetTests(DevtoolBase):
+
     def test_devtool_reset_all(self):
         tempdir = tempfile.mkdtemp(prefix='devtoolqa')
         self.track_for_cleanup(tempdir)
@@ -1784,6 +1784,21 @@ class DevtoolExtractTests(DevtoolBase):
         self.assertFalse(matches1, 'Stamp files exist for recipe %s that should have been cleaned' % testrecipe1)
         matches2 = glob.glob(stampprefix2 + '*')
         self.assertFalse(matches2, 'Stamp files exist for recipe %s that should have been cleaned' % testrecipe2)
+
+    def test_devtool_reset_re_plus_plus(self):
+        tempdir = tempfile.mkdtemp(prefix='devtoolqa')
+        self.track_for_cleanup(tempdir)
+        self.track_for_cleanup(self.workspacedir)
+        self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
+        testrecipe = 'devtool-test-reset-re++'
+        result = runCmd('devtool modify %s' % testrecipe)
+        result = runCmd('devtool reset -n %s' % testrecipe)
+        self.assertIn(testrecipe, result.output)
+        result = runCmd('devtool status')
+        self.assertNotIn(testrecipe, result.output)
+        self.assertNotExists(os.path.join(self.workspacedir, 'recipes', testrecipe), 'Recipe directory should not exist after resetting')
+
+class DevtoolDeployTargetTests(DevtoolBase):
 
     @OETestTag("runqemu")
     def test_devtool_deploy_target(self):
@@ -1851,6 +1866,8 @@ class DevtoolExtractTests(DevtoolBase):
             result = runCmd('devtool undeploy-target -c %s root@%s' % (testrecipe, qemu.ip))
             result = runCmd('ssh %s root@%s %s' % (sshargs, qemu.ip, testcommand), ignore_status=True)
             self.assertNotEqual(result, 0, 'undeploy-target did not remove command as it should have')
+
+class DevtoolBuildImageTests(DevtoolBase):
 
     def test_devtool_build_image(self):
         """Test devtool build-image plugin"""
@@ -2022,6 +2039,52 @@ class DevtoolUpgradeTests(DevtoolBase):
         with open(newrecipefile, 'r') as f:
             newlines = f.readlines()
         self.assertEqual(desiredlines, newlines)
+
+    def test_devtool_upgrade_recipe_upgrade_extra_tasks(self):
+        # Check preconditions
+        self.assertTrue(not os.path.exists(self.workspacedir), 'This test cannot be run with a workspace directory under the build directory')
+        self.track_for_cleanup(self.workspacedir)
+        self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
+        recipe = 'python3-guessing-game'
+        version = '0.2.0'
+        commit = '40cf004c2772ffa20ea803fa3be1528a75be3e98'
+        oldrecipefile = get_bb_var('FILE', recipe)
+        oldcratesincfile = os.path.join(os.path.dirname(oldrecipefile), os.path.basename(oldrecipefile).strip('_git.bb') + '-crates.inc')
+        tempdir = tempfile.mkdtemp(prefix='devtoolqa')
+        self.track_for_cleanup(tempdir)
+        # Check that recipe is not already under devtool control
+        result = runCmd('devtool status')
+        self.assertNotIn(recipe, result.output)
+        # Check upgrade
+        result = runCmd('devtool upgrade %s %s --version %s --srcrev %s' % (recipe, tempdir, version, commit))
+        # Check if srctree at least is populated
+        self.assertTrue(len(os.listdir(tempdir)) > 0, 'srctree (%s) should be populated with new (%s) source code' % (tempdir, commit))
+        # Check new recipe file and new -crates.inc files are present
+        newrecipefile = os.path.join(self.workspacedir, 'recipes', recipe, os.path.basename(oldrecipefile))
+        newcratesincfile = os.path.join(self.workspacedir, 'recipes', recipe, os.path.basename(oldcratesincfile))
+        self.assertExists(newrecipefile, 'Recipe file should exist after upgrade')
+        self.assertExists(newcratesincfile, 'Recipe crates.inc file should exist after upgrade')
+        # Check devtool status and make sure recipe is present
+        result = runCmd('devtool status')
+        self.assertIn(recipe, result.output)
+        self.assertIn(tempdir, result.output)
+        # Check recipe got changed as expected
+        with open(oldrecipefile + '.upgraded', 'r') as f:
+            desiredlines = f.readlines()
+        with open(newrecipefile, 'r') as f:
+            newlines = f.readlines()
+        self.assertEqual(desiredlines, newlines)
+        # Check crates.inc got changed as expected
+        with open(oldcratesincfile + '.upgraded', 'r') as f:
+            desiredlines = f.readlines()
+        with open(newcratesincfile, 'r') as f:
+            newlines = f.readlines()
+        self.assertEqual(desiredlines, newlines)
+        # Check devtool reset recipe
+        result = runCmd('devtool reset %s -n' % recipe)
+        result = runCmd('devtool status')
+        self.assertNotIn(recipe, result.output)
+        self.assertNotExists(os.path.join(self.workspacedir, 'recipes', recipe), 'Recipe directory should not exist after resetting')
 
     def test_devtool_layer_plugins(self):
         """Test that devtool can use plugins from other layers.
@@ -2545,11 +2608,6 @@ class DevtoolIdeSdkTests(DevtoolBase):
         i_and_d_script_path = os.path.join(
             self._workspace_scripts_dir(recipe_name), i_and_d_script)
         self.assertExists(i_and_d_script_path)
-        del_script = "delete_package_dirs_" + recipe_id
-        del_script_path = os.path.join(
-            self._workspace_scripts_dir(recipe_name), del_script)
-        self.assertExists(del_script_path)
-        runCmd(del_script_path, cwd=tempdir)
 
     def _devtool_ide_sdk_qemu(self, tempdir, qemu, recipe_name, example_exe):
         """Verify deployment and execution in Qemu system work for one recipe.

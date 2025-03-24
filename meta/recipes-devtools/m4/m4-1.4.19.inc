@@ -23,12 +23,11 @@ LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=1ebbd3e34237af26da5dc08a4e440464\
 	            file://examples/COPYING;md5=4031593b2166d6c47cae282d944a7ede"
 
-# Fix "Argument list too long" error when len(TMPDIR) = 410
-acpaths = "-I ./m4"
-
 EXTRA_OECONF += "--without-libsigsegv-prefix"
 
 EXTRA_OEMAKE += "'infodir=${infodir}'"
+
+CFLAGS += "-std=gnu17"
 
 do_compile_ptest() {
 	cd ${B}/tests
@@ -61,7 +60,4 @@ RDEPENDS:${PN}-ptest:append:libc-glibc = "\
      locale-base-fr-fr.iso-8859-1 \
      glibc-gconv-iso8859-1 \
 "
-
-INSANE_SKIP:${PN}-ptest += "ldflags"
-INSANE_SKIP:${PN}-ptest += "rpaths"
 

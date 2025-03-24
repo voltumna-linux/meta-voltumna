@@ -1,4 +1,4 @@
-From a83311a1030b816f422dbb4457fc38c1289c224d Mon Sep 17 00:00:00 2001
+From 540765b148d942a2339affa6c0d11445e9d0f26c Mon Sep 17 00:00:00 2001
 From: Trevor Gamblin <tgamblin@baylibre.com>
 Date: Thu, 13 Jun 2024 10:54:31 -0400
 Subject: [PATCH] test_active_children: skip problematic test
@@ -14,7 +14,7 @@ Signed-off-by: Trevor Gamblin <tgamblin@baylibre.com>
  1 file changed, 1 insertion(+)
 
 diff --git a/Lib/test/_test_multiprocessing.py b/Lib/test/_test_multiprocessing.py
-index 1f94dec..3632219 100644
+index 23eb971..b1295b2 100644
 --- a/Lib/test/_test_multiprocessing.py
 +++ b/Lib/test/_test_multiprocessing.py
 @@ -585,6 +585,7 @@ class _TestProcess(BaseTestCase):
