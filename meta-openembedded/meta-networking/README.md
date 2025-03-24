@@ -18,21 +18,21 @@ Dependencies
 This layer depends on:
 
 URI: git://git.openembedded.org/openembedded-core
-branch: Scarthgap
+branch: master
 
 For some recipes, the meta-oe layer is required:
 
 URI: git://git.openembedded.org/meta-openembedded
 subdirectory: meta-oe
-branch: Scarthgap
+branch: master
 
 URI: git://git.openembedded.org/meta-openembedded
 subdirectory: meta-python
-branch: Scarthgap
+branch: master
 
 Maintenance
 -----------
-Stable Layer maintainer: Armin Kuster <akuster808@gmail.com>
+Layer maintainers: Khem Raj <raj.khem@gmail.com>
 
 
 Please see the MAINTAINERS file for information on contacting the

@@ -7,7 +7,7 @@ Accounting needs."
 
 HOMEPAGE = "http://www.freediameter.net"
 
-DEPENDS = "flex bison cmake-native libgcrypt gnutls libidn2 lksctp-tools virtual/kernel bison-native"
+DEPENDS = "flex-native bison-native cmake-native libgcrypt gnutls libidn2 lksctp-tools virtual/kernel bison-native"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
@@ -23,6 +23,7 @@ SRC_URI = "git://github.com/freeDiameter/freeDiameter;protocol=https;branch=mast
     file://freeDiameter.conf \
     file://install_test.patch \
     file://0001-tests-use-EXTENSIONS_DIR.patch \
+    file://0001-bison-flex-Add-flags-for-carrying-user-specified-par.patch \
     "
 
 S = "${WORKDIR}/git"
@@ -49,6 +50,8 @@ EXTRA_OECMAKE = " \
     -DEXTENSIONS_DIR:PATH=${libdir}/${fd_pkgname} \
     -DINSTALL_TEST_SUFFIX:PATH=${PTEST_PATH}-tests \
     -DCMAKE_SKIP_RPATH:BOOL=ON \
+    -DFLEX_TARGET_ARG_COMPILE_FLAGS='--noline' \
+    -DBISON_TARGET_ARG_COMPILE_FLAGS='--no-lines' \
 "
 # INSTALL_LIBRARY_SUFFIX is relative to CMAKE_INSTALL_PREFIX
 # specify it on cmd line will fix the SET bug in CMakeList.txt
@@ -62,7 +65,7 @@ EXTRA_OECMAKE = " \
 
 # -DALL_EXTENSIONS=ON will enable all
 
-FD_KEY ?="${BPN}.key"
+FD_KEY ?= "${BPN}.key"
 FD_PEM ?= "${BPN}.pem"
 FD_CA ?= "${BPN}.pem"
 FD_DH_PEM ?= "${BPN}-dh.pem"
@@ -78,18 +81,18 @@ do_install:append() {
     mv ${D}${sysconfdir}/${fd_pkgname}/freediameter.conf.sample \
        ${D}${sysconfdir}/${fd_pkgname}/freeDiameter.conf.sample
     install -d ${D}${sysconfdir}/freeDiameter
-	 install ${WORKDIR}/freeDiameter.conf ${D}${sysconfdir}/${fd_pkgname}/freeDiameter.conf
+	 install ${UNPACKDIR}/freeDiameter.conf ${D}${sysconfdir}/${fd_pkgname}/freeDiameter.conf
 
     # install daemon init related files
     install -d -m 0755 ${D}${sysconfdir}/default
     install -d -m 0755 ${D}${sysconfdir}/init.d
     install -m 0644 ${S}/contrib/debian/freediameter-daemon.default \
       ${D}${sysconfdir}/default/${BPN}
-    install -m 0755 ${WORKDIR}/freediameter.init ${D}${sysconfdir}/init.d/${BPN}
+    install -m 0755 ${UNPACKDIR}/freediameter.init ${D}${sysconfdir}/init.d/${BPN}
 
     # install for systemd
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/freediameter.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${UNPACKDIR}/freediameter.service ${D}${systemd_system_unitdir}
     sed -i -e 's,@BINDIR@,${bindir},g' ${D}${systemd_system_unitdir}/*.service
 
     cat >> ${D}${sysconfdir}/freeDiameter/freeDiameter.conf <<EOF
@@ -107,8 +110,6 @@ EOF
     # create self cert
     openssl req -x509 -config ${STAGING_DIR_NATIVE}/etc/ssl/openssl.cnf -newkey rsa:4096 -sha256 -nodes -out ${D}${sysconfdir}/freeDiameter/${FD_PEM} -keyout ${D}${sysconfdir}/freeDiameter/${FD_KEY} -days 3650 -subj '/CN=${FD_HOSTNAME}.${FD_REALM}'
     openssl dhparam -out ${D}${sysconfdir}/freeDiameter/${FD_DH_PEM} 1024
-
-    find ${B} \( -name "*.c" -o -name "*.h" \) -exec sed -i -e 's#${WORKDIR}##g' {} \;
 }
 
 do_install_ptest() {

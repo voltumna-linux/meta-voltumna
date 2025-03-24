@@ -15,12 +15,12 @@ SRC_URI = "git://sourceware.org/git/lvm2.git;branch=main \
            file://0005-do-not-build-manual.patch \
            file://0006-start-lvm2-monitor.service-after-tmp.mount.patch \
            file://reproducible-build.patch \
-           file://0001-configure.ac-check-egrep.patch \
            file://0001-include-libgen.h-for-basename.patch \
            "
 
-SRCREV = "016e469caf856f1eb8dde39df0d1aa2e74225aed"
+SRCREV = "3a6e221c569eb253fa38a772b15e53b5de65b5d1"
 S = "${WORKDIR}/git"
+PV = "2.03.31"
 
 UPSTREAM_CHECK_GITTAGREGEX = "v(?P<pver>\d+(\_\d+)+)"
 
@@ -58,7 +58,3 @@ EXTRA_OECONF = "--with-user= \
                 --with-thin-repair=${sbindir}/thin_repair \
                 --with-thin-restore=${sbindir}/thin_restore \
 "
-
-# gold doesn't like multiple dm_bitset_parse_list definitions in libdm/.exported_symbols.DM_1_02_138 and libdm/.exported_symbols.DM_1_02_129
-# after it was uncommented in the later in 2.03.12 with https://github.com/lvmteam/lvm2/commit/60eb608d66c2056a78e81f27db3da14139d9faab
-LDFLAGS:append = "${@bb.utils.contains('DISTRO_FEATURES', 'ld-is-gold', " -fuse-ld=bfd", '', d)}"
