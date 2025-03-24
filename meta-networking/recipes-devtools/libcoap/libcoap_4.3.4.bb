@@ -2,7 +2,7 @@ SUMMARY = "A C implementation of the Constrained Application Protocol"
 DESCRIPTION = "libcoap implements a lightweight application-protocol for \
 devices that are constrained their resources such as computing power, \
 RF range, memory, bandwith, or network packet sizes."
-HOMEPAGE ="https://libcoap.net/"
+HOMEPAGE = "https://libcoap.net/"
 
 LICENSE = "BSD-2-Clause & BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=1978dbc41673ab1c20e64b287c8317bc"
@@ -43,7 +43,7 @@ python () {
         d.setVar('DISABLE_STATIC', '')
 }
 
-export SGML_CATALOG_FILES="file://${STAGING_ETCDIR_NATIVE}/xml/catalog"
+export SGML_CATALOG_FILES = "file://${STAGING_ETCDIR_NATIVE}/xml/catalog"
 
 do_compile:prepend() {
     oe_runmake update-map-file
@@ -51,7 +51,7 @@ do_compile:prepend() {
 
 do_install_ptest () {
 	install -d ${D}${PTEST_PATH}
-	install -m 0755 ${WORKDIR}/run-ptest ${D}${PTEST_PATH}/run-ptest
+	install -m 0755 ${UNPACKDIR}/run-ptest ${D}${PTEST_PATH}/run-ptest
 	install -m 0755 ${B}/tests/testdriver ${D}${PTEST_PATH}/testdriver
 }
 

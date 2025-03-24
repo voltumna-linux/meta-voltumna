@@ -13,11 +13,11 @@ The meta-python layer depends on:
 
 	URI: git://git.openembedded.org/openembedded-core
 	layers: meta
-	branch: scarthgap
+	branch: master
 
 	URI: git://git.openembedded.org/meta-openembedded
 	layers: meta-oe
-	branch: scarthgap
+	branch: master
 
 Contributing
 -------------------------
@@ -28,12 +28,14 @@ comments and patch review. It is subscriber only, so please register
 before posting.
 
 Send pull requests to openembedded-devel@lists.openembedded.org with
-'[meta-python][scarthgap]' in the subject.
+'[meta-python]' in the subject.
 
 When sending single patches, please use something like:
-git send-email -M -1 --to=openembedded-devel@lists.openembedded.org --subject-prefix='meta-python][scarthgap][PATCH'
+git send-email -M -1 --to=openembedded-devel@lists.openembedded.org --subject-prefix='meta-python][PATCH'
 
 Maintenance
 -------------------------
 
-Layer maintainers: Armin Kuster <akuster808@gmail.com>
+Layer maintainers:
+        Tim "moto-timo" Orling <TicoTimo@gmail.com>
+        Derek Straka <derek@asterius.io>

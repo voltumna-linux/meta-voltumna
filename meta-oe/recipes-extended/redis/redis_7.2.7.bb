@@ -20,7 +20,9 @@ SRC_URI = "http://download.redis.io/releases/${BP}.tar.gz \
 
 SRC_URI[sha256sum] = "72c081e3b8cfae7144273d26d76736f08319000af46c01515cad5d29765cead5"
 
-inherit autotools-brokensep pkgconfig update-rc.d systemd useradd
+RPROVIDES:${PN} = "virtual-redis"
+
+inherit pkgconfig update-rc.d systemd useradd
 
 FINAL_LIBS:x86:toolchain-clang = "-latomic"
 FINAL_LIBS:riscv32 = "-latomic"
@@ -40,21 +42,21 @@ PACKAGECONFIG[systemd] = "USE_SYSTEMD=yes,USE_SYSTEMD=no,systemd"
 EXTRA_OEMAKE += "${PACKAGECONFIG_CONFARGS}"
 
 do_compile:prepend() {
-    (cd deps && oe_runmake hiredis lua linenoise)
+    oe_runmake -C deps hiredis lua linenoise
 }
 
 do_install() {
     export PREFIX=${D}/${prefix}
     oe_runmake install
     install -d ${D}/${sysconfdir}/redis
-    install -m 0644 ${WORKDIR}/redis.conf ${D}/${sysconfdir}/redis/redis.conf
+    install -m 0644 ${UNPACKDIR}/redis.conf ${D}/${sysconfdir}/redis/redis.conf
     install -d ${D}/${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/init-redis-server ${D}/${sysconfdir}/init.d/redis-server
+    install -m 0755 ${UNPACKDIR}/init-redis-server ${D}/${sysconfdir}/init.d/redis-server
     install -d ${D}/var/lib/redis/
     chown redis.redis ${D}/var/lib/redis/
 
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/redis.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${UNPACKDIR}/redis.service ${D}${systemd_system_unitdir}
     sed -i 's!/usr/sbin/!${sbindir}/!g' ${D}${systemd_system_unitdir}/redis.service
 
     if ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'true', 'false', d)}; then
@@ -69,3 +71,6 @@ INITSCRIPT_NAME = "redis-server"
 INITSCRIPT_PARAMS = "defaults 87"
 
 SYSTEMD_SERVICE:${PN} = "redis.service"
+
+CVE_STATUS[CVE-2022-3734] = "not-applicable-platform: CVE only applies for Windows."
+CVE_STATUS[CVE-2022-0543] = "not-applicable-platform: Debian-specific CVE"
