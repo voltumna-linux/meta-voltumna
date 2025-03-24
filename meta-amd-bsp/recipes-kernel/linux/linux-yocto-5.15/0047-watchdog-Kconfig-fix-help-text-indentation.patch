@@ -1,0 +1,114 @@
+From 501a94334c3873b8aa0d01b223eb4e6cfa64b42a Mon Sep 17 00:00:00 2001
+From: Luca Ceresoli <luca@lucaceresoli.net>
+Date: Sat, 11 Dec 2021 18:59:48 +0100
+Subject: [PATCH 47/86] watchdog: Kconfig: fix help text indentation
+
+commit 15ebdc43d703e95e4ec9bae1b5411f1afb07c0b8 upstream
+
+Some entries indent their help text with 1 tab + 1 space or 1 tab only
+instead of 1 tab + 2 spaces. Add the missing spaces.
+
+Signed-off-by: Luca Ceresoli <luca@lucaceresoli.net>
+Acked-by: Randy Dunlap <rdunlap@infradead.org>
+Reviewed-by: Guenter Roeck <linux@roeck-us.net>
+Link: https://lore.kernel.org/r/20211111225852.3128201-7-luca@lucaceresoli.net
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+Signed-off-by: Wim Van Sebroeck <wim@linux-watchdog.org>
+Signed-off-by: Zhaolong Zhang <zhaolong.zhang@windriver.com>
+---
+ drivers/watchdog/Kconfig | 48 ++++++++++++++++++++--------------------
+ 1 file changed, 24 insertions(+), 24 deletions(-)
+
+diff --git a/drivers/watchdog/Kconfig b/drivers/watchdog/Kconfig
+index d937f957f8df..0234476615df 100644
+--- a/drivers/watchdog/Kconfig
++++ b/drivers/watchdog/Kconfig
+@@ -694,10 +694,10 @@ config MAX77620_WATCHDOG
+ 	depends on MFD_MAX77620 || COMPILE_TEST
+ 	select WATCHDOG_CORE
+ 	help
+-	 This is the driver for the Max77620 watchdog timer.
+-	 Say 'Y' here to enable the watchdog timer support for
+-	 MAX77620 chips. To compile this driver as a module,
+-	 choose M here: the module will be called max77620_wdt.
++	  This is the driver for the Max77620 watchdog timer.
++	  Say 'Y' here to enable the watchdog timer support for
++	  MAX77620 chips. To compile this driver as a module,
++	  choose M here: the module will be called max77620_wdt.
+ 
+ config IMX2_WDT
+ 	tristate "IMX2+ Watchdog"
+@@ -1453,26 +1453,26 @@ config TQMX86_WDT
+ 	depends on X86
+ 	select WATCHDOG_CORE
+ 	help
+-	This is the driver for the hardware watchdog timer in the TQMX86 IO
+-	controller found on some of their ComExpress Modules.
++	  This is the driver for the hardware watchdog timer in the TQMX86 IO
++	  controller found on some of their ComExpress Modules.
+ 
+-	To compile this driver as a module, choose M here; the module
+-	will be called tqmx86_wdt.
++	  To compile this driver as a module, choose M here; the module
++	  will be called tqmx86_wdt.
+ 
+-	Most people will say N.
++	  Most people will say N.
+ 
+ config VIA_WDT
+ 	tristate "VIA Watchdog Timer"
+ 	depends on X86 && PCI
+ 	select WATCHDOG_CORE
+ 	help
+-	This is the driver for the hardware watchdog timer on VIA
+-	southbridge chipset CX700, VX800/VX820 or VX855/VX875.
++	  This is the driver for the hardware watchdog timer on VIA
++	  southbridge chipset CX700, VX800/VX820 or VX855/VX875.
+ 
+-	To compile this driver as a module, choose M here; the module
+-	will be called via_wdt.
++	  To compile this driver as a module, choose M here; the module
++	  will be called via_wdt.
+ 
+-	Most people will say N.
++	  Most people will say N.
+ 
+ config W83627HF_WDT
+ 	tristate "Watchdog timer for W83627HF/W83627DHG and compatibles"
+@@ -1758,10 +1758,10 @@ config BCM7038_WDT
+ 	depends on HAS_IOMEM
+ 	depends on ARCH_BRCMSTB || BMIPS_GENERIC || COMPILE_TEST
+ 	help
+-	 Watchdog driver for the built-in hardware in Broadcom 7038 and
+-	 later SoCs used in set-top boxes.  BCM7038 was made public
+-	 during the 2004 CES, and since then, many Broadcom chips use this
+-	 watchdog block, including some cable modem chips.
++	  Watchdog driver for the built-in hardware in Broadcom 7038 and
++	  later SoCs used in set-top boxes.  BCM7038 was made public
++	  during the 2004 CES, and since then, many Broadcom chips use this
++	  watchdog block, including some cable modem chips.
+ 
+ config IMGPDC_WDT
+ 	tristate "Imagination Technologies PDC Watchdog Timer"
+@@ -2122,12 +2122,12 @@ config KEEMBAY_WATCHDOG
+ 	depends on ARCH_KEEMBAY || (ARM64 && COMPILE_TEST)
+ 	select WATCHDOG_CORE
+ 	help
+-	 This option enable support for an In-secure watchdog timer driver for
+-	 Intel Keem Bay SoC. This WDT has a 32 bit timer and decrements in every
+-	 count unit. An interrupt will be triggered, when the count crosses
+-	 the threshold configured in the register.
++	  This option enable support for an In-secure watchdog timer driver for
++	  Intel Keem Bay SoC. This WDT has a 32 bit timer and decrements in every
++	  count unit. An interrupt will be triggered, when the count crosses
++	  the threshold configured in the register.
+ 
+-	 To compile this driver as a module, choose M here: the
+-	 module will be called keembay_wdt.
++	  To compile this driver as a module, choose M here: the
++	  module will be called keembay_wdt.
+ 
+ endif # WATCHDOG
+-- 
+2.37.3
+
