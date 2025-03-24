@@ -8,14 +8,14 @@ This layer depends on:
 
 URI: git://git.openembedded.org/openembedded-core
 layers: meta
-branch: scarthgap
+branch: master
 
 URI: git://git.yoctoproject.org/meta-arm
 layers: meta-arm
-branch: scarthgap
+branch: master
 
 URI: git://git.yoctoproject.org/meta-ti
-branch: scarthgap
+branch: master
 revision: HEAD
 layers: meta-ti-bsp
 

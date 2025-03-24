@@ -38,7 +38,7 @@ BSP_BOOTLOADER_VERSION:bsp-next = "%"
 # in next, usually present in TI staging or derivative like BB.org
 MACHINE_FEATURES:remove:bsp-next = "gpu"
 
-# GC320 support requires out-of-tree drivers not available in next
+# GC320 support requires out-of-tree drivers not yet available in next
 MACHINE_FEATURES:remove:bsp-next = "gc320"
 
 # ==========

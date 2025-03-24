@@ -27,5 +27,6 @@ index 3be882b2e845..de64ca3cf2d1 100644
  // SPDX-License-Identifier: GPL-2.0
  #include <Python.h>
  #include <structmember.h>
---
+-- 
 2.17.1
+
