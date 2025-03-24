@@ -19,6 +19,9 @@ S = "${WORKDIR}/libiconv-${PV}"
 
 inherit autotools pkgconfig gettext
 
+# Need to use absolute paths as autoreconf will recurse into libchardet
+EXTRA_AUTORECONF += "-I ${S}/m4 -I ${S}/srcm4"
+
 python __anonymous() {
     if d.getVar("TARGET_OS") != "linux":
         return
