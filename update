@@ -1,15 +1,15 @@
 #!/bin/sh
 git subtree pull --prefix=bitbake https://git.openembedded.org/bitbake.git 2.8 --squash
 git subtree pull --prefix=meta-artesyn https://github.com/voltumna-linux/meta-artesyn.git master --squash
-git subtree pull --prefix=meta-intel https://git.yoctoproject.org/meta-intel scarthgap --squash
-git subtree pull --prefix=meta-mingw https://git.yoctoproject.org/meta-mingw scarthgap --squash
-git subtree pull --prefix=meta-openembedded https://git.openembedded.org/meta-openembedded scarthgap --squash
-git subtree pull --prefix=meta-ti https://git.yoctoproject.org/meta-ti scarthgap --squash
+git subtree pull --prefix=meta-intel https://git.yoctoproject.org/meta-intel master --squash
+git subtree pull --prefix=meta-mingw https://git.yoctoproject.org/meta-mingw master --squash
+git subtree pull --prefix=meta-openembedded https://git.openembedded.org/meta-openembedded master --squash
+git subtree pull --prefix=meta-ti https://git.yoctoproject.org/meta-ti master --squash
 git subtree pull --prefix=meta-tango https://github.com/voltumna-linux/meta-tango.git master --squash
-git subtree pull --prefix=openembedded-core https://git.openembedded.org/openembedded-core scarthgap --squash
-git subtree pull --prefix=meta-dpdk https://git.yoctoproject.org/meta-dpdk scarthgap --squash
-git subtree pull --prefix=meta-arm https://git.yoctoproject.org/meta-arm scarthgap --squash
-git subtree pull --prefix=meta-intel-fpga https://git.yoctoproject.org/meta-intel-fpga scarthgap --squash
-git subtree pull --prefix=meta-clang https://github.com/kraj/meta-clang.git scarthgap --squash
-git subtree pull --prefix=meta-amd https://git.yoctoproject.org/meta-amd scarthgap --squash
+git subtree pull --prefix=openembedded-core https://git.openembedded.org/openembedded-core master --squash
+git subtree pull --prefix=meta-dpdk https://git.yoctoproject.org/meta-dpdk master --squash
+git subtree pull --prefix=meta-arm https://git.yoctoproject.org/meta-arm master --squash
+git subtree pull --prefix=meta-intel-fpga https://git.yoctoproject.org/meta-intel-fpga master --squash
+git subtree pull --prefix=meta-clang https://github.com/kraj/meta-clang.git master --squash
+git subtree pull --prefix=meta-amd https://git.yoctoproject.org/meta-amd master --squash
 git subtree pull --prefix=meta-intel-qat https://git.yoctoproject.org/meta-intel-qat master --squash

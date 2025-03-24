@@ -14,7 +14,7 @@ ALLOW_EMPTY:${PN}-dev = "1"
 
 do_install() {
 	install -d ${D}${base_sbindir}
-	install -m 0755 ${WORKDIR}/os-install ${D}${base_sbindir}
+	install -m 0755 ${UNPACKDIR}/os-install ${D}${base_sbindir}
 }
 
 inherit allarch
