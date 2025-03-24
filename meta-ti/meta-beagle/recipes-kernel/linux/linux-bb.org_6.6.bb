@@ -68,4 +68,4 @@ BRANCH:aarch64 = "v6.6.58-ti-arm64-r16"
 KERNEL_GIT_URI = "git://github.com/beagleboard/linux.git"
 
 SRC_URI += "file://no-fortify.cfg"
-KERNEL_CONFIG_FRAGMENTS += "${WORKDIR}/no-fortify.cfg"
+KERNEL_CONFIG_FRAGMENTS += "${UNPACKDIR}/no-fortify.cfg"

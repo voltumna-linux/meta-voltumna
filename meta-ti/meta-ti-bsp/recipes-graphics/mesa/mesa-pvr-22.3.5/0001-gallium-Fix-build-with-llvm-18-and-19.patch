@@ -28,7 +28,7 @@ index 5e7a30a6cc2..dbc777e3096 100644
 +#else
            .setOptLevel((CodeGenOpt::Level)OptLevel);
 +#endif
-
+ 
  #ifdef _WIN32
      /*
 @@ -392,8 +396,14 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
@@ -45,8 +45,9 @@ index 5e7a30a6cc2..dbc777e3096 100644
 +      llvm::StringMap<bool> features;
 +      llvm::sys::getHostCPUFeatures(features);
 +   #endif
-
+ 
     for (StringMapIterator<bool> f = features.begin();
          f != features.end();
---
+-- 
 2.17.1
+
