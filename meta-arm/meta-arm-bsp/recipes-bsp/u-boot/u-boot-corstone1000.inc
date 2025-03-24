@@ -64,8 +64,11 @@ SRC_URI:append = " \
     file://0046-Corstone1000-Change-MMCOMM-buffer-location.patch		  \
     file://0047-corstone1000-dts-add-external-system-node.patch \
     file://0048-corstone1000-Enable-UEFI-Secure-boot.patch 			  \
+    file://0049-corstone1000-Add-secondary-cores-cpu-nodes-for-FVP.patch	  \
+    file://0050-fwu-Use-metadata-v2.patch	  \
     ${@bb.utils.contains('MACHINE_FEATURES', 'corstone1000-extsys', \
-                         '', 'file://0049-corstone1000-purge-remoteproc-dts-node.patch' , d)} \
+                         '', 'file://0051-corstone1000-purge-remoteproc-dts-node.patch' , d)} \
+    file://0052-reserve-memory-for-se-comm.patch \
     "
 
 do_configure:append() {

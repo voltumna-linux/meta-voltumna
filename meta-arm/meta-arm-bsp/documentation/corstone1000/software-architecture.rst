@@ -4,7 +4,7 @@
  # SPDX-License-Identifier: MIT
 
 ######################
-Software architecture
+Software Architecture
 ######################
 
 
@@ -20,7 +20,7 @@ Corstone-1000 software plus hardware reference solution is PSA Level-2 ready
 certified (`PSA L2 Ready`_) as well as System Ready IR certified(`SRIR cert`_).
 More information on the Corstone-1000 subsystem product and design can be
 found at:
-`Arm corstone1000 Software`_ and `Arm corstone1000 Technical Overview`_.
+`Arm Corstone-1000 Software`_ and `Arm Corstone-1000 Technical Overview`_.
 
 This readme explicitly focuses on the software part of the solution and
 provides internal details on the software components. The reference
@@ -57,7 +57,7 @@ TrustedFirmware-M(`TF-M`_) as runtime software. The software design on
 Secure Enclave follows Firmware Framework for M class
 processor (`FF-M`_) specification.
 
-The Host System is based on ARM Cotex-A35 processor with standardized
+The Host System is based on ARM Cortex-A35 processor with standardized
 peripherals to allow for the booting of a Linux OS. The Cortex-A35 has
 the TrustZone technology that allows secure and non-secure security
 states in the processor. The software design in the Host System follows
@@ -116,7 +116,7 @@ BL1_1 also compares the BL1_2 hash with the hash saved to the OTP. The BL1_2
 verifies and transfers control to the next bootstage which is the BL2. During the
 verification, the BL1_2 compares the BL2 image's computed hash with the BL2 hash in
 the OTP. The BL2 is MCUBoot in the system. BL2 can provision additional keys on the
-first boot and it authenticates the initial bootloader of the host (Host TF-A BL2)
+first boot and it authenticates the initial bootloader of the host (Host Trusted Firmware-A BL2)
 and TF-M by checking the signatures of the images.
 The MCUBoot handles the image verification the following way:
 
@@ -145,8 +145,51 @@ limitations:
   comparing the computed hash to the hash which is stored in the OTP. This means the
   BL2 is not updatable.
 
+Host Level Authentication
+=========================
+
 The host follows the boot standard defined in the `TBBR`_ to authenticate the
 secure and non-secure software.
+
+The Firmware Image Package (FIP) packs bootloader images and other payloads into a
+single archive. The FIP for Corstone-1000 contains:
+
+- Trusted Boot Firmware BL2
+- EL3 Runtime Firmware BL31
+- Secure Payload BL32 (Trusted OS)
+- Non-Trusted Firmware BL33,
+- TOS_FW_CONFIG
+- key & content certificates
+
+TF-M does not check the FIP signature, it only checks the Trsuted Firmware-A (TF-A) BL2's signature
+in the FIP. The TF-M BL2 (MCUBoot) gets the offset for the TF-A BL2 by parsing the
+GUID Partition Table (GPT) to find the FIP offset, then parsing the FIP to get the offset for the
+TF-A BL2. Finally, MCUBoot loads and validates the TF-A BL2 image.
+
+The implicitly trusted components are:
+
+- A SHA-256 hash of the Root of Trust Public Key (ROTPK). A development ROTPK
+  is used and its hash embedded into the TF-A BL2 image (only for development purposes).
+  This public key is provided by TF-A source-code.
+- In case of Corstone-1000, the TF-A BL2 image, can be trusted because it has been verified
+  by the secure enclave's BL2 (MCUBoot) before starting TF-A.
+
+
+The remaining components in the Chain of Trust (CoT) are either certificates or bootloader images.
+
+BL images authentication using the FIP certificates:
+
+- The certificates are categorized as "Key" and "Content" certificates.
+  The key certificates are used to verify public keys which have been used to sign
+  content certificates. The content certificates are used to store the hash of a
+  boot loader image. An image can be authenticated by calculating its hash and
+  matching it with the hash extracted from the content certificate.
+
+Verification of the certificates:
+
+- The public keys defined in the Trusted Key certificate are used to verify the
+  later certificates in the CoT process. The Trusted Key certificate is
+  verified with the Root of Trust Public Key.
 
 For UEFI Secure Boot, authenticated variables can be accessed from the secure flash.
 The feature has been integrated in U-Boot, which authenticates the images as per the UEFI
@@ -213,15 +256,18 @@ Image (the initramfs bundle). The new images are accepted in the form of a UEFI 
 
 When Firmware update is triggered, U-Boot verifies the capsule by checking the
 capsule signature, version number and size. Then it signals the Secure Enclave
-that can start writing UEFI capsule into the flash. Once this operation finishes
-,Secure Enclave resets the entire system.
+that can start writing UEFI capsule into the flash.
+
+Once this operation finishes, Secure Enclave resets the entire system.
 The Metadata Block in the flash has the below firmware update state machine.
 TF-M runs an OTA service that is responsible for accepting and updating the
 images in the flash. The communication between the UEFI Capsule update
 subsystem and the OTA service follows the same data path explained above.
 The OTA service writes the new images to the passive bank after successful
 capsule verification. It changes the state of the system to trial state and
-triggers the reset. Boot loaders in Secure Enclave and Host read the Metadata
+triggers the reset.
+
+Boot loaders in Secure Enclave and Host read the Metadata
 block to get the information on the boot bank. In the successful trial stage,
 the acknowledgment from the host moves the state of the system from trial to
 regular. Any failure in the trial stage or system hangs leads to a system
@@ -258,17 +304,17 @@ calls are forwarded to the Secure Enclave as explained above.
 ***************
 References
 ***************
-`ARM corstone1000 Search`_
+`ARM Corstone-1000 Search`_
 
 `Arm security features`_
 
 --------------
 
-*Copyright (c) 2022-2023, Arm Limited. All rights reserved.*
+*Copyright (c) 2022-2024, Arm Limited. All rights reserved.*
 
-.. _Arm corstone1000 Technical Overview: https://developer.arm.com/documentation/102360/0000
-.. _Arm corstone1000 Software: https://developer.arm.com/Tools%20and%20Software/Corstone-1000%20Software
-.. _Arm corstone1000 Search: https://developer.arm.com/search#q=corstone-1000
+.. _Arm Corstone-1000 Technical Overview: https://developer.arm.com/documentation/102360/0000
+.. _Arm Corstone-1000 Software: https://developer.arm.com/Tools%20and%20Software/Corstone-1000%20Software
+.. _Arm Corstone-1000 Search: https://developer.arm.com/search#q=corstone-1000
 .. _Arm security features: https://www.arm.com/architecture/security-features/platform-security
 .. _linux repo: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/
 .. _FF-A: https://developer.arm.com/documentation/den0077/latest
