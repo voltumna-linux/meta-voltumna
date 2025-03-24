@@ -8,7 +8,7 @@ B = "${WORKDIR}/build-${TARGET_SYS}"
 inherit autotools nativesdk
 
 INHIBIT_DEFAULT_DEPS = "1"
-DEPENDS = "nativesdk-mingw-w64-runtime virtual/${TARGET_PREFIX}gcc"
+DEPENDS = "nativesdk-mingw-w64-runtime virtual/nativesdk-cross-cc"
 
 do_configure() {
     oe_runconf
