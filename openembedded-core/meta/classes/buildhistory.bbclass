@@ -65,7 +65,7 @@ SSTATEPOSTUNPACKFUNCS:append = " buildhistory_emit_outputsigs"
 sstate_installpkgdir[vardepsexclude] += "buildhistory_emit_outputsigs"
 SSTATEPOSTUNPACKFUNCS[vardepvalueexclude] .= "| buildhistory_emit_outputsigs"
 
-# All items excepts those listed here will be removed from a recipe's
+# All items except those listed here will be removed from a recipe's
 # build history directory by buildhistory_emit_pkghistory(). This is
 # necessary because some of these items (package directories, files that
 # we no longer emit) might be obsolete.
@@ -149,7 +149,7 @@ python buildhistory_emit_pkghistory() {
             # Variables that need to be written to their own separate file
             self.filevars = dict.fromkeys(['pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm'])
 
-    # Should check PACKAGES here to see if anything removed
+    # Should check PACKAGES here to see if anything was removed
 
     def readPackageInfo(pkg, histfile):
         pkginfo = PackageInfo(pkg)
@@ -553,7 +553,7 @@ buildhistory_get_installed() {
 		grep -v kernel-module $1/depends-nokernel-nolibc-noupdate.dot > $1/depends-nokernel-nolibc-noupdate-nomodules.dot
 	fi
 
-	# add complementary package information
+	# Add complementary package information
 	if [ -e ${WORKDIR}/complementary_pkgs.txt ]; then
 		cp ${WORKDIR}/complementary_pkgs.txt $1
 	fi
@@ -591,7 +591,7 @@ buildhistory_get_sdk_installed_target() {
 
 buildhistory_list_files() {
 	# List the files in the specified directory, but exclude date/time etc.
-	# This is somewhat messy, but handles where the size is not printed for device files under pseudo
+	# This is somewhat messy, but handles cases where the size is not printed for device files under pseudo
 	( cd $1
 	find_cmd='find . ! -path . -printf "%M %-10u %-10g %10s %p -> %l\n"'
 	if [ "$3" = "fakeroot" ] ; then
@@ -605,7 +605,7 @@ buildhistory_list_files_no_owners() {
 	# List the files in the specified directory, but exclude date/time etc.
 	# Also don't output the ownership data, but instead output just - - so
 	# that the same parsing code as for _list_files works.
-	# This is somewhat messy, but handles where the size is not printed for device files under pseudo
+	# This is somewhat messy, but handles cases where the size is not printed for device files under pseudo
 	( cd $1
 	find_cmd='find . ! -path . -printf "%M -          -          %10s %p -> %l\n"'
 	if [ "$3" = "fakeroot" ] ; then
@@ -861,9 +861,9 @@ END
 		if [ ! -e .git ] ; then
 			git init -q
 		else
-			git tag -f ${BUILDHISTORY_TAG}-minus-3 ${BUILDHISTORY_TAG}-minus-2 > /dev/null 2>&1 || true
-			git tag -f ${BUILDHISTORY_TAG}-minus-2 ${BUILDHISTORY_TAG}-minus-1 > /dev/null 2>&1 || true
-			git tag -f ${BUILDHISTORY_TAG}-minus-1 > /dev/null 2>&1 || true
+			git tag -f --no-sign ${BUILDHISTORY_TAG}-minus-3 ${BUILDHISTORY_TAG}-minus-2 > /dev/null 2>&1 || true
+			git tag -f --no-sign ${BUILDHISTORY_TAG}-minus-2 ${BUILDHISTORY_TAG}-minus-1 > /dev/null 2>&1 || true
+			git tag -f --no-sign ${BUILDHISTORY_TAG}-minus-1 > /dev/null 2>&1 || true
 		fi
 
 		check_git_config
@@ -874,10 +874,9 @@ END
 		CMDLINE="${@buildhistory_get_cmdline(d)}"
 		if [ "$repostatus" != "" ] ; then
 			git add -A .
-			# porcelain output looks like "?? packages/foo/bar"
+			# Porcelain output looks like "?? packages/foo/bar"
 			# Ensure we commit metadata-revs with the first commit
 			buildhistory_single_commit "$CMDLINE" "$HOSTNAME" dummy
-			git gc --auto --quiet
 		else
 			buildhistory_single_commit "$CMDLINE" "$HOSTNAME"
 		fi
@@ -944,13 +943,12 @@ def _get_srcrev_values(d):
     dict_tag_srcrevs = {}
     for scm in scms:
         ud = urldata[scm]
-        for name in ud.names:
-            autoinc, rev = ud.method.sortable_revision(ud, d, name)
-            dict_srcrevs[name] = rev
-            if 'tag' in ud.parm:
-                tag = ud.parm['tag'];
-                key = name+'_'+tag
-                dict_tag_srcrevs[key] = rev
+        autoinc, rev = ud.method.sortable_revision(ud, d, ud.name)
+        dict_srcrevs[ud.name] = rev
+        if 'tag' in ud.parm:
+            tag = ud.parm['tag'];
+            key = ud.name+'_'+tag
+            dict_tag_srcrevs[key] = rev
     return (dict_srcrevs, dict_tag_srcrevs)
 
 do_fetch[postfuncs] += "write_srcrev"
@@ -1009,7 +1007,7 @@ def write_latest_ptest_result(d, histdir):
     output_ptest = os.path.join(histdir, 'ptest')
     if os.path.exists(input_ptest):
         try:
-            # Lock it avoid race issue
+            # Lock it to avoid race issue
             lock = bb.utils.lockfile(output_ptest + "/ptest.lock")
             bb.utils.mkdirhier(output_ptest)
             oe.path.copytree(input_ptest, output_ptest)

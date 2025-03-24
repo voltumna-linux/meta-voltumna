@@ -155,6 +155,12 @@ def preferred_ml_updates(d):
             extramp.append(translate_provide(pref, p))
     d.setVar("BB_MULTI_PROVIDER_ALLOWED", " ".join(mp + extramp))
 
+    virtprovs = d.getVar("BB_RECIPE_VIRTUAL_PROVIDERS").split()
+    for p in virtprovs.copy():
+        for pref in prefixes:
+            virtprovs.append(translate_provide(pref, p))
+    d.setVar("BB_RECIPE_VIRTUAL_PROVIDERS", " ".join(virtprovs))
+
     abisafe = (d.getVar("SIGGEN_EXCLUDERECIPES_ABISAFE") or "").split()
     extras = []
     for p in prefixes:
@@ -182,6 +188,9 @@ multilib_virtclass_handler_vendor[eventmask] = "bb.event.ConfigParsed"
 python multilib_virtclass_handler_global () {
     variant = d.getVar("BBEXTENDVARIANT")
     if variant:
+        return
+
+    if bb.data.inherits_class('native', d):
         return
 
     non_ml_recipes = d.getVar('NON_MULTILIB_RECIPES').split()

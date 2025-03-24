@@ -29,7 +29,6 @@ require conf/testexport.conf
 TEST_EXPORT_SDK_ENABLED ?= "0"
 
 TEST_EXPORT_DEPENDS = ""
-TEST_EXPORT_DEPENDS += "${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'cpio-native:do_populate_sysroot', '', d)}"
 TEST_EXPORT_DEPENDS += "${@bb.utils.contains('TEST_EXPORT_SDK_ENABLED', '1', 'testexport-tarball:do_populate_sdk', '', d)}"
 TEST_EXPORT_LOCK = "${TMPDIR}/testimage.lock"
 
@@ -57,9 +56,16 @@ def testexport_main(d):
 
     logger = logging.getLogger("BitBake")
 
+    target_kwargs = { }
+    target_kwargs['machine'] = d.getVar("MACHINE") or None
+    target_kwargs['serialcontrol_cmd'] = d.getVar("TEST_SERIALCONTROL_CMD") or None
+    target_kwargs['serialcontrol_extra_args'] = d.getVar("TEST_SERIALCONTROL_EXTRA_ARGS") or ""
+    target_kwargs['serialcontrol_ps1'] = d.getVar("TEST_SERIALCONTROL_PS1") or None
+    target_kwargs['serialcontrol_connect_timeout'] = d.getVar("TEST_SERIALCONTROL_CONNECT_TIMEOUT") or None
+
     target = OERuntimeTestContextExecutor.getTarget(
         d.getVar("TEST_TARGET"), None, d.getVar("TEST_TARGET_IP"),
-        d.getVar("TEST_SERVER_IP"))
+        d.getVar("TEST_SERVER_IP"), **target_kwargs)
 
     image_manifest = "%s.manifest" % image_name
     image_packages = OERuntimeTestContextExecutor.readPackagesManifest(image_manifest)

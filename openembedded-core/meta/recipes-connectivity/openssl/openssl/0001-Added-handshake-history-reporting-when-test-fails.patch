@@ -6,7 +6,6 @@ Subject: [PATCH] Added handshake history reporting when test fails
 Upstream-Status: Submitted [https://github.com/openssl/openssl/pull/22481]
 
 Signed-off-by: William Lyu <William.Lyu@windriver.com>
-Signed-off-by: Siddharth Doshi <sdoshi@mvista.com>
 ---
  test/helpers/handshake.c | 137 +++++++++++++++++++++++++++++----------
  test/helpers/handshake.h |  70 +++++++++++++++++++-
@@ -14,7 +13,7 @@ Signed-off-by: Siddharth Doshi <sdoshi@mvista.com>
  3 files changed, 217 insertions(+), 34 deletions(-)
 
 diff --git a/test/helpers/handshake.c b/test/helpers/handshake.c
-index e0422469e4..ae2ad59dd4 100644
+index f611b3a..5703b48 100644
 --- a/test/helpers/handshake.c
 +++ b/test/helpers/handshake.c
 @@ -24,6 +24,102 @@
@@ -197,7 +196,7 @@ index e0422469e4..ae2ad59dd4 100644
          case HANDSHAKE_SUCCESS:
              client_turn_count = 0;
 diff --git a/test/helpers/handshake.h b/test/helpers/handshake.h
-index 78b03f9f4b..b9967c2623 100644
+index 78b03f9..b9967c2 100644
 --- a/test/helpers/handshake.h
 +++ b/test/helpers/handshake.h
 @@ -1,5 +1,5 @@
@@ -302,7 +301,7 @@ index 78b03f9f4b..b9967c2623 100644
 +
  #endif  /* OSSL_TEST_HANDSHAKE_HELPER_H */
 diff --git a/test/ssl_test.c b/test/ssl_test.c
-index ea608518f9..9d6b093c81 100644
+index ea60851..9d6b093 100644
 --- a/test/ssl_test.c
 +++ b/test/ssl_test.c
 @@ -26,6 +26,44 @@ static OSSL_LIB_CTX *libctx = NULL;
