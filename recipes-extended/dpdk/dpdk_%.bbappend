@@ -11,6 +11,8 @@ SRC_URI:append = " \
 	file://reduce-queue-itr-interval-default-on-intel-nics.patch \
 	"
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 SRC_URI:append:d-e5462-x7dwu = " \
 	file://0001-Remove-SSE4.2-code.patch \
 	"
