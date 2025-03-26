@@ -8,7 +8,7 @@ WIC_CREATE_EXTRA_ARGS += " --no-fstab-update"
 
 IMAGE_INSTALL_append += "os-release systemd-journal-upload bash coreutils util-linux util-linux-sfdisk \
 	glibc-utils procps psmisc ldd less tzdata tzdata-europe polkit lsof socat stress-ng sed tar xz \
-	grep gawk findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server \
+	grep gawk findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip \
 	nfs-utils-client iproute2 ethtool inetutils-ping inetutils-telnet net-tools curl libnss-resolve \
 	strace ltrace gdb libasan libubsan"
 IMAGE_INSTALL:append:x86-64 = " thermald liblsan libtsan"
