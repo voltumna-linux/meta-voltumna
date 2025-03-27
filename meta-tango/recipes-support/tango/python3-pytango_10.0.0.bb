@@ -16,8 +16,8 @@ SRCREV = "82dff8fe0150a5e57699a7c413bb7367cb6c76c7"
 SRC_URI = "\
 	gitsm://gitlab.com/tango-controls/pytango.git;protocol=https;branch=stable \
 	"
-
-S = "${WORKDIR}/git"
+INSANE_SKIP:${PN} += "buildpaths"
+S= "${WORKDIR}/git"
 
 FILES:${PN} += " ${PYTHON_SITEPACKAGES_DIR}"
 do_install:append() {

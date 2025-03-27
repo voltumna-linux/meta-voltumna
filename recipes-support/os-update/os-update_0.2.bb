@@ -20,20 +20,20 @@ SYSTEMD_AUTO_ENABLE = "enable"
 do_install[vardeps] += "PRIMARY_NETIF"
 do_install() {
 	install -d ${D}${base_sbindir}
-	install -m 0755 ${WORKDIR}/firmware ${WORKDIR}/firmware.sh \
-		${WORKDIR}/os-upgrade ${WORKDIR}/os-select \
-		${WORKDIR}/os-netconfig \
+	install -m 0755 ${UNPACKDIR}/firmware ${UNPACKDIR}/firmware.sh \
+		${UNPACKDIR}/os-upgrade ${UNPACKDIR}/os-select \
+		${UNPACKDIR}/os-netconfig \
 		${D}${base_sbindir}
 
 	sed -i "s,@ETH@,${@d.getVar('PRIMARY_NETIF')},g" \
 		${D}${base_sbindir}/os-netconfig
 
 	install -d ${D}${systemd_unitdir}/system
-	install -m 0644 ${WORKDIR}/firmware.service \
+	install -m 0644 ${UNPACKDIR}/firmware.service \
 		${D}${systemd_unitdir}/system
 	
 	install -d ${D}${sysconfdir}/nginx/location-conf.d
-	install -m 00644 ${WORKDIR}/firmware.conf \
+	install -m 00644 ${UNPACKDIR}/firmware.conf \
 		${D}${sysconfdir}/nginx/location-conf.d
 }
 

@@ -1,3 +1,5 @@
+Upstream-Status: Inappropriate
+
 diff --git a/sinstruments/simulator.py b/sinstruments/simulator.py
 index e934918..d75e265 100644
 --- a/sinstruments/simulator.py
