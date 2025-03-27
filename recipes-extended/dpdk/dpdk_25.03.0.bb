@@ -2,9 +2,9 @@ include dpdk.inc
 
 SRC_URI += " file://0001-config-meson-get-cpu_instruction_set-from-meson-opti.patch "
 
-STABLE = "-stable"
-BRANCH = "24.11"
-SRCREV = "f2eea2f37a82bb73fb01d56350708f7d70e21379"
+STABLE = ""
+BRANCH = "releases"
+SRCREV = "fa3aca8a525decfd12bd5fa01ebc98789d5f7278"
 S = "${WORKDIR}/git"
 
 def get_cpu_instruction_set(bb, d):
