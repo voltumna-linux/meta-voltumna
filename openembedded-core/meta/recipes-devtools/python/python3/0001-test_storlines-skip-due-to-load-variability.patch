@@ -1,4 +1,4 @@
-From 6715560de4d622c2d72ee7b587c916ac647c54bb Mon Sep 17 00:00:00 2001
+From 9f252a691cd335341938489da32d6e2d4620d8ca Mon Sep 17 00:00:00 2001
 From: Trevor Gamblin <tgamblin@baylibre.com>
 Date: Fri, 6 Oct 2023 10:59:44 -0400
 Subject: [PATCH] test_storlines: skip due to load variability
@@ -16,10 +16,10 @@ Signed-off-by: Trevor Gamblin <tgamblin@baylibre.com>
  1 file changed, 1 insertion(+)
 
 diff --git a/Lib/test/test_ftplib.py b/Lib/test/test_ftplib.py
-index 4c4a449..b8c79a4 100644
+index bed0e6d..36602be 100644
 --- a/Lib/test/test_ftplib.py
 +++ b/Lib/test/test_ftplib.py
-@@ -626,6 +626,7 @@ class TestFTPClass(TestCase):
+@@ -627,6 +627,7 @@ class TestFTPClass(TestCase):
              self.client.storbinary('stor', f, rest=r)
              self.assertEqual(self.server.handler_instance.rest, str(r))
  
