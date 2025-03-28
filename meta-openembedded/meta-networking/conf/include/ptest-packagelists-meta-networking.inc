@@ -19,12 +19,14 @@ PTESTS_FAST_META_NETWORKING = "\
     openhpi \
     squid \
     tcpdump \
+    wolfssl \
 "
 
 # firewalld currently hangs forever so disable it for now
 #    firewalld
 PTESTS_SLOW_META_NETWORKING = "\
     net-snmp \
+    openvpn \
 "
 
 PTESTS_PROBLEMS_META_NETWORKING = "\
