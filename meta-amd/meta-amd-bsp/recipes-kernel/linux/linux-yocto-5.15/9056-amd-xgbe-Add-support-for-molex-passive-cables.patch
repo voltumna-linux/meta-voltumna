@@ -1,0 +1,71 @@
+From 5a8d5955c83d85aba1e04cfedb86e17b4e196685 Mon Sep 17 00:00:00 2001
+From: rgaridap <Ramesh.Garidapuri@amd.com>
+Date: Fri, 8 Jul 2022 14:20:29 +0530
+Subject: [PATCH 56/57] amd-xgbe: Add support for molex passive cables
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Usullay the offset 3 and 6 of the EEPROM SFP BASE of the cables used so
+far (mostly Fiber Store cables) are NULL. Also, the offset 12 of those
+ables are in the range 0x64 to 0x68. The existing sfp code assumes the
+above properties. However, the Ethernet code compliance code standard
+for passive cabling, suggests offset 3 is â€œ0x0â€ and other offsets
+4 and 5 - none of the standards are applicable.
+
+The 5 metre and 7 metre molex cables have valid data at offset 3 and 6,
+also a value 0x78 at offset 12. So, add support to identify molex cables
+and also extend the macro XGBE_SFP_BASE_BR_10GBE range to 0x78.
+Change-Id: I72617bdb1d1da16f5645d9d71671e01a2d7350f6
+Signed-off-by: rgaridap <Ramesh.Garidapuri@amd.com>
+
+Raju Rangoju <Raju.Rangoju@amd.com>
+
+Change-Id: Ice85428db2c6a78f4006dc618facfb6d12c27376
+Signed-off-by: rgaridap <Ramesh.Garidapuri@amd.com>
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+index 22b2202a6d0f..278e0509cd19 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+@@ -239,7 +239,7 @@ enum xgbe_sfp_speed {
+ #define XGBE_SFP_BASE_BR_1GBE_MIN		0x0a
+ #define XGBE_SFP_BASE_BR_1GBE_MAX		0x0d
+ #define XGBE_SFP_BASE_BR_10GBE_MIN		0x64
+-#define XGBE_SFP_BASE_BR_10GBE_MAX		0x68
++#define XGBE_SFP_BASE_BR_10GBE_MAX		0x78
+ 
+ #define XGBE_SFP_BASE_CU_CABLE_LEN		18
+ 
+@@ -1173,7 +1173,10 @@ static void xgbe_phy_sfp_parse_eeprom(struct xgbe_prv_data *pdata)
+ 	}
+ 
+ 	/* Determine the type of SFP */
+-	if (sfp_base[XGBE_SFP_BASE_10GBE_CC] & XGBE_SFP_BASE_10GBE_CC_SR)
++	if ((phy_data->sfp_cable == XGBE_SFP_CABLE_PASSIVE) &&
++	    xgbe_phy_sfp_bit_rate(sfp_eeprom, XGBE_SFP_SPEED_10000))
++		phy_data->sfp_base = XGBE_SFP_BASE_10000_CR;
++	else if (sfp_base[XGBE_SFP_BASE_10GBE_CC] & XGBE_SFP_BASE_10GBE_CC_SR)
+ 		phy_data->sfp_base = XGBE_SFP_BASE_10000_SR;
+ 	else if (sfp_base[XGBE_SFP_BASE_10GBE_CC] & XGBE_SFP_BASE_10GBE_CC_LR)
+ 		phy_data->sfp_base = XGBE_SFP_BASE_10000_LR;
+@@ -1189,9 +1192,6 @@ static void xgbe_phy_sfp_parse_eeprom(struct xgbe_prv_data *pdata)
+ 		phy_data->sfp_base = XGBE_SFP_BASE_1000_CX;
+ 	else if (sfp_base[XGBE_SFP_BASE_1GBE_CC] & XGBE_SFP_BASE_1GBE_CC_T)
+ 		phy_data->sfp_base = XGBE_SFP_BASE_1000_T;
+-	else if ((phy_data->sfp_cable == XGBE_SFP_CABLE_PASSIVE) &&
+-		 xgbe_phy_sfp_bit_rate(sfp_eeprom, XGBE_SFP_SPEED_10000))
+-		phy_data->sfp_base = XGBE_SFP_BASE_10000_CR;
+ 
+ 	switch (phy_data->sfp_base) {
+ 	case XGBE_SFP_BASE_1000_T:
+-- 
+2.37.3
+

@@ -1,0 +1,111 @@
+From 40b8dca9265d74bcdee961d31e79313474c70661 Mon Sep 17 00:00:00 2001
+From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Date: Wed, 5 Jan 2022 16:19:31 +0200
+Subject: [PATCH 12/48] i2c: Introduce common module to instantiate CCGx UCSI
+
+commit 4ebf4987c0918ec6a08ece8ee745af44af02dee0 upstream
+
+Introduce a common module to provide an API to instantiate UCSI device
+for Cypress CCGx Type-C controller. Individual bus drivers need to select
+this one on demand.
+
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Signed-off-by: Wolfram Sang <wsa@kernel.org>
+Signed-off-by: Zhaolong Zhang <zhaolong.zhang@windriver.com>
+---
+ drivers/i2c/busses/Kconfig         |  7 +++++++
+ drivers/i2c/busses/Makefile        |  3 +++
+ drivers/i2c/busses/i2c-ccgx-ucsi.c | 30 ++++++++++++++++++++++++++++++
+ drivers/i2c/busses/i2c-ccgx-ucsi.h | 11 +++++++++++
+ 4 files changed, 51 insertions(+)
+ create mode 100644 drivers/i2c/busses/i2c-ccgx-ucsi.c
+ create mode 100644 drivers/i2c/busses/i2c-ccgx-ucsi.h
+
+diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
+index fea403431f22..922ab14143fd 100644
+--- a/drivers/i2c/busses/Kconfig
++++ b/drivers/i2c/busses/Kconfig
+@@ -9,6 +9,13 @@ menu "I2C Hardware Bus support"
+ comment "PC SMBus host controller drivers"
+ 	depends on PCI
+ 
++config I2C_CCGX_UCSI
++	tristate
++	help
++	  A common module to provide an API to instantiate UCSI device
++	  for Cypress CCGx Type-C controller. Individual bus drivers
++	  need to select this one on demand.
++
+ config I2C_ALI1535
+ 	tristate "ALI 1535"
+ 	depends on PCI
+diff --git a/drivers/i2c/busses/Makefile b/drivers/i2c/busses/Makefile
+index 1336b04f40e2..28e2aa3d3d5c 100644
+--- a/drivers/i2c/busses/Makefile
++++ b/drivers/i2c/busses/Makefile
+@@ -6,6 +6,9 @@
+ # ACPI drivers
+ obj-$(CONFIG_I2C_SCMI)		+= i2c-scmi.o
+ 
++# Auxiliary I2C/SMBus modules
++obj-$(CONFIG_I2C_CCGX_UCSI)	+= i2c-ccgx-ucsi.o
++
+ # PC SMBus host controller drivers
+ obj-$(CONFIG_I2C_ALI1535)	+= i2c-ali1535.o
+ obj-$(CONFIG_I2C_ALI1563)	+= i2c-ali1563.o
+diff --git a/drivers/i2c/busses/i2c-ccgx-ucsi.c b/drivers/i2c/busses/i2c-ccgx-ucsi.c
+new file mode 100644
+index 000000000000..092dc92dea9f
+--- /dev/null
++++ b/drivers/i2c/busses/i2c-ccgx-ucsi.c
+@@ -0,0 +1,30 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * Instantiate UCSI device for Cypress CCGx Type-C controller.
++ * Derived from i2c-designware-pcidrv.c and i2c-nvidia-gpu.c.
++ */
++
++#include <linux/i2c.h>
++#include <linux/export.h>
++#include <linux/module.h>
++#include <linux/string.h>
++
++#include "i2c-ccgx-ucsi.h"
++
++struct software_node;
++
++struct i2c_client *i2c_new_ccgx_ucsi(struct i2c_adapter *adapter, int irq,
++				     const struct software_node *swnode)
++{
++	struct i2c_board_info info = {};
++
++	strscpy(info.type, "ccgx-ucsi", sizeof(info.type));
++	info.addr = 0x08;
++	info.irq = irq;
++	info.swnode = swnode;
++
++	return i2c_new_client_device(adapter, &info);
++}
++EXPORT_SYMBOL_GPL(i2c_new_ccgx_ucsi);
++
++MODULE_LICENSE("GPL");
+diff --git a/drivers/i2c/busses/i2c-ccgx-ucsi.h b/drivers/i2c/busses/i2c-ccgx-ucsi.h
+new file mode 100644
+index 000000000000..739ac7a4b117
+--- /dev/null
++++ b/drivers/i2c/busses/i2c-ccgx-ucsi.h
+@@ -0,0 +1,11 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++#ifndef __I2C_CCGX_UCSI_H_
++#define __I2C_CCGX_UCSI_H_
++
++struct i2c_adapter;
++struct i2c_client;
++struct software_node;
++
++struct i2c_client *i2c_new_ccgx_ucsi(struct i2c_adapter *adapter, int irq,
++				     const struct software_node *swnode);
++#endif /* __I2C_CCGX_UCSI_H_ */
+-- 
+2.27.0
+
