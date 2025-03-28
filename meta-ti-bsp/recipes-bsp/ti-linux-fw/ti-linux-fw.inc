@@ -22,11 +22,7 @@ SRCREV = "${TI_LINUX_FW_SRCREV}"
 
 BRANCH ?= "ti-linux-firmware"
 
-TI_LINUX_FW_GIT_URI ?= "git://git.ti.com/git/processor-firmware/ti-linux-firmware.git"
-TI_LINUX_FW_GIT_PROTOCOL ?= "https"
-TI_LINUX_FW_GIT_BRANCH ?= "branch=${BRANCH}"
-
-SRC_URI = "${TI_LINUX_FW_GIT_URI};protocol=${TI_LINUX_FW_GIT_PROTOCOL};${TI_LINUX_FW_GIT_BRANCH}"
+SRC_URI = "git://git.ti.com/git/processor-firmware/ti-linux-firmware.git;protocol=https;branch=${BRANCH}"
 
 S = "${WORKDIR}/git"
 

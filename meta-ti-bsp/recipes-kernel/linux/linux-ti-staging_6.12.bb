@@ -23,8 +23,12 @@ S = "${WORKDIR}/git"
 
 BRANCH ?= "ti-linux-6.12.y"
 
-SRCREV ?= "c85877d40f8e70e1e201eca2ae1648781f238a37"
+SRCREV ?= "1ac80adecb8ebffa654be744e5e5f7343b0abf78"
 PV = "6.12.17+git"
+
+KERNEL_REPRODUCIBILITY_PATCHES = " \
+    file://0001-drivers-gpu-drm-msm-registers-improve-reproducibilit.patch \
+"
 
 # Special configuration for remoteproc/rpmsg IPC modules
 module_conf_rpmsg_client_sample = "blacklist rpmsg_client_sample"
