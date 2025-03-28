@@ -19,7 +19,7 @@ S = "${WORKDIR}/git/gdbc6x"
 inherit update-rc.d
 inherit gettext
 
-CFLAGS += "-fcommon"
+CFLAGS += "-fcommon -fpermissive"
 
 do_configure () {
     cd ${S}
@@ -36,7 +36,7 @@ do_install () {
     cp -rf ${S}/install_gdb/include/* ${D}${includedir}
 
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/init ${D}${sysconfdir}/init.d/gdbserverproxy
+    install -m 0755 ${UNPACKDIR}/init ${D}${sysconfdir}/init.d/gdbserverproxy
 }
 
 RDEPENDS:${PN} = "gdbserverproxy-module-drv bash"
