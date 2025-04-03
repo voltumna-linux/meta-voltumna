@@ -11,6 +11,7 @@ SRC_URI_append += " \
 	file://disable_ptp.cfg \
 	file://remove_martian_source_warning.cfg \
 	file://enable_ebpf_xpd.cfg \
+        file://disable_ipv6.cfg  \
 	\
 	file://numa.cfg \
 	file://dpdk.cfg \
