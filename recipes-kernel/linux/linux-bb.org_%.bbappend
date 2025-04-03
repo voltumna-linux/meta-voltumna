@@ -12,6 +12,7 @@ SRC_URI:append = " \
 	file://remove_martian_source_warning.cfg \
 	file://enable_ebpf_xpd.cfg \
 	file://disable_lttng.cfg \
+	file://disable_ipv6.cfg \
 	\
 	file://serial_console.cfg \
 	file://static_usb_support.cfg \
