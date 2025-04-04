@@ -24,37 +24,34 @@ sudo apt install -y gawk wget git diffstat unzip texinfo gcc \
 
 Select the Yocto Project branch:
 ```sh
-YOCTO_BRANCH="scarthgap"
-REPO_DIR="poky-amd-${YOCTO_BRANCH}"
+YOCTO_BRANCH="kirkstone"
 ```
 
 Clone the git repositories: 
 ```sh
-git clone --single-branch --branch "${YOCTO_BRANCH}" "git://git.yoctoproject.org/poky" "${REPO_DIR}"
-cd "${REPO_DIR}"
-# Clone meta-openembedded and meta-dpdk repositories
-git clone --single-branch --branch "${YOCTO_BRANCH}" "git://git.openembedded.org/meta-openembedded"
-git clone --single-branch --branch "${YOCTO_BRANCH}" "git://git.yoctoproject.org/meta-dpdk"
-
-# Clone meta-virtualization for enable virtualization or libvirt
-git clone https://git.yoctoproject.org/meta-virtualization -b scarthgap
-
-# Clone meta-amd repository using SSH
-git clone https://git.yoctoproject.org/meta-amd -b master
-
-# Clone for tpm-tools
-git clone -b scarthgap https://git.yoctoproject.org/git/meta-security
+git clone --single-branch --branch "${YOCTO_BRANCH}" \
+    "git://git.yoctoproject.org/poky" "poky-amd-${YOCTO_BRANCH}"
+cd poky-amd-${YOCTO_BRANCH}
+git clone --single-branch --branch "${YOCTO_BRANCH}" \
+    "git://git.openembedded.org/meta-openembedded"
+git clone --single-branch --branch "${YOCTO_BRANCH}" \
+    "git://git.yoctoproject.org/meta-dpdk"
+git clone --single-branch --branch "${YOCTO_BRANCH}" \
+    "git://git.yoctoproject.org/meta-amd"
 ```
 
-# Checkout specific tags and branches
+Checkout commit hashes:
 ```sh
-git checkout --quiet tags/yocto-5.0
+git checkout --quiet tags/yocto-4.0.5
 cd meta-openembedded
-git checkout --quiet 4a7bb77f7ebe0ac8be5bab5103d8bd993e17e18d
+git checkout --quiet 50d4a8d2a983a68383ef1ffec2c8e21adf0c1a79
 cd ../meta-dpdk
-git checkout --quiet 0f12d2eddf2f7cde8de274ffe225f3c8e912928d
-
+git checkout --quiet 0e62d02f2755fbbf7dfa6e243381377c0a1cd97c
+cd ../meta-amd
+git checkout --quiet tags/kirkstone-e3000-ga-202301
+cd ..
 ```
+
 ---
 #### What's next
 
