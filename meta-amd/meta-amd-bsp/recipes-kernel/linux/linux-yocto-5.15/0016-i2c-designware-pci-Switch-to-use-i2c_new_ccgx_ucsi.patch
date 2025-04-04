@@ -1,0 +1,88 @@
+From 1cdb0c2c2428f38bc7914c35d662bae50b018b1f Mon Sep 17 00:00:00 2001
+From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Date: Wed, 5 Jan 2022 16:19:35 +0200
+Subject: [PATCH 16/48] i2c: designware-pci: Switch to use i2c_new_ccgx_ucsi()
+
+commit 531310dd5d9f78b5d9e28e742d55c775f114ad5a upstream
+
+Instead of open coded variant switch to use i2c_new_ccgx_ucsi().
+
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Acked-by: Jarkko Nikula <jarkko.nikula@linux.intel.com>
+Signed-off-by: Wolfram Sang <wsa@kernel.org>
+Signed-off-by: Zhaolong Zhang <zhaolong.zhang@windriver.com>
+---
+ drivers/i2c/busses/Kconfig                 |  1 +
+ drivers/i2c/busses/i2c-designware-pcidrv.c | 30 ++++------------------
+ 2 files changed, 6 insertions(+), 25 deletions(-)
+
+diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
+index 28d38d163a53..0d9920283c88 100644
+--- a/drivers/i2c/busses/Kconfig
++++ b/drivers/i2c/busses/Kconfig
+@@ -578,6 +578,7 @@ config I2C_DESIGNWARE_PCI
+ 	tristate "Synopsys DesignWare PCI"
+ 	depends on PCI
+ 	select I2C_DESIGNWARE_CORE
++	select I2C_CCGX_UCSI
+ 	help
+ 	  If you say yes to this option, support will be included for the
+ 	  Synopsys DesignWare I2C adapter. Only master mode is supported.
+diff --git a/drivers/i2c/busses/i2c-designware-pcidrv.c b/drivers/i2c/busses/i2c-designware-pcidrv.c
+index 5b45941bcbdd..d7945e6640ca 100644
+--- a/drivers/i2c/busses/i2c-designware-pcidrv.c
++++ b/drivers/i2c/busses/i2c-designware-pcidrv.c
+@@ -24,6 +24,7 @@
+ #include <linux/slab.h>
+ 
+ #include "i2c-designware-core.h"
++#include "i2c-ccgx-ucsi.h"
+ 
+ #define DRIVER_NAME "i2c-designware-pci"
+ #define AMD_CLK_RATE_HZ	100000
+@@ -118,26 +119,6 @@ static int mfld_setup(struct pci_dev *pdev, struct dw_pci_controller *c)
+ 	return -ENODEV;
+ }
+ 
+- /*
+-  * TODO find a better way how to deduplicate instantiation
+-  * of USB PD slave device from nVidia GPU driver.
+-  */
+-static int navi_amd_register_client(struct dw_i2c_dev *dev)
+-{
+-	struct i2c_board_info	info;
+-
+-	memset(&info, 0, sizeof(struct i2c_board_info));
+-	strscpy(info.type, "ccgx-ucsi", I2C_NAME_SIZE);
+-	info.addr = 0x08;
+-	info.irq = dev->irq;
+-
+-	dev->slave = i2c_new_client_device(&dev->adapter, &info);
+-	if (IS_ERR(dev->slave))
+-		return PTR_ERR(dev->slave);
+-
+-	return 0;
+-}
+-
+ static int navi_amd_setup(struct pci_dev *pdev, struct dw_pci_controller *c)
+ {
+ 	struct dw_i2c_dev *dev = dev_get_drvdata(&pdev->dev);
+@@ -324,11 +305,10 @@ static int i2c_dw_pci_probe(struct pci_dev *pdev,
+ 	}
+ 
+ 	if ((dev->flags & MODEL_MASK) == MODEL_AMD_NAVI_GPU) {
+-		r = navi_amd_register_client(dev);
+-		if (r) {
+-			dev_err(dev->dev, "register client failed with %d\n", r);
+-			return r;
+-		}
++		dev->slave = i2c_new_ccgx_ucsi(&dev->adapter, dev->irq, NULL);
++		if (IS_ERR(dev->slave))
++			return dev_err_probe(dev->dev, PTR_ERR(dev->slave),
++					     "register UCSI failed\n");
+ 	}
+ 
+ 	pm_runtime_set_autosuspend_delay(&pdev->dev, 1000);
+-- 
+2.27.0
+

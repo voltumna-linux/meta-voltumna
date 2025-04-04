@@ -1,0 +1,55 @@
+From 6f5c0a495a8c71fe27846cf2761d4aa391fe171f Mon Sep 17 00:00:00 2001
+From: Raju Rangoju <Raju.Rangoju@amd.com>
+Date: Wed, 27 Apr 2022 15:16:35 +0530
+Subject: [PATCH 46/48] amd-xgbe: do not enable rx-adaptation for InPhi
+ redriver
+
+Signed-off-by: Raju Rangoju <Raju.Rangoju@amd.com>
+Signed-off-by: rgaridap <Ramesh.Garidapuri@amd.com>
+Change-Id: Ia2681671a04dd96b2093390afb85bcca49cb5be4
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+index 168863a49360..596c73be734d 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+@@ -3391,6 +3391,16 @@ static void xgbe_phy_exit(struct xgbe_prv_data *pdata)
+ 	mdiobus_unregister(phy_data->mii);
+ }
+ 
++static bool enable_rx_adap(struct xgbe_phy_data *phy_data)
++{
++
++	if ((phy_data->redrv) &&
++	    ((phy_data->redrv_model == XGBE_PHY_REDRV_MODEL_4223) ||
++	     (phy_data->redrv_model == XGBE_PHY_REDRV_MODEL_4227)))
++		return false;
++	return true;
++}
++
+ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
+ {
+ 	struct ethtool_link_ksettings *lks = &pdata->phy.lks;
+@@ -3505,7 +3515,7 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
+ 			if (pdata->fec_ability & MDIO_PMA_10GBR_FECABLE_ABLE)
+ 				XGBE_SET_SUP(lks, 10000baseR_FEC);
+ 			phy_data->start_mode = XGBE_MODE_KR;
+-			if (pdata->vdata->is_yc)
++			if ((pdata->vdata->is_yc) && enable_rx_adap(phy_data))
+ 				pdata->en_rx_adap = 1;
+ 		}
+ 
+@@ -3634,7 +3644,7 @@ static int xgbe_phy_init(struct xgbe_prv_data *pdata)
+ 			phy_data->start_mode = XGBE_MODE_SGMII_1000;
+ 		if (phy_data->port_speeds & XGBE_PHY_PORT_SPEED_10000) {
+ 			phy_data->start_mode = XGBE_MODE_SFI;
+-			if (pdata->vdata->is_yc)
++			if ((pdata->vdata->is_yc) && enable_rx_adap(phy_data))
+ 				pdata->en_rx_adap = 1;
+ 		}
+ 
+-- 
+2.27.0
+
