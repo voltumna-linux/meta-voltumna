@@ -35,6 +35,7 @@ EXTRA_OECONF = " \
     --with-cockpit-ws-instance-group=${COCKPIT_WS_USER_GROUP} \
     --disable-doc \
     --with-systemdunitdir=${systemd_system_unitdir} \
+    --with-pamdir=${base_libdir}/security \
 "
 
 PACKAGECONFIG ??= " \
@@ -59,10 +60,8 @@ PACKAGES =+ " \
     ${PN}-sosreport \
     ${PN}-storaged \
     ${PN}-networkmanager \
-    ${PN}-machines \
     ${PN}-selinux \
     ${PN}-playground \
-    ${PN}-docker \
     ${PN}-dashboard \
     ${PN}-packagekit \
     ${PN}-apps \
@@ -102,19 +101,11 @@ FILES:${PN}-networkmanager = " \
 "
 RDEPENDS:${PN}-networkmanager = "networkmanager"
 
-FILES:${PN}-machines = " \
-    ${datadir}/cockpit/machines \
-    ${datadir}/metainfo/org.cockpit-project.cockpit-machines.metainfo.xml \
-"
 FILES:${PN}-selinux = " \
     ${datadir}/cockpit/selinux \
     ${datadir}/metainfo/org.cockpit-project.cockpit-selinux.metainfo.xml \
 "
 FILES:${PN}-playground = "${datadir}/cockpit/playground"
-FILES:${PN}-docker = " \
-    ${datadir}/cockpit/docker \
-    ${datadir}/metainfo/org.cockpit-project.cockpit-docker.metainfo.xml \
-"
 FILES:${PN}-dashboard = "${datadir}/cockpit/dashboard"
 ALLOW_EMPTY:${PN}-dashboard = "1"
 
@@ -154,8 +145,8 @@ FILES:${PN}-ws = " \
     ${systemd_system_unitdir}/system-cockpithttps.slice \
     ${libdir}/tmpfiles.d/cockpit-tempfiles.conf \
     ${sbindir}/remotectl \
-    ${libdir}/security/pam_ssh_add.so \
-    ${libdir}/security/pam_cockpit_cert.so \
+    ${base_libdir}/security/pam_ssh_add.so \
+    ${base_libdir}/security/pam_cockpit_cert.so \
     ${libexecdir}/cockpit-ws \
     ${libexecdir}/cockpit-wsinstance-factory \
     ${libexecdir}/cockpit-tls \
@@ -193,7 +184,7 @@ do_install:append() {
     chmod 4750 ${D}${libexecdir}/cockpit-session
 
     install -d "${D}${sysconfdir}/pam.d"
-    install -p -m 0644 ${WORKDIR}/cockpit.pam ${D}${sysconfdir}/pam.d/cockpit
+    install -p -m 0644 ${UNPACKDIR}/cockpit.pam ${D}${sysconfdir}/pam.d/cockpit
 
     # provided by firewalld
     rm -rf ${D}${libdir}/firewalld
