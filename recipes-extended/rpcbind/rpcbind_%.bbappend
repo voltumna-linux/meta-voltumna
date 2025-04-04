@@ -8,7 +8,7 @@ FILES:${PN}:append = " ${nonarch_libdir}/tmpfiles.d"
 
 do_install:append() {
         install -d ${D}${nonarch_libdir}/tmpfiles.d
-        echo 'f /var/run/rpcbind.lock 0644 root root - -' > ${D}${nonarch_libdir}/tmpfiles.d/${BPN}.conf
+        echo 'f /run/rpcbind.lock 0644 root root - -' > ${D}${nonarch_libdir}/tmpfiles.d/${BPN}.conf
 
        # Replace rpcbind.service 
         install -m 0644 ${WORKDIR}/rpcbind.service \
