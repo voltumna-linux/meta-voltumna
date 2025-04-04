@@ -102,6 +102,13 @@ class OESelftestTestContext(OETestContext):
         oe.path.copytree(builddir + "/cache", newbuilddir + "/cache")
         oe.path.copytree(selftestdir, newselftestdir)
 
+        # if the last line of local.conf in newbuilddir is not empty and does not end with newline then add one
+        localconf_path = newbuilddir + "/conf/local.conf"
+        with open(localconf_path, "r+", encoding="utf-8") as f:
+            last_line = f.readlines()[-1]
+            if last_line and not last_line.endswith("\n"):
+                f.write("\n")
+
         subprocess.check_output("git init && git add * && git commit -a -m 'initial'", cwd=newselftestdir, shell=True)
 
         # Tried to used bitbake-layers add/remove but it requires recipe parsing and hence is too slow
@@ -114,11 +121,15 @@ class OESelftestTestContext(OETestContext):
                 bblayers_abspath = [os.path.abspath(path) for path in bblayers.split()]
                 with open("%s/conf/bblayers.conf" % newbuilddir, "a") as f:
                     newbblayers = "# new bblayers to be used by selftest in the new build dir '%s'\n" % newbuilddir
+                    newbblayers += 'unset BBLAYERS\n'
                     newbblayers += 'BBLAYERS = "%s"\n' % ' '.join(bblayers_abspath)
                     f.write(newbblayers)
 
+        # Rewrite builddir paths seen in environment variables
         for e in os.environ:
-            if builddir + "/" in os.environ[e]:
+            # Rewrite paths that absolutely point inside builddir
+            # (e.g $builddir/conf/ would be rewritten but not $builddir/../bitbake/)
+            if builddir + "/" in os.environ[e] and builddir + "/" in os.path.abspath(os.environ[e]):
                 os.environ[e] = os.environ[e].replace(builddir + "/", newbuilddir + "/")
             if os.environ[e].endswith(builddir):
                 os.environ[e] = os.environ[e].replace(builddir, newbuilddir)

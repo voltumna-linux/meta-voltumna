@@ -55,6 +55,8 @@ SRC_URI[sha256sum] = "9543d7adedf78a6de0b221ccbbd1952e08b5138717f4ade814039bb489
 
 S = "${WORKDIR}/tcp_wrappers_${PV}"
 
+CFLAGS += "-std=gnu17"
+
 EXTRA_OEMAKE = "'CC=${CC}' \
                 'AR=${AR}' \
                 'RANLIB=${RANLIB}' \
@@ -120,8 +122,8 @@ do_install () {
 		install -m 0644 $m.8 ${D}${mandir}/man8/ || exit 1
 	done
 
-	install -m 0644 ${WORKDIR}/try-from.8 ${D}${mandir}/man8/
-	install -m 0644 ${WORKDIR}/safe_finger.8 ${D}${mandir}/man8/
+	install -m 0644 ${UNPACKDIR}/try-from.8 ${D}${mandir}/man8/
+	install -m 0644 ${UNPACKDIR}/safe_finger.8 ${D}${mandir}/man8/
 
 	install -d ${D}${includedir}
 	install -m 0644 tcpd.h ${D}${includedir}/
