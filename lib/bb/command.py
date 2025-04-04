@@ -24,6 +24,7 @@ import io
 import bb.event
 import bb.cooker
 import bb.remotedata
+import bb.parse
 
 class DataStoreConnectionHandle(object):
     def __init__(self, dsindex=0):
@@ -108,7 +109,7 @@ class Command:
 
     def runAsyncCommand(self, _, process_server, halt):
         try:
-            if self.cooker.state in (bb.cooker.state.error, bb.cooker.state.shutdown, bb.cooker.state.forceshutdown):
+            if self.cooker.state in (bb.cooker.State.ERROR, bb.cooker.State.SHUTDOWN, bb.cooker.State.FORCE_SHUTDOWN):
                 # updateCache will trigger a shutdown of the parser
                 # and then raise BBHandledException triggering an exit
                 self.cooker.updateCache()
@@ -118,7 +119,7 @@ class Command:
                 (command, options) = cmd
                 commandmethod = getattr(CommandsAsync, command)
                 needcache = getattr( commandmethod, "needcache" )
-                if needcache and self.cooker.state != bb.cooker.state.running:
+                if needcache and self.cooker.state != bb.cooker.State.RUNNING:
                     self.cooker.updateCache()
                     return True
                 else:
@@ -142,14 +143,14 @@ class Command:
                 return bb.server.process.idleFinish(traceback.format_exc())
 
     def finishAsyncCommand(self, msg=None, code=None):
+        self.cooker.finishcommand()
+        self.process_server.clear_async_cmd()
         if msg or msg == "":
             bb.event.fire(CommandFailed(msg), self.cooker.data)
         elif code:
             bb.event.fire(CommandExit(code), self.cooker.data)
         else:
             bb.event.fire(CommandCompleted(), self.cooker.data)
-        self.cooker.finishcommand()
-        self.process_server.clear_async_cmd()
 
     def reset(self):
         if self.remotedatastores:
@@ -310,7 +311,7 @@ class CommandsSync:
     def revalidateCaches(self, command, params):
         """Called by UI clients when metadata may have changed"""
         command.cooker.revalidateCaches()
-    parseConfiguration.needconfig = False
+    revalidateCaches.needconfig = False
 
     def getRecipes(self, command, params):
         try:
@@ -596,6 +597,13 @@ class CommandsSync:
         idx = command.remotedatastores.store(envdata)
         return DataStoreConnectionHandle(idx)
     parseRecipeFile.readonly = True
+
+    def finalizeData(self, command, params):
+        newdata = command.cooker.data.createCopy()
+        bb.data.expandKeys(newdata)
+        bb.parse.ast.runAnonFuncs(newdata)
+        idx = command.remotedatastores.store(newdata)
+        return DataStoreConnectionHandle(idx)
 
 class CommandsAsync:
     """
