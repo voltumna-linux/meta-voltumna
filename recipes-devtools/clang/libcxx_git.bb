@@ -1,7 +1,7 @@
 # Copyright (C) 2015 Khem Raj <raj.khem@gmail.com>
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-DESCRIPTION = "libc++ is a new implementation of the C++ standard library, targeting C++11"
+SUMMARY = "libc++ is a new implementation of the C++ standard library, targeting C++11 and above"
 HOMEPAGE = "http://libcxx.llvm.org/"
 SECTION = "base"
 
@@ -9,6 +9,8 @@ require clang.inc
 require common-source.inc
 
 inherit cmake cmake-native python3native
+
+BPN = "libcxx"
 
 PACKAGECONFIG ??= "compiler-rt exceptions ${@bb.utils.contains("TC_CXX_RUNTIME", "llvm", "unwind unwind-shared", "", d)}"
 PACKAGECONFIG:append:armv5 = " no-atomics"
@@ -20,27 +22,20 @@ PACKAGECONFIG[compiler-rt] = "-DLIBCXX_USE_COMPILER_RT=ON -DLIBCXXABI_USE_COMPIL
 PACKAGECONFIG[unwind-shared] = "-DLIBUNWIND_ENABLE_SHARED=ON,-DLIBUNWIND_ENABLE_SHARED=OFF,,"
 
 DEPENDS += "ninja-native"
-DEPENDS:append:class-target = " clang-cross-${TARGET_ARCH} virtual/${MLPREFIX}libc virtual/${TARGET_PREFIX}compilerlibs"
-DEPENDS:append:class-nativesdk = " clang-crosssdk-${SDK_ARCH} nativesdk-compiler-rt"
-DEPENDS:append:class-native = " clang-native"
+DEPENDS:append:class-target = " clang-cross-${TARGET_ARCH} virtual/${MLPREFIX}libc virtual/${MLPREFIX}compilerlibs"
+DEPENDS:append:class-nativesdk = " clang-crosssdk-${SDK_SYS} nativesdk-compiler-rt"
+DEPENDS:append:class-native = " clang-native compiler-rt-native"
 
-LIBCPLUSPLUS = ""
-COMPILER_RT ?= "-rtlib=compiler-rt"
-
+COMPILER_RT ?= "${@bb.utils.contains("PACKAGECONFIG", "compiler-rt", "-rtlib=compiler-rt", "-rtlib=libgcc", d)}"
+UNWINDLIB ?= "${@bb.utils.contains("PACKAGECONFIG", "unwind", "-unwindlib=none", "-unwindlib=libgcc", d)}"
+LIBCPLUSPLUS ?= "-stdlib=libstdc++"
 # Trick clang.bbclass into not creating circular dependencies
-UNWINDLIB:class-nativesdk = "--unwindlib=libgcc"
-COMPILER_RT:class-nativesdk = "-rtlib=libgcc --unwindlib=libgcc"
+UNWINDLIB:class-nativesdk = "-unwindlib=libgcc"
 LIBCPLUSPLUS:class-nativesdk = "-stdlib=libstdc++"
+UNWINDLIB:class-native = "-unwindlib=libgcc"
+LIBCPLUSPLUS:class-native = "-stdlib=libstdc++"
 
-CC:append:toolchain-clang:class-native = " -unwindlib=libgcc -rtlib=libgcc"
-CC:append:toolchain-clang:class-nativesdk = " -unwindlib=libgcc -rtlib=libgcc"
-
-CXXFLAGS += "-stdlib=libstdc++"
-LDFLAGS += "-unwindlib=libgcc -stdlib=libstdc++"
-BUILD_CXXFLAGS += "-stdlib=libstdc++"
-BUILD_LDFLAGS += "-unwindlib=libgcc -rtlib=libgcc -stdlib=libstdc++"
-BUILD_CPPFLAGS:remove = "-stdlib=libc++"
-BUILD_LDFLAGS:remove = "-stdlib=libc++ -lc++abi"
+LDFLAGS:append = " ${UNWINDLIB}"
 
 INHIBIT_DEFAULT_DEPS = "1"
 
@@ -49,8 +44,8 @@ LIC_FILES_CHKSUM = "file://libcxx/LICENSE.TXT;md5=55d89dd7eec8d3b4204b680e27da39
                     file://libunwind/LICENSE.TXT;md5=f66970035d12f196030658b11725e1a1 \
 "
 
-OECMAKE_TARGET_COMPILE = "cxxabi cxx"
-OECMAKE_TARGET_INSTALL = "install-cxx install-cxxabi ${@bb.utils.contains("TC_CXX_RUNTIME", "llvm", "install-unwind", "", d)}"
+OECMAKE_TARGET_COMPILE = "${@bb.utils.contains("TC_CXX_RUNTIME", "llvm", "unwind", "", d)} cxxabi cxx"
+OECMAKE_TARGET_INSTALL = "${@bb.utils.contains("TC_CXX_RUNTIME", "llvm", "install-unwind", "", d)} install-cxxabi install-cxx"
 
 OECMAKE_SOURCEPATH = "${S}/llvm"
 EXTRA_OECMAKE += "\
@@ -71,6 +66,7 @@ EXTRA_OECMAKE += "\
                   -DLLVM_ENABLE_RUNTIMES='libcxx;libcxxabi;libunwind' \
                   -DLLVM_RUNTIME_TARGETS=${HOST_SYS} \
                   -DLLVM_LIBDIR_SUFFIX=${LLVM_LIBDIR_SUFFIX} \
+                  -DLLVM_APPEND_VC_REV=OFF \
                   -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
 "
 
@@ -105,12 +101,17 @@ do_install:append() {
             install -Dm 0644 ${S}/libunwind/include/$f ${D}${includedir}/$f
         done
         install -d ${D}${libdir}/pkgconfig
-        sed -e 's,@LIBDIR@,${libdir},g;s,@VERSION@,${PV},g' ${S}/../libunwind.pc.in > ${D}${libdir}/pkgconfig/libunwind.pc
+        sed -e 's,@LIBDIR@,${libdir},g;s,@VERSION@,${PV},g' ${S}/libunwind/libunwind.pc.in > ${D}${libdir}/pkgconfig/libunwind.pc
     fi
 }
 
 PACKAGES:append:runtime-llvm = " libunwind"
 FILES:libunwind:runtime-llvm = "${libdir}/libunwind.so.*"
+# Package library module manifest path
+FILES:${PN}-dev += "${datadir}/libc++/v1/ ${libdir}/libc++.modules.json"
 
 BBCLASSEXTEND = "native nativesdk"
-TOOLCHAIN:forcevariable = "clang"
+TOOLCHAIN = "clang"
+# Overrides defaults from clang.bbclass
+TOOLCHAIN:class-nativesdk = "clang"
+TOOLCHAIN:class-native = "clang"
