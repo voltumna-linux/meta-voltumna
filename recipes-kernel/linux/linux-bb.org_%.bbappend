@@ -13,7 +13,7 @@ SRC_URI:append = " \
 	file://enable_ebpf_xpd.cfg \
 	file://disable_lttng.cfg \
 	file://disable_ipv6.cfg \
-	\
+        \
 	file://serial_console.cfg \
 	file://static_usb_support.cfg \
 	"
@@ -32,11 +32,12 @@ KERNEL_CONFIG_FRAGMENTS:append = " \
 	${WORKDIR}/remove_martian_source_warning.cfg \
 	${WORKDIR}/enable_ebpf_xpd.cfg \
 	${WORKDIR}/disable_lttng.cfg \
+	${WORKDIR}/disable_ipv6.cfg \
 	${WORKDIR}/serial_console.cfg \
 	${WORKDIR}/static_usb_support.cfg \
 	"
 
 KERNEL_FEATURES:remove = " features/security/security.scc"
 
-RDEPENDS:${KERNEL_PACKAGE_NAME}-base:remove:ti33x = " prueth-fw pruhsr-fw pruprp-fw"
+RDEPENDS:${KERNEL_PACKAGE_NAME}-base:remove:ti33x = "prueth-fw pruhsr-fw pruprp-fw"
 KERNEL_DTBDEST = "${KERNEL_IMAGEDEST}"
