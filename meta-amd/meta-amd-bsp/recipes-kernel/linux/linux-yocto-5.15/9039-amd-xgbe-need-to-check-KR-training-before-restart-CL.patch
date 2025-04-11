@@ -1,0 +1,35 @@
+From c786ba044ac22edc5d8a5446a0d2de5cbf1232bf Mon Sep 17 00:00:00 2001
+From: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Date: Tue, 12 Apr 2022 23:49:16 +0530
+Subject: [PATCH 39/48] amd-xgbe: need to check KR training before restart CL72
+
+Fixes : https://ontrack-internal.amd.com/browse/EMBDEV-13961
+
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Signed-off-by: rgaridap <Ramesh.Garidapuri@amd.com>
+Change-Id: Ieb300a5c9191625223858d60fa88922565370828
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-mdio.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c b/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
+index 1d165d885e3f..c370a8027ce3 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
+@@ -1357,7 +1357,12 @@ static void xgbe_phy_status(struct xgbe_prv_data *pdata)
+ 	pdata->phy.link = pdata->phy_if.phy_impl.link_status(pdata,
+ 							     &an_restart);
+ 	if (an_restart) {
+-		xgbe_phy_config_aneg(pdata);
++		if(xgbe_cur_mode(pdata) == XGBE_MODE_KR) {
++			pdata->an_result = XGBE_AN_READY;
++			xgbe_check_link_timeout(pdata);
++		} else {
++			xgbe_phy_config_aneg(pdata);
++		}
+ 		goto adjust_link;
+ 	}
+ 
+-- 
+2.27.0
+

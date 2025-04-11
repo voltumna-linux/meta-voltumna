@@ -1,0 +1,74 @@
+From 0c4f9b298814a55cf55a45a5d3c51a0966a8c9a7 Mon Sep 17 00:00:00 2001
+From: Raju Rangoju <Raju.Rangoju@amd.com>
+Date: Wed, 20 Apr 2022 18:09:25 +0530
+Subject: [PATCH 45/48] amd-xgbe: limit the rx-adaptation retries to
+ MAX_RX_ADAPT_RETRIES
+
+Signed-off-by: Raju Rangoju <Raju.Rangoju@amd.com>
+Signed-off-by: rgaridap <Ramesh.Garidapuri@amd.com>
+Change-Id: I7b70cd6e5cf82368daf73076209d97eddd3f9265
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c | 18 +++++++++++++-----
+ drivers/net/ethernet/amd/xgbe/xgbe.h        |  2 +-
+ 2 files changed, 14 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+index f0cb4acbf231..168863a49360 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+@@ -2121,7 +2121,9 @@ static void xgbe_phy_rx_adaptation(struct xgbe_prv_data *pdata)
+ 	*/
+ 
+ 	int reg;
+-	pdata->count = 0;
++	struct xgbe_phy_data *phy_data;
++
++#define MAX_RX_ADAPT_RETRIES	5
+ 
+ rx_adapt_reinit:
+ 	reg = XMDIO_READ_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_LSTS,
+@@ -2166,18 +2168,24 @@ static void xgbe_phy_rx_adaptation(struct xgbe_prv_data *pdata)
+ 				pdata->mode_set = 0;
+ 				return;
+ 			} else {
+-				struct xgbe_phy_data *phy_data = pdata->phy_data;
+-				xgbe_phy_set_mode(pdata, phy_data->cur_mode);
++				goto set_mode;
+ 			}
+ 		} else {
+-			struct xgbe_phy_data *phy_data = pdata->phy_data;
++set_mode:
++			phy_data = pdata->phy_data;
++			if (pdata->rx_adapt_retries++ >= MAX_RX_ADAPT_RETRIES) {
++				pdata->rx_adapt_retries = 0;
++				return;
++			}
+ 			xgbe_phy_set_mode(pdata, phy_data->cur_mode);
+ 		}
+ 	} else {
+ 		netif_dbg(pdata, link, pdata->netdev, "%s either RX_VALID or LF_SIGDET is not set, issuing rrc\n",__func__);
+ 		xgbe_phy_rrc(pdata);
+-		if (pdata->count++ >= 5)
++		if (pdata->rx_adapt_retries++ >= MAX_RX_ADAPT_RETRIES) {
++			pdata->rx_adapt_retries = 0;
+ 			return;
++		}
+ 		goto rx_adapt_reinit;
+ 	}
+ }
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe.h b/drivers/net/ethernet/amd/xgbe/xgbe.h
+index 1ee48f3b9df5..b0e6a837d704 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe.h
++++ b/drivers/net/ethernet/amd/xgbe/xgbe.h
+@@ -1286,7 +1286,7 @@ struct xgbe_prv_data {
+ 	bool debugfs_an_cdr_workaround;
+ 	bool debugfs_an_cdr_track_early;
+ 	bool en_rx_adap;
+-	int count;
++	int rx_adapt_retries;
+ 	bool rx_adapt_done;
+ 	bool mode_set;
+ };
+-- 
+2.27.0
+

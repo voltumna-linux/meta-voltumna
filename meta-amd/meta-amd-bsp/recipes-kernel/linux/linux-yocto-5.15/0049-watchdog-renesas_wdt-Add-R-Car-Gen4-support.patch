@@ -1,0 +1,37 @@
+From 9ac1e470fb8301d9ea2c609f974a525485464961 Mon Sep 17 00:00:00 2001
+From: Thanh Quan <thanh.quan.xn@renesas.com>
+Date: Tue, 18 Jan 2022 18:09:03 +0100
+Subject: [PATCH 49/86] watchdog: renesas_wdt: Add R-Car Gen4 support
+
+commit 823a20e3c78be40a2bc88a5727a9c32ad6bb0b99 upstream
+
+Add the compatible string for the R-Car Gen4 family.
+No further driver changes are needed.
+
+Signed-off-by: Thanh Quan <thanh.quan.xn@renesas.com>
+Signed-off-by: Geert Uytterhoeven <geert+renesas@glider.be>
+Reviewed-by: Wolfram Sang <wsa+renesas@sang-engineering.com>
+Reviewed-by: Guenter Roeck <linux@roeck-us.net>
+Link: https://lore.kernel.org/r/cc395105e1d34aab2c076d368c0737833970b9d2.1642525158.git.geert+renesas@glider.be
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+Signed-off-by: Wim Van Sebroeck <wim@linux-watchdog.org>
+Signed-off-by: Zhaolong Zhang <zhaolong.zhang@windriver.com>
+---
+ drivers/watchdog/renesas_wdt.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/watchdog/renesas_wdt.c b/drivers/watchdog/renesas_wdt.c
+index 5791198960e6..41d58ea5eb2f 100644
+--- a/drivers/watchdog/renesas_wdt.c
++++ b/drivers/watchdog/renesas_wdt.c
+@@ -327,6 +327,7 @@ static SIMPLE_DEV_PM_OPS(rwdt_pm_ops, rwdt_suspend, rwdt_resume);
+ static const struct of_device_id rwdt_ids[] = {
+ 	{ .compatible = "renesas,rcar-gen2-wdt", },
+ 	{ .compatible = "renesas,rcar-gen3-wdt", },
++	{ .compatible = "renesas,rcar-gen4-wdt", },
+ 	{ /* sentinel */ }
+ };
+ MODULE_DEVICE_TABLE(of, rwdt_ids);
+-- 
+2.37.3
+
