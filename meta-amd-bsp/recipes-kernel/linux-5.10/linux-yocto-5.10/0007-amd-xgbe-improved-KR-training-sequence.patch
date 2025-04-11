@@ -1,0 +1,286 @@
+From 1d9082fe8167fe3d2c9db39a22a727b99496d172 Mon Sep 17 00:00:00 2001
+From: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Date: Sat, 9 Jan 2021 12:26:09 +0530
+Subject: [PATCH 07/10] amd-xgbe: improved KR training sequence
+
+amd-xgbe driver handles KR training sequence directly by
+programming the h/w IP registers. This causes KR training
+failure if the h/w blocks are not operated correctly or they are
+not in sync. The new sequence increase the stability of AN process
+in KR mode by making sure that the h/w blocks are in expected
+state when the AN is in progress.
+
+This patch fix the problem of long linkup time due to repeated KR failure
+observed in AMD platforms.
+
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Signed-off-by: Rahul Kumar <rahul.kumar1@amd.com>
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-common.h |  8 +++
+ drivers/net/ethernet/amd/xgbe/xgbe-mdio.c   | 44 ++++++++++++++--
+ drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c | 56 ++++++++++++++-------
+ drivers/net/ethernet/amd/xgbe/xgbe.h        |  5 ++
+ 4 files changed, 92 insertions(+), 21 deletions(-)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-common.h b/drivers/net/ethernet/amd/xgbe/xgbe-common.h
+index b2cd3bdba9f8..ae1d553962dd 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-common.h
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-common.h
+@@ -1279,6 +1279,10 @@
+ #define MDIO_PMA_10GBR_FECCTRL		0x00ab
+ #endif
+ 
++#ifndef MDIO_PMA_RX_CTRL0
++#define MDIO_PMA_RX_CTRL0              0x8050
++#endif
++
+ #ifndef MDIO_PMA_RX_CTRL1
+ #define MDIO_PMA_RX_CTRL1		0x8051
+ #endif
+@@ -1327,6 +1331,10 @@
+ #define MDIO_VEND2_AN_STAT		0x8002
+ #endif
+ 
++#ifndef MDIO_PMA_RX_EQ_CTRL
++#define MDIO_PMA_RX_EQ_CTRL            0x8009
++#endif
++
+ #ifndef MDIO_VEND2_PMA_CDR_CONTROL
+ #define MDIO_VEND2_PMA_CDR_CONTROL	0x8056
+ #endif
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c b/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
+index 91397cf3c5ab..f4359407269a 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
+@@ -402,6 +402,16 @@ static void xgbe_an73_set(struct xgbe_prv_data *pdata, bool enable,
+ 		reg |= MDIO_AN_CTRL1_RESTART;
+ 
+ 	XMDIO_WRITE(pdata, MDIO_MMD_AN, MDIO_CTRL1, reg);
++
++	if (xgbe_in_kr_mode(pdata) && (enable || restart)) {
++		reg = XMDIO_READ(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL);
++		reg |= XGBE_KR_TRAINING_ENABLE;
++		reg |= XGBE_KR_TRAINING_START;
++		XMDIO_WRITE(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL, reg);
++
++		XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_EQ_CTRL,
++				 BIT(15), BIT(15)); /* Disable RX Adapter */
++	}
+ }
+ 
+ static void xgbe_an73_restart(struct xgbe_prv_data *pdata)
+@@ -409,7 +419,7 @@ static void xgbe_an73_restart(struct xgbe_prv_data *pdata)
+ 	xgbe_an73_enable_interrupts(pdata);
+ 	xgbe_an73_set(pdata, true, true);
+ 
+-	netif_dbg(pdata, link, pdata->netdev, "CL73 AN enabled/restarted\n");
++	netif_dbg(pdata, link, pdata->netdev, "CL73 AN enabled/restarted, CL72 started\n");
+ }
+ 
+ static void xgbe_an73_disable(struct xgbe_prv_data *pdata)
+@@ -489,20 +499,40 @@ static enum xgbe_an xgbe_an73_tx_training(struct xgbe_prv_data *pdata,
+ 	XMDIO_WRITE(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_FECCTRL, reg);
+ 
+ 	/* Start KR training */
++	if (!pdata->phy_if.phy_impl.kr_training_cdroff(pdata))
++		netif_dbg(pdata, link, pdata->netdev, "setting phy_data->phy_cdr_notrack\n");
++
++	pdata->cdr_delay_required = 1;
++
+ 	if (pdata->phy_if.phy_impl.kr_training_pre)
+ 		pdata->phy_if.phy_impl.kr_training_pre(pdata);
+ 
+ 	reg = XMDIO_READ(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL);
+-	reg |= XGBE_KR_TRAINING_ENABLE;
+ 	reg |= XGBE_KR_TRAINING_START;
+ 	XMDIO_WRITE(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL, reg);
+ 
++	pdata->kr_done = 1;
++
+ 	netif_dbg(pdata, link, pdata->netdev,
+ 		  "KR training initiated\n");
+ 
++	/* set RX_EQ_MGMT_MODE to disable RX Adapt Requests */
++	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_EQ_CTRL, BIT(15), BIT(15));
++	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_VEND2_PMA_CDR_CONTROL,
++			 XGBE_PMA_CDR_TRACK_EN_MASK,
++			 XGBE_PMA_CDR_TRACK_EN_OFF);
++	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_CTRL0, BIT(8), 0);
+ 	if (pdata->phy_if.phy_impl.kr_training_post)
+ 		pdata->phy_if.phy_impl.kr_training_post(pdata);
+ 
++	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_CTRL0, BIT(8), BIT(8));
++	pdata->cdr_delay_required = 0;
++	udelay(1);
++	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_EQ_CTRL,
++			 BIT(15), 0);
++	if (pdata->phy_if.phy_impl.update_cdr_delay)
++		pdata->phy_if.phy_impl.update_cdr_delay(pdata);
++
+ 	return XGBE_AN_PAGE_RECEIVED;
+ }
+ 
+@@ -897,8 +927,6 @@ static void xgbe_an73_state_machine(struct xgbe_prv_data *pdata)
+ 		pdata->kx_state = XGBE_RX_BPA;
+ 		pdata->an_start = 0;
+ 
+-		if (pdata->phy_if.phy_impl.an_post)
+-			pdata->phy_if.phy_impl.an_post(pdata);
+ 
+ 		netif_dbg(pdata, link, pdata->netdev, "CL73 AN result: %s\n",
+ 			  xgbe_state_as_string(pdata->an_result));
+@@ -1243,6 +1271,9 @@ static int __xgbe_phy_config_aneg(struct xgbe_prv_data *pdata, bool set_mode)
+ 	/* Re-enable auto-negotiation interrupt */
+ 	enable_irq(pdata->an_irq);
+ 
++	if (pdata->phy_if.phy_impl.an_post)
++		pdata->phy_if.phy_impl.an_post(pdata);
++
+ 	xgbe_an_init(pdata);
+ 	xgbe_an_restart(pdata);
+ 
+@@ -1360,6 +1391,10 @@ static void xgbe_phy_status(struct xgbe_prv_data *pdata)
+ 			clear_bit(XGBE_LINK_INIT, &pdata->dev_state);
+ 
+ 		netif_carrier_on(pdata->netdev);
++
++		if (link_aneg && pdata->kr_done)
++			pdata->phy_if.phy_impl.reset_cdr_delay(pdata);
++
+ 	} else {
+ 		if (test_bit(XGBE_LINK_INIT, &pdata->dev_state)) {
+ 			xgbe_check_link_timeout(pdata);
+@@ -1454,6 +1489,7 @@ static int xgbe_phy_start(struct xgbe_prv_data *pdata)
+ 
+ 	/* Indicate the PHY is up and running */
+ 	pdata->phy_started = 1;
++	pdata->an_result = XGBE_AN_NO_LINK;
+ 
+ 	xgbe_an_init(pdata);
+ 	xgbe_an_enable_interrupts(pdata);
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+index 5307f7e6e64b..88663acae8b3 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+@@ -2949,13 +2949,16 @@ static void xgbe_phy_cdr_track(struct xgbe_prv_data *pdata)
+ 	if (!phy_data->phy_cdr_notrack)
+ 		return;
+ 
+-	usleep_range(phy_data->phy_cdr_delay,
+-		     phy_data->phy_cdr_delay + 500);
++	/* when there is no link, no need to use the cdr delay, when ever a page is */
++	/* received , pdata->cdr_delay_required is set to 1 */
++	if (pdata->cdr_delay_required) {
++		usleep_range(phy_data->phy_cdr_delay,
++			     phy_data->phy_cdr_delay + 500);
++	}
+ 
+ 	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_VEND2_PMA_CDR_CONTROL,
+ 			 XGBE_PMA_CDR_TRACK_EN_MASK,
+ 			 XGBE_PMA_CDR_TRACK_EN_ON);
+-
+ 	phy_data->phy_cdr_notrack = 0;
+ }
+ 
+@@ -2972,9 +2975,7 @@ static void xgbe_phy_cdr_notrack(struct xgbe_prv_data *pdata)
+ 	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_VEND2_PMA_CDR_CONTROL,
+ 			 XGBE_PMA_CDR_TRACK_EN_MASK,
+ 			 XGBE_PMA_CDR_TRACK_EN_OFF);
+-
+ 	xgbe_phy_rrc(pdata);
+-
+ 	phy_data->phy_cdr_notrack = 1;
+ }
+ 
+@@ -2984,6 +2985,36 @@ static void xgbe_phy_kr_training_post(struct xgbe_prv_data *pdata)
+ 		xgbe_phy_cdr_track(pdata);
+ }
+ 
++static void xgbe_phy_reset_cdr_delay(struct xgbe_prv_data *pdata)
++{
++	struct xgbe_phy_data *phy_data = pdata->phy_data;
++
++	phy_data->phy_cdr_delay = XGBE_CDR_DELAY_INIT;
++	pdata->kr_done = 0;
++}
++
++static void xgbe_phy_update_cdr_delay(struct xgbe_prv_data *pdata)
++{
++	struct xgbe_phy_data *phy_data = pdata->phy_data;
++
++	if (phy_data->phy_cdr_delay < XGBE_CDR_DELAY_MAX)
++		phy_data->phy_cdr_delay += XGBE_CDR_DELAY_INC;
++	else
++		phy_data->phy_cdr_delay = XGBE_CDR_DELAY_INIT;
++}
++
++static int xgbe_phy_kr_training_cdroff(struct xgbe_prv_data *pdata)
++{
++	int ret;
++	struct xgbe_phy_data *phy_data = pdata->phy_data;
++
++	ret = phy_data->phy_cdr_notrack;
++	if (!phy_data->phy_cdr_notrack)
++		phy_data->phy_cdr_notrack = 1;
++
++	return ret;
++}
++
+ static void xgbe_phy_kr_training_pre(struct xgbe_prv_data *pdata)
+ {
+ 	if (pdata->debugfs_an_cdr_track_early)
+@@ -3001,18 +3032,6 @@ static void xgbe_phy_an_post(struct xgbe_prv_data *pdata)
+ 			break;
+ 
+ 		xgbe_phy_cdr_track(pdata);
+-
+-		switch (pdata->an_result) {
+-		case XGBE_AN_READY:
+-		case XGBE_AN_COMPLETE:
+-			break;
+-		default:
+-			if (phy_data->phy_cdr_delay < XGBE_CDR_DELAY_MAX)
+-				phy_data->phy_cdr_delay += XGBE_CDR_DELAY_INC;
+-			else
+-				phy_data->phy_cdr_delay = XGBE_CDR_DELAY_INIT;
+-			break;
+-		}
+ 		break;
+ 	default:
+ 		break;
+@@ -3451,6 +3470,9 @@ void xgbe_init_function_ptrs_phy_v2(struct xgbe_phy_if *phy_if)
+ 
+ 	phy_impl->kr_training_pre	= xgbe_phy_kr_training_pre;
+ 	phy_impl->kr_training_post	= xgbe_phy_kr_training_post;
++	phy_impl->kr_training_cdroff	= xgbe_phy_kr_training_cdroff;
++	phy_impl->reset_cdr_delay	= xgbe_phy_reset_cdr_delay;
++	phy_impl->update_cdr_delay	= xgbe_phy_update_cdr_delay;
+ 
+ 	phy_impl->module_info		= xgbe_phy_module_info;
+ 	phy_impl->module_eeprom		= xgbe_phy_module_eeprom;
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe.h b/drivers/net/ethernet/amd/xgbe/xgbe.h
+index ba8321ec1ee7..c99b34c41f71 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe.h
++++ b/drivers/net/ethernet/amd/xgbe/xgbe.h
+@@ -888,6 +888,9 @@ struct xgbe_phy_impl_if {
+ 	/* Pre/Post KR training enablement support */
+ 	void (*kr_training_pre)(struct xgbe_prv_data *);
+ 	void (*kr_training_post)(struct xgbe_prv_data *);
++	int (*kr_training_cdroff)(struct xgbe_prv_data *pdata);
++	void (*reset_cdr_delay)(struct xgbe_prv_data *pdata);
++	void (*update_cdr_delay)(struct xgbe_prv_data *pdata);
+ 
+ 	/* SFP module related info */
+ 	int (*module_info)(struct xgbe_prv_data *pdata,
+@@ -1254,6 +1257,8 @@ struct xgbe_prv_data {
+ 	unsigned int fec_ability;
+ 	unsigned long an_start;
+ 	enum xgbe_an_mode an_mode;
++	unsigned int kr_done;
++	unsigned int cdr_delay_required;
+ 
+ 	/* I2C support */
+ 	struct xgbe_i2c i2c;
+-- 
+2.17.1
+
