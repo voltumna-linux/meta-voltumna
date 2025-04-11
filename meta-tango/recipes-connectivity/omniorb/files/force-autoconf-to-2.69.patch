@@ -1,12 +1,29 @@
-diff -ruNp omniORB-4.3.2.orig/configure.ac omniORB-4.3.2/configure.ac
---- omniORB-4.3.2.orig/configure.ac	2025-01-22 12:12:44.326841696 +0100
-+++ omniORB-4.3.2/configure.ac	2025-01-22 12:10:41.571519703 +0100
-@@ -1,7 +1,7 @@
+From 73a6c7cbdead9865e60efa913e5632bdfc543c69 Mon Sep 17 00:00:00 2001
+From: OpenEmbedded <oe.patch@oe>
+Date: Fri, 11 Apr 2025 07:21:17 +0000
+Subject: [PATCH] %% original patch: force-autoconf-to-2.69.patch
+
+---
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configure.ac b/configure.ac
+index f27cd1f..9969978 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1,14 +1,14 @@
  dnl -*- M4 -*-
- AC_INIT([omniORB],[4.3.2],[bugs@omniorb-support.com])
+ AC_INIT([omniORB],[4.3.3],[bugs@omniorb-support.com])
  
 -AC_PREREQ([2.71])
 +AC_PREREQ([2.69])
  AC_CONFIG_SRCDIR(bin/scripts/omkdirhier)
  AC_CONFIG_AUX_DIR(bin/scripts)
  
+ AC_CANONICAL_BUILD
+ AC_CANONICAL_HOST
+ 
+ AC_CONFIG_HEADERS(include/omniORB4/acconfig_pre.h)
+ 
+ dnl to prevent error from autoreconf while crosscompiling
+ m4_pattern_allow(PKG_CONFIG_LIBDIR)

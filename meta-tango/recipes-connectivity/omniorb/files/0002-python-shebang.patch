@@ -1,20 +1,44 @@
-Index: omniORB/src/tool/omniidl/python2/scripts/omniidl.in
-===================================================================
---- omniORB.orig/src/tool/omniidl/python2/scripts/omniidl.in
-+++ omniORB/src/tool/omniidl/python2/scripts/omniidl.in
-@@ -1,4 +1,4 @@
+From 881c3c4938c2b32f7f71d5de0b591a5ac296ebd6 Mon Sep 17 00:00:00 2001
+From: OpenEmbedded <oe.patch@oe>
+Date: Fri, 11 Apr 2025 07:21:17 +0000
+Subject: [PATCH] %% original patch: 0002-python-shebang.patch
+
+---
+ src/tool/omniidl/python2/scripts/omniidl.in | 2 +-
+ src/tool/omniidl/python3/scripts/omniidl.in | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/tool/omniidl/python2/scripts/omniidl.in b/src/tool/omniidl/python2/scripts/omniidl.in
+index c5bb6cf..0541984 100644
+--- a/src/tool/omniidl/python2/scripts/omniidl.in
++++ b/src/tool/omniidl/python2/scripts/omniidl.in
+@@ -1,11 +1,11 @@
 -#!@PYTHON@
 +#!/usr/bin/env python
  # -*- python -*-
  #                           Package   : omniidl
  # omniidl.in                Created on: 1999/10/29
-Index: omniORB/src/tool/omniidl/python3/scripts/omniidl.in
-===================================================================
---- omniORB.orig/src/tool/omniidl/python3/scripts/omniidl.in
-+++ omniORB/src/tool/omniidl/python3/scripts/omniidl.in
-@@ -1,4 +1,4 @@
+ #			    Author    : Duncan Grisby (dpg1)
+ #
+ #    Copyright (C) 2014-2023 Apasphere Ltd
+ #    Copyright (C) 1999 AT&T Laboratories Cambridge
+ #
+ #  This file is part of omniidl.
+ #
+diff --git a/src/tool/omniidl/python3/scripts/omniidl.in b/src/tool/omniidl/python3/scripts/omniidl.in
+index 46fe396..3a8c414 100644
+--- a/src/tool/omniidl/python3/scripts/omniidl.in
++++ b/src/tool/omniidl/python3/scripts/omniidl.in
+@@ -1,11 +1,11 @@
 -#!@PYTHON@
 +#!/usr/bin/env python3
  # -*- python -*-
  #                           Package   : omniidl
  # omniidl.in                Created on: 1999/10/29
+ #			    Author    : Duncan Grisby (dpg1)
+ #
+ #    Copyright (C) 2014-2023 Apasphere Ltd
+ #    Copyright (C) 1999 AT&T Laboratories Cambridge
+ #
+ #  This file is part of omniidl.
+ #
