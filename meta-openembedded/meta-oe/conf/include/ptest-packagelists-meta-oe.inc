@@ -11,6 +11,7 @@ PTESTS_FAST_META_OE = "\
     cmocka \
     cunit \
     duktape \
+    fuse3 \
     function2 \
     fwupd \
     gcab \
@@ -18,26 +19,29 @@ PTESTS_FAST_META_OE = "\
     jq \
     leveldb \
     libcereal \
-    libee \
     libgpiod \
     libio-pty-perl \
     libmanette \
     librelp \
     libssh \
     libtinyxml2 \
+    libtoml11 \
     libxml++-5.0 \
     libyang \
     lmdb \
     microsoft-gsl \
     minicoredumper \
+    minizip-ng \
     neon \
     nlohmann-json \
     nodejs \
     onig \
     oprofile \
+    pegtl \
     protobuf \
     pv \
     sdbus-c++ \
+    tomlplusplus \
     uthash \
     xmlsec1 \
     zeromq \
@@ -55,6 +59,7 @@ PTESTS_SLOW_META_OE = "\
     fftw \
     libusb-compat \
     rsyslog \
+    rocksdb \
     mariadb \
     poco \
     re2 \
@@ -63,7 +68,7 @@ PTESTS_SLOW_META_OE:append:x86 = " kernel-selftest"
 PTESTS_SLOW_META_OE:append:x86-64 = " kernel-selftest"
 PTESTS_SLOW_META_OE:remove:libc-musl = "kernel-selftest"
 
-PTESTS_PROBLEMS_META_OE ="\
+PTESTS_PROBLEMS_META_OE = "\
     keyutils \
     libdbi-perl \
     libjcat \
