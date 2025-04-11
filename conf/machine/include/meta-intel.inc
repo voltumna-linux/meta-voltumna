@@ -7,9 +7,10 @@
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-intel"
 PREFERRED_PROVIDER_virtual/kernel:poky-tiny ?= "linux-intel"
 
-PREFERRED_VERSION_linux-intel ?= "6.6%"
-PREFERRED_VERSION_linux-intel-rt ?= "6.6%"
-PREFERRED_VERSION_linux-intel:poky-altcfg ?= "6.8%"
+PREFERRED_VERSION_linux-intel ?= "6.12%"
+PREFERRED_VERSION_linux-intel-rt ?= "6.12%"
+PREFERRED_VERSION_linux-intel:poky-altcfg ?= "6.12%"
+PREFERRED_VERSION_linux-intel-rt:poky-altcfg ?= "6.12%"
 
 # Need to point to latest version of libva needed for media components
 PREFERRED_PROVIDER_libva = "libva-intel"
@@ -19,10 +20,6 @@ PREFERRED_PROVIDER_nativesdk-libva = "nativesdk-libva-intel"
 PREFERRED_PROVIDER_libva-utils = "libva-intel-utils"
 PREFERRED_PROVIDER_libva-utils-native = "libva-intel-utils-native"
 PREFERRED_PROVIDER_nativesdk-libva-utils = "nativesdk-libva-intel-utils"
-
-LLVM_MAJOR_VERSION = "${@d.getVar('LLVMVERSION').split('.')[0]}"
-PREFERRED_VERSION_opencl-clang ?= "${@bb.utils.contains('LLVM_MAJOR_VERSION', '14', '14.0.0', '15.0.0', d)}"
-PREFERRED_VERSION_opencl-clang-native ?= "${@bb.utils.contains('LLVM_MAJOR_VERSION', '14', '14.0.0', '15.0.0', d)}"
 
 XSERVER_X86_ASPEED_AST = "xf86-video-ast \
            "
