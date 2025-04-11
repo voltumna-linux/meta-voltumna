@@ -153,7 +153,6 @@ def create_filtered_tasklist(d, sdkbasepath, tasklistfile, conf_initpath):
             f.write('SSTATE_MIRRORS:forcevariable = "file://universal/(.*) file://universal-4.9/\\1 file://universal-4.9/(.*) file://universal-4.8/\\1"\n')
             # Ensure TMPDIR is the default so that clean_esdk_builddir() can delete it
             f.write('TMPDIR:forcevariable = "${TOPDIR}/tmp"\n')
-            f.write('TCLIBCAPPEND:forcevariable = ""\n')
             # Drop uninative if the build isn't using it (or else NATIVELSBSTRING will
             # be different and we won't be able to find our native sstate)
             if not bb.data.inherits_class('uninative', d):
@@ -342,7 +341,6 @@ def write_local_conf(d, baseoutpath, derivative, core_meta_subdir, uninative_che
             f.write('\n')
 
             f.write('TMPDIR = "${TOPDIR}/tmp"\n')
-            f.write('TCLIBCAPPEND = ""\n')
             f.write('DL_DIR = "${TOPDIR}/downloads"\n')
 
             if bb.data.inherits_class('uninative', d):
@@ -414,10 +412,6 @@ def write_local_conf(d, baseoutpath, derivative, core_meta_subdir, uninative_che
             dest_stub = "/conf/multiconfig/%s.conf" % (mc,)
             if os.path.exists(builddir + dest_stub):
                 shutil.copyfile(builddir + dest_stub, baseoutpath + dest_stub)
-
-    cachedir = os.path.join(baseoutpath, 'cache')
-    bb.utils.mkdirhier(cachedir)
-    bb.parse.siggen.copy_unitaskhashes(cachedir)
 
     # If PR Service is in use, we need to export this as well
     bb.note('Do we have a pr database?')
@@ -508,10 +502,6 @@ def prepare_locked_cache(d, baseoutpath, derivative, conf_initpath):
         create_filtered_tasklist(d, baseoutpath, tasklistfn, conf_initpath)
     else:
         tasklistfn = None
-
-    cachedir = os.path.join(baseoutpath, 'cache')
-    bb.utils.mkdirhier(cachedir)
-    bb.parse.siggen.copy_unitaskhashes(cachedir)
 
     # Add packagedata if enabled
     if d.getVar('SDK_INCLUDE_PKGDATA') == '1':
@@ -778,7 +768,7 @@ fakeroot python do_populate_sdk_ext() {
 
     # FIXME hopefully we can remove this restriction at some point, but the eSDK
     # can only be built for the primary (default) multiconfig
-    if d.getVar('BB_CURRENT_MC') != 'default':
+    if d.getVar('BB_CURRENT_MC') != '':
         bb.fatal('The extensible SDK can currently only be built for the default multiconfig.  Currently trying to build for %s.' % d.getVar('BB_CURRENT_MC'))
 
     # eSDK dependencies don't use the traditional variables and things don't work properly if they are set
