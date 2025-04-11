@@ -1,0 +1,65 @@
+From 45d48356e552d661885e1c29613891c11cd8ff4a Mon Sep 17 00:00:00 2001
+From: Timothy Redaelli <tredaelli@redhat.com>
+Date: Thu, 24 Oct 2024 11:30:06 +0200
+Subject: net/ionic: fix build with Fedora Rawhide
+
+Currently, a number of integer types are typedef'd to their corresponding
+userspace or RTE values. This can be problematic if these types are
+already defined somewhere else, as it would cause type collisions.
+This patch changes the typedefs to #define macros which are only defined
+if the types are not defined already.
+
+Fixes: 5ef518098ec6 ("net/ionic: register and initialize adapter")
+
+Upstream-Status: Backport [https://git.dpdk.org/dpdk-stable/patch/?id=45d48356e552d661885e1c29613891c11cd8ff4a]
+
+Signed-off-by: Timothy Redaelli <tredaelli@redhat.com>
+Signed-off-by: Xiangyu Chen <xiangyu.chen@windriver.com>
+---
+ drivers/net/ionic/ionic_osdep.h | 30 ++++++++++++++++++++++--------
+ 1 file changed, 22 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/net/ionic/ionic_osdep.h b/drivers/net/ionic/ionic_osdep.h
+index 68f767b920..97188dfd59 100644
+--- a/drivers/net/ionic/ionic_osdep.h
++++ b/drivers/net/ionic/ionic_osdep.h
+@@ -30,14 +30,28 @@
+ 
+ #define __iomem
+ 
+-typedef uint8_t	 u8;
+-typedef uint16_t u16;
+-typedef uint32_t u32;
+-typedef uint64_t u64;
+-
+-typedef uint16_t __le16;
+-typedef uint32_t __le32;
+-typedef uint64_t __le64;
++#ifndef u8
++#define u8 uint8_t
++#endif
++#ifndef u16
++#define u16 uint16_t
++#endif
++#ifndef u32
++#define u32 uint32_t
++#endif
++#ifndef u64
++#define u64 uint64_t
++#endif
++
++#ifndef __le16
++#define __le16 rte_le16_t
++#endif
++#ifndef __le32
++#define __le32 rte_le32_t
++#endif
++#ifndef __le64
++#define __le64 rte_le64_t
++#endif
+ 
+ #define ioread8(reg)		rte_read8(reg)
+ #define ioread32(reg)		rte_read32(rte_le_to_cpu_32(reg))
+-- 
+cgit v1.2.3
+
