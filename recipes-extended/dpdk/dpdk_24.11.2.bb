@@ -4,7 +4,7 @@ SRC_URI += " file://0001-config-meson-get-cpu_instruction_set-from-meson-opti.pa
 
 STABLE = "-stable"
 BRANCH = "24.11"
-SRCREV = "f2eea2f37a82bb73fb01d56350708f7d70e21379"
+SRCREV = "4c5634de9f933555bab9c64a533d3dca999071cd"
 S = "${WORKDIR}/git"
 
 def get_cpu_instruction_set(bb, d):
