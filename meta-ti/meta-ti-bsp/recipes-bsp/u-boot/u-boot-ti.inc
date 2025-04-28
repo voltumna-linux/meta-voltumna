@@ -40,6 +40,10 @@ DEPENDS += "python3-pyelftools-native python3-pyyaml-native python3-jsonschema-n
 DEPENDS:append:k3 = " ti-sci-fw"
 DEPENDS:append:k3r5 = " ti-sci-fw"
 
+# HSM Demo Firmware is only applicable for J721S2 & J784S4 devices
+DEPENDS:append:j721s2 = " ti-hsm-demo-fw"
+DEPENDS:append:j784s4 = " ti-hsm-demo-fw"
+
 DM_FIRMWARE = "ipc_echo_testb_mcu1_0_release_strip.xer5f"
 
 PLAT_SFX = ""
@@ -353,19 +357,9 @@ uboot_deploy:append () {
     fi
 }
 
-do_install:append:am62xx() {
-	install -d ${D}/boot
-	install -m 0644 ${S}/tools/logos/ti_logo_414x97_32bpp.bmp.gz ${D}/boot
-}
-
 do_deploy:append:am62xx() {
 	install -d ${DEPLOYDIR}
 	install -m 0644 ${S}/tools/logos/ti_logo_414x97_32bpp.bmp.gz ${DEPLOYDIR}
-}
-
-do_install:append:am62pxx() {
-	install -d ${D}/boot
-	install -m 0644 ${S}/tools/logos/ti_logo_414x97_32bpp.bmp.gz ${D}/boot
 }
 
 do_deploy:append:am62pxx() {
