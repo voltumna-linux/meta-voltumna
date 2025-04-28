@@ -10,7 +10,7 @@ SRC_URI = " \
 	git://github.com/intel/intel-cmt-cat;protocol=https;branch=master \
 	file://cat-avoid-strip.patch \
 	"
-SRCREV = "cc0e6a6184dbd2849c62b9bf9f60012332335e03"
+SRCREV = "17629d0b726875836af6c7d9cb38b8ed23f32089"
 
 S = "${WORKDIR}/git"
 
