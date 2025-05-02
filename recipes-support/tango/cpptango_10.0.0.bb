@@ -11,7 +11,7 @@ DEFAULT_PREFERENCE = "-1"
 
 SRCREV = "e9e847bd56ff93057f7f99eb0675809c0063cadc"
 SRC_URI = " \
-	git://gitlab.com/tango-controls/cppTango.git;protocol=https;branch=main \
+	gitsm://gitlab.com/tango-controls/cppTango.git;protocol=https;branch=main \
 	"
 
 S = "${WORKDIR}/git"
