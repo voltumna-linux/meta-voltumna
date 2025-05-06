@@ -1,0 +1,56 @@
+From 0f2abc11ef7798e873842cc0bf2b29b41b774616 Mon Sep 17 00:00:00 2001
+From: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Date: Sun, 1 Sep 2024 00:15:11 +0530
+Subject: [PATCH 04/13] spi: spi_amd: Replace ioread/iowrite calls
+
+All `ioread*` and `iowrite*` functions are better suited for architecture
+independent code to ensure portability across different architectures.
+Since AMD SoCs support only the x86 architecture, replacing all `ioread*`
+and `iowrite*` calls with `read*` and `write*` calls can reduce the
+overhead of ensuring portability and increase the speed of I/O operations.
+
+Co-developed-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Signed-off-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Signed-off-by: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Change-Id: Ie99091f61cdb53ea30b44eb5520e3e727ff130ff
+---
+ drivers/spi/spi-amd.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/spi/spi-amd.c b/drivers/spi/spi-amd.c
+index 54b5a4d18691..11ae910bb420 100644
+--- a/drivers/spi/spi-amd.c
++++ b/drivers/spi/spi-amd.c
+@@ -99,12 +99,12 @@ struct amd_spi {
+ 
+ static inline u8 amd_spi_readreg8(struct amd_spi *amd_spi, int idx)
+ {
+-	return ioread8((u8 __iomem *)amd_spi->io_remap_addr + idx);
++	return readb((u8 __iomem *)amd_spi->io_remap_addr + idx);
+ }
+ 
+ static inline void amd_spi_writereg8(struct amd_spi *amd_spi, int idx, u8 val)
+ {
+-	iowrite8(val, ((u8 __iomem *)amd_spi->io_remap_addr + idx));
++	writeb(val, ((u8 __iomem *)amd_spi->io_remap_addr + idx));
+ }
+ 
+ static void amd_spi_setclear_reg8(struct amd_spi *amd_spi, int idx, u8 set, u8 clear)
+@@ -117,12 +117,12 @@ static void amd_spi_setclear_reg8(struct amd_spi *amd_spi, int idx, u8 set, u8 c
+ 
+ static inline u32 amd_spi_readreg32(struct amd_spi *amd_spi, int idx)
+ {
+-	return ioread32((u8 __iomem *)amd_spi->io_remap_addr + idx);
++	return readl((u8 __iomem *)amd_spi->io_remap_addr + idx);
+ }
+ 
+ static inline void amd_spi_writereg32(struct amd_spi *amd_spi, int idx, u32 val)
+ {
+-	iowrite32(val, ((u8 __iomem *)amd_spi->io_remap_addr + idx));
++	writel(val, ((u8 __iomem *)amd_spi->io_remap_addr + idx));
+ }
+ 
+ static inline void amd_spi_setclear_reg32(struct amd_spi *amd_spi, int idx, u32 set, u32 clear)
+-- 
+2.17.1
+
