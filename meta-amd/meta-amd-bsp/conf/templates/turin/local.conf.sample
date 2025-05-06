@@ -52,10 +52,11 @@ EXTRA_IMAGE_FEATURES ?= "debug-tweaks"
 
 PREFERRED_VERSION_linux-yocto = "6.6"
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-yocto"
+IMAGE_FEATURES:remove=" x11-base"
 
 AMD_ENABLE_XEN = "0"
 
-IMAGE_INSTALL:append = " elfutils usbredir libxext  libaio iscsi-initiator-utils spice-protocol spice pixman libxslt dmidecode stressapptest i2c-tools"
+IMAGE_INSTALL:append = " elfutils usbredir libxext  libaio iscsi-initiator-utils spice-protocol spice pixman libxslt dmidecode stressapptest i2c-tools sudo"
 
 # Kernel module auto-loading configuration
 KERNEL_MODULE_AUTOLOAD += "nvmem_core nvme nvme-common nvmem cxl cxl_mem cxl_port cxl_core  pci-cxl cxl_acpi cxl_pmem cxl_pc ntb_netdev "
