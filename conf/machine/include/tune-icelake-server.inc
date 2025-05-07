@@ -16,7 +16,7 @@ require conf/machine/include/tune-corei7.inc
 
 # Extra tune features
 TUNEVALID[icelake-server] = "Enable icelake-server pecific processor optimizations"
-TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'icelake-server', ' -march=icelake-server ${ICELAKESERVER_TUNE} -mfpmath=sse', '', d)}"
+TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'icelake-server', ' -march=icelake-server ${ICELAKESERVER_TUNE}', '', d)}"
 
 # Extra tune selections
 
@@ -27,7 +27,7 @@ TUNE_PKGARCH_tune-icelake-server-64 = "icelake-server-64"
 PACKAGE_EXTRA_ARCHS_tune-icelake-server-64 = "${PACKAGE_EXTRA_ARCHS_tune-core2-64} icelake-server-64"
 QEMU_EXTRAOPTIONS_icelake-server-64 = " -cpu Icelake-Server"
 
-ICELAKESERVER_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' ${QEMU_UNAVAILABLE_ISA}', '-mavx2', d)}"
+ICELAKESERVER_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' ${QEMU_UNAVAILABLE_ISA}', '', d)}"
 
 QEMU_UNAVAILABLE_ISA = " \
 -mno-avx \

@@ -13,7 +13,7 @@ require conf/machine/include/tune-core2.inc
 
 # Extra tune features
 TUNEVALID[nehalem] = "Enable nehalem specific processor optimizations"
-TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'nehalem', ' -march=nehalem -mfpmath=sse -msse4.2', '', d)}"
+TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'nehalem', ' -march=nehalem', '', d)}"
 
 # Extra tune selections
 AVAILTUNES += "nehalem-32"

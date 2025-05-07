@@ -14,7 +14,7 @@ require conf/machine/include/tune-corei7.inc
 
 # Extra tune features
 TUNEVALID[skylake] = "Enable skylake specific processor optimizations"
-TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'skylake', ' -march=skylake ${SKYLAKE_TUNE} -mfpmath=sse', '', d)}"
+TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'skylake', ' -march=skylake ${SKYLAKE_TUNE}', '', d)}"
 
 # Extra tune selections
 
@@ -26,7 +26,7 @@ PACKAGE_EXTRA_ARCHS_tune-skylake-64 = "${PACKAGE_EXTRA_ARCHS_tune-core2-64} skyl
 QEMU_EXTRAOPTIONS_skylake-64 = " -cpu Skylake-Client"
 
 # If qemu-usermode is enabled, we have to disable avx2 ISA extensions, but we can keep mtune as skylake vs generic
-SKYLAKE_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' -mtune=skylake ${QEMU_UNAVAILABLE_ISA}', '-mtune=generic -mavx2', d)}"
+SKYLAKE_TUNE .= "${@bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', ' ${QEMU_UNAVAILABLE_ISA}', '', d)}"
 
 QEMU_UNAVAILABLE_ISA = " \
 -mno-avx \
