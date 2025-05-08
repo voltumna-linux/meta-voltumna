@@ -316,7 +316,6 @@ EOF
 # $4 ... ramdisk ID
 # $5 ... config ID
 # $6 ... tee ID/name
-# $7 ... default DTB ID
 fitimage_emit_section_config() {
 
 	conf_csum=${FITIMAGE_HASH_ALGO}
@@ -371,16 +370,6 @@ fitimage_emit_section_config() {
 		final_conf_desc="${conf_desc}"
 	fi
 
-	default_dtb_count=${7}
-	if [ "x${FITIMAGE_CONF_BY_NAME}" = "x1" ] ; then
-		default_conf_name="${FIT_CONF_DEFAULT_DTB}"
-	else
-		default_conf_name="conf-${default_dtb_count}"
-	fi
-	cat << EOF >> ${1}
-        default = "${default_conf_name}";
-EOF
-
 	dtbcount=1
 	for DTB in ${KERNEL_DEVICETREE}; do
 		DTB=$(basename "${DTB}")
@@ -395,6 +384,12 @@ EOF
 			fdt_line="fdt = \"${DTB}\";"
 		else
 			fdt_line="fdt = \"fdt-${dtbcount}\";"
+		fi
+
+		if [ "x${dtbcount}" = "x1" ]; then
+			cat << EOF >> ${1}
+                default = "${conf_name}";
+EOF
 		fi
 
 # Generate a single configuration section
@@ -529,7 +524,6 @@ fitimage_assemble() {
 	ramdiskcount=${3}
 	setupcount=""
 	teecount=1
-	default_dtb_count=1
 	rm -f ${1} arch/${ARCH}/boot/${2}
 
 	fitimage_emit_fit_header ${1}
@@ -550,9 +544,6 @@ fitimage_assemble() {
 		dtbcount=1
 		dtboaddress="${UBOOT_DTBO_LOADADDRESS}"
 		for DTB in ${KERNEL_DEVICETREE}; do
-			if [ "${DTB}" = "${FIT_CONF_DEFAULT_DTB}" ]; then
-				default_dtb_count=${dtbcount}
-			fi
 			if echo ${DTB} | grep -q '/dts/'; then
 				bbwarn "${DTB} contains the full path to the the dts file, but only the dtb name should be used."
 				DTB=`basename ${DTB} | sed 's,\.dts$,.dtb,g'`
@@ -669,7 +660,7 @@ fitimage_assemble() {
 	else
 		teeref="${teecount}"
 	fi
-	fitimage_emit_section_config ${1} "${kernelcount}" "${dtbref}" "${ramdiskcount}" "${setupcount}" "${teeref}" "${default_dtb_count}"
+	fitimage_emit_section_config ${1} "${kernelcount}" "${dtbref}" "${ramdiskcount}" "${setupcount}" "${teeref}"
 
 	fitimage_emit_section_maint ${1} sectend
 

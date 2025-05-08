@@ -25,34 +25,33 @@ index 9e084eb..4191be8 100644
 +++ b/debugss_kmodule.c
 @@ -27,6 +27,7 @@
  #include "debugss_kmodule.h"
- 
+
  #include <linux/mod_devicetable.h>
 +#include <linux/version.h>
- 
+
  /* un-comment the line below to enable printing for kernel debug messages */
  //#define DEBUGSS_DRV_DEBUG
 @@ -1132,7 +1133,11 @@ static int dra7xx_debugss_probe(struct platform_device *pdev)
- 	return retval;
+	return retval;
  }
- 
+
 +#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 11, 0))
  static int dra7xx_debugss_remove(struct platform_device *pdev)
 +#else
 +static void dra7xx_debugss_remove(struct platform_device *pdev)
 +#endif
  {
- 	__D("%s:\n",__FUNCTION__);
- 
+	__D("%s:\n",__FUNCTION__);
+
 @@ -1145,7 +1150,9 @@ static int dra7xx_debugss_remove(struct platform_device *pdev)
- 	/* Un-prepare debugSS clock */
- 	clk_disable_unprepare(sys_clk_in1);
- 
+	/* Un-prepare debugSS clock */
+	clk_disable_unprepare(sys_clk_in1);
+
 +#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 11, 0))
- 	return 0;
+	return 0;
 +#endif
  }
- 
- static const struct of_device_id dra7xx_debugss_of_match[] = {
--- 
-2.17.1
 
+ static const struct of_device_id dra7xx_debugss_of_match[] = {
+--
+2.17.1
