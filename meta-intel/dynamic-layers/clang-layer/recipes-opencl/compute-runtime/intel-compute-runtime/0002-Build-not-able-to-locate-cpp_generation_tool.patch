@@ -1,0 +1,41 @@
+From 8c330d0cb5167612296801f0202b0de35e9ca88d Mon Sep 17 00:00:00 2001
+From: Dongwon Kim <dongwon.kim@intel.com>
+Date: Sat, 21 Aug 2021 16:09:39 -0700
+Subject: [PATCH 2/5] Build not able to locate cpp_generation_tool.
+
+Upstream-Status: Inappropriate [oe specific]
+
+Signed-off-by: Naveen Saini <naveen.kumar.saini@intel.com>
+Signed-off-by: Dongwon Kim <dongwon.kim@intel.com>
+---
+ shared/source/built_ins/kernels/CMakeLists.txt | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+Index: git/shared/source/built_ins/kernels/CMakeLists.txt
+===================================================================
+--- git.orig/shared/source/built_ins/kernels/CMakeLists.txt
++++ git/shared/source/built_ins/kernels/CMakeLists.txt
+@@ -122,9 +122,9 @@ function(compile_builtin core_type platf
+       endif()
+       add_custom_command(
+                          OUTPUT ${OUTPUT_FILE_CPP}
+-                         COMMAND $<TARGET_FILE:cpp_generate_tool> --file ${BINARY_OUTPUT}.bin --output ${OUTPUT_FILE_CPP} --array ${mode}_${BASENAME} --device ${RELEASE_FILENAME}
++                         COMMAND cpp_generate_tool --file ${BINARY_OUTPUT}.bin --output ${OUTPUT_FILE_CPP} --array ${mode}_${BASENAME} --device ${RELEASE_FILENAME}
+                          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+-                         DEPENDS ${OUTPUT_FILES_BINARIES} $<TARGET_FILE:cpp_generate_tool>
++                         DEPENDS ${OUTPUT_FILES_BINARIES} cpp_generate_tool
+       )
+       list(APPEND BUILTINS_COMMANDS "${OUTPUT_FILE_CPP}")
+     else()
+@@ -176,9 +176,9 @@ function(generate_cpp_spirv builtin)
+     endif()
+     add_custom_command(
+                        OUTPUT ${OUTPUT_FILE_CPP}
+-                       COMMAND $<TARGET_FILE:cpp_generate_tool> --file ${GENERATED_SPV_INPUT} --output ${OUTPUT_FILE_CPP} --array ${BASENAME}
++                       COMMAND cpp_generate_tool --file ${GENERATED_SPV_INPUT} --output ${OUTPUT_FILE_CPP} --array ${BASENAME}
+                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+-                       DEPENDS ${GENERATED_SPV_INPUT} $<TARGET_FILE:cpp_generate_tool>
++                       DEPENDS ${GENERATED_SPV_INPUT} cpp_generate_tool
+     )
+     set(OUTPUT_LIST_CPP_FILES ${OUTPUT_LIST_CPP_FILES} ${OUTPUT_FILE_CPP} PARENT_SCOPE)
+   else()
