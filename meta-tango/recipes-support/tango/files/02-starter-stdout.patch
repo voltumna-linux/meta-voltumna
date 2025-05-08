@@ -1,3 +1,5 @@
+Upstream-Status: Inappropriate
+
 diff --git a/StartProcessThread.cpp b/StartProcessThread.cpp
 index 84dee82..1cf61ce 100644
 --- a/StartProcessThread.cpp

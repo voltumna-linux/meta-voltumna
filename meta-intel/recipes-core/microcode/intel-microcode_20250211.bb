@@ -34,7 +34,7 @@ do_compile() {
 	${STAGING_DIR_NATIVE}${sbindir_native}/iucode_tool \
 		${UCODE_FILTER_PARAMETERS} \
 		--overwrite \
-		--write-earlyfw=${WORKDIR}/microcode_${PV}.cpio \
+		--write-earlyfw=${UNPACKDIR}/microcode_${PV}.cpio \
 		${S}/intel-ucode/* ${S}/intel-ucode-with-caveats/*
 }
 
@@ -48,7 +48,7 @@ do_install() {
 
 do_deploy() {
 	install -d ${DEPLOYDIR}
-	install ${WORKDIR}/microcode_${PV}.cpio ${DEPLOYDIR}/
+	install ${UNPACKDIR}/microcode_${PV}.cpio ${DEPLOYDIR}/
 	cd ${DEPLOYDIR}
 	rm -f microcode.cpio
 	ln -sf microcode_${PV}.cpio microcode.cpio

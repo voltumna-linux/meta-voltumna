@@ -11,6 +11,6 @@ do_install:append() {
         echo 'f /run/rpcbind.lock 0644 root root - -' > ${D}${nonarch_libdir}/tmpfiles.d/${BPN}.conf
 
        # Replace rpcbind.service 
-        install -m 0644 ${WORKDIR}/rpcbind.service \
+        install -m 0644 ${UNPACKDIR}/rpcbind.service \
                 ${D}${systemd_unitdir}/system
 }
