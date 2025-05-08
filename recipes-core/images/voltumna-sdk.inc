@@ -5,14 +5,16 @@ SDKIMAGE_FEATURES = "${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation'
 
 IMAGE_INSTALL:append = " info man-pages"
 IMAGE_INSTALL:append = " libasan-dev libubsan-dev"
-IMAGE_INSTALL:append:intel-x86-common = " liblsan-dev libtsan-dev"
+IMAGE_INSTALL:append:x86 = " liblsan-dev libtsan-dev"
+IMAGE_INSTALL:append:x86-64 = " liblsan-dev libtsan-dev"
 
 # To keep in sync with SDE
 TOOLCHAIN_HOST_TASK:append = " nativesdk-make nativesdk-binutils nativesdk-cpp nativesdk-gcc \
 	nativesdk-libgcc-dev nativesdk-g++ nativesdk-libstdc++-dev nativesdk-libgomp-dev \
 	nativesdk-libasan-dev nativesdk-libubsan-dev nativesdk-clang nativesdk-python3-pylint"
 TOOLCHAIN_HOST_TASK:append:arm = " nativesdk-dtc"
-TOOLCHAIN_HOST_TASK:append:intel-x86-common = " nativesdk-liblsan-dev nativesdk-libtsan-dev"
+TOOLCHAIN_HOST_TASK:append:x86 = " nativesdk-liblsan-dev nativesdk-libtsan-dev"
+TOOLCHAIN_HOST_TASK:append:x86-64 = " nativesdk-liblsan-dev nativesdk-libtsan-dev"
 
 SDK_ARCHIVE_TYPE = "tar.xz"
 SDK_ARCHIVE_TYPE:sdkmingw32 = "zip"
