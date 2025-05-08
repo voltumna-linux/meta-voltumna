@@ -11,6 +11,7 @@ IMAGE_INSTALL_append += "os-release systemd-journal-upload bash coreutils util-l
 	grep gawk findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip \
 	nfs-utils-client iproute2 ethtool inetutils-ping inetutils-telnet net-tools curl libnss-resolve \
 	strace ltrace gdb libasan libubsan e2fsprogs-mke2fs"
+IMAGE_INSTALL:append:x86 = " thermald liblsan libtsan nvme-cli"
 IMAGE_INSTALL:append:x86-64 = " thermald liblsan libtsan nvme-cli"
 
 copy_etc_into_factory() {
@@ -92,6 +93,16 @@ IMAGE_CMD_tar_append_ppce500v2() {
 	install -m 644 ${DEPLOY_DIR_IMAGE}/boot.scr.uimg ${TEMPORARYDIR}/tftpboot
 	install -m 644 ${DEPLOY_DIR_IMAGE}/uEnv.txt ${TEMPORARYDIR}/tftpboot/uEnv.txt
 	sed -i -e "s,\.osdir,voltumna,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/uEnv.txt
+	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${TEMPORARYDIR}/ tftpboot || [ $? -eq 1 ]
+	rm -fr ${TEMPORARYDIR}
+}
+
+IMAGE_CMD_tar_append_x86() {
+	TEMPORARYDIR=$(mktemp -d)
+	mkdir -p ${TEMPORARYDIR}/tftpboot/EFI/BOOT
+	install -m 644 ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ${TEMPORARYDIR}/tftpboot/EFI/BOOT/bootx64.efi
+	install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
+	sed -i -e "s,default=localboot,default=netboot,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
 	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${TEMPORARYDIR}/ tftpboot || [ $? -eq 1 ]
 	rm -fr ${TEMPORARYDIR}
 }
