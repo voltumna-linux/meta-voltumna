@@ -1,0 +1,32 @@
+From f8d8a70eba5e18fc11c7c7db44cfcd5469d52690 Mon Sep 17 00:00:00 2001
+From: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Date: Sun, 12 Apr 2020 20:49:35 +0530
+Subject: [PATCH 03/10] amd-xgbe Fix NETDEV WATCHDOG: transmit queue timed out
+
+netif_carrier_off() called immediately after netif_tx_stop_all_queues()
+
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-drv.c | 3 +++
+ 1 file changed, 3 insertions(+)
+ mode change 100644 => 100755 drivers/net/ethernet/amd/xgbe/xgbe-drv.c
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-drv.c b/drivers/net/ethernet/amd/xgbe/xgbe-drv.c
+old mode 100644
+new mode 100755
+index 395eb0b52680..230c9c4cc9b5
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-drv.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-drv.c
+@@ -1180,6 +1180,9 @@ int xgbe_powerdown(struct net_device *netdev, unsigned int caller)
+ 		netif_device_detach(netdev);
+ 
+ 	netif_tx_stop_all_queues(netdev);
++	/* Bug fix to crash while resetting the port */
++	netif_carrier_off(pdata->netdev);
++	netif_dbg(pdata, link, pdata->netdev,"  netif_carrier_off is doing before stopping PHY  \n");
+ 
+ 	xgbe_stop_timers(pdata);
+ 	flush_workqueue(pdata->dev_workqueue);
+-- 
+2.17.1
+

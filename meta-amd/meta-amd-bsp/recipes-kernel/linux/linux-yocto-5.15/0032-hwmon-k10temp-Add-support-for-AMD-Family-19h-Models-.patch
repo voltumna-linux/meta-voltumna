@@ -1,0 +1,44 @@
+From 0ca5ca4cd07550c4860eeaf2616921be943b2917 Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Mon, 8 Nov 2021 15:51:34 -0600
+Subject: [PATCH 32/86] hwmon: (k10temp) Add support for AMD Family 19h Models
+ 10h-1Fh and A0h-AFh
+
+commit 3cf90efa13678d2de2f9f7e44e26353996db842a upstream
+
+Add thermal info support for AMD Family 19h Models 10h-1Fh and A0h-AFh.
+Thermal info is supported via a new PCI device ID at offset 0x300h.
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+Link: https://lore.kernel.org/r/163640829419.955062.12539219969781039915.stgit@bmoger-ubuntu
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+Signed-off-by: Zhaolong Zhang <zhaolong.zhang@windriver.com>
+---
+ drivers/hwmon/k10temp.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/hwmon/k10temp.c b/drivers/hwmon/k10temp.c
+index 662bad7ed0a2..880990fa4795 100644
+--- a/drivers/hwmon/k10temp.c
++++ b/drivers/hwmon/k10temp.c
+@@ -433,7 +433,9 @@ static int k10temp_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 			data->ccd_offset = 0x154;
+ 			k10temp_get_ccd_support(pdev, data, 8);
+ 			break;
++		case 0x10 ... 0x1f:
+ 		case 0x40 ... 0x4f:	/* Yellow Carp */
++		case 0xa0 ... 0xaf:
+ 			data->ccd_offset = 0x300;
+ 			k10temp_get_ccd_support(pdev, data, 8);
+ 			break;
+@@ -477,6 +479,7 @@ static const struct pci_device_id k10temp_id_table[] = {
+ 	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_17H_M60H_DF_F3) },
+ 	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_17H_M70H_DF_F3) },
+ 	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_19H_DF_F3) },
++	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_19H_M10H_DF_F3) },
+ 	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_19H_M40H_DF_F3) },
+ 	{ PCI_VDEVICE(AMD, PCI_DEVICE_ID_AMD_19H_M50H_DF_F3) },
+ 	{ PCI_VDEVICE(HYGON, PCI_DEVICE_ID_AMD_17H_DF_F3) },
+-- 
+2.37.3
+
