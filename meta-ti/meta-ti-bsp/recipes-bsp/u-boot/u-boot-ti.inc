@@ -40,12 +40,7 @@ DEPENDS += "python3-pyelftools-native python3-pyyaml-native python3-jsonschema-n
 DEPENDS:append:k3 = " ti-sci-fw"
 DEPENDS:append:k3r5 = " ti-sci-fw"
 
-# HSM Demo Firmware is only applicable for J721S2 & J784S4 devices
-DEPENDS:append:j721s2 = " ti-hsm-demo-fw"
-DEPENDS:append:j784s4 = " ti-hsm-demo-fw"
-
 DM_FIRMWARE = "ipc_echo_testb_mcu1_0_release_strip.xer5f"
-DM_FIRMWARE:am62axx = "dm_edgeai_mcu1_0_release_strip.out"
 
 PLAT_SFX = ""
 PLAT_SFX:j721e = "j721e"
@@ -64,7 +59,7 @@ PLAT_SFX:am62pxx = "am62pxx"
 PACKAGECONFIG[ap-trusted-rom] = "BL1=${STAGING_DIR_HOST}/firmware/bl1.bin,,trusted-firmware-a"
 PACKAGECONFIG[atf] = "BL31=${STAGING_DIR_HOST}/firmware/bl31.bin,,trusted-firmware-a"
 PACKAGECONFIG[optee] = "TEE=${STAGING_DIR_HOST}${nonarch_base_libdir}/firmware/bl32.bin,,optee-os"
-PACKAGECONFIG[dm] = "TI_DM=${STAGING_DIR_HOST}${nonarch_base_libdir}/firmware/ti-dm/${PLAT_SFX}/${DM_FIRMWARE},,ti-dm-fw"
+PACKAGECONFIG[dm] = "DM=${STAGING_DIR_HOST}${nonarch_base_libdir}/firmware/ti-dm/${PLAT_SFX}/${DM_FIRMWARE},,ti-dm-fw"
 
 PACKAGECONFIG:append:aarch64 = " atf optee"
 PACKAGECONFIG:append:j721e = " dm"
@@ -358,9 +353,19 @@ uboot_deploy:append () {
     fi
 }
 
+do_install:append:am62xx() {
+	install -d ${D}/boot
+	install -m 0644 ${S}/tools/logos/ti_logo_414x97_32bpp.bmp.gz ${D}/boot
+}
+
 do_deploy:append:am62xx() {
 	install -d ${DEPLOYDIR}
 	install -m 0644 ${S}/tools/logos/ti_logo_414x97_32bpp.bmp.gz ${DEPLOYDIR}
+}
+
+do_install:append:am62pxx() {
+	install -d ${D}/boot
+	install -m 0644 ${S}/tools/logos/ti_logo_414x97_32bpp.bmp.gz ${D}/boot
 }
 
 do_deploy:append:am62pxx() {
