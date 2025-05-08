@@ -8,7 +8,8 @@ PV = "1.0"
 
 # Avoid (R)DEPENDS which add other dependencies
 PACKAGE_INSTALL = "busybox busybox-udhcpc e2fsprogs-e2fsck udev iproute2-ip"
-PACKAGE_INSTALL:append:intel-x86-common = " linux-firmware-ice"
+PACKAGE_INSTALL:append:x86 = " linux-firmware-ice"
+PACKAGE_INSTALL:append:x86-64 = " linux-firmware-ice"
 
 # Use dynamic /dev population
 USE_DEVFS = "1"
