@@ -18,6 +18,7 @@ PACKAGECONFIG ??= "obex-profiles \
     ${@bb.utils.filter('DISTRO_FEATURES', 'systemd', d)} \
     a2dp-profiles \
     avrcp-profiles \
+    mcp-profiles \
     network-profiles \
     hid-profiles \
     hog-profiles \
@@ -35,6 +36,7 @@ PACKAGECONFIG[nfc] = "--enable-nfc,--disable-nfc"
 PACKAGECONFIG[sap-profiles] = "--enable-sap,--disable-sap"
 PACKAGECONFIG[a2dp-profiles] = "--enable-a2dp,--disable-a2dp"
 PACKAGECONFIG[avrcp-profiles] = "--enable-avrcp,--disable-avrcp"
+PACKAGECONFIG[mcp-profiles] = "--enable-mcp,--disable-mcp"
 PACKAGECONFIG[network-profiles] = "--enable-network,--disable-network"
 PACKAGECONFIG[hid-profiles] = "--enable-hid,--disable-hid"
 PACKAGECONFIG[hog-profiles] = "--enable-hog,--disable-hog"
@@ -55,6 +57,7 @@ SRC_URI = "${KERNELORG_MIRROR}/linux/bluetooth/bluez-${PV}.tar.xz \
            file://0001-tests-add-a-target-for-building-tests-without-runnin.patch \
            file://0001-test-gatt-Fix-hung-issue.patch \
            file://0001-adapter-Fix-up-address-type-when-loading-keys.patch \
+           file://toolsbtmgmt-fix-index-option-for-non-interactive-mode.patch \
            "
 S = "${WORKDIR}/bluez-${PV}"
 
