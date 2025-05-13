@@ -1,7 +1,7 @@
-From 2d73ce79ef1b05d11868c89f0095ce5920171593 Mon Sep 17 00:00:00 2001
+From 921c7b52dd12354ace294926525272080e97e8ea Mon Sep 17 00:00:00 2001
 From: "Tan, Raymond" <raymond.tan@intel.com>
 Date: Wed, 30 May 2018 22:17:58 +0800
-Subject: [PATCH 04/11] update KDIR for cross-compilation
+Subject: [PATCH] update KDIR for cross-compilation
 
 Upstream-Status: Inappropriate [Configuration]
 
@@ -14,10 +14,10 @@ Signed-off-by: Tan, Raymond <raymond.tan@intel.com>
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/quickassist/qat/Makefile b/quickassist/qat/Makefile
-index b31829a..2e490ba 100644
+index 574576f..6baac85 100644
 --- a/quickassist/qat/Makefile
 +++ b/quickassist/qat/Makefile
-@@ -63,13 +63,13 @@ $(info Compiling with Heartbeat Failure Simulation feature)
+@@ -47,13 +47,13 @@ subdir-ccflags-y += -DQAT_XEN_PLATFORM
  endif
  
  ifeq ($(KERNELRELEASE),)
@@ -35,5 +35,5 @@ index b31829a..2e490ba 100644
  
  default: modules
 -- 
-2.14.5
+2.46.2
 
