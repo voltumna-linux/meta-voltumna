@@ -1,4 +1,4 @@
-From 9f4ddcc7ee9683cf766c83651762187f9f194c7b Mon Sep 17 00:00:00 2001
+From e7273f49bac4fe875f63dc622973dcef0bfb0015 Mon Sep 17 00:00:00 2001
 From: "Tan, Raymond" <raymond.tan@intel.com>
 Date: Mon, 4 Jun 2018 09:26:33 +0800
 Subject: [PATCH] qat-add-install-target-and-add-folder
@@ -8,13 +8,12 @@ Upstream-Status: Inappropriate [Configuration]
 Modify Makefile to add install target and add folder
 
 Signed-off-by: Tan, Raymond <raymond.tan@intel.com>
-
 ---
  quickassist/Makefile | 25 ++++++++++++++++++++++---
  1 file changed, 22 insertions(+), 3 deletions(-)
 
 diff --git a/quickassist/Makefile b/quickassist/Makefile
-index 5e0418b..4ac824a 100644
+index 3e2d81a..828e9af 100644
 --- a/quickassist/Makefile
 +++ b/quickassist/Makefile
 @@ -99,6 +99,7 @@ export ICP_PARAM_CHECK ?= y
@@ -25,7 +24,7 @@ index 5e0418b..4ac824a 100644
  
  
  #Release Package build steps
-@@ -117,10 +118,14 @@ all: $(ALL_TARGETS)
+@@ -116,10 +117,14 @@ all: $(ALL_TARGETS)
  
  user: lac_lib_dir libosal_user lac_user
  
@@ -42,7 +41,7 @@ index 5e0418b..4ac824a 100644
  
  #
  # Common memory driver
-@@ -203,8 +208,22 @@ ifeq ($(ICP_NO_CLEAN),)
+@@ -201,8 +206,22 @@ ifeq ($(ICP_NO_CLEAN),)
  endif
  
  
@@ -66,3 +65,6 @@ index 5e0418b..4ac824a 100644
  
  lac_lib_dir: clean
  	test -d $(LAC_LIB_DIR) || mkdir -p $(LAC_LIB_DIR);
+-- 
+2.46.2
+
