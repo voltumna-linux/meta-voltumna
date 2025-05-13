@@ -1,7 +1,7 @@
 From b71895c04981f59bf90de608c08ca389b65ad5e9 Mon Sep 17 00:00:00 2001
 From: Anuj Mittal <anujx.mittal@intel.com>
 Date: Wed, 8 Jul 2015 11:11:32 +0800
-Subject: [PATCH 02/11] qat: remove local path from makefile
+Subject: [PATCH] qat: remove local path from makefile
 
 Upstream-Status: Inappropriate [Configuration]
 
