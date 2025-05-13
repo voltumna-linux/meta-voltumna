@@ -5,16 +5,17 @@ HOMEPAGE = "https://github.com/intel/QATzip"
 
 LICENSE = "BSD-3-Clause & GPL-2.0-only"
 LIC_FILES_CHKSUM = "\
-                   file://LICENSE;md5=f7b7ac1ea80d2f68f359a2641b14df09 \
+                   file://LICENSE;md5=861458cf9e58e46e3ba1978f81134df4 \
                    file://config_file/LICENSE.GPL;md5=751419260aa954499f7abaabaa882bbe \
 "
 SRC_URI = "git://github.com/intel/QATzip;protocol=https;branch=master \
            file://remove-rpath.patch \
+           ${@bb.utils.contains('PREFERRED_PROVIDER_virtual/qat', 'qat17', 'file://qatzip-check-icp_-.h-header-files-in-icp-subfolder.patch', '', d)} \
 "
 
-SRCREV = "fdee557b5bb640827758f121102dcf3583292b7a"
+SRCREV = "6d0cfe51892ea6fe93da73326b1d987905e197c8"
 
-DEPENDS += "qat17 util-linux-native lz4 "
+DEPENDS += "virtual/qat util-linux-native lz4"
 
 export ICP_ROOT = "${STAGING_DIR_TARGET}/opt/intel/QAT"
 export QZ_ROOT = "${S}"
