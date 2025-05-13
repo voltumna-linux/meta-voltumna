@@ -12,13 +12,13 @@ COMPATIBLE_HOST:x86-x32 = 'null'
 COMPATIBLE_HOST:libc-musl:class-target = 'null'
 
 SRC_URI = "git://github.com/intel/qatlib.git;protocol=https;branch=main"
-SRCREV = "61178382110a5b93898e2a1d07c84aac9c695362"
+SRCREV = "a9e5fcf212fcb9241b38a3a105c95b1f5b3593db"
 
 S = "${WORKDIR}/git"
 
 inherit autotools-brokensep systemd useradd
 
-DEPENDS = "openssl zlib nasm-native"
+DEPENDS = "openssl zlib nasm-native numactl"
 
 USERADD_PACKAGES = "${PN}"
 GROUPADD_PARAM:${PN} = "qat"

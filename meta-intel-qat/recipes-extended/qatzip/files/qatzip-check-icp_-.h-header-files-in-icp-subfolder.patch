@@ -1,0 +1,41 @@
+From ed94f555d19dfade2e0210ab2ebc8fa5add61726 Mon Sep 17 00:00:00 2001
+From: Yongxin Liu <yongxin.liu@windriver.com>
+Date: Sat, 3 May 2025 07:50:23 +0000
+Subject: [PATCH] qatzip: check icp_*.h header files in icp subfolder
+
+In qat17 version of 4.28.0-00004, the icp_*.h header files have been moved
+from quickassist/lookaside/access_layer/include to quickassist/include/icp.
+
+Upstream-Status: Pending
+
+Signed-off-by: Yongxin Liu <yongxin.liu@windriver.com>
+---
+ configure.ac | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 1b70b2e..a904bfb 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -131,8 +131,8 @@ AS_IF([test ! -z "${ICP_ROOT}"],
+     AS_IF([test ! -e ${ICP_ROOT}/quickassist/include/cpa.h ||
+         test ! -e ${ICP_ROOT}/quickassist/include/dc/cpa_dc.h ||
+         test ! -e ${ICP_ROOT}/quickassist/utilities/libusdm_drv/qae_mem.h ||
+-        test ! -e ${ICP_ROOT}/quickassist/lookaside/access_layer/include/icp_sal_poll.h ||
+-        test ! -e ${ICP_ROOT}/quickassist/lookaside/access_layer/include/icp_sal_user.h],
++        test ! -e ${ICP_ROOT}/quickassist/include/icp/icp_sal_poll.h ||
++        test ! -e ${ICP_ROOT}/quickassist/include/icp/icp_sal_user.h],
+         [
+             AC_MSG_RESULT([no])
+             AC_MSG_ERROR([QAT header files not found in $ICP_ROOT, please check \$ICP_ROOT])
+@@ -141,6 +141,7 @@ AS_IF([test ! -z "${ICP_ROOT}"],
+             AC_MSG_RESULT([yes])
+             ICP_INCLUDE_CFLAGS=" -I${ICP_ROOT}/quickassist/include \
+                                 -I${ICP_ROOT}/quickassist/include/dc/ \
++                                -I${ICP_ROOT}/quickassist/include/icp/ \
+                                 -I${ICP_ROOT}/quickassist/utilities/libusdm_drv/ \
+                                 -I${ICP_ROOT}/quickassist/lookaside/access_layer/include/ "
+             LDFLAGS+=" -L${ICP_ROOT}/build/ "
+-- 
+2.35.5
+
