@@ -39,7 +39,7 @@ TFA_PLATFORM = "k3"
 UBI_VOLNAME = "rootfs"
 
 # List common SoC features, may need to add touchscreen for specific machines
-MACHINE_FEATURES = "apm usbgadget usbhost vfat ext2 alsa pci"
+MACHINE_FEATURES = "apm usbgadget usbhost vfat ext2 alsa pci optee-ftpm"
 
 IMAGE_FSTYPES += "tar.xz wic.xz wic.bmap"
 
@@ -56,3 +56,8 @@ TI_WKS_BOOTLOADER_APPEND ?= ""
 do_image_wic[depends] += "virtual/bootloader:do_deploy"
 
 SERIAL_CONSOLES = "115200;ttyS0 115200;ttyS2"
+
+FALCON_INCLUDE = ""
+FALCON_INCLUDE:ti-falcon = "conf/machine/include/ti-falcon.inc"
+
+require ${FALCON_INCLUDE}
