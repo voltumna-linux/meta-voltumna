@@ -2,6 +2,7 @@ include dpdk.inc
 
 SRC_URI += " \
             file://0001-meson.build-march-and-mcpu-already-passed-by-Yocto-21.11.patch \
+            file://CVE-2024-11614.patch \
 "
 
 STABLE = "-stable"
