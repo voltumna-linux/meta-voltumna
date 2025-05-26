@@ -86,7 +86,7 @@ create_sdk_files:append() {
 	echo 'export ARCH=x86' >> $script
 	echo 'export CROSS_COMPILE='${sdk_target_prefix} >> $script
 	echo 'export OECORE_TUNE_CCARGS=""' >> $script
-	echo 'export RUST_TARGET_PATH="$SDKTARGETSYSROOT"'${libdir}/rustlib/${sdk_target_prefix}gnu >> $script
+#	echo 'export RUST_TARGET_PATH="$SDKTARGETSYSROOT"'${libdir}/rustlib/${sdk_target_prefix}gnu >> $script
 
     cat >> $script <<EOF
 
