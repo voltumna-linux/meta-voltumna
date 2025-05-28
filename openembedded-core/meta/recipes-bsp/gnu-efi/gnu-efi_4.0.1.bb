@@ -16,11 +16,15 @@ COMPATIBLE_HOST = "(x86_64.*|i.86.*|aarch64.*|arm.*|riscv64.*)-linux"
 COMPATIBLE_HOST:armv4 = 'null'
 
 SRC_URI = "git://github.com/ncroxon/gnu-efi;protocol=https;branch=master \
-           file://0002-Do-not-treat-warnings-as-errors.patch \
+           file://0001-Do-not-treat-warnings-as-errors.patch \
            "
-SRCREV = "5ea320f0f01c8de8f9dd4e4e38a245608f0287dd"
+SRCREV = "00cdfa66e923ab2f6683bb52cab0d0d1a9083b16"
 
 S = "${WORKDIR}/git"
+
+# llvm-objcopy fails
+# arm-poky-linux-gnueabi-llvm-objcopy: error: 't8.so': section '.dynstr' cannot be removed because it is referenced by the section '.dynamic'
+OBJCOPY:toolchain-clang = "${HOST_PREFIX}objcopy"
 
 inherit github-releases
 
