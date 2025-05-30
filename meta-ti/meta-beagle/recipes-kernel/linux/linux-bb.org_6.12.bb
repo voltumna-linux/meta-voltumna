@@ -1,12 +1,12 @@
 # Look in the generic major.minor directory for files
-FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}-6.6:"
+FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}-6.12:"
 
 SECTION = "kernel"
 SUMMARY = "BeagleBoard.org Linux kernel"
 LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 
-COMPATIBLE_MACHINE = "beagle.*"
+COMPATIBLE_MACHINE = "pocketbeagle2|beagle.*"
 
 inherit kernel
 
@@ -55,17 +55,14 @@ ${DT_VENDOR_PREFIX}PB-MIKROBUS-1.dtbo \
 
 S = "${WORKDIR}/git"
 
-# 6.6.58 version for 32-bit
-SRCREV:armv7a = "0d043a88f69f48789e43526d7a807ab744708071"
-PV:armv7a = "6.6.58+git"
-BRANCH:armv7a = "v6.6.58-ti-arm32-r10"
+# 6.12.22 version for 32-bit
+SRCREV:armv7a = "d7f560ef48a867b94959f040b4c3c57053f4e32d"
+PV:armv7a = "6.12.22+git"
+BRANCH:armv7a = "v6.12.22-ti-arm32-r10"
 
-# 6.6.58 version for 64-bit
-SRCREV:aarch64 = "0987ef737c9812374607475972f0868b8fecbbf7"
-PV:aarch64 = "6.6.58+git"
-BRANCH:aarch64 = "v6.6.58-ti-arm64-r23"
+# 6.12.22 version for 64-bit
+SRCREV:aarch64 = "9e43fd19ece3affb9406e87ec3df733b91b77a4f"
+PV:aarch64 = "6.12.22+git"
+BRANCH:aarch64 = "v6.12.22-ti-arm64-r35"
 
 KERNEL_GIT_URI = "git://github.com/beagleboard/linux.git"
-
-SRC_URI += "file://no-fortify.cfg"
-KERNEL_CONFIG_FRAGMENTS += "${WORKDIR}/no-fortify.cfg"
