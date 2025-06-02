@@ -19,6 +19,7 @@ SRCBRANCH ?= "binutils-2_42-branch"
 UPSTREAM_CHECK_GITTAGREGEX = "binutils-(?P<pver>\d+_(\d_?)*)"
 
 CVE_STATUS[CVE-2023-25584] = "cpe-incorrect: Applies only for version 2.40 and earlier"
+CVE_STATUS[CVE-2025-1180] = "patched: fixed by patch for CVE-2025-1176" 
 
 SRCREV ?= "6558f9f5f0ccc107a083ae7fbf106ebcb5efa817"
 BINUTILS_GIT_URI ?= "git://sourceware.org/git/binutils-gdb.git;branch=${SRCBRANCH};protocol=https"
@@ -48,5 +49,7 @@ SRC_URI = "\
      file://0019-CVE-2025-1153-1.patch \
      file://0020-CVE-2025-1153-2.patch \
      file://0021-CVE-2025-1153-3.patch \
+     file://CVE-2025-1179-pre.patch \
+     file://CVE-2025-1179.patch \
 "
 S  = "${WORKDIR}/git"
