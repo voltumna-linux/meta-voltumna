@@ -1,0 +1,167 @@
+diff -ruNp esdk-5.3/opt/EVT/myri_mva-1.2.11.x86_64.5.3.0/src/driver/linux/kbuild/mx.c esdk-5.4/opt/EVT/myri_mva-1.2.11.x86_64.5.4.0/src/driver/linux/kbuild/mx.c
+--- esdk-5.3/opt/EVT/myri_mva-1.2.11.x86_64.5.3.0/src/driver/linux/kbuild/mx.c	2021-03-09 23:28:42.000000000 +0100
++++ esdk-5.4/opt/EVT/myri_mva-1.2.11.x86_64.5.4.0/src/driver/linux/kbuild/mx.c	2021-03-10 00:53:37.000000000 +0100
+@@ -2257,12 +2257,12 @@ mx_map_pci_space (mx_instance_state_t *
+ #elif defined(ARCH_HAS_IOREMAP_WC)
+       kaddr = ioremap_wc(iomem + (unsigned long) offset, len);
+ #else
+-      kaddr = ioremap_nocache(iomem + (unsigned long) offset, len);
++      kaddr = ioremap_uc(iomem + (unsigned long) offset, len);
+ #endif
+     }
+   else
+     {
+-      kaddr = ioremap_nocache(iomem + (unsigned long) offset, len);
++      kaddr = ioremap_uc(iomem + (unsigned long) offset, len);
+     }
+ 
+ #if defined IO_TOKEN_TO_ADDR
+@@ -4543,7 +4543,7 @@ myri_secs_to_year(uint32_t seconds)
+ {
+   unsigned int i = 2011;
+ 
+-  while (mktime(i, 1, 1, 0, 0, 0) < seconds) {
++  while (mktime64(i, 1, 1, 0, 0, 0) < seconds) {
+     i++;
+   }
+ 
+@@ -4552,7 +4552,7 @@ myri_secs_to_year(uint32_t seconds)
+ 
+ uint32_t 
+ myri_year_to_secs(int year) {
+-  return (mktime(year, 1,1,0,0,0));
++  return (mktime64(year, 1,1,0,0,0));
+ }
+ 
+ module_init (mx_init_module);
+diff -ruNp esdk-5.3/opt/EVT/myri_mva-1.2.11.x86_64.5.3.0/src/driver/linux/kbuild/mx_common.c esdk-5.4/opt/EVT/myri_mva-1.2.11.x86_64.5.4.0/src/driver/linux/kbuild/mx_common.c
+--- esdk-5.3/opt/EVT/myri_mva-1.2.11.x86_64.5.3.0/src/driver/linux/kbuild/mx_common.c	2021-03-09 23:28:42.000000000 +0100
++++ esdk-5.4/opt/EVT/myri_mva-1.2.11.x86_64.5.4.0/src/driver/linux/kbuild/mx_common.c	2021-03-10 00:53:37.000000000 +0100
+@@ -2628,7 +2628,7 @@ myri_sample_hwclock(mx_instance_state_t
+                     uint64_t *host_nsecs_delay)
+ {
+   uint64_t tsB_nsecs, tsE_nsecs;
+-  struct timespec tsB, tsE;
++  struct timespec64 tsB, tsE;
+   unsigned long flags;
+   int attempts = 10;
+ 
+@@ -3010,7 +3010,7 @@ myri_clock_ts_process(mx_instance_state_
+   int rc, year;
+   enum myri_timesync_status ts_status;
+   unsigned long flags;
+-  struct timespec ts;
++  struct timespec64 ts;
+ 
+   flags = 0;
+   
+diff -ruNp esdk-5.3/opt/EVT/myri_mva-1.2.11.x86_64.5.3.0/src/driver/linux/kbuild/mx_ether.c esdk-5.4/opt/EVT/myri_mva-1.2.11.x86_64.5.4.0/src/driver/linux/kbuild/mx_ether.c
+--- esdk-5.3/opt/EVT/myri_mva-1.2.11.x86_64.5.3.0/src/driver/linux/kbuild/mx_ether.c	2021-03-09 23:28:42.000000000 +0100
++++ esdk-5.4/opt/EVT/myri_mva-1.2.11.x86_64.5.4.0/src/driver/linux/kbuild/mx_ether.c	2021-03-10 00:53:37.000000000 +0100
+@@ -132,7 +132,7 @@ static inline int
+ mx_encap(struct mx_ether *eth, struct sk_buff *skb)
+ {
+ 	dma_addr_t bus, frag_bus;
+-	struct skb_frag_struct *frag;
++	skb_frag_t *frag;
+ 	mcp_kreq_ether_send_t req_list[MCP_ETHER_MAX_SEND_FRAG + 1];
+ 	mcp_kreq_ether_send_t *req;
+ 	int len;
+@@ -317,16 +317,16 @@ mx_encap(struct mx_ether *eth, struct sk
+ 			idx = i & (NUM_TX - 1);
+ 			frag = &skb_shinfo(skb)->frags[f];
+                         bus = skb_frag_dma_map(&eth->is->arch.pci_dev->dev, frag,
+-                                               0, frag->size, PCI_DMA_TODEVICE);
++                                               0, frag->bv_len, PCI_DMA_TODEVICE);
+ 			if (bus == INVALID_DMA_ADDR) {
+ 				err = -ENXIO;
+ 				goto abort;
+ 			}
+ 			pci_unmap_addr_set(&eth->tx.info[idx], bus, bus);
+-			pci_unmap_len_set(&eth->tx.info[idx], len, frag->size);
++			pci_unmap_len_set(&eth->tx.info[idx], len, frag->bv_len);
+ 			req->frag.addr_low = htonl(MX_LOWPART_TO_U32(bus));
+ 			req->frag.addr_high = htonl(MX_HIGHPART_TO_U32(bus));
+-			req->frag.length = htonl(frag->size);
++			req->frag.length = htonl(frag->bv_len);
+ 			/* This is used only for debugging */
+ 			req->frag.flags = MCP_ETHER_FLAGS_VALID;
+ 			req++;
+@@ -954,8 +954,8 @@ mx_ether_rx_done_page(struct mx_ether *e
+ 		remainder -= mx_ether_rx_alloc_size;
+ 	}
+ 
+-	skb_shinfo(skb)->frags[0].page_offset += MCP_ETHER_PAD;
+-	skb_shinfo(skb)->frags[0].size -= MCP_ETHER_PAD;
++	skb_shinfo(skb)->frags[0].bv_offset += MCP_ETHER_PAD;
++	skb_shinfo(skb)->frags[0].bv_len -= MCP_ETHER_PAD;
+ 	len -= MCP_ETHER_PAD;
+ 	skb->len = skb->data_len = len;
+ 	skb->truesize += len;
+@@ -967,8 +967,8 @@ mx_ether_rx_done_page(struct mx_ether *e
+ 	if (mx_ether_vlan_fixup(skb, va)) {
+                 skb->len -= VLAN_HLEN;
+                 skb->data_len -= VLAN_HLEN;
+-                skb_shinfo(skb)->frags[0].page_offset += VLAN_HLEN;
+-                skb_shinfo(skb)->frags[0].size -= VLAN_HLEN;
++                skb_shinfo(skb)->frags[0].bv_offset += VLAN_HLEN;
++                skb_shinfo(skb)->frags[0].bv_len -= VLAN_HLEN;
+ 	}
+ 
+ 	len = skb->len;
+@@ -2446,8 +2446,8 @@ myri_ether_soft_rx(mx_instance_state_t *
+ 			get_page(is->ether->arch.fake_page);
+                         myri__skb_frag_set_page(&skb_shinfo(skb)->frags[buf],
+                                             is->ether->arch.fake_page);
+-			skb_shinfo(skb)->frags[buf].page_offset = 0;
+-			skb_shinfo(skb)->frags[buf].size = copy;
++			skb_shinfo(skb)->frags[buf].bv_offset = 0;
++			skb_shinfo(skb)->frags[buf].bv_len = copy;
+ 			skb->data_len += copy;
+ 			skb->len += copy;
+ 			copylen -= copy;
+diff -ruNp esdk-5.3/opt/EVT/myri_mva-1.2.11.x86_64.5.3.0/src/driver/linux/kbuild/mx_instance.c esdk-5.4/opt/EVT/myri_mva-1.2.11.x86_64.5.4.0/src/driver/linux/kbuild/mx_instance.c
+--- esdk-5.3/opt/EVT/myri_mva-1.2.11.x86_64.5.3.0/src/driver/linux/kbuild/mx_instance.c	2021-03-09 23:28:42.000000000 +0100
++++ esdk-5.4/opt/EVT/myri_mva-1.2.11.x86_64.5.4.0/src/driver/linux/kbuild/mx_instance.c	2021-03-10 00:53:37.000000000 +0100
+@@ -714,7 +714,7 @@ mx_init_board(mx_instance_state_t *is, i
+ static int
+ mx_init_license(mx_instance_state_t *is)
+ {
+-  struct timespec ts;
++  struct timespec64 ts;
+ 
+   mx_getnstimeofday(&ts);
+   return mx_mcp_command(is, MCP_CMD_INIT_LICENSE, 0, (uint32_t)ts.tv_sec, 
+diff -ruNp esdk-5.3/opt/EVT/myri_mva-1.2.11.x86_64.5.3.0/src/driver/linux/mx_arch.h esdk-5.4/opt/EVT/myri_mva-1.2.11.x86_64.5.4.0/src/driver/linux/mx_arch.h
+--- esdk-5.3/opt/EVT/myri_mva-1.2.11.x86_64.5.3.0/src/driver/linux/mx_arch.h	2021-03-09 23:28:42.000000000 +0100
++++ esdk-5.4/opt/EVT/myri_mva-1.2.11.x86_64.5.4.0/src/driver/linux/mx_arch.h	2021-03-10 00:53:37.000000000 +0100
+@@ -378,7 +378,7 @@ extern unsigned myri_ether_ifname_legacy
+ 
+ /* Since kernel since 5.0, do_gettimeofday() was replaced with getnstimeofday */
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+-#define mx_getnstimeofday getnstimeofday
++#define mx_getnstimeofday ktime_get_ts64
+ #else
+ /* Emulate over gettimeofday for now */
+ static inline
+@@ -392,7 +392,7 @@ void mx_getnstimeofday(struct timespec *
+ #endif
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
+-#define mx_timespec_to_ns timespec_to_ns
++#define mx_timespec_to_ns timespec64_to_ns
+ #else
+ #define NANOSECOND 1000000000L
+ static inline int64_t
+diff -ruNp myricom-mva-module-1.2.11.orig/opt/EVT/myricom_mva/src/driver/linux/mx_linux_compat.h myricom-mva-module-1.2.11/opt/EVT/myricom_mva/src/driver/linux/mx_linux_compat.h
+--- myricom-mva-module-1.2.11.orig/opt/EVT/myricom_mva/src/driver/linux/mx_linux_compat.h	2021-03-09 22:28:42.000000000 +0000
++++ myricom-mva-module-1.2.11/opt/EVT/myricom_mva/src/driver/linux/mx_linux_compat.h	2024-12-06 16:08:53.526108002 +0000
+@@ -71,7 +71,7 @@
+ 
+ #include <linux/pagemap.h>
+ #ifdef HAVE_LINUX_COMPILE_H
+-#include <linux/compile.h>
++#include <generated/compile.h>
+ #endif
+ 
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)

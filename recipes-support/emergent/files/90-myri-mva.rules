@@ -1,0 +1,1 @@
+ACTION=="add" DEVPATH=="/bus/pci/drivers/myri_mva" RUN="/sbin/myri_create_devs"

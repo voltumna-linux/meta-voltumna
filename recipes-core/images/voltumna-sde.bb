@@ -71,4 +71,3 @@ set_killuserprocess() {
 }
 
 ROOTFS_POSTPROCESS_COMMAND += " install_sdk_sh; install_environment_setup_sh; set_killuserprocess;"
-MACHINE_FEATURES:remove = "qemu-usermode"

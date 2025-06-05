@@ -1,0 +1,12 @@
+[Unit]
+Description=RNM (DPDK) service
+Requires=local-fs.target rnm-dpdk-conf.service
+After=rnm-dpdk-conf.service
+
+[Service]
+EnvironmentFile=/run/rnm-dpdk/rnm.conf
+ExecStartPre=/usr/sbin/dpdk-devbind --bind=vfio-pci $RNM_NETIF
+ExecStart=/usr/sbin/rnm-dpdk -l 15 -n 1 -m 128 --file-prefix rnm -w $RNM_NETIF $CLIENTID
+
+[Install]
+WantedBy=multi-user.target
