@@ -166,6 +166,7 @@ python () {
             d.appendVarFlag('do_package_write_rpm', 'dirs', ' ${ARCHIVER_RPMTOPDIR}')
             d.appendVarFlag('do_package_write_rpm', 'sstate-inputdirs', ' ${ARCHIVER_RPMTOPDIR}')
             d.appendVarFlag('do_package_write_rpm', 'sstate-outputdirs', ' ${DEPLOY_DIR_SRC}')
+            d.appendVar('PSEUDO_INCLUDE_PATHS', ',${ARCHIVER_TOPDIR}')
             if ar_dumpdata == "1":
                 d.appendVarFlag('do_package_write_rpm', 'depends', ' %s:do_dumpdata' % pn)
             if ar_recipe == "1":
@@ -339,7 +340,7 @@ python do_ar_mirror() {
     dl_dir = d.getVar('DL_DIR')
     mirror_exclusions = (d.getVar('ARCHIVER_MIRROR_EXCLUDE') or '').split()
     mirror_mode = d.getVarFlag('ARCHIVER_MODE', 'mirror')
-    have_mirror_tarballs = d.getVar('BB_GENERATE_MIRROR_TARBALLS')
+    have_mirror_tarballs = oe.types.boolean(d.getVar('BB_GENERATE_MIRROR_TARBALLS'))
 
     if mirror_mode == 'combined':
         destdir = d.getVar('ARCHIVER_COMBINED_MIRRORDIR')
