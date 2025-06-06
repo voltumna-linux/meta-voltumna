@@ -22,7 +22,7 @@ COMPATIBLE_HOST:linux-gnux32 = "null"
 export S
 export STAGING_KERNEL_DIR
 export STAGING_INCDIR
-export INSTALL_MOD_DIR="dpdk"
+export INSTALL_MOD_DIR = "dpdk"
 
 do_configure[noexec] = "1"
 
@@ -48,11 +48,3 @@ do_install() {
                ${MODULES_INSTALL_TARGET}
 }
 
-# CVE-2021-3839 has been fixed by commit 4c40d30d2b in 21.11.1
-# NVD database is incomplete
-# CVE-2022-0669 has been fixed by commit 6cb68162e4 in 21.11.1
-# NVD database is incomplete
-CVE_CHECK_IGNORE += "\
-    CVE-2021-3839 \
-    CVE-2022-0669 \
-"
