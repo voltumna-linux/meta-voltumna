@@ -26,6 +26,10 @@ BRANCH ?= "ti-linux-6.12.y"
 SRCREV ?= "b0afb35642d79e776a4cf940945367cef87ba127"
 PV = "6.12.24+git"
 
+KERNEL_REPRODUCIBILITY_PATCHES = " \
+    file://0001-drivers-gpu-drm-msm-registers-improve-reproducibilit.patch \
+"
+
 # Special configuration for remoteproc/rpmsg IPC modules
 module_conf_rpmsg_client_sample = "blacklist rpmsg_client_sample"
 module_conf_ti_k3_r5_remoteproc = "softdep ti_k3_r5_remoteproc pre: virtio_rpmsg_bus"
