@@ -56,6 +56,7 @@ copy_etc_into_factory() {
 	# Copy files in factory/etc e create entries accordingly
 	install -d ${IMAGE_ROOTFS}${datadir}/factory/
 	cp -r ${IMAGE_ROOTFS}${sysconfdir} ${IMAGE_ROOTFS}${datadir}/factory/
+        rm -f ${IMAGE_ROOTFS}${datadir}/factory/etc/systemd/system/basic.target.wants/resize-helper.service
 }
 
 compute_sum() {
