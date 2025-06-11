@@ -1,0 +1,114 @@
+From a97f93abc34731b73689c0c78bd189a91625779f Mon Sep 17 00:00:00 2001
+From: Changqing Li <changqing.li@windriver.com>
+Date: Tue, 29 Apr 2025 10:14:13 +0800
+Subject: [PATCH] Add new tracepoint function for type time_t
+
+To support Y2038 issue, for 32bit system, -D_TIME_BITS=64 is passed to
+gcc, struct timespec time->tv_sec is 64bit, but size_t is 32bits, so
+dpdk will compile failed with error:
+"../git/lib/ethdev/ethdev_trace.h: In function
+'rte_eth_trace_timesync_write_time':
+../git/lib/eal/include/rte_common.h:498:55: error: size of unnamed array
+is negative
+  498 | #define RTE_BUILD_BUG_ON(condition) ((void)sizeof(char[1 -
+      2*!!(condition)]))"
+
+Add a new tracepoint function for type time_t to fix this issue
+
+Upstream-Status: Submitted [https://patchwork.dpdk.org/project/dpdk/patch/20250527120404.2027529-1-changqing.li@windriver.com/]
+
+Signed-off-by: Changqing Li <changqing.li@windriver.com>
+---
+ lib/eal/common/eal_common_trace_ctf.c | 5 +++++
+ lib/eal/include/rte_trace_point.h     | 4 ++++
+ lib/ethdev/ethdev_trace.h             | 8 ++++----
+ 3 files changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/lib/eal/common/eal_common_trace_ctf.c b/lib/eal/common/eal_common_trace_ctf.c
+index 04c4f71..055555e 100644
+--- a/lib/eal/common/eal_common_trace_ctf.c
++++ b/lib/eal/common/eal_common_trace_ctf.c
+@@ -88,6 +88,11 @@ meta_data_type_emit(char **meta, int *offset)
+ 		"typealias integer {size = 64; base = x;} := size_t;\n"
+ #else
+ 		"typealias integer {size = 32; base = x;} := size_t;\n"
++#endif
++#if defined(_TIME_BITS) && _TIME_BITS == 64
++		"typealias integer {size = 64; base = x;} := time_t;\n"
++#else
++		"typealias integer {size = 32; base = x;} := time_t;\n"
+ #endif
+ 		"typealias floating_point {\n"
+ 		"    exp_dig = 8;\n"
+diff --git a/lib/eal/include/rte_trace_point.h b/lib/eal/include/rte_trace_point.h
+index 41e2a7f..d05422c 100644
+--- a/lib/eal/include/rte_trace_point.h
++++ b/lib/eal/include/rte_trace_point.h
+@@ -22,6 +22,7 @@ extern "C" {
+ 
+ #include <stdbool.h>
+ #include <stdio.h>
++#include <time.h>
+ 
+ #include <rte_branch_prediction.h>
+ #include <rte_common.h>
+@@ -145,6 +146,8 @@ _tp _args \
+ #define rte_trace_point_emit_ptr(val)
+ /** Tracepoint function payload for string datatype */
+ #define rte_trace_point_emit_string(val)
++/** Tracepoint function payload for time_t datatype */
++#define rte_trace_point_emit_time_t(val)
+ /**
+  * Tracepoint function to capture a blob.
+  *
+@@ -429,6 +432,7 @@ do { \
+ #define rte_trace_point_emit_float(in) __rte_trace_point_emit(in, float)
+ #define rte_trace_point_emit_double(in) __rte_trace_point_emit(in, double)
+ #define rte_trace_point_emit_ptr(in) __rte_trace_point_emit(in, uintptr_t)
++#define rte_trace_point_emit_time_t(in) __rte_trace_point_emit(in, time_t)
+ 
+ #endif /* __DOXYGEN__ */
+ 
+diff --git a/lib/ethdev/ethdev_trace.h b/lib/ethdev/ethdev_trace.h
+index 1b1ae0c..1d0dabb 100644
+--- a/lib/ethdev/ethdev_trace.h
++++ b/lib/ethdev/ethdev_trace.h
+@@ -1129,7 +1129,7 @@ RTE_TRACE_POINT(
+ 	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct timespec *time,
+ 		int ret),
+ 	rte_trace_point_emit_u16(port_id);
+-	rte_trace_point_emit_size_t(time->tv_sec);
++	rte_trace_point_emit_time_t(time->tv_sec);
+ 	rte_trace_point_emit_long(time->tv_nsec);
+ 	rte_trace_point_emit_int(ret);
+ )
+@@ -2146,7 +2146,7 @@ RTE_TRACE_POINT_FP(
+ 	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct timespec *timestamp,
+ 		uint32_t flags, int ret),
+ 	rte_trace_point_emit_u16(port_id);
+-	rte_trace_point_emit_size_t(timestamp->tv_sec);
++	rte_trace_point_emit_time_t(timestamp->tv_sec);
+ 	rte_trace_point_emit_long(timestamp->tv_nsec);
+ 	rte_trace_point_emit_u32(flags);
+ 	rte_trace_point_emit_int(ret);
+@@ -2158,7 +2158,7 @@ RTE_TRACE_POINT_FP(
+ 	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct timespec *timestamp,
+ 		int ret),
+ 	rte_trace_point_emit_u16(port_id);
+-	rte_trace_point_emit_size_t(timestamp->tv_sec);
++	rte_trace_point_emit_time_t(timestamp->tv_sec);
+ 	rte_trace_point_emit_long(timestamp->tv_nsec);
+ 	rte_trace_point_emit_int(ret);
+ )
+@@ -2169,7 +2169,7 @@ RTE_TRACE_POINT_FP(
+ 	RTE_TRACE_POINT_ARGS(uint16_t port_id, const struct timespec *time,
+ 		int ret),
+ 	rte_trace_point_emit_u16(port_id);
+-	rte_trace_point_emit_size_t(time->tv_sec);
++	rte_trace_point_emit_time_t(time->tv_sec);
+ 	rte_trace_point_emit_long(time->tv_nsec);
+ 	rte_trace_point_emit_int(ret);
+ )
+-- 
+2.34.1
+
