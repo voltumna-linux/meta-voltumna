@@ -41,14 +41,14 @@ do_install:append() {
 		${D}${systemd_unitdir}/system/systemd-networkd.service
 
 	# Copy file to set NamePolicy for network interfaces
-	install -m 0644 ${WORKDIR}/99-default.link ${D}${systemd_unitdir}/network/
+	install -m 0644 ${UNPACKDIR}/99-default.link ${D}${systemd_unitdir}/network/
 
 	# Don't ask password in case of file system corruption
 	install -m 0755 -d ${D}${systemd_unitdir}/system/rescue.service.d \
 		${D}${systemd_unitdir}/system/emergency.service.d
-	install -m 0644 ${WORKDIR}/sulogin-force.conf \
+	install -m 0644 ${UNPACKDIR}/sulogin-force.conf \
 		${D}${systemd_unitdir}/system/rescue.service.d
-	install -m 0644 ${WORKDIR}/sulogin-force.conf \
+	install -m 0644 ${UNPACKDIR}/sulogin-force.conf \
 		${D}${systemd_unitdir}/system/emergency.service.d
 
 	# Remove volatile directories creation
@@ -78,16 +78,16 @@ do_install:append() {
 
 	# Add script energy_perf_bias
 	install -d ${D}${sbindir}
-	install -m 0755 ${WORKDIR}/energy_perf_bias \
+	install -m 0755 ${UNPACKDIR}/energy_perf_bias \
 		${D}${sbindir}
 	install -d ${D}${systemd_unitdir}/system \
 		${D}${sysconfdir}/systemd/system/multi-user.target.wants
-	install -m 0644 ${WORKDIR}/energy_perf_bias.service \
+	install -m 0644 ${UNPACKDIR}/energy_perf_bias.service \
 		${D}${systemd_unitdir}/system
 	ln -sf ${systemd_unitdir}/system/energy_perf_bias.service \
 		${D}${sysconfdir}/systemd/system/multi-user.target.wants/energy_perf_bias.service
 
 	# Replace systemd-journal-upload.service 
-	install -m 0644 ${WORKDIR}/systemd-journal-upload.service \
+	install -m 0644 ${UNPACKDIR}/systemd-journal-upload.service \
 		${D}${systemd_unitdir}/system
 }
