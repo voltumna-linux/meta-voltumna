@@ -19,7 +19,7 @@ PACKAGECONFIG ??= "connman"
 PACKAGECONFIG[connman]        = "-DNETWORK_CN=ON, -DNETWORK_CN=OFF, connman"
 PACKAGECONFIG[networkmanager] = "-DNETWORK_NM=ON, -DNETWORK_NM=OFF, networkmanager"
 
-REQUIRED_DISTRO_FEATURES= "systemd"
+REQUIRED_DISTRO_FEATURES = "systemd"
 
 FILES:${PN} += "${datadir}/dbus-1/system-services/*.service"
 
@@ -28,6 +28,7 @@ S = "${WORKDIR}/git"
 SYSTEMD_SERVICE:${PN} = "lms.service"
 
 SRC_URI = "git://github.com/intel/lms.git;branch=master;protocol=https \
+           file://0001-LMS-fix-build-issue-with-gcc-15.patch \
            "
 SRCREV = "388f115b2aeb3ea11499971c65f828daefd32c47"
 
