@@ -1,0 +1,123 @@
+From bff033e9aa3ebf9d7e2bb42be9d635e9c65bcbe0 Mon Sep 17 00:00:00 2001
+From: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Date: Sat, 9 Jan 2021 23:41:36 +0530
+Subject: [PATCH 10/10] amd-xgbe: synchronization between AN state machine and
+ status polling timer thread
+
+xgbe driver uses a TIMEOUT to restart AN process if link is down.
+This create issue when TIMEOUT comes in between a KR training or RCC
+is in process. The patch avoids AN restart if TIMEOUT happens
+during KR cycle or RRC.
+
+TIMEOUT value also reduced to 1 sec to enable fast
+synchronization between LP.
+
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ drivers/net/ethernet/amd/xgbe/xgbe-mdio.c   | 29 +++++++++++++++++++--
+ drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c |  1 +
+ drivers/net/ethernet/amd/xgbe/xgbe.h        |  4 ++-
+ 3 files changed, 31 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c b/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
+index f4359407269a..c70c38d96020 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-mdio.c
+@@ -512,6 +512,7 @@ static enum xgbe_an xgbe_an73_tx_training(struct xgbe_prv_data *pdata,
+ 	XMDIO_WRITE(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL, reg);
+ 
+ 	pdata->kr_done = 1;
++	pdata->kr_start_time = jiffies;
+ 
+ 	netif_dbg(pdata, link, pdata->netdev,
+ 		  "KR training initiated\n");
+@@ -884,6 +885,8 @@ static void xgbe_an73_state_machine(struct xgbe_prv_data *pdata)
+ 		break;
+ 
+ 	case XGBE_AN_PAGE_RECEIVED:
++		if (xgbe_in_kr_mode(pdata))
++			pdata->an_int = 0;
+ 		pdata->an_state = xgbe_an73_page_received(pdata);
+ 		pdata->an_supported++;
+ 		break;
+@@ -1306,11 +1309,34 @@ static bool xgbe_phy_aneg_done(struct xgbe_prv_data *pdata)
+ static void xgbe_check_link_timeout(struct xgbe_prv_data *pdata)
+ {
+ 	unsigned long link_timeout;
++	int wait = 200;
++	unsigned long kr_time;
++	unsigned long rrc_time;
+ 
+ 	link_timeout = pdata->link_check + (XGBE_LINK_TIMEOUT * HZ);
+ 	if (time_after(jiffies, link_timeout)) {
+ 		netif_dbg(pdata, link, pdata->netdev, "AN link timeout\n");
+-		xgbe_phy_config_aneg(pdata);
++	/* AN restart should not happen within 500ms of start of RRC or KR tarining */
++	/* This loop ensures no AN restart during RRC window and KR training window */
++		while (wait--) {
++			mutex_lock(&pdata->an_mutex);
++			kr_time = pdata->kr_start_time + msecs_to_jiffies(XGBE_AN_MS_TIMEOUT);
++			rrc_time = pdata->rrc_start_time + msecs_to_jiffies(XGBE_AN_MS_TIMEOUT);
++			mutex_unlock(&pdata->an_mutex);
++			if (time_after(jiffies, kr_time) && time_after(jiffies, rrc_time))
++				break;
++			if (pdata->an_result == XGBE_AN_COMPLETE)
++				break;
++
++			usleep_range(5000, 6000);
++		}
++		/* AN restart is required, if AN result is not COMPLETE */
++		if (pdata->an_result != XGBE_AN_COMPLETE)
++			xgbe_phy_config_aneg(pdata);
++		else if ((pdata->an_result == XGBE_AN_COMPLETE) &&
++			 (xgbe_cur_mode(pdata) == XGBE_MODE_KX_1000))
++			xgbe_phy_config_aneg(pdata);
++
+ 	}
+ }
+ 
+@@ -1489,7 +1515,6 @@ static int xgbe_phy_start(struct xgbe_prv_data *pdata)
+ 
+ 	/* Indicate the PHY is up and running */
+ 	pdata->phy_started = 1;
+-	pdata->an_result = XGBE_AN_NO_LINK;
+ 
+ 	xgbe_an_init(pdata);
+ 	xgbe_an_enable_interrupts(pdata);
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+index f3566a480f2d..f24b8121db2e 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
++++ b/drivers/net/ethernet/amd/xgbe/xgbe-phy-v2.c
+@@ -2977,6 +2977,7 @@ static void xgbe_phy_cdr_notrack(struct xgbe_prv_data *pdata)
+ 			 XGBE_PMA_CDR_TRACK_EN_MASK,
+ 			 XGBE_PMA_CDR_TRACK_EN_OFF);
+ 	xgbe_phy_rrc(pdata);
++	pdata->rrc_start_time = jiffies;
+ 	phy_data->phy_cdr_notrack = 1;
+ }
+ 
+diff --git a/drivers/net/ethernet/amd/xgbe/xgbe.h b/drivers/net/ethernet/amd/xgbe/xgbe.h
+index c99b34c41f71..3ed98e2f8695 100644
+--- a/drivers/net/ethernet/amd/xgbe/xgbe.h
++++ b/drivers/net/ethernet/amd/xgbe/xgbe.h
+@@ -288,7 +288,7 @@
+ 
+ /* Auto-negotiation */
+ #define XGBE_AN_MS_TIMEOUT		500
+-#define XGBE_LINK_TIMEOUT		5
++#define XGBE_LINK_TIMEOUT		1
+ 
+ #define XGBE_SGMII_AN_LINK_STATUS	BIT(1)
+ #define XGBE_SGMII_AN_LINK_SPEED	(BIT(2) | BIT(3))
+@@ -1258,6 +1258,8 @@ struct xgbe_prv_data {
+ 	unsigned long an_start;
+ 	enum xgbe_an_mode an_mode;
+ 	unsigned int kr_done;
++	unsigned long kr_start_time;
++	unsigned long rrc_start_time;
+ 	unsigned int cdr_delay_required;
+ 
+ 	/* I2C support */
+-- 
+2.17.1
+
