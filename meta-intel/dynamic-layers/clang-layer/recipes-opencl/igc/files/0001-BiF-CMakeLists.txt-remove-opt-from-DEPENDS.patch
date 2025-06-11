@@ -1,4 +1,4 @@
-From 3d71670f8ad5b54d434c2f5f71713bb1d5433ae4 Mon Sep 17 00:00:00 2001
+From 1b98a931c3bf8daccc48cd618335ff35e3d382da Mon Sep 17 00:00:00 2001
 From: Anuj Mittal <anuj.mittal@intel.com>
 Date: Tue, 12 Oct 2021 23:46:42 +0800
 Subject: [PATCH] BiF/CMakeLists.txt: remove opt from DEPENDS
@@ -17,19 +17,16 @@ Signed-off-by: Anuj Mittal <anuj.mittal@intel.com>
  IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake b/IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake
-index d20d7f887..882e09fea 100644
---- a/IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake
-+++ b/IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake
-@@ -109,7 +109,7 @@ function(vc_build_bif TARGET RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
+Index: git/IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake
+===================================================================
+--- git.orig/IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake
++++ git/IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake
+@@ -121,7 +121,7 @@ function(vc_build_bif RES_FILE CMCL_SRC_
      COMMENT "vc_build_bif: Translating CMCL builtins:  ${BIF_CLANG_BC_NAME_FINAL} -> ${BIF_OPT_BC_NAME}"
-     COMMAND CMCLTranslatorTool -o ${BIF_CMCL_BC_NAME} ${BIF_CLANG_BC_NAME_FINAL}
-     COMMAND ${LLVM_OPT_EXE} ${IGC_LLVM_DEPENDENT_OPT_FLAGS} --O2 -o ${BIF_OPT_BC_NAME} ${BIF_CMCL_BC_NAME}
--    DEPENDS CMCLTranslatorTool ${LLVM_OPT_EXE} ${BIF_CLANG_BC_PATH_FINAL}
-+    DEPENDS CMCLTranslatorTool ${BIF_CLANG_BC_PATH_FINAL}
-     BYPRODUCTS ${BIF_OPT_BC_PATH}
-     SOURCES ${CMCL_SRC_PATH})
-   set(${RES_FILE} ${BIF_OPT_BC_NAME} PARENT_SCOPE)
--- 
-2.43.2
-
+     COMMAND CMCLTranslatorTool ${OPT_OPAQUE_ARG} -o ${BIF_CMCL_BC_PATH} ${BIF_CLANG_BC_PATH_FINAL}
+     COMMAND ${LLVM_OPT_EXE} ${OPT_OPAQUE_ARG} --O2 -o ${BIF_OPT_BC_PATH} ${BIF_CMCL_BC_PATH}
+-    DEPENDS CMCLTranslatorTool ${LLVM_OPT_EXE} ${OPT_BC_DEPENDS})
++    DEPENDS CMCLTranslatorTool ${BIF_CLANG_BC_PATH_FINAL})
+ 
+   add_custom_target(${TARGET_NAME}
+     DEPENDS ${BIF_OPT_BC_PATH}
