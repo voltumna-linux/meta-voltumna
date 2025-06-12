@@ -1,4 +1,3 @@
 #!/bin/sh
 
 rsync -azchHEADXK --delete --timeout=60 /usr/share/factory/etc/ /etc
-systemctl preset-all
