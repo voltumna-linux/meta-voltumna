@@ -16,7 +16,7 @@ SRC_URI = "git://gitlab.freedesktop.org/mesa/piglit.git;protocol=https;branch=ma
            "
 UPSTREAM_CHECK_COMMITS = "1"
 
-SRCREV = "05f02cb2ff1787892cba38c3b609f892419bae87"
+SRCREV = "a0a27e528f643dfeb785350a1213bfff09681950"
 # (when PV goes above 1.0 remove the trailing r)
 PV = "1.0+gitr"
 
@@ -25,7 +25,7 @@ S = "${WORKDIR}/git"
 X11_DEPS = "${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'virtual/libx11 libxrender libglu', '', d)}"
 X11_RDEPS = "${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'mesa-demos', '', d)}"
 
-DEPENDS = "libpng waffle libxkbcommon python3-mako-native python3-numpy-native python3-six-native virtual/egl"
+DEPENDS = "libpng waffle libxkbcommon python3-mako-native python3-numpy-native virtual/egl"
 
 inherit cmake pkgconfig python3native features_check bash-completion
 
@@ -64,7 +64,7 @@ INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 RDEPENDS:${PN} = "waffle waffle-bin python3 python3-mako python3-json \
 	python3-misc \
 	python3-unixadmin python3-xml python3-multiprocessing \
-	python3-six python3-shell python3-io \
+        python3-shell python3-io \
 	python3-netserver bash \
 	"
 
