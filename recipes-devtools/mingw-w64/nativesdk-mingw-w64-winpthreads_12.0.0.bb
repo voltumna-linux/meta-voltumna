@@ -2,13 +2,13 @@ DESCRIPTION = "Winpthreads runtime libraries from MinGW-w64 project"
 
 require mingw-w64.inc
 
-S = "${WORKDIR}/mingw-w64-v${PV}/mingw-w64-libraries/winpthreads"
+S = "${UNPACKDIR}/mingw-w64-v${PV}/mingw-w64-libraries/winpthreads"
 B = "${WORKDIR}/build-${TARGET_SYS}"
 
 inherit autotools nativesdk
 
 INHIBIT_DEFAULT_DEPS = "1"
-DEPENDS = "nativesdk-mingw-w64-runtime virtual/${TARGET_PREFIX}gcc"
+DEPENDS = "nativesdk-mingw-w64-runtime virtual/nativesdk-cross-cc"
 
 do_configure() {
     oe_runconf
