@@ -10,7 +10,7 @@ require conf/machine/include/ti-bsp.inc
 
 KERNEL_IMAGETYPE = "Image"
 KERNEL_IMAGETYPES = "Image fitImage"
-KERNEL_CLASSES += "kernel-fitimage"
+KERNEL_CLASSES += "kernel-fitimage-deprecated"
 
 UBOOT_ARCH = "arm"
 UBOOT_ENTRYPOINT = "0x81000000"
@@ -50,8 +50,6 @@ EFI_PROVIDER ?= "grub-efi"
 MACHINE_FEATURES += "efi"
 
 WKS_FILE ?= "${@bb.utils.contains("MACHINE_FEATURES", "efi", "sdimage-2part-efi.wks.in", "sdimage-2part.wks", d)}"
-
-TI_WKS_BOOTLOADER_APPEND ?= ""
 
 do_image_wic[depends] += "virtual/bootloader:do_deploy"
 
