@@ -1,0 +1,31 @@
+From e49cf7379ee254a581231340eb65b1eae84cb1bb Mon Sep 17 00:00:00 2001
+From: Yongxin Liu <yongxin.liu@windriver.com>
+Date: Wed, 18 Jun 2025 15:15:02 +0000
+Subject: [PATCH] qat20: change KERNELVERSION for Yocto build
+
+The "uname -r" command reflects the kernel version of the build
+environment, not the Yocto-generated kernel for the target system.
+
+Upstream-Status: Inappropriate [oe specific]
+
+Signed-off-by: Yongxin Liu <yongxin.liu@windriver.com>
+---
+ .../build_system/build_files/OS/linux_2.6_kernel_space_rules.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/quickassist/build_system/build_files/OS/linux_2.6_kernel_space_rules.mk b/quickassist/build_system/build_files/OS/linux_2.6_kernel_space_rules.mk
+index 32b3324..401af53 100644
+--- a/quickassist/build_system/build_files/OS/linux_2.6_kernel_space_rules.mk
++++ b/quickassist/build_system/build_files/OS/linux_2.6_kernel_space_rules.mk
+@@ -32,7 +32,7 @@
+ # 
+ #  version: QAT20.L.1.2.30-00090
+ 
+-KERNELVERSION=$(shell uname -r | cut -d'.' -f1,2)
++KERNELVERSION=$(shell echo $KERNEL_VERSION | cut -d'.' -f1,2)
+ $(OBJECTS): 
+ 	@echo Error: $@: To get object files in kernel space, you need to build a static library or a module;
+ 
+-- 
+2.49.0
+
