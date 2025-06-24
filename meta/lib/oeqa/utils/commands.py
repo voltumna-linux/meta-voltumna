@@ -203,6 +203,8 @@ def runCmd(command, ignore_status=False, timeout=None, assert_error=True, sync=T
 
     if result.status and not ignore_status:
         exc_output = result.output
+        if result.error:
+            exc_output = exc_output + result.error
         if limit_exc_output > 0:
             split = result.output.splitlines()
             if len(split) > limit_exc_output:
@@ -283,7 +285,20 @@ def get_bb_vars(variables=None, target=None, postconfig=None):
     return values
 
 def get_bb_var(var, target=None, postconfig=None):
-    return get_bb_vars([var], target, postconfig)[var]
+    if postconfig:
+        return bitbake("-e %s" % target or "", postconfig=postconfig).output
+    else:
+        # Fast-path for the non-postconfig case
+        cmd = ["bitbake-getvar", "--quiet", "--value", var]
+        if target:
+            cmd.extend(["--recipe", target])
+        try:
+            return subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE).stdout.strip()
+        except subprocess.CalledProcessError as e:
+            # We need to return None not the empty string if the variable hasn't been set.
+            if e.returncode == 1:
+                return None
+            raise
 
 def get_test_layer(bblayers=None):
     if bblayers is None:
@@ -312,9 +327,26 @@ def create_temp_layer(templayerdir, templayername, priority=999, recipepathspec=
         f.write('LAYERSERIES_COMPAT_%s = "%s"\n' % (templayername, corenames))
 
 @contextlib.contextmanager
-def runqemu(pn, ssh=True, runqemuparams='', image_fstype=None, launch_cmd=None, qemuparams=None, overrides={}, discard_writes=True):
+def runqemu(pn, ssh=True, runqemuparams='', image_fstype=None, launch_cmd=None, qemuparams=None, overrides={}, boot_patterns = {}, discard_writes=True):
     """
-    launch_cmd means directly run the command, don't need set rootfs or env vars.
+    Starts a context manager for a 'oeqa.targetcontrol.QemuTarget' resource.
+    The underlying Qemu will be booted into a shell when the generator yields
+    and stopped when the 'with' block exits.
+
+    Usage:
+
+        with runqemu('core-image-minimal') as qemu:
+            qemu.run_serial('cat /proc/cpuinfo')
+
+    Args:
+        pn (str): (image) recipe to run on
+        ssh (boolean): whether or not to enable SSH (network access)
+        runqemuparams (str): space-separated list of params to pass to 'runqemu' script (like 'nographics', 'ovmf', etc.)
+        image_fstype (str): IMAGE_FSTYPE to use
+        launch_cmd (str): directly run this command and bypass automatic runqemu parameter generation
+        overrides (dict): dict of "'<bitbake-variable>': value" pairs that allows overriding bitbake variables
+        boot_patterns (dict): dict of "'<pattern-name>': value" pairs to override default boot patterns, e.g. when not booting Linux
+        discard_writes (boolean): enables qemu -snapshot feature to prevent modifying original image
     """
 
     import bb.tinfoil
@@ -345,7 +377,7 @@ def runqemu(pn, ssh=True, runqemuparams='', image_fstype=None, launch_cmd=None, 
 
         logdir = recipedata.getVar("TEST_LOG_DIR")
 
-        qemu = oeqa.targetcontrol.QemuTarget(recipedata, targetlogger, image_fstype)
+        qemu = oeqa.targetcontrol.QemuTarget(recipedata, targetlogger, image_fstype, boot_patterns=boot_patterns)
     finally:
         # We need to shut down tinfoil early here in case we actually want
         # to run tinfoil-using utilities with the running QEMU instance.

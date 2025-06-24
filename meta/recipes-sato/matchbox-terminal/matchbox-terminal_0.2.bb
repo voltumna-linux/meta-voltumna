@@ -14,8 +14,11 @@ SRC_URI = "git://git.yoctoproject.org/${BPN};branch=master;protocol=https"
 UPSTREAM_CHECK_GITTAGREGEX = "(?P<pver>(\d+(\.\d+)+))"
 PV = "0.2+git"
 
-S = "${WORKDIR}/git"
-
-inherit autotools pkgconfig features_check
+inherit autotools pkgconfig features_check update-alternatives
 
 ANY_OF_DISTRO_FEATURES = "${GTK3DISTROFEATURES}"
+
+RPROVIDES:${PN} = "virtual-x-terminal-emulator"
+ALTERNATIVE:${PN} = "x-terminal-emulator"
+ALTERNATIVE_TARGET[x-terminal-emulator] = "${bindir}/matchbox-terminal"
+ALTERNATIVE_PRIORITY[x-terminal-emulator] = "20"

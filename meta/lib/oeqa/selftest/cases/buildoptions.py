@@ -10,7 +10,6 @@ import glob as g
 import shutil
 import tempfile
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.selftest.cases.buildhistory import BuildhistoryBase
 from oeqa.core.decorator.data import skipIfMachine
 from oeqa.utils.commands import bitbake, get_bb_var, get_bb_vars
 import oeqa.utils.ftools as ftools
@@ -84,7 +83,7 @@ class SanityOptionsTest(OESelftestTestCase):
 
         self.write_config("INHERIT:remove = \"report-error\"")
         if "packages-list" not in get_bb_var("ERROR_QA"):
-            self.append_config("ERROR_QA:append = \" packages-list\"")
+            self.append_config("ERROR_QA:append:pn-xcursor-transparent-theme = \" packages-list\"")
 
         self.write_recipeinc('xcursor-transparent-theme', 'PACKAGES += \"${PN}-dbg\"')
         self.add_command_to_tearDown('bitbake -c clean xcursor-transparent-theme')
@@ -94,8 +93,8 @@ class SanityOptionsTest(OESelftestTestCase):
         self.assertTrue(line and line.startswith("ERROR:"), msg=res.output)
         self.assertEqual(res.status, 1, msg = "bitbake reported exit code %s. It should have been 1. Bitbake output: %s" % (str(res.status), res.output))
         self.write_recipeinc('xcursor-transparent-theme', 'PACKAGES += \"${PN}-dbg\"')
-        self.append_config('ERROR_QA:remove = "packages-list"')
-        self.append_config('WARN_QA:append = " packages-list"')
+        self.append_config('ERROR_QA:remove:pn-xcursor-transparent-theme = "packages-list"')
+        self.append_config('WARN_QA:append:pn-xcursor-transparent-theme = " packages-list"')
         res = bitbake("xcursor-transparent-theme -f -c package")
         self.delete_recipeinc('xcursor-transparent-theme')
         line = self.getline(res, "QA Issue: xcursor-transparent-theme-dbg is listed in PACKAGES multiple times, this leads to packaging errors.")
@@ -138,43 +137,6 @@ class SanityOptionsTest(OESelftestTestCase):
         shutil.rmtree(dirpath)
 
         self.assertNotIn(err, ret.output)
-
-
-class BuildhistoryTests(BuildhistoryBase):
-
-    def test_buildhistory_basic(self):
-        self.run_buildhistory_operation('xcursor-transparent-theme')
-        self.assertTrue(os.path.isdir(get_bb_var('BUILDHISTORY_DIR')), "buildhistory dir was not created.")
-
-    def test_buildhistory_buildtime_pr_backwards(self):
-        target = 'xcursor-transparent-theme'
-        error = "ERROR:.*QA Issue: Package version for package %s went backwards which would break package feeds \(from .*-r1.* to .*-r0.*\)" % target
-        self.run_buildhistory_operation(target, target_config="PR = \"r1\"", change_bh_location=True)
-        self.run_buildhistory_operation(target, target_config="PR = \"r0\"", change_bh_location=False, expect_error=True, error_regex=error)
-
-    def test_fileinfo(self):
-        self.config_buildhistory()
-        bitbake('hicolor-icon-theme')
-        history_dir = get_bb_var('BUILDHISTORY_DIR_PACKAGE', 'hicolor-icon-theme')
-        self.assertTrue(os.path.isdir(history_dir), 'buildhistory dir was not created.')
-
-        def load_bh(f):
-            d = {}
-            for line in open(f):
-                split = [s.strip() for s in line.split('=', 1)]
-                if len(split) > 1:
-                    d[split[0]] = split[1]
-            return d
-
-        data = load_bh(os.path.join(history_dir, 'hicolor-icon-theme', 'latest'))
-        self.assertIn('FILELIST', data)
-        self.assertEqual(data['FILELIST'], '/usr/share/icons/hicolor/index.theme')
-        self.assertGreater(int(data['PKGSIZE']), 0)
-
-        data = load_bh(os.path.join(history_dir, 'hicolor-icon-theme-dev', 'latest'))
-        if 'FILELIST' in data:
-            self.assertEqual(data['FILELIST'], '')
-        self.assertEqual(int(data['PKGSIZE']), 0)
 
 class ArchiverTest(OESelftestTestCase):
     def test_arch_work_dir_and_export_source(self):
@@ -229,11 +191,10 @@ PREMIRRORS = "\\
     https://.*/.*    http://downloads.yoctoproject.org/mirror/sources/ \\n"
 """)
 
-        bitbake("world --runall fetch")
+        bitbake("world --runall fetch --continue")
 
 
 class Poisoning(OESelftestTestCase):
     def test_poisoning(self):
-        res = bitbake("poison", ignore_status=True)
-        self.assertNotEqual(res.status, 0)
-        self.assertTrue("is unsafe for cross-compilation" in res.output)
+        # The poison recipe fails if the poisoning didn't work
+        bitbake("poison")

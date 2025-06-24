@@ -9,7 +9,7 @@ SRC_URI = "\
     file://volatile-binds.service.in \
 "
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 inherit allarch systemd features_check
 
@@ -64,7 +64,6 @@ END
                "$var_lib_servicefile"
     fi
 }
-do_compile[dirs] = "${WORKDIR}"
 
 do_install () {
     install -d ${D}${base_sbindir}
@@ -82,4 +81,3 @@ do_install () {
     ln -s /dev/null ${D}${sysconfdir}/tmpfiles.d/etc.conf
     ln -s /dev/null ${D}${sysconfdir}/tmpfiles.d/home.conf
 }
-do_install[dirs] = "${WORKDIR}"
