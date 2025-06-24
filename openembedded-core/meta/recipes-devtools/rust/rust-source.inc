@@ -1,22 +1,18 @@
 RUST_VERSION ?= "${@d.getVar('PV').split('-')[0]}"
 
 SRC_URI += "https://static.rust-lang.org/dist/rustc-${RUST_VERSION}-src.tar.xz;name=rust \
-            file://hardcodepaths.patch;patchdir=${RUSTSRC} \
-            file://zlib-off64_t.patch;patchdir=${RUSTSRC} \
-            file://0001-Revert-Map-source-absolute-paths-to-OUT_DIR-as-relat.patch;patchdir=${RUSTSRC} \
-            file://rv32-missing-syscalls.patch;patchdir=${RUSTSRC} \
-            file://rv32-rustix-libc-backend.patch;patchdir=${RUSTSRC} \
-            file://rv32-cargo-rustix-0.38.19-fix.patch;patchdir=${RUSTSRC} \
-            file://custom-target-cfg.patch;patchdir=${RUSTSRC} \
-            file://rustc-bootstrap.patch;patchdir=${RUSTSRC} \
-            file://target-build-value.patch;patchdir=${RUSTSRC} \
-            file://0001-Handle-vendored-sources-when-remapping-paths.patch;patchdir=${RUSTSRC} \
-            file://repro-issue-fix-with-v175.patch;patchdir=${RUSTSRC} \
-            file://0001-cargo-do-not-write-host-information-into-compilation.patch;patchdir=${RUSTSRC} \
+            file://0001-Define-more-ioctl-codes-on-riscv32gc-unknown-linux-g.patch;patchdir=${RUSTSRC} \
+            file://rust-oe-selftest.patch;patchdir=${RUSTSRC} \
+            file://repro-issue-fix-with-cc-crate-hashmap.patch;patchdir=${RUSTSRC} \
+            file://oeqa-selftest-Increase-timeout-in-process-sigpipe-ru.patch;patchdir=${RUSTSRC} \
+            file://0001-src-core-build_steps-tool.rs-switch-off-lto-for-rust.patch;patchdir=${RUSTSRC} \
+            file://revert-link-std-statically-in-rustc_driver-feature.patch;patchdir=${RUSTSRC} \
+            file://0001-libunwind-Use-gcs-instead-of-gcs-target-attribute.patch;patchdir=${RUSTSRC} \
+            file://0001-Disable-libunwind-cross-architecture-unwinding.patch;patchdir=${RUSTSRC} \
 "
-SRC_URI[rust.sha256sum] = "4526f786d673e4859ff2afa0bab2ba13c918b796519a25c1acce06dba9542340"
+SRC_URI[rust.sha256sum] = "d939eada065dc827a9d4dbb55bd48533ad14c16e7f0a42e70147029c82a7707b"
 
-RUSTSRC = "${WORKDIR}/rustc-${RUST_VERSION}-src"
+RUSTSRC = "${UNPACKDIR}/rustc-${RUST_VERSION}-src"
 
 UPSTREAM_CHECK_URI = "https://forge.rust-lang.org/infra/other-installation-methods.html"
 UPSTREAM_CHECK_REGEX = "rustc-(?P<pver>\d+(\.\d+)+)-src"

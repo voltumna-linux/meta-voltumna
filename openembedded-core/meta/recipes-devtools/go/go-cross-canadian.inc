@@ -1,8 +1,8 @@
 inherit cross-canadian
 
 DEPENDS = "go-native virtual/${HOST_PREFIX}go virtual/nativesdk-${HOST_PREFIX}go-runtime \
-           virtual/${HOST_PREFIX}gcc virtual/nativesdk-libc \
-           virtual/nativesdk-${HOST_PREFIX}compilerlibs"
+           virtual/nativesdk-cross-cc virtual/nativesdk-libc \
+           virtual/nativesdk-compilerlibs"
 PN = "go-cross-canadian-${TRANSLATED_TARGET_ARCH}"
 
 # it uses gcc on build machine during go-cross-canadian bootstrap, but
@@ -28,7 +28,6 @@ do_compile() {
 	cd ${B}
 }
 do_compile[cleandirs] += "${GOTMPDIR} ${B}/bin ${B}/pkg"
-
 
 make_wrapper() {
 	rm -f ${D}${bindir}/$2

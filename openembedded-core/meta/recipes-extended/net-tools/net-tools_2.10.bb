@@ -15,8 +15,6 @@ SRC_URI = "git://git.code.sf.net/p/net-tools/code;protocol=https;branch=master \
     file://CVE-2025-46836-02.patch \
 "
 
-S = "${WORKDIR}/git"
-
 inherit gettext
 
 # The Makefile is lame, no parallel build
@@ -33,8 +31,8 @@ PACKAGECONFIG[plipconfig] = ""
 do_configure() {
 	# net-tools has its own config mechanism requiring "make config"
 	# we pre-generate desired options and copy to source directory instead
-	cp ${WORKDIR}/net-tools-config.h    ${S}/config.h
-	cp ${WORKDIR}/net-tools-config.make ${S}/config.make
+	cp ${UNPACKDIR}/net-tools-config.h    ${S}/config.h
+	cp ${UNPACKDIR}/net-tools-config.make ${S}/config.make
 
 	if [ "${USE_NLS}" = "no" ]; then
 		sed -i -e 's/^I18N=1/# I18N=1/' ${S}/config.make

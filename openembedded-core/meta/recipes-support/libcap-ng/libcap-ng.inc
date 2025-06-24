@@ -1,7 +1,7 @@
 SUMMARY = "An alternate posix capabilities library"
 DESCRIPTION = "The libcap-ng library is intended to make programming \
 with POSIX capabilities much easier than the traditional libcap library."
-HOMEPAGE = "http://freecode.com/projects/libcap-ng"
+HOMEPAGE = "https://github.com/stevegrubb/libcap-ng"
 SECTION = "base"
 LICENSE = "GPL-2.0-or-later & LGPL-2.1-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=94d55d512a9ba36caa9b7df079bae19f \
@@ -11,7 +11,8 @@ SRC_URI = "git://github.com/stevegrubb/libcap-ng.git;protocol=https;branch=maste
            file://0001-Fix-python-path-when-invoking-py-compile-54.patch \
            "
 SRCREV = "f5d39702622208b3ada064d7b2eaeaf1454c9bd3"
-S = "${WORKDIR}/git"
+
+inherit lib_package autotools
 
 do_configure:prepend() {
     touch ${S}/NEWS

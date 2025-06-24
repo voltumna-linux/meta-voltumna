@@ -12,20 +12,10 @@ PE = "1"
 
 # We use the revision in order to avoid having to fetch it from the
 # repo during parse
-SRCREV = "866ca972d6c3cabeaf6dbac431e8e08bb30b3c8e"
+SRCREV = "34820924edbc4ec7803eb89d9852f4b870fa760a"
 
-SRC_URI = "git://source.denx.de/u-boot/u-boot.git;protocol=https;branch=master \
-           file://CVE-2024-57254.patch \
-           file://CVE-2024-57255.patch \
-           file://CVE-2024-57256.patch \
-           file://CVE-2024-57257.patch \
-           file://CVE-2024-57258-1.patch \
-           file://CVE-2024-57258-2.patch \
-           file://CVE-2024-57258-3.patch \
-           file://CVE-2024-57259.patch \
-"
+SRC_URI = "git://source.denx.de/u-boot/u-boot.git;protocol=https;branch=master;tag=v${PV}"
 
-S = "${WORKDIR}/git"
 B = "${WORKDIR}/build"
 
 inherit pkgconfig

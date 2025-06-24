@@ -15,11 +15,6 @@ SRC_URI = "${GITHUB_BASE_URI}/download/v${PV}/cups-${PV}-source.tar.gz \
            file://0004-cups-fix-multilib-install-file-conflicts.patch \
            file://volatiles.99_cups \
            file://cups-volatiles.conf \
-           file://CVE-2024-47175-1.patch \
-           file://CVE-2024-47175-2.patch \
-           file://CVE-2024-47175-3.patch \
-           file://CVE-2024-47175-4.patch \
-           file://CVE-2024-47175-5.patch \
            "
 
 GITHUB_BASE_URI = "https://github.com/OpenPrinting/cups/releases"
@@ -89,11 +84,11 @@ do_install () {
 	    rm -rf ${D}${sysconfdir}/init.d/
 	    rm -rf ${D}${sysconfdir}/rc*
 	    install -d ${D}${sysconfdir}/tmpfiles.d
-	    install -m 0644 ${WORKDIR}/cups-volatiles.conf \
+	    install -m 0644 ${UNPACKDIR}/cups-volatiles.conf \
 		    ${D}${sysconfdir}/tmpfiles.d/cups.conf
 	else
 	    install -d ${D}${sysconfdir}/default/volatiles
-	    install -m 0644 ${WORKDIR}/volatiles.99_cups \
+	    install -m 0644 ${UNPACKDIR}/volatiles.99_cups \
 		    ${D}${sysconfdir}/default/volatiles/99_cups
 	fi
 }
@@ -101,7 +96,7 @@ do_install () {
 PACKAGES =+ "${PN}-lib ${PN}-libimage ${PN}-webif"
 
 RDEPENDS:${PN} += "${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', 'procps', '', d)}"
-FILES:${PN} += "${libexecdir}/cups/"
+FILES:${PN} += "${libexecdir}/cups/ ${systemd_system_unitdir}/system-cups.slice"
 
 FILES:${PN}-lib = "${libdir}/libcups.so.*"
 

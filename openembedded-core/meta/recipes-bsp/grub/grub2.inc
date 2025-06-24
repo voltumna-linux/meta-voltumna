@@ -14,7 +14,6 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
 CVE_PRODUCT = "grub2"
 
 SRC_URI = "${GNU_MIRROR}/grub/grub-${PV}.tar.gz \
-           file://0001-Disable-mfpmath-sse-as-well-when-SSE-is-disabled.patch \
            file://autogen.sh-exclude-pc.patch \
            file://grub-module-explicitly-keeps-symbole-.module_license.patch \
            file://0001-grub.d-10_linux.in-add-oe-s-kernel-name.patch \
@@ -47,7 +46,7 @@ CVE_STATUS[CVE-2024-1048]  = "not-applicable-platform: Applies only to RHEL/Fedo
 
 DEPENDS = "flex-native bison-native gettext-native"
 
-GRUB_COMPATIBLE_HOST = '(x86_64.*|i.86.*|arm.*|aarch64.*|riscv.*)-(linux.*|freebsd.*)'
+GRUB_COMPATIBLE_HOST = '(x86_64.*|i.86.*|arm.*|aarch64.*|loongarch64.*|riscv.*)-(linux.*|freebsd.*)'
 COMPATIBLE_HOST = "${GRUB_COMPATIBLE_HOST}"
 # Grub doesn't support hard float toolchain and won't be able to forcefully
 # disable it on some of the target CPUs. See 'configure.ac' for
@@ -60,6 +59,7 @@ COMPATIBLE_HOST:armv7ve = "${@'null' if bb.utils.contains('TUNE_CCARGS_MFLOAT', 
 
 GRUBPLATFORM:arm = "efi"
 GRUBPLATFORM:aarch64 = "efi"
+GRUBPLATFORM:loongarch64 = "efi"
 GRUBPLATFORM:riscv32 = "efi"
 GRUBPLATFORM:riscv64 = "efi"
 GRUBPLATFORM ??= "pc"
@@ -106,3 +106,7 @@ do_configure:prepend() {
 	FROM_BOOTSTRAP=1 ${S}/autogen.sh
 	cd ${B}
 }
+
+# | aarch64-poky-linux-clang: error: invalid argument '-mcmodel=large' only allowed with '-fno-pic'
+# see - https://bugs.gentoo.org/942843
+TOOLCHAIN:aarch64 = "gcc"

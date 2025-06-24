@@ -26,8 +26,6 @@ UPSTREAM_CHECK_GITTAGREGEX = "(?P<pver>\d+\.\d+)\.0"
 # Ignore that the upstream version .z in x.y.z is always newer
 UPSTREAM_VERSION_UNKNOWN = "1"
 
-S = "${WORKDIR}/git"
-
 VIMDIR = "vim${@d.getVar('PV').split('.')[0]}${@d.getVar('PV').split('.')[1]}"
 
 inherit autotools-brokensep update-alternatives mime-xdg pkgconfig
@@ -127,7 +125,6 @@ FILES:${PN}-data = "${datadir}/${BPN}"
 # We do not want to complain if perl or gawk are not on the target.
 #
 FILES:${PN}-tools = "${datadir}/${BPN}/${VIMDIR}/tools"
-INSANE_SKIP:${PN}-tools = "file-rdeps"
 
 FILES:${PN}-common = " \
     ${datadir}/${BPN}/${VIMDIR}/*.vim \

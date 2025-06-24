@@ -1,4 +1,4 @@
-From d09a034acba8922158d38fd16be970b5a454428a Mon Sep 17 00:00:00 2001
+From b678363156b5d40e09c1d138840180e3ddc7d20b Mon Sep 17 00:00:00 2001
 From: Trevor Gamblin <tgamblin@baylibre.com>
 Date: Wed, 8 May 2024 11:58:09 -0400
 Subject: [PATCH] test_shutdown: skip problematic test

@@ -67,11 +67,6 @@ TARGET_FPU = ""
 EXTRA_OECONF_GCC_FLOAT = ""
 TUNE_FEATURES = ""
 
-CPPFLAGS = "${BUILDSDK_CPPFLAGS}"
-CFLAGS = "${BUILDSDK_CFLAGS}"
-CXXFLAGS = "${BUILDSDK_CXXFLAGS}"
-LDFLAGS = "${BUILDSDK_LDFLAGS}"
-
 # Change to place files in SDKPATH
 base_prefix = "${SDKPATHNATIVE}"
 prefix = "${SDKPATHNATIVE}${prefix_nativesdk}"
@@ -109,6 +104,7 @@ python () {
     clsextend.rename_package_variables((d.getVar("PACKAGEVARS") or "").split())
 
     clsextend.map_depends_variable("DEPENDS")
+    clsextend.map_depends_variable("PACKAGE_WRITE_DEPS")
     clsextend.map_packagevars()
     clsextend.map_variable("PROVIDES")
     clsextend.map_regexp_variable("PACKAGES_DYNAMIC")

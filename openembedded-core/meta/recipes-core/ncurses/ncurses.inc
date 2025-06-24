@@ -2,7 +2,7 @@ SUMMARY = "The New Curses library"
 DESCRIPTION = "SVr4 and XSI-Curses compatible curses library and terminfo tools including tic, infocmp, captoinfo. Supports color, multiple highlights, forms-drawing characters, and automatic recognition of keypad and function-key sequences. Extensions include resizable windows and mouse support on both xterm and Linux console using the gpm library."
 HOMEPAGE = "http://www.gnu.org/software/ncurses/ncurses.html"
 LICENSE = "MIT"
-LIC_FILES_CHKSUM = "file://COPYING;md5=c5a4600fdef86384c41ca33ecc70a4b8;endline=27"
+LIC_FILES_CHKSUM = "file://COPYING;md5=6f291ee54551d9d8d992ecd623fe4bc7;endline=27"
 SECTION = "libs"
 DEPENDS = "ncurses-native"
 DEPENDS:class-native = ""
@@ -20,8 +20,6 @@ EXTRA_AUTORECONF = "-I m4"
 CACHED_CONFIGUREVARS = "cf_cv_func_nanosleep=yes"
 CACHED_CONFIGUREVARS:append:linux = " cf_cv_working_poll=yes"
 
-EXTRASITECONFIG = "CFLAGS='${CFLAGS} -I${SYSROOT_DESTDIR}${includedir}'"
-
 # Whether to enable separate widec libraries; must be 'true' or 'false'
 #
 # TODO: remove this variable when widec is supported in every setup?
@@ -29,6 +27,9 @@ ENABLE_WIDEC ?= "true"
 
 # _GNU_SOURCE is required for widec stuff and is not detected automatically
 CPPFLAGS += "-D_GNU_SOURCE"
+
+# Check if we still need it when next release (6.6) happens
+CFLAGS += "-std=gnu17"
 
 # natives don't generally look in base_libdir
 base_libdir:class-native = "${libdir}"
@@ -72,6 +73,7 @@ ncurses_configure() {
 	        --without-debug \
 	        --without-ada \
 	        --without-gpm \
+		--with-xterm-kbs=del \
 	        --enable-hard-tabs \
 	        --enable-xmc-glitch \
 	        --enable-colorfgbg \
@@ -173,7 +175,6 @@ do_install() {
         oe_runmake -C narrowc ${_install_cfgs} \
                 install.data
 
-
         ! ${ENABLE_WIDEC} || \
             oe_runmake -C widec ${_install_cfgs} ${_install_opts}
 
@@ -181,7 +182,7 @@ do_install() {
 
         # include some basic terminfo files
         # stolen ;) from gentoo and modified a bit
-        for x in ansi console dumb linux rxvt screen screen-256color sun vt52 vt100 vt102 vt200 vt220 xterm-color xterm-xfree86 xterm-256color
+        for x in alacritty ansi console dumb linux rxvt screen screen-256color sun vt52 vt100 vt102 vt200 vt220 xterm-color xterm-xfree86 xterm-256color
         do
                 local termfile="$(find "${D}${datadir}/terminfo/" -name "${x}" 2>/dev/null)"
                 local basedir="$(basename $(dirname "${termfile}"))"
@@ -260,7 +261,6 @@ python populate_packages:prepend () {
     if libdir is not base_libdir:
         do_split_packages(d, base_libdir, r'^lib(.*)\.so\..*', pnbase, 'ncurses %s library', prepend=True, extra_depends = '', allow_links=True)
 }
-
 
 inherit update-alternatives
 

@@ -18,15 +18,13 @@ SRC_URI = "git://github.com/connectivity/connman-gnome.git;branch=master;protoco
            file://0001-Port-to-Gtk3.patch \
           "
 
-S = "${WORKDIR}/git"
-
 inherit autotools-brokensep gtk-icon-cache pkgconfig features_check
 ANY_OF_DISTRO_FEATURES = "${GTK3DISTROFEATURES}"
 
 RDEPENDS:${PN} = "connman"
 
 do_install:append() {
-    install -m 0644 ${WORKDIR}/images/* ${D}/usr/share/icons/hicolor/22x22/apps/
+    install -m 0644 ${UNPACKDIR}/images/* ${D}/usr/share/icons/hicolor/22x22/apps/
 }
 
 # http://errors.yoctoproject.org/Errors/Details/766926/
