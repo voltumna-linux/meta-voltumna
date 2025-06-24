@@ -20,6 +20,7 @@ SRC_URI = "https://downloadmirror.intel.com/852759/QAT20.L.1.2.30-00090.tar.gz;s
            file://qat20-add-install-target-and-add-folder.patch \
            file://qat20-update-KDIR-for-cross-compilation.patch \
            file://qat20-qat-override-CC-LD-AR-only-when-it-is-not-define.patch \
+           file://qat20-change-KERNELVERSION-for-Yocto-build.patch \
            file://0001-usdm_drv-convert-mutex_lock-to-mutex_trylock-to-avio.patch \
           "
 
