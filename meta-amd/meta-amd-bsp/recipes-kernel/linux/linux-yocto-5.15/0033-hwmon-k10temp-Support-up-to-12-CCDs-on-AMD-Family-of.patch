@@ -1,0 +1,78 @@
+From 493012fff01be5754e2b482af315e7a78fc42a69 Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Wed, 24 Nov 2021 10:03:13 -0600
+Subject: [PATCH 33/86] hwmon: (k10temp) Support up to 12 CCDs on AMD Family of
+ processors
+
+commit 8bb050cd5cf494f3d0cb45a6b54a476af09edb8d upstream
+
+The current driver can read the temperatures from upto 8 CCDs
+(Core-Complex Die).
+
+The newer AMD Family 19h Models 10h-1Fh and A0h-AFh can support up to
+12 CCDs. Update the driver to read up to 12 CCDs.
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+Link: https://lore.kernel.org/r/163776976762.904164.5618896687524494215.stgit@bmoger-ubuntu
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+Signed-off-by: Zhaolong Zhang <zhaolong.zhang@windriver.com>
+---
+ drivers/hwmon/k10temp.c | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/hwmon/k10temp.c b/drivers/hwmon/k10temp.c
+index 880990fa4795..4e239bd75b1d 100644
+--- a/drivers/hwmon/k10temp.c
++++ b/drivers/hwmon/k10temp.c
+@@ -171,6 +171,10 @@ static const char *k10temp_temp_label[] = {
+ 	"Tccd6",
+ 	"Tccd7",
+ 	"Tccd8",
++	"Tccd9",
++	"Tccd10",
++	"Tccd11",
++	"Tccd12",
+ };
+ 
+ static int k10temp_read_labels(struct device *dev,
+@@ -206,7 +210,7 @@ static int k10temp_read_temp(struct device *dev, u32 attr, int channel,
+ 			if (*val < 0)
+ 				*val = 0;
+ 			break;
+-		case 2 ... 9:		/* Tccd{1-8} */
++		case 2 ... 13:		/* Tccd{1-12} */
+ 			amd_smn_read(amd_pci_dev_to_node_id(data->pdev),
+ 				     ZEN_CCD_TEMP(data->ccd_offset, channel - 2),
+ 						  &regval);
+@@ -341,6 +345,10 @@ static const struct hwmon_channel_info *k10temp_info[] = {
+ 			   HWMON_T_INPUT | HWMON_T_LABEL,
+ 			   HWMON_T_INPUT | HWMON_T_LABEL,
+ 			   HWMON_T_INPUT | HWMON_T_LABEL,
++			   HWMON_T_INPUT | HWMON_T_LABEL,
++			   HWMON_T_INPUT | HWMON_T_LABEL,
++			   HWMON_T_INPUT | HWMON_T_LABEL,
++			   HWMON_T_INPUT | HWMON_T_LABEL,
+ 			   HWMON_T_INPUT | HWMON_T_LABEL),
+ 	NULL
+ };
+@@ -433,12 +441,15 @@ static int k10temp_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 			data->ccd_offset = 0x154;
+ 			k10temp_get_ccd_support(pdev, data, 8);
+ 			break;
+-		case 0x10 ... 0x1f:
+ 		case 0x40 ... 0x4f:	/* Yellow Carp */
+-		case 0xa0 ... 0xaf:
+ 			data->ccd_offset = 0x300;
+ 			k10temp_get_ccd_support(pdev, data, 8);
+ 			break;
++		case 0x10 ... 0x1f:
++		case 0xa0 ... 0xaf:
++			data->ccd_offset = 0x300;
++			k10temp_get_ccd_support(pdev, data, 12);
++			break;
+ 		}
+ 	} else {
+ 		data->read_htcreg = read_htcreg_pci;
+-- 
+2.37.3
+

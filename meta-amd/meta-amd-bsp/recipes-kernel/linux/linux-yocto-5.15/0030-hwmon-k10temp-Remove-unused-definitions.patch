@@ -1,0 +1,53 @@
+From 35327d14d5a63b545f84a28b5b719c547024ccde Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Mon, 8 Nov 2021 15:51:27 -0600
+Subject: [PATCH 30/86] hwmon: (k10temp) Remove unused definitions
+
+commit f707bcb5d1cb4c47d27c688c859dcdb70e3c7065 upstream
+
+Usage of these definitions were removed after the commit 0a4e668b5d52
+("hwmon: (k10temp) Remove support for displaying voltage and current on Zen CPUs").
+So, cleanup them up.
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+Link: https://lore.kernel.org/r/163640828776.955062.15863375803675701204.stgit@bmoger-ubuntu
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+Signed-off-by: Zhaolong Zhang <zhaolong.zhang@windriver.com>
+---
+ drivers/hwmon/k10temp.c | 20 --------------------
+ 1 file changed, 20 deletions(-)
+
+diff --git a/drivers/hwmon/k10temp.c b/drivers/hwmon/k10temp.c
+index 3618a924e78e..662bad7ed0a2 100644
+--- a/drivers/hwmon/k10temp.c
++++ b/drivers/hwmon/k10temp.c
+@@ -76,26 +76,6 @@ static DEFINE_MUTEX(nb_smu_ind_mutex);
+ #define ZEN_CUR_TEMP_SHIFT			21
+ #define ZEN_CUR_TEMP_RANGE_SEL_MASK		BIT(19)
+ 
+-#define ZEN_SVI_BASE				0x0005A000
+-
+-/* F17h thermal registers through SMN */
+-#define F17H_M01H_SVI_TEL_PLANE0		(ZEN_SVI_BASE + 0xc)
+-#define F17H_M01H_SVI_TEL_PLANE1		(ZEN_SVI_BASE + 0x10)
+-#define F17H_M31H_SVI_TEL_PLANE0		(ZEN_SVI_BASE + 0x14)
+-#define F17H_M31H_SVI_TEL_PLANE1		(ZEN_SVI_BASE + 0x10)
+-
+-#define F17H_M01H_CFACTOR_ICORE			1000000	/* 1A / LSB	*/
+-#define F17H_M01H_CFACTOR_ISOC			250000	/* 0.25A / LSB	*/
+-#define F17H_M31H_CFACTOR_ICORE			1000000	/* 1A / LSB	*/
+-#define F17H_M31H_CFACTOR_ISOC			310000	/* 0.31A / LSB	*/
+-
+-/* F19h thermal registers through SMN */
+-#define F19H_M01_SVI_TEL_PLANE0			(ZEN_SVI_BASE + 0x14)
+-#define F19H_M01_SVI_TEL_PLANE1			(ZEN_SVI_BASE + 0x10)
+-
+-#define F19H_M01H_CFACTOR_ICORE			1000000	/* 1A / LSB	*/
+-#define F19H_M01H_CFACTOR_ISOC			310000	/* 0.31A / LSB	*/
+-
+ struct k10temp_data {
+ 	struct pci_dev *pdev;
+ 	void (*read_htcreg)(struct pci_dev *pdev, u32 *regval);
+-- 
+2.37.3
+
