@@ -1,6 +1,7 @@
 # Add the necessary override
 CCACHE_COMPILERCHECK:toolchain-clang ?= "%compiler% -v"
-HOST_CC_ARCH:prepend:toolchain-clang = "-target ${HOST_SYS} "
+HOST_CC_ARCH:prepend:toolchain-clang:class-target = "-target ${HOST_SYS} "
+HOST_CC_ARCH:prepend:toolchain-clang:class-nativesdk = "-target ${HOST_SYS} "
 CC:toolchain-clang  = "${CCACHE}${HOST_PREFIX}clang ${HOST_CC_ARCH}${TOOLCHAIN_OPTIONS}"
 CXX:toolchain-clang = "${CCACHE}${HOST_PREFIX}clang++ ${HOST_CC_ARCH}${TOOLCHAIN_OPTIONS}"
 CPP:toolchain-clang = "${CCACHE}${HOST_PREFIX}clang ${HOST_CC_ARCH}${TOOLCHAIN_OPTIONS} -E"
@@ -13,6 +14,7 @@ OBJCOPY:toolchain-clang = "${HOST_PREFIX}llvm-objcopy"
 STRIP:toolchain-clang = "${HOST_PREFIX}llvm-strip"
 STRINGS:toolchain-clang = "${HOST_PREFIX}llvm-strings"
 READELF:toolchain-clang = "${HOST_PREFIX}llvm-readelf"
+LD:toolchain-clang = "${@bb.utils.contains('DISTRO_FEATURES', 'ld-is-lld', '${HOST_PREFIX}ld.lld${TOOLCHAIN_OPTIONS} ${HOST_LD_ARCH}', '${HOST_PREFIX}ld${TOOLCHAIN_OPTIONS} ${HOST_LD_ARCH}', d)}"
 
 LTO:toolchain-clang = "${@bb.utils.contains('DISTRO_FEATURES', 'thin-lto', '-flto=thin', '-flto -fuse-ld=lld', d)}"
 
@@ -76,8 +78,9 @@ LDFLAGS:toolchain-clang:class-nativesdk = "${BUILDSDK_LDFLAGS} \
                                            -Wl,-rpath-link,${STAGING_LIBDIR}/.. \
                                            -Wl,-rpath,${libdir}/.. "
 
-# Enable lld globally"
+# Enable lld globally except for ppc32 where it causes random segfaults in Qemu usermode
 LDFLAGS:append:toolchain-clang = "${@bb.utils.contains('DISTRO_FEATURES', 'ld-is-lld', ' -fuse-ld=lld', '', d)}"
+LDFLAGS:remove:toolchain-clang:powerpc = "-fuse-ld=lld"
 
 # Remove gcc specific -fcanon-prefix-map option, added in gcc-13+
 # clang does not support it yet
@@ -131,7 +134,7 @@ def clang_base_deps(d):
             elif (d.getVar('LIBCPLUSPLUS').find('-stdlib=libc++') != -1):
                 ret += " libcxx "
             else:
-                ret += " virtual/${TARGET_PREFIX}compilerlibs "
+                ret += " virtual/${MLPREFIX}compilerlibs "
             return ret
     return ""
 
@@ -149,17 +152,6 @@ EOF
     sed -i 's/ -mmusl / /g' ${WORKDIR}/toolchain.cmake
 }
 
-RECIPESYSROOTFUNCS = ""
-RECIPESYSROOTFUNCS:toolchain-clang = "recipe_sysroot_check_ld_is_lld"
-
-recipe_sysroot_check_ld_is_lld () {
-    if ${@bb.utils.contains('DISTRO_FEATURES', 'ld-is-lld', 'true', 'false', d)} &&  \
-        [ -e ${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}ld.lld ]; then
-        ln -srf ${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}ld.lld ${STAGING_BINDIR_TOOLCHAIN}/${TARGET_PREFIX}ld
-    fi
-}
-do_prepare_recipe_sysroot[postfuncs] += "${RECIPESYSROOTFUNCS}"
-#
 # dump recipes which still use gcc
 #python __anonymous() {
 #    toolchain = d.getVar("TOOLCHAIN")
