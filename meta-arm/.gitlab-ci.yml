@@ -7,6 +7,10 @@ variables:
   # by default
   FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY: 0
   FF_KUBERNETES_HONOR_ENTRYPOINT: 1
+  # The directory to use as the persistent cache (the root for DL_DIR,
+  # SSTATE_DIR, etc). The default is the build tree which will not be
+  # persistent, so this should be set in the runner.
+  CACHE_DIR: $CI_PROJECT_DIR
 
 stages:
   - prep
@@ -20,23 +24,19 @@ stages:
   interruptible: true
   variables:
     KAS_WORK_DIR: $CI_PROJECT_DIR/work
-    KAS_REPO_REF_DIR: $CI_BUILDS_DIR/persist/repos
-    SSTATE_DIR: $CI_BUILDS_DIR/persist/sstate
-    DL_DIR: $CI_BUILDS_DIR/persist/downloads
+    KAS_BUILD_DIR: $KAS_WORK_DIR/build
+    KAS_REPO_REF_DIR: ""
+    SSTATE_DIR: $CACHE_DIR/sstate
+    DL_DIR: $CACHE_DIR/downloads
     BB_LOGCONFIG: $CI_PROJECT_DIR/ci/logging.yml
-    TOOLCHAIN_DIR: $CI_BUILDS_DIR/persist/toolchains
+    TOOLCHAIN_DIR: $CACHE_DIR/toolchains
     IMAGE_DIR: $CI_PROJECT_DIR/work/build/tmp/deploy/images
     TOOLCHAIN_LINK_DIR: $CI_PROJECT_DIR/work/build/toolchains
   before_script:
-    - echo KAS_WORK_DIR = $KAS_WORK_DIR
-    - echo SSTATE_DIR = $SSTATE_DIR
-    - echo DL_DIR = $DL_DIR
     - rm -rf $KAS_WORK_DIR
     - mkdir --verbose --parents $KAS_WORK_DIR $KAS_REPO_REF_DIR $SSTATE_DIR $DL_DIR $TOOLCHAIN_DIR $TOOLCHAIN_LINK_DIR
     # Must do this here, as it's the only way to make sure the toolchain is installed on the same builder
     - ./ci/get-binary-toolchains $DL_DIR $TOOLCHAIN_DIR $TOOLCHAIN_LINK_DIR
-    # This can be removed with Kas 3.2
-    - sudo apt-get update && sudo apt-get install --yes python3-subunit
 
 # Generalised fragment to do a Kas build
 .build:
@@ -66,14 +66,25 @@ stages:
 
 
 #
-# Prep stage, update repositories once
+# Prep stage, update repositories once.
+# Set the CI variable CI_CLEAN_REPOS=1 to refetch the respositories from scratch
 #
 update-repos:
   extends: .setup
   stage: prep
   script:
-    - flock --verbose --timeout 60 $KAS_REPO_REF_DIR ./ci/update-repos
+    - |
+      exit_code=0
 
+      printenv
+
+      if [ -n "$KAS_REPO_REF_DIR" ]; then
+        flock --verbose --timeout 60 $KAS_REPO_REF_DIR --command ./ci/update-repos || exit_code=$?
+        # Exit now if that failed, unless the status was 128 (fetch failed)
+        test $exit_code != 0 -a $exit_code != 128 && exit 1
+      fi
+
+      exit $exit_code
 #
 # Build stage, the actual build jobs
 #
