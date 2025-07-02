@@ -130,6 +130,14 @@ class Checksum(unittest.TestCase):
             checksum = bb.utils.sha256_file(f.name)
             self.assertEqual(checksum, "fcfbae8bf6b721dbb9d2dc6a9334a58f2031a9a9b302999243f99da4d7f12d0f")
 
+    def test_goh1(self):
+        import hashlib
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(self.filler)
+            f.flush()
+            checksum = bb.utils.goh1_file(f.name)
+            self.assertEqual(checksum, "81191f04d4abf413e5badd234814e4202d9efa73e6f9437e9ddd6b8165b569ef")
+
 class EditMetadataFile(unittest.TestCase):
     _origfile = """
 # A comment
@@ -684,3 +692,14 @@ class EnvironmentTests(unittest.TestCase):
         self.assertIn("A", os.environ)
         self.assertEqual(os.environ["A"], "this is A")
         self.assertNotIn("B", os.environ)
+
+class FilemodeTests(unittest.TestCase):
+    def test_filemode_convert(self):
+        self.assertEqual(0o775, bb.utils.to_filemode("0o775"))
+        self.assertEqual(0o775, bb.utils.to_filemode(0o775))
+        self.assertEqual(0o775, bb.utils.to_filemode("775"))
+        with self.assertRaises(ValueError):
+            bb.utils.to_filemode("xyz")
+        with self.assertRaises(ValueError):
+            bb.utils.to_filemode("999")
+
