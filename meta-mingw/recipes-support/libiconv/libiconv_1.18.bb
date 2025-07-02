@@ -6,18 +6,21 @@ SECTION = "libs"
 NOTES = "Needs to be stripped down to: ascii iso8859-1 eucjp iso-2022jp gb utf8"
 PROVIDES = "virtual/libiconv"
 PR = "r1"
-LICENSE = "LGPL-3.0-only"
-LIC_FILES_CHKSUM = "file://COPYING.LIB;md5=9f604d8a4f8e74f4f5140845a21b6674 \
-                    file://libcharset/COPYING.LIB;md5=9f604d8a4f8e74f4f5140845a21b6674"
+LICENSE = "GPL-3.0-only & LGPL-2.1-only"
+LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504 \
+					file://COPYING.LIB;md5=4bf661c1e3793e55c8d1051bc5e0ae21 \
+                    file://libcharset/COPYING.LIB;md5=4bf661c1e3793e55c8d1051bc5e0ae21"
 
 SRC_URI = "${GNU_MIRROR}/${BPN}/${BPN}-${PV}.tar.gz"
 
-SRC_URI[md5sum] = "ace8b5f2db42f7b3b3057585e80d9808"
-SRC_URI[sha256sum] = "ccf536620a45458d26ba83887a983b96827001e92a13847b45e4925cc8913178"
+SRC_URI[sha256sum] = "3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8"
 
-S = "${WORKDIR}/libiconv-${PV}"
+S = "${UNPACKDIR}/libiconv-${PV}"
 
 inherit autotools pkgconfig gettext
+
+# Need to use absolute paths as autoreconf will recurse into libchardet
+EXTRA_AUTORECONF += "-I ${S}/m4 -I ${S}/srcm4"
 
 python __anonymous() {
     if d.getVar("TARGET_OS") != "linux":

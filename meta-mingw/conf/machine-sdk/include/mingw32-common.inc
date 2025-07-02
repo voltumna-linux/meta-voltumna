@@ -35,6 +35,9 @@ MACHINEOVERRIDES .= ":sdkmingw32"
 TESTSDK_CLASS_NAME = "oeqa.sdkmingw.testsdk.TestSDKMinGW"
 TESTSDKEXT_CLASS_NAME = ""
 
+# Directory that contains testcases
+TESTSDK_CASE_DIRS = "sdkmingw"
+
 WINDMC:mingw32 = "${HOST_PREFIX}windmc"
 WINDRES:mingw32 = "${HOST_PREFIX}windres --include-dir=${STAGING_INCDIR}"
 RC:mingw32 = "${WINDRES}"
