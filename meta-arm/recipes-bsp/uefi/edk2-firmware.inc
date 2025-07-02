@@ -3,6 +3,8 @@ DESCRIPTION = "UEFI EDK2 Firmware for Arm reference platforms"
 HOMEPAGE = "https://github.com/tianocore/edk2"
 LICENSE = "BSD-2-Clause-Patent"
 
+CVE_PRODUCT = "tianocore:edk2"
+
 PROVIDES = "virtual/bootloader"
 
 # EDK2
@@ -16,11 +18,11 @@ SRC_URI_EDK2_PLATFORMS ?= "git://github.com/tianocore/edk2-platforms.git;protoco
 SRCBRANCH_edk2 = "master"
 SRCBRANCH_edk2_platforms = "master"
 SRC_URI = "\
-    ${SRC_URI_EDK2};branch=${SRCBRANCH_edk2_platforms};name=edk2;destsuffix=edk2 \
-    ${SRC_URI_EDK2_PLATFORMS};branch=${SRCBRANCH_edk2};name=edk2-platforms;destsuffix=edk2/edk2-platforms \
+    ${SRC_URI_EDK2};branch=${SRCBRANCH_edk2};name=edk2;destsuffix=edk2 \
+    ${SRC_URI_EDK2_PLATFORMS};branch=${SRCBRANCH_edk2_platforms};name=edk2-platforms;destsuffix=edk2/edk2-platforms \
 "
 
-SRCREV_FORMAT         = "edk2_edk2-platforms"
+SRCREV_FORMAT = "edk2_edk2-platforms"
 UPSTREAM_CHECK_GITTAGREGEX = "^edk2-stable(?P<pver>\d+)$"
 
 COMPATIBLE_MACHINE ?= "invalid"
@@ -40,6 +42,9 @@ EDK2_ARCH:x86      = "IA32"
 EDK2_ARCH:x86-64   = "X64"
 EDK2_ARCH:riscv64  = "RISCV64"
 
+# Use the package version as the version to be printed out but allow for it to be overridden
+EDK2_VERSION ?= "${PV}"
+
 # Extra arguments passed to build
 EDK2_EXTRA_BUILD   = ""
 
@@ -52,7 +57,7 @@ DEPENDS += "util-linux-native iasl-native"
 
 inherit deploy
 
-S = "${WORKDIR}/edk2"
+S = "${UNPACKDIR}/edk2"
 B = "${WORKDIR}/build"
 
 LDFLAGS[unexport] = "1"
@@ -76,17 +81,6 @@ EDK_COMPILER:toolchain-clang = "CLANG38"
 export CLANG38_AARCH64_PREFIX = "${TARGET_PREFIX}"
 export CLANG38_ARM_PREFIX = "${TARGET_PREFIX}"
 
-# These variables were changed in edk2 commit
-# 206168e83f0901cbc1815ef5df4ac6598ad9721b, which was part of edk2-202305
-export CC = "${BUILD_CC}"
-export CXX = "${BUILD_CXX}"
-export AS = "${BUILD_AS}"
-export AR = "${BUILD_AR}"
-export LD = "${BUILD_LD}"
-export CFLAGS = "${BUILD_CFLAGS}"
-export CPPFLAGS = "${BUILD_CPPFLAGS}"
-export LDFLAGS = "${BUILD_LFLAGS}"
-
 #FIXME - arm32 doesn't work with clang due to a linker issue
 TOOLCHAIN:arm = "gcc"
 
@@ -103,8 +97,13 @@ do_compile() {
     cp ${EDK_TOOLS_PATH}/Conf/tools_def.template ${S}/Conf/tools_def.txt
     cp ${EDK_TOOLS_PATH}/Conf/target.template ${S}/Conf/target.txt
 
-    # Build basetools
-    oe_runmake -C ${S}/BaseTools
+    # Build basetools for the build host
+    oe_runmake -C ${S}/BaseTools \
+        CC="${BUILD_CC}" \
+        CXX="${BUILD_CXX}" \
+        AS="${BUILD_AS}" \
+        AR="${BUILD_AR}" \
+        LD="${BUILD_LD}"
 
     PATH="${WORKSPACE}:${BTOOLS_PATH}:$PATH" \
     build \
@@ -113,6 +112,7 @@ do_compile() {
        --tagname ${EDK_COMPILER} \
        --platform ${EDK2_PLATFORM_DSC} \
        ${@oe.utils.parallel_make_argument(d, "-n %d")} \
+       -D FIRMWARE_VER="${EDK2_VERSION}" \
        ${EDK2_EXTRA_BUILD}
 }
 
