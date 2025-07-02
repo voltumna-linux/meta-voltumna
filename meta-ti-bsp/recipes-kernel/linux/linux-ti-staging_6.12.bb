@@ -4,7 +4,7 @@ LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 
 inherit ti-secdev
-inherit kernel
+inherit kernel_deprecated
 
 require recipes-kernel/linux/setup-defconfig.inc
 require recipes-kernel/linux/ti-kernel.inc
@@ -19,12 +19,16 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}-6.12:"
 KERNEL_EXTRA_ARGS += "LOADADDR=${UBOOT_ENTRYPOINT} \
 		      ${EXTRA_DTC_ARGS}"
 
-S = "${WORKDIR}/git"
+S = "${UNPACKDIR}/${BB_GIT_DEFAULT_DESTSUFFIX}"
 
 BRANCH ?= "ti-linux-6.12.y"
 
-SRCREV ?= "e3e551586dfad357550da433969d6d9f458e06ce"
-PV = "6.12.35+git"
+SRCREV ?= "34d0b070130a8cd2cddd9260389ad974e8cb8468"
+PV = "6.12.33+git"
+
+KERNEL_REPRODUCIBILITY_PATCHES = " \
+    file://0001-drivers-gpu-drm-msm-registers-improve-reproducibilit.patch \
+"
 
 # Special configuration for remoteproc/rpmsg IPC modules
 module_conf_rpmsg_client_sample = "blacklist rpmsg_client_sample"
