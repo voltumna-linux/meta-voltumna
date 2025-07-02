@@ -15,8 +15,6 @@ SRC_URI = "git://git.yoctoproject.org/xsettings-daemon;branch=master;protocol=ht
            "
 UPSTREAM_CHECK_GITTAGREGEX = "(?P<pver>(\d+(\.\d+)+))"
 
-S = "${WORKDIR}/git"
-
 inherit autotools pkgconfig gconf features_check
 
 FILES:${PN} = "${bindir}/* ${sysconfdir}"
@@ -26,5 +24,5 @@ REQUIRED_DISTRO_FEATURES = "x11"
 
 do_install:append () {
 	install -d ${D}/${sysconfdir}/X11/Xsession.d
-	install -m 755 ${WORKDIR}/70settings-daemon.sh ${D}/${sysconfdir}/X11/Xsession.d/
+	install -m 755 ${UNPACKDIR}/70settings-daemon.sh ${D}/${sysconfdir}/X11/Xsession.d/
 }

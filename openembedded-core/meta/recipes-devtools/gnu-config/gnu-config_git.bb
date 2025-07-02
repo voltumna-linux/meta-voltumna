@@ -9,12 +9,11 @@ DEPENDS:class-native = "hostperl-runtime-native"
 
 INHIBIT_DEFAULT_DEPS = "1"
 
-SRCREV = "948ae97ca5703224bd3eada06b7a69f40dd15a02"
-PV = "20240101+git"
+SRCREV = "00b15927496058d23e6258a28d8996f87cf1f191"
+PV = "20240823+git"
 
 SRC_URI = "git://git.savannah.gnu.org/git/config.git;protocol=https;branch=master \
            file://gnu-configize.in"
-S = "${WORKDIR}/git"
 UPSTREAM_CHECK_COMMITS = "1"
 
 CLEANBROKEN = "1"
@@ -24,7 +23,7 @@ do_compile[noexec] = "1"
 do_install () {
 	install -d ${D}${datadir}/gnu-config \
 		   ${D}${bindir}
-	cat ${WORKDIR}/gnu-configize.in | \
+	cat ${UNPACKDIR}/gnu-configize.in | \
 		sed -e 's,@gnu-configdir@,${datadir}/gnu-config,g' \
 		    -e 's,@autom4te_perllibdir@,${datadir}/autoconf,g' > ${D}${bindir}/gnu-configize
 	# In the native case we want the system perl as perl-native can't have built yet

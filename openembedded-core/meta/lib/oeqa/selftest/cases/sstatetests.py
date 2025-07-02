@@ -27,17 +27,15 @@ class SStateBase(OESelftestTestCase):
     def setUpLocal(self):
         super(SStateBase, self).setUpLocal()
         self.temp_sstate_location = None
-        needed_vars = ['SSTATE_DIR', 'NATIVELSBSTRING', 'TCLIBC', 'TUNE_ARCH',
+        needed_vars = ['SSTATE_DIR', 'TCLIBC', 'TUNE_ARCH',
                        'TOPDIR', 'TARGET_VENDOR', 'TARGET_OS']
         bb_vars = get_bb_vars(needed_vars)
         self.sstate_path = bb_vars['SSTATE_DIR']
-        self.hostdistro = bb_vars['NATIVELSBSTRING']
         self.tclibc = bb_vars['TCLIBC']
         self.tune_arch = bb_vars['TUNE_ARCH']
         self.topdir = bb_vars['TOPDIR']
         self.target_vendor = bb_vars['TARGET_VENDOR']
         self.target_os = bb_vars['TARGET_OS']
-        self.distro_specific_sstate = os.path.join(self.sstate_path, self.hostdistro)
 
     def track_for_cleanup(self, path):
         if not keep_temp_files:
@@ -52,10 +50,7 @@ class SStateBase(OESelftestTestCase):
             config_temp_sstate = "SSTATE_DIR = \"%s\"" % temp_sstate_path
             self.append_config(config_temp_sstate)
             self.track_for_cleanup(temp_sstate_path)
-        bb_vars = get_bb_vars(['SSTATE_DIR', 'NATIVELSBSTRING'])
-        self.sstate_path = bb_vars['SSTATE_DIR']
-        self.hostdistro = bb_vars['NATIVELSBSTRING']
-        self.distro_specific_sstate = os.path.join(self.sstate_path, self.hostdistro)
+        self.sstate_path = get_bb_var('SSTATE_DIR')
 
         if add_local_mirrors:
             config_set_sstate_if_not_set = 'SSTATE_MIRRORS ?= ""'
@@ -65,8 +60,16 @@ class SStateBase(OESelftestTestCase):
                 config_sstate_mirror = "SSTATE_MIRRORS += \"file://.* file:///%s/PATH\"" % local_mirror
                 self.append_config(config_sstate_mirror)
 
+    def set_hostdistro(self):
+        # This needs to be read after a BuildStarted event in case it gets changed by event
+        # handling in uninative.bbclass
+        self.hostdistro = get_bb_var('NATIVELSBSTRING')
+        self.distro_specific_sstate = os.path.join(self.sstate_path, self.hostdistro)
+
     # Returns a list containing sstate files
     def search_sstate(self, filename_regex, distro_specific=True, distro_nonspecific=True):
+        self.set_hostdistro()
+
         result = []
         for root, dirs, files in os.walk(self.sstate_path):
             if distro_specific and re.search(r"%s/%s/[a-z0-9]{2}/[a-z0-9]{2}$" % (self.sstate_path, self.hostdistro), root):
@@ -80,55 +83,43 @@ class SStateBase(OESelftestTestCase):
         return result
 
     # Test sstate files creation and their location and directory perms
-    def run_test_sstate_creation(self, targets, distro_specific=True, distro_nonspecific=True, temp_sstate_location=True, should_pass=True):
-        self.config_sstate(temp_sstate_location, [self.sstate_path])
+    def run_test_sstate_creation(self, targets, hostdistro_specific):
+        self.config_sstate(True, [self.sstate_path])
 
-        if  self.temp_sstate_location:
-            bitbake(['-cclean'] + targets)
-        else:
-            bitbake(['-ccleansstate'] + targets)
+        bitbake(['-cclean'] + targets)
 
-        # We need to test that the env umask have does not effect sstate directory creation
-        # So, first, we'll get the current umask and set it to something we know incorrect
-        # See: sstate_task_postfunc for correct umask of os.umask(0o002)
-        import os
-        def current_umask():
-            current_umask = os.umask(0)
-            os.umask(current_umask)
-            return current_umask
-
-        orig_umask = current_umask()
         # Set it to a umask we know will be 'wrong'
-        os.umask(0o022)
+        with bb.utils.umask(0o022):
+            bitbake(targets)
 
-        bitbake(targets)
-        file_tracker = []
-        results = self.search_sstate('|'.join(map(str, targets)), distro_specific, distro_nonspecific)
-        if distro_nonspecific:
-            for r in results:
-                if r.endswith(("_populate_lic.tar.zst", "_populate_lic.tar.zst.siginfo", "_fetch.tar.zst.siginfo", "_unpack.tar.zst.siginfo", "_patch.tar.zst.siginfo")):
-                    continue
-                file_tracker.append(r)
-        else:
-            file_tracker = results
+        # Distro specific files
+        distro_specific_files = self.search_sstate('|'.join(map(str, targets)), True, False)
 
-        if should_pass:
-            self.assertTrue(file_tracker , msg="Could not find sstate files for: %s" % ', '.join(map(str, targets)))
+        # Distro non-specific
+        distro_non_specific_files = []
+        results = self.search_sstate('|'.join(map(str, targets)), False, True)
+        for r in results:
+            if r.endswith(("_populate_lic.tar.zst", "_populate_lic.tar.zst.siginfo", "_fetch.tar.zst.siginfo", "_unpack.tar.zst.siginfo", "_patch.tar.zst.siginfo")):
+                continue
+            distro_non_specific_files.append(r)
+
+        if hostdistro_specific:
+            self.assertTrue(distro_specific_files , msg="Could not find sstate files for: %s" % ', '.join(map(str, targets)))
+            self.assertFalse(distro_non_specific_files, msg="Found sstate files in the wrong place for: %s (found %s)" % (', '.join(map(str, targets)), str(distro_non_specific_files)))
         else:
-            self.assertTrue(not file_tracker , msg="Found sstate files in the wrong place for: %s (found %s)" % (', '.join(map(str, targets)), str(file_tracker)))
+            self.assertTrue(distro_non_specific_files , msg="Could not find sstate files for: %s" % ', '.join(map(str, targets)))
+            self.assertFalse(distro_specific_files, msg="Found sstate files in the wrong place for: %s (found %s)" % (', '.join(map(str, targets)), str(distro_specific_files)))
 
         # Now we'll walk the tree to check the mode and see if things are incorrect.
         badperms = []
         for root, dirs, files in os.walk(self.sstate_path):
             for directory in dirs:
-                if (os.stat(os.path.join(root, directory)).st_mode & 0o777) != 0o775:
-                    badperms.append(os.path.join(root, directory))
+                mode = os.stat(os.path.join(root, directory)).st_mode & 0o777
+                if mode != 0o775:
+                    badperms.append("%s: %s vs %s" % (os.path.join(root, directory), mode, 0o775))
 
-        # Return to original umask
-        os.umask(orig_umask)
-
-        if should_pass:
-            self.assertTrue(badperms , msg="Found sstate directories with the wrong permissions: %s (found %s)" % (', '.join(map(str, targets)), str(badperms)))
+        # Check badperms is empty
+        self.assertFalse(badperms , msg="Found sstate directories with the wrong permissions: %s (found %s)" % (', '.join(map(str, targets)), str(badperms)))
 
     # Test the sstate files deletion part of the do_cleansstate task
     def run_test_cleansstate_task(self, targets, distro_specific=True, distro_nonspecific=True, temp_sstate_location=True):
@@ -152,6 +143,8 @@ class SStateBase(OESelftestTestCase):
         self.config_sstate(temp_sstate_location, [self.sstate_path])
 
         bitbake(['-ccleansstate'] + targets)
+
+        self.set_hostdistro()
 
         bitbake(targets)
         results = self.search_sstate('|'.join(map(str, [s + r'.*?\.tar.zst$' for s in targets])), distro_specific=False, distro_nonspecific=True)
@@ -251,17 +244,11 @@ class SStateTests(SStateBase):
         bitbake("dbus-wait-test -c unpack")
 
 class SStateCreation(SStateBase):
-    def test_sstate_creation_distro_specific_pass(self):
-        self.run_test_sstate_creation(['binutils-cross-'+ self.tune_arch, 'binutils-native'], distro_specific=True, distro_nonspecific=False, temp_sstate_location=True)
+    def test_sstate_creation_distro_specific(self):
+        self.run_test_sstate_creation(['binutils-cross-'+ self.tune_arch, 'binutils-native'], hostdistro_specific=True)
 
-    def test_sstate_creation_distro_specific_fail(self):
-        self.run_test_sstate_creation(['binutils-cross-'+ self.tune_arch, 'binutils-native'], distro_specific=False, distro_nonspecific=True, temp_sstate_location=True, should_pass=False)
-
-    def test_sstate_creation_distro_nonspecific_pass(self):
-        self.run_test_sstate_creation(['linux-libc-headers'], distro_specific=False, distro_nonspecific=True, temp_sstate_location=True)
-
-    def test_sstate_creation_distro_nonspecific_fail(self):
-        self.run_test_sstate_creation(['linux-libc-headers'], distro_specific=True, distro_nonspecific=False, temp_sstate_location=True, should_pass=False)
+    def test_sstate_creation_distro_nonspecific(self):
+        self.run_test_sstate_creation(['linux-libc-headers'], hostdistro_specific=False)
 
 class SStateCleanup(SStateBase):
     def test_cleansstate_task_distro_specific_nonspecific(self):
@@ -367,18 +354,11 @@ class SStateCacheManagement(SStateBase):
         self.run_test_sstate_cache_management_script('m4', global_config,  target_config, ignore_patterns=['populate_lic'])
 
 class SStateHashSameSigs(SStateBase):
-    def test_sstate_32_64_same_hash(self):
-        """
-        The sstate checksums for both native and target should not vary whether
-        they're built on a 32 or 64 bit system. Rather than requiring two different
-        build machines and running a builds, override the variables calling uname()
-        manually and check using bitbake -S.
-        """
+    def sstate_hashtest(self, sdkmachine):
 
         self.write_config("""
 MACHINE = "qemux86"
 TMPDIR = "${TOPDIR}/tmp-sstatesamehash"
-TCLIBCAPPEND = ""
 BUILD_ARCH = "x86_64"
 BUILD_OS = "linux"
 SDKMACHINE = "x86_64"
@@ -390,13 +370,12 @@ BB_SIGNATURE_HANDLER = "OEBasicHash"
         self.write_config("""
 MACHINE = "qemux86"
 TMPDIR = "${TOPDIR}/tmp-sstatesamehash2"
-TCLIBCAPPEND = ""
 BUILD_ARCH = "i686"
 BUILD_OS = "linux"
-SDKMACHINE = "i686"
+SDKMACHINE = "%s"
 PACKAGE_CLASSES = "package_rpm package_ipk package_deb"
 BB_SIGNATURE_HANDLER = "OEBasicHash"
-""")
+""" % sdkmachine)
         self.track_for_cleanup(self.topdir + "/tmp-sstatesamehash2")
         bitbake("core-image-weston -S none")
 
@@ -416,6 +395,20 @@ BB_SIGNATURE_HANDLER = "OEBasicHash"
         self.maxDiff = None
         self.assertCountEqual(files1, files2)
 
+    def test_sstate_32_64_same_hash(self):
+        """
+        The sstate checksums for both native and target should not vary whether
+        they're built on a 32 or 64 bit system. Rather than requiring two different
+        build machines and running a builds, override the variables calling uname()
+        manually and check using bitbake -S.
+        """
+        self.sstate_hashtest("i686")
+
+    def test_sstate_sdk_arch_same_hash(self):
+        """
+        Similarly, test an arm SDK has the same hashes
+        """
+        self.sstate_hashtest("aarch64")
 
     def test_sstate_nativelsbstring_same_hash(self):
         """
@@ -426,7 +419,6 @@ BB_SIGNATURE_HANDLER = "OEBasicHash"
 
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash\"
-TCLIBCAPPEND = \"\"
 NATIVELSBSTRING = \"DistroA\"
 BB_SIGNATURE_HANDLER = "OEBasicHash"
 """)
@@ -434,7 +426,6 @@ BB_SIGNATURE_HANDLER = "OEBasicHash"
         bitbake("core-image-weston -S none")
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash2\"
-TCLIBCAPPEND = \"\"
 NATIVELSBSTRING = \"DistroB\"
 BB_SIGNATURE_HANDLER = "OEBasicHash"
 """)
@@ -463,17 +454,17 @@ class SStateHashSameSigs2(SStateBase):
 
         configA = """
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash\"
-TCLIBCAPPEND = \"\"
 MACHINE = \"qemux86-64\"
 BB_SIGNATURE_HANDLER = "OEBasicHash"
 """
         #OLDEST_KERNEL is arch specific so set to a different value here for testing
         configB = """
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash2\"
-TCLIBCAPPEND = \"\"
 MACHINE = \"qemuarm\"
 OLDEST_KERNEL = \"3.3.0\"
 BB_SIGNATURE_HANDLER = "OEBasicHash"
+ERROR_QA:append = " somenewoption"
+WARN_QA:append = " someotheroption"
 """
         self.sstate_common_samesigs(configA, configB, allarch=True)
 
@@ -484,7 +475,6 @@ BB_SIGNATURE_HANDLER = "OEBasicHash"
 
         configA = """
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash\"
-TCLIBCAPPEND = \"\"
 MACHINE = \"qemux86-64\"
 require conf/multilib.conf
 MULTILIBS = \"multilib:lib32\"
@@ -493,7 +483,6 @@ BB_SIGNATURE_HANDLER = "OEBasicHash"
 """
         configB = """
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash2\"
-TCLIBCAPPEND = \"\"
 MACHINE = \"qemuarm\"
 require conf/multilib.conf
 MULTILIBS = \"\"
@@ -511,7 +500,6 @@ class SStateHashSameSigs3(SStateBase):
 
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash\"
-TCLIBCAPPEND = \"\"
 MACHINE = \"qemux86\"
 require conf/multilib.conf
 MULTILIBS = "multilib:lib32"
@@ -522,7 +510,6 @@ BB_SIGNATURE_HANDLER = "OEBasicHash"
         bitbake("world meta-toolchain -S none")
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash2\"
-TCLIBCAPPEND = \"\"
 MACHINE = \"qemux86copy\"
 require conf/multilib.conf
 MULTILIBS = "multilib:lib32"
@@ -559,7 +546,6 @@ BB_SIGNATURE_HANDLER = "OEBasicHash"
 
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash\"
-TCLIBCAPPEND = \"\"
 MACHINE = \"qemux86\"
 require conf/multilib.conf
 MULTILIBS = "multilib:lib32"
@@ -570,7 +556,6 @@ BB_SIGNATURE_HANDLER = "OEBasicHash"
         bitbake("binutils-native  -S none")
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstatesamehash2\"
-TCLIBCAPPEND = \"\"
 MACHINE = \"qemux86copy\"
 BB_SIGNATURE_HANDLER = "OEBasicHash"
 """)
@@ -598,7 +583,6 @@ class SStateHashSameSigs4(SStateBase):
 
         self.write_config("""
 TMPDIR = "${TOPDIR}/tmp-sstatesamehash"
-TCLIBCAPPEND = ""
 BB_NUMBER_THREADS = "${@oe.utils.cpu_count()}"
 PARALLEL_MAKE = "-j 1"
 DL_DIR = "${TOPDIR}/download1"
@@ -613,7 +597,6 @@ BB_SIGNATURE_HANDLER = "OEBasicHash"
         bitbake("world meta-toolchain -S none")
         self.write_config("""
 TMPDIR = "${TOPDIR}/tmp-sstatesamehash2"
-TCLIBCAPPEND = ""
 BB_NUMBER_THREADS = "${@oe.utils.cpu_count()+1}"
 PARALLEL_MAKE = "-j 2"
 DL_DIR = "${TOPDIR}/download2"
@@ -724,7 +707,6 @@ class SStateFindSiginfo(SStateBase):
         """
         self.write_config("""
 TMPDIR = \"${TOPDIR}/tmp-sstates-findsiginfo\"
-TCLIBCAPPEND = \"\"
 MACHINE = \"qemux86-64\"
 require conf/multilib.conf
 MULTILIBS = "multilib:lib32"
@@ -917,14 +899,23 @@ INHERIT += "base-do-configure-modified"
 """,
 expected_sametmp_output, expected_difftmp_output)
 
-@OETestTag("yocto-mirrors")
-class SStateMirrors(SStateBase):
-    def check_bb_output(self, output, exceptions, check_cdn):
+class SStateCheckObjectPresence(SStateBase):
+    def check_bb_output(self, output, targets, exceptions, check_cdn):
         def is_exception(object, exceptions):
             for e in exceptions:
                 if re.search(e, object):
                     return True
             return False
+
+        # sstate is checked for existence of these, but they never get written out to begin with
+        exceptions += ["{}.*image_qa".format(t) for t in targets.split()]
+        exceptions += ["{}.*deploy_source_date_epoch".format(t) for t in targets.split()]
+        exceptions += ["{}.*image_complete".format(t) for t in targets.split()]
+        exceptions += ["linux-yocto.*shared_workdir"]
+        # these get influnced by IMAGE_FSTYPES tweaks in yocto-autobuilder-helper's config.json (on x86-64)
+        # additionally, they depend on noexec (thus, absent stamps) package, install, etc. image tasks,
+        # which makes tracing other changes difficult
+        exceptions += ["{}.*create_.*spdx".format(t) for t in targets.split()]
 
         output_l = output.splitlines()
         for l in output_l:
@@ -960,23 +951,14 @@ class SStateMirrors(SStateBase):
         self.assertEqual(len(failed_urls), missing_objects, "Amount of reported missing objects does not match failed URLs: {}\nFailed URLs:\n{}\nFetcher diagnostics:\n{}".format(missing_objects, "\n".join(failed_urls), "\n".join(failed_urls_extrainfo)))
         self.assertEqual(len(failed_urls), 0, "Missing objects in the cache:\n{}\nFetcher diagnostics:\n{}".format("\n".join(failed_urls), "\n".join(failed_urls_extrainfo)))
 
+@OETestTag("yocto-mirrors")
+class SStateMirrors(SStateCheckObjectPresence):
     def run_test(self, machine, targets, exceptions, check_cdn = True, ignore_errors = False):
-        # sstate is checked for existence of these, but they never get written out to begin with
-        exceptions += ["{}.*image_qa".format(t) for t in targets.split()]
-        exceptions += ["{}.*deploy_source_date_epoch".format(t) for t in targets.split()]
-        exceptions += ["{}.*image_complete".format(t) for t in targets.split()]
-        exceptions += ["linux-yocto.*shared_workdir"]
-        # these get influnced by IMAGE_FSTYPES tweaks in yocto-autobuilder-helper's config.json (on x86-64)
-        # additionally, they depend on noexec (thus, absent stamps) package, install, etc. image tasks,
-        # which makes tracing other changes difficult
-        exceptions += ["{}.*create_spdx".format(t) for t in targets.split()]
-        exceptions += ["{}.*create_runtime_spdx".format(t) for t in targets.split()]
-
         if check_cdn:
             self.config_sstate(True)
             self.append_config("""
 MACHINE = "{}"
-BB_HASHSERVE_UPSTREAM = "hashserv.yocto.io:8687"
+BB_HASHSERVE_UPSTREAM = "hashserv.yoctoproject.org:8686"
 SSTATE_MIRRORS ?= "file://.* http://sstate.yoctoproject.org/all/PATH;downloadfilename=PATH"
 """.format(machine))
         else:
@@ -987,7 +969,7 @@ MACHINE = "{}"
         bitbake("-S none {}".format(targets))
         if ignore_errors:
             return
-        self.check_bb_output(result.output, exceptions, check_cdn)
+        self.check_bb_output(result.output, targets, exceptions, check_cdn)
 
     def test_cdn_mirror_qemux86_64(self):
         exceptions = []

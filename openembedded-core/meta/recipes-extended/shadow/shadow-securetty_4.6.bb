@@ -5,10 +5,9 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384
 
 INHIBIT_DEFAULT_DEPS = "1"
 
-
 SRC_URI = "file://securetty"
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 # Since SERIAL_CONSOLES is likely to be set from the machine configuration
 PACKAGE_ARCH = "${MACHINE_ARCH}"
@@ -17,7 +16,7 @@ do_install () {
 	# Ensure we add a suitable securetty file to the package that has
 	# most common embedded TTYs defined.
 	install -d ${D}${sysconfdir}
-	install -m 0400 ${WORKDIR}/securetty ${D}${sysconfdir}/securetty
+	install -m 0400 ${S}/securetty ${D}${sysconfdir}/securetty
 	if [ ! -z "${SERIAL_CONSOLES}" ]; then
 		# Our SERIAL_CONSOLES contains a baud rate and sometimes extra
 		# options as well. The following pearl :) takes that and converts

@@ -6,5 +6,7 @@ SRC_URI = "file://file1 \
 
 SRC_URI:append:class-native = " file://file3"
 
+S = "${UNPACKDIR}"
+
 EXCLUDE_FROM_WORLD = "1"
 BBCLASSEXTEND = "native"

@@ -16,28 +16,6 @@ BUILDHISTORY_DIR ?= "${TOPDIR}/buildhistory"
 BUILDHISTORY_DIR_IMAGE = "${BUILDHISTORY_DIR}/images/${MACHINE_ARCH}/${TCLIBC}/${IMAGE_BASENAME}"
 BUILDHISTORY_DIR_PACKAGE = "${BUILDHISTORY_DIR}/packages/${MULTIMACH_TARGET_SYS}/${PN}"
 
-# Setting this to non-empty will remove the old content of the buildhistory as part of
-# the current bitbake invocation and replace it with information about what was built
-# during the build.
-#
-# This is meant to be used in continuous integration (CI) systems when invoking bitbake
-# for full world builds. The effect in that case is that information about packages
-# that no longer get build also gets removed from the buildhistory, which is not
-# the case otherwise.
-#
-# The advantage over manually cleaning the buildhistory outside of bitbake is that
-# the "version-going-backwards" check still works. When relying on that, be careful
-# about failed world builds: they will lead to incomplete information in the
-# buildhistory because information about packages that could not be built will
-# also get removed. A CI system should handle that by discarding the buildhistory
-# of failed builds.
-#
-# The expected usage is via auto.conf, but passing via the command line also works
-# with: BB_ENV_PASSTHROUGH_ADDITIONS=BUILDHISTORY_RESET BUILDHISTORY_RESET=1
-BUILDHISTORY_RESET ?= ""
-
-BUILDHISTORY_OLD_DIR = "${BUILDHISTORY_DIR}/${@ "old" if "${BUILDHISTORY_RESET}" else ""}"
-BUILDHISTORY_OLD_DIR_PACKAGE = "${BUILDHISTORY_OLD_DIR}/packages/${MULTIMACH_TARGET_SYS}/${PN}"
 BUILDHISTORY_DIR_SDK = "${BUILDHISTORY_DIR}/sdk/${SDK_NAME}${SDK_EXT}/${IMAGE_BASENAME}"
 BUILDHISTORY_IMAGE_FILES ?= "/etc/passwd /etc/group"
 BUILDHISTORY_SDK_FILES ?= "conf/local.conf conf/bblayers.conf conf/auto.conf conf/locked-sigs.inc conf/devtool.conf"
@@ -65,14 +43,15 @@ SSTATEPOSTUNPACKFUNCS:append = " buildhistory_emit_outputsigs"
 sstate_installpkgdir[vardepsexclude] += "buildhistory_emit_outputsigs"
 SSTATEPOSTUNPACKFUNCS[vardepvalueexclude] .= "| buildhistory_emit_outputsigs"
 
-# All items excepts those listed here will be removed from a recipe's
+# All items except those listed here will be removed from a recipe's
 # build history directory by buildhistory_emit_pkghistory(). This is
 # necessary because some of these items (package directories, files that
 # we no longer emit) might be obsolete.
 #
-# When extending build history, derive your class from buildhistory.bbclass
-# and extend this list here with the additional files created by the derived
-# class.
+# The files listed here are either written by tasks that aren't do_package (e.g.
+# latest_srcrev from do_fetch) so do_package must not remove them, or, they're
+# used to read values in do_package before always being overwritten, e.g. latest,
+# for version backwards checks.
 BUILDHISTORY_PRESERVE = "latest latest_srcrev sysroot"
 
 PATCH_GIT_USER_EMAIL ?= "buildhistory@oe"
@@ -108,7 +87,6 @@ python buildhistory_emit_pkghistory() {
         return 0
 
     pkghistdir = d.getVar('BUILDHISTORY_DIR_PACKAGE')
-    oldpkghistdir = d.getVar('BUILDHISTORY_OLD_DIR_PACKAGE')
 
     class RecipeInfo:
         def __init__(self, name):
@@ -149,7 +127,7 @@ python buildhistory_emit_pkghistory() {
             # Variables that need to be written to their own separate file
             self.filevars = dict.fromkeys(['pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm'])
 
-    # Should check PACKAGES here to see if anything removed
+    # Should check PACKAGES here to see if anything was removed
 
     def readPackageInfo(pkg, histfile):
         pkginfo = PackageInfo(pkg)
@@ -203,7 +181,7 @@ python buildhistory_emit_pkghistory() {
 
     def getlastpkgversion(pkg):
         try:
-            histfile = os.path.join(oldpkghistdir, pkg, "latest")
+            histfile = os.path.join(pkghistdir, pkg, "latest")
             return readPackageInfo(pkg, histfile)
         except EnvironmentError:
             return None
@@ -218,20 +196,6 @@ python buildhistory_emit_pkghistory() {
         items = string.split(' ')
         items.sort()
         return ' '.join(items)
-
-    def preservebuildhistoryfiles(pkg, preserve):
-        if os.path.exists(os.path.join(oldpkghistdir, pkg)):
-            listofobjs = os.listdir(os.path.join(oldpkghistdir, pkg))
-            for obj in listofobjs:
-                if obj not in preserve:
-                    continue
-                try:
-                    bb.utils.mkdirhier(os.path.join(pkghistdir, pkg))
-                    shutil.copyfile(os.path.join(oldpkghistdir, pkg, obj), os.path.join(pkghistdir, pkg, obj))
-                except IOError as e:
-                    bb.note("Unable to copy file. %s" % e)
-                except EnvironmentError as e:
-                    bb.note("Unable to copy file. %s" % e)
 
     pn = d.getVar('PN')
     pe = d.getVar('PE') or "0"
@@ -260,14 +224,6 @@ python buildhistory_emit_pkghistory() {
     if not os.path.exists(pkghistdir):
         bb.utils.mkdirhier(pkghistdir)
     else:
-        # We need to make sure that all files kept in
-        # buildhistory/old are restored successfully
-        # otherwise next block of code wont have files to
-        # check and purge
-        if d.getVar("BUILDHISTORY_RESET"):
-            for pkg in packagelist:
-                preservebuildhistoryfiles(pkg, preserve)
-
         # Remove files for packages that no longer exist
         for item in os.listdir(pkghistdir):
             if item not in preserve:
@@ -553,7 +509,7 @@ buildhistory_get_installed() {
 		grep -v kernel-module $1/depends-nokernel-nolibc-noupdate.dot > $1/depends-nokernel-nolibc-noupdate-nomodules.dot
 	fi
 
-	# add complementary package information
+	# Add complementary package information
 	if [ -e ${WORKDIR}/complementary_pkgs.txt ]; then
 		cp ${WORKDIR}/complementary_pkgs.txt $1
 	fi
@@ -591,7 +547,7 @@ buildhistory_get_sdk_installed_target() {
 
 buildhistory_list_files() {
 	# List the files in the specified directory, but exclude date/time etc.
-	# This is somewhat messy, but handles where the size is not printed for device files under pseudo
+	# This is somewhat messy, but handles cases where the size is not printed for device files under pseudo
 	( cd $1
 	find_cmd='find . ! -path . -printf "%M %-10u %-10g %10s %p -> %l\n"'
 	if [ "$3" = "fakeroot" ] ; then
@@ -605,7 +561,7 @@ buildhistory_list_files_no_owners() {
 	# List the files in the specified directory, but exclude date/time etc.
 	# Also don't output the ownership data, but instead output just - - so
 	# that the same parsing code as for _list_files works.
-	# This is somewhat messy, but handles where the size is not printed for device files under pseudo
+	# This is somewhat messy, but handles cases where the size is not printed for device files under pseudo
 	( cd $1
 	find_cmd='find . ! -path . -printf "%M -          -          %10s %p -> %l\n"'
 	if [ "$3" = "fakeroot" ] ; then
@@ -861,9 +817,9 @@ END
 		if [ ! -e .git ] ; then
 			git init -q
 		else
-			git tag -f ${BUILDHISTORY_TAG}-minus-3 ${BUILDHISTORY_TAG}-minus-2 > /dev/null 2>&1 || true
-			git tag -f ${BUILDHISTORY_TAG}-minus-2 ${BUILDHISTORY_TAG}-minus-1 > /dev/null 2>&1 || true
-			git tag -f ${BUILDHISTORY_TAG}-minus-1 > /dev/null 2>&1 || true
+			git tag -f --no-sign ${BUILDHISTORY_TAG}-minus-3 ${BUILDHISTORY_TAG}-minus-2 > /dev/null 2>&1 || true
+			git tag -f --no-sign ${BUILDHISTORY_TAG}-minus-2 ${BUILDHISTORY_TAG}-minus-1 > /dev/null 2>&1 || true
+			git tag -f --no-sign ${BUILDHISTORY_TAG}-minus-1 > /dev/null 2>&1 || true
 		fi
 
 		check_git_config
@@ -874,10 +830,9 @@ END
 		CMDLINE="${@buildhistory_get_cmdline(d)}"
 		if [ "$repostatus" != "" ] ; then
 			git add -A .
-			# porcelain output looks like "?? packages/foo/bar"
+			# Porcelain output looks like "?? packages/foo/bar"
 			# Ensure we commit metadata-revs with the first commit
 			buildhistory_single_commit "$CMDLINE" "$HOSTNAME" dummy
-			git gc --auto --quiet
 		else
 			buildhistory_single_commit "$CMDLINE" "$HOSTNAME"
 		fi
@@ -888,25 +843,7 @@ END
 
 python buildhistory_eventhandler() {
     if (e.data.getVar('BUILDHISTORY_FEATURES') or "").strip():
-        reset = e.data.getVar("BUILDHISTORY_RESET")
-        olddir = e.data.getVar("BUILDHISTORY_OLD_DIR")
-        if isinstance(e, bb.event.BuildStarted):
-            if reset:
-                import shutil
-                # Clean up after potentially interrupted build.
-                if os.path.isdir(olddir):
-                    shutil.rmtree(olddir)
-                rootdir = e.data.getVar("BUILDHISTORY_DIR")
-                bb.utils.mkdirhier(rootdir)
-                entries = [ x for x in os.listdir(rootdir) if not x.startswith('.') ]
-                bb.utils.mkdirhier(olddir)
-                for entry in entries:
-                    bb.utils.rename(os.path.join(rootdir, entry),
-                              os.path.join(olddir, entry))
-        elif isinstance(e, bb.event.BuildCompleted):
-            if reset:
-                import shutil
-                shutil.rmtree(olddir)
+        if isinstance(e, bb.event.BuildCompleted):
             if e.data.getVar("BUILDHISTORY_COMMIT") == "1":
                 bb.note("Writing buildhistory")
                 bb.build.exec_func("buildhistory_write_sigs", d)
@@ -944,13 +881,12 @@ def _get_srcrev_values(d):
     dict_tag_srcrevs = {}
     for scm in scms:
         ud = urldata[scm]
-        for name in ud.names:
-            autoinc, rev = ud.method.sortable_revision(ud, d, name)
-            dict_srcrevs[name] = rev
-            if 'tag' in ud.parm:
-                tag = ud.parm['tag'];
-                key = name+'_'+tag
-                dict_tag_srcrevs[key] = rev
+        autoinc, rev = ud.method.sortable_revision(ud, d, ud.name)
+        dict_srcrevs[ud.name] = rev
+        if 'tag' in ud.parm:
+            tag = ud.parm['tag'];
+            key = ud.name+'_'+tag
+            dict_tag_srcrevs[key] = rev
     return (dict_srcrevs, dict_tag_srcrevs)
 
 do_fetch[postfuncs] += "write_srcrev"
@@ -1009,7 +945,7 @@ def write_latest_ptest_result(d, histdir):
     output_ptest = os.path.join(histdir, 'ptest')
     if os.path.exists(input_ptest):
         try:
-            # Lock it avoid race issue
+            # Lock it to avoid race issue
             lock = bb.utils.lockfile(output_ptest + "/ptest.lock")
             bb.utils.mkdirhier(output_ptest)
             oe.path.copytree(input_ptest, output_ptest)
