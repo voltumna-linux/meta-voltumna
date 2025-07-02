@@ -14,12 +14,12 @@ SRC_URI:append = " \
     file://0001-libbfd.h-suppress-GCC9-Wstringop-truncation.patch;striplevel=2 \
 "
 
-S = "${WORKDIR}/git/gdbc6x"
+S:append = "/gdbc6x"
 
 inherit update-rc.d
 inherit gettext
 
-CFLAGS += "-fcommon -std=gnu11"
+CFLAGS += "-fcommon -fpermissive -std=gnu11"
 
 do_configure () {
     cd ${S}
@@ -36,7 +36,7 @@ do_install () {
     cp -rf ${S}/install_gdb/include/* ${D}${includedir}
 
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/init ${D}${sysconfdir}/init.d/gdbserverproxy
+    install -m 0755 ${UNPACKDIR}/init ${D}${sysconfdir}/init.d/gdbserverproxy
 }
 
 RDEPENDS:${PN} = "gdbserverproxy-module-drv bash"

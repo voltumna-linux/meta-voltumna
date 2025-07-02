@@ -4,7 +4,7 @@ LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 
 inherit ti-secdev
-inherit kernel
+inherit kernel_deprecated
 
 require recipes-kernel/linux/setup-defconfig.inc
 require recipes-kernel/linux/ti-kernel.inc
@@ -19,12 +19,12 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}-6.1:"
 KERNEL_EXTRA_ARGS += "LOADADDR=${UBOOT_ENTRYPOINT} \
 		      ${EXTRA_DTC_ARGS}"
 
-S = "${WORKDIR}/git"
+S = "${UNPACKDIR}/${BB_GIT_DEFAULT_DESTSUFFIX}"
 
 BRANCH ?= "ti-linux-6.1.y"
 
-SRCREV ?= "4ef41ca7ad952c7b13b7e40808ab1025796f9a6c"
-PV = "6.1.112+git"
+SRCREV ?= "e4e8b16e66f592749984b2d287e0479e93ef35b3"
+PV = "6.1.119+git"
 
 # Special configuration for remoteproc/rpmsg IPC modules
 module_conf_rpmsg_client_sample = "blacklist rpmsg_client_sample"

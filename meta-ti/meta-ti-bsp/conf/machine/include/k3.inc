@@ -10,21 +10,21 @@ require conf/machine/include/ti-bsp.inc
 
 KERNEL_IMAGETYPE = "Image"
 KERNEL_IMAGETYPES = "Image fitImage"
-KERNEL_CLASSES += "kernel-fitimage"
+KERNEL_CLASSES += "kernel-fitimage-deprecated"
 
 UBOOT_ARCH = "arm"
-UBOOT_DTB_LOADADDRESS = "0x88000000"
-UBOOT_DTBO_LOADADDRESS = "0x88080000"
+UBOOT_ENTRYPOINT = "0x81000000"
+UBOOT_LOADADDRESS = "0x81000000"
+UBOOT_RD_LOADADDRESS = "0x84000000"
+UBOOT_RD_ENTRYPOINT = "0x84000000"
+UBOOT_DTB_LOADADDRESS = "0x83000000"
+UBOOT_DTBO_LOADADDRESS = "0x83080000"
 UBOOT_DTBO_OFFSET = "0x00010000"
 
 SPL_BINARY = "tispl.bin"
 SPL_BINARYNAME = "tispl.bin"
 UBOOT_SUFFIX = "img"
 
-UBOOT_SIGN_ENABLE = "1"
-UBOOT_MKIMAGE_DTCOPTS = "-I dts -O dtb"
-UBOOT_SIGN_KEYNAME ?= "custMpk"
-UBOOT_SIGN_KEYDIR ?= "${TI_SECURE_DEV_PKG}/keys"
 FIT_HASH_ALG ?= "sha512"
 FIT_SIGN_ALG ?= "rsa4096"
 
@@ -50,8 +50,6 @@ EFI_PROVIDER ?= "grub-efi"
 MACHINE_FEATURES += "efi"
 
 WKS_FILE ?= "${@bb.utils.contains("MACHINE_FEATURES", "efi", "sdimage-2part-efi.wks.in", "sdimage-2part.wks", d)}"
-
-TI_WKS_BOOTLOADER_APPEND ?= ""
 
 do_image_wic[depends] += "virtual/bootloader:do_deploy"
 

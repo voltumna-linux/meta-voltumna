@@ -2,7 +2,7 @@
 # upstream yet. This allows us to build the shims we need without completely
 # clobbering mesa.
 
-require recipes-graphics/mesa/mesa.inc
+require recipes-graphics/mesa/mesa-pvr.inc
 
 SUMMARY += " (with PowerVR for TI parts)"
 
@@ -22,8 +22,6 @@ SRC_URI = " \
     file://0001-fix-gallivm-fix-LLVM-include-of-Host-h-moved-to-TargetParser.patch \
     file://0001-gallium-Fix-build-with-llvm-18-and-19.patch \
 "
-
-S = "${WORKDIR}/git"
 
 PACKAGECONFIG:append = " \
     ${@bb.utils.contains('PREFERRED_PROVIDER_virtual/gpudriver', 'ti-img-rogue-driver', 'pvr', '', d)} \
