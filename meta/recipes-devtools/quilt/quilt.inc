@@ -11,14 +11,12 @@ SRC_URI = "${SAVANNAH_GNU_MIRROR}/quilt/quilt-${PV}.tar.gz \
         file://run-ptest \
         file://test.sh \
         file://0001-tests-Allow-different-output-from-mv.patch \
-        file://fix-grep-3.8.patch \
-        file://faildiff-order.patch \
-        file://0001-test-Fix-a-race-condition-in-merge.test.patch \
+        file://0001-contrib-spec-filters-obs-usr-bin-sh-bin-sh.patch \
 "
 
 SRC_URI:append:class-target = " file://gnu_patch_test_fix_target.patch"
 
-SRC_URI[sha256sum] = "3be3be0987e72a6c364678bb827e3e1fcc10322b56bc5f02b576698f55013cc2"
+SRC_URI[sha256sum] = "555ddffde22da3c86d1caf5a9c1fb8a152ac2b84730437bd39cc08849c9f4852"
 
 inherit autotools-brokensep ptest
 
@@ -64,10 +62,10 @@ do_install:append:class-native () {
 
 # The tests need to run as a non-root user, so pull in the ptest user
 DEPENDS:append:class-target = "${@bb.utils.contains('PTEST_ENABLED', '1', ' ptest-runner', '', d)}"
-PACKAGE_WRITE_DEPS += "ptest-runner"
+PACKAGE_WRITE_DEPS += "${@bb.utils.contains('PTEST_ENABLED', '1', 'ptest-runner', '', d)}"
 
 do_install_ptest() {
-	install ${WORKDIR}/test.sh ${D}${PTEST_PATH}
+	install ${UNPACKDIR}/test.sh ${D}${PTEST_PATH}
     mkdir ${D}${PTEST_PATH}/test
     install ${S}/test/* ${D}${PTEST_PATH}/test
     # mail needs a MTA, and the patch-wrapper is disabled
@@ -97,5 +95,5 @@ RDEPENDS:${PN}-ptest += "file sed gawk diffutils findutils ed perl \
                          perl-module-filehandle perl-module-getopt-std \
                          perl-module-posix perl-module-file-temp \
                          perl-module-text-parsewords perl-module-overloading \
-                         bash util-linux-getopt ptest-runner \
+                         bash util-linux-getopt ptest-runner coreutils \
                         "

@@ -17,8 +17,6 @@ SRC_URI = "git://git.kernel.org/pub/scm/network/nfc/neard.git;protocol=https;bra
 
 SRCREV = "a1dc8a75cba999728e154a0f811ab9dd50c809f7"
 
-S = "${WORKDIR}/git"
-
 inherit autotools pkgconfig systemd update-rc.d
 
 PACKAGECONFIG ??= "${@bb.utils.filter('DISTRO_FEATURES', 'systemd', d)}"
@@ -31,18 +29,17 @@ EXTRA_OECONF += "--enable-tools"
 do_install:append() {
 	if ${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', 'true', 'false', d)}; then
 		install -d ${D}${sysconfdir}/init.d/
-		sed "s:@installpath@:${libexecdir}/nfc:" ${WORKDIR}/neard.in \
+		sed "s:@installpath@:${libexecdir}/nfc:" ${UNPACKDIR}/neard.in \
 		  > ${D}${sysconfdir}/init.d/neard
 		chmod 0755 ${D}${sysconfdir}/init.d/neard
 	fi
 }
 
-RDEPENDS:${PN} = "dbus"
-
 # Bluez & Wifi are not mandatory except for handover
+WIRELESS_DAEMON ??= "wpa-supplicant"
 RRECOMMENDS:${PN} = "\
                      ${@bb.utils.contains('DISTRO_FEATURES', 'bluetooth', 'bluez5', '', d)} \
-                     ${@bb.utils.contains('DISTRO_FEATURES', 'wifi','wpa-supplicant', '', d)} \
+                     ${@bb.utils.contains('DISTRO_FEATURES', 'wifi','${WIRELESS_DAEMON}', '', d)} \
                     "
 
 INITSCRIPT_NAME = "neard"

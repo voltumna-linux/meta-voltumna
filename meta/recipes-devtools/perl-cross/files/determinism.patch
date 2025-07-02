@@ -21,7 +21,7 @@ d) Use bash for perl-cross configure since otherwise trnl gets set to "\n" with 
 
 RP 2020/2/7
 
-Upstream-Status: Pending [75% submitted]
+Upstream-Status: Submitted [https://github.com/arsv/perl-cross/pull/154 https://github.com/arsv/perl-cross/pull/155]
 Signed-off-by: Richard Purdie <richard.purdie@linuxfoundation.org
 ---
  cnf/configure         | 2 +-
@@ -35,9 +35,9 @@ index 2f451c6..86bc865 100755
 @@ -1,4 +1,4 @@
 -#!/bin/sh
 +#!/bin/bash
-
+ 
  base=${0%/*}; test -z "$base" && base=.
-
+ 
 diff --git a/cnf/configure_mods.sh b/cnf/configure_mods.sh
 index d4ef5a7..8e88b48 100644
 --- a/cnf/configure_mods.sh

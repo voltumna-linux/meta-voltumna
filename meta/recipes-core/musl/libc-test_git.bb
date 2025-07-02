@@ -18,8 +18,6 @@ SRC_URI = " \
 
 PV = "0+git"
 
-S = "${WORKDIR}/git"
-
 # libc-test 'make' or 'make run' command is designed to build and run tests. It
 # reports both build and test failures. The commands should be run on target.
 do_compile() {
@@ -50,7 +48,7 @@ do_install () {
 }
 
 do_install_ptest_base:append() {
-    install -Dm 0755 ${WORKDIR}/run-libc-ptests ${D}${PTEST_PATH}/run-libc-ptests
+    install -Dm 0755 ${UNPACKDIR}/run-libc-ptests ${D}${PTEST_PATH}/run-libc-ptests
 }
 
 COMPATIBLE_HOST = "null"

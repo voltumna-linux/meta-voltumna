@@ -2,8 +2,7 @@ inherit cross
 
 INHIBIT_DEFAULT_DEPS = "1"
 EXTRADEPENDS = ""
-DEPENDS = "virtual/${TARGET_PREFIX}binutils ${EXTRADEPENDS} ${NATIVEDEPS}"
-PROVIDES = "virtual/${TARGET_PREFIX}gcc virtual/${TARGET_PREFIX}g++"
+DEPENDS = "virtual/cross-binutils ${EXTRADEPENDS} ${NATIVEDEPS}"
 python () {
     if d.getVar("TARGET_OS").startswith("linux"):
         d.setVar("EXTRADEPENDS", "linux-libc-headers")
@@ -34,15 +33,16 @@ EXTRA_OECONF += "\
 EXTRA_OECONF:append:libc-baremetal = " --without-headers"
 EXTRA_OECONF:remove:libc-baremetal = "--enable-threads=posix"
 EXTRA_OECONF:remove:libc-newlib = "--enable-threads=posix"
+EXTRA_OECONF:remove:libc-picolibc = "--enable-threads=posix"
 
 EXTRA_OECONF_PATHS = "\
     --with-gxx-include-dir=/not/exist${target_includedir}/c++/${BINV} \
+    --with-gxx-libcxx-include-dir=/not/exist${target_includedir}/c++/v1 \
     --with-sysroot=/not/exist \
     --with-build-sysroot=${STAGING_DIR_TARGET} \
 "
 
 ARCH_FLAGS_FOR_TARGET += "-isystem${STAGING_DIR_TARGET}${target_includedir}"
-
 
 do_configure:prepend () {
 	install -d ${RECIPE_SYSROOT}${target_includedir}
@@ -93,7 +93,7 @@ do_install () {
 	# found. These need to be relative paths so they work in different locations.
 	dest=${D}${libexecdir}/gcc/${TARGET_SYS}/${BINV}/
 	install -d $dest
-	for t in ar as ld ld.bfd ld.gold nm objcopy objdump ranlib strip gcc cpp $fortsymlinks; do
+	for t in ar as ld ld.bfd nm objcopy objdump ranlib strip gcc cpp $fortsymlinks; do
 		ln -sf ${BINRELPATH}/${TARGET_PREFIX}$t $dest$t
 		ln -sf ${BINRELPATH}/${TARGET_PREFIX}$t ${dest}${TARGET_PREFIX}$t
 	done

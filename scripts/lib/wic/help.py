@@ -544,18 +544,18 @@ DESCRIPTION
     the --source param given to that partition.  For example, if the
     partition is set up like this:
 
-      part /boot --source bootimg-pcbios   ...
+      part /boot --source bootimg_pcbios   ...
 
     then the methods defined as class members of the plugin having the
-    matching bootimg-pcbios .name class member would be used.
+    matching bootimg_pcbios .name class member would be used.
 
     To be more concrete, here's the plugin definition that would match
-    a '--source bootimg-pcbios' usage, along with an example method
+    a '--source bootimg_pcbios' usage, along with an example method
     that would be called by the wic implementation when it needed to
     invoke an implementation-specific partition-preparation function:
 
     class BootimgPcbiosPlugin(SourcePlugin):
-        name = 'bootimg-pcbios'
+        name = 'bootimg_pcbios'
 
     @classmethod
         def do_prepare_partition(self, part, ...)
@@ -794,7 +794,7 @@ DESCRIPTION
 
      Here is a content of test.wks:
 
-     part /boot --source bootimg-pcbios --ondisk sda --label boot --active --align 1024
+     part /boot --source bootimg_pcbios --ondisk sda --label boot --active --align 1024
      part / --source rootfs --ondisk sda --fstype=ext3 --label platform --align 1024
 
      bootloader  --timeout=0  --append="rootwait rootfstype=ext3 video=vesafb vga=0x318 console=tty0"
@@ -916,6 +916,10 @@ DESCRIPTION
                    will create empty partition. --size parameter has
                    to be used to specify size of empty partition.
 
+         --sourceparams: This option is specific to wic. Supply additional
+                         parameters to the source plugin in
+                         key1=value1,key2 format.
+
          --ondisk or --ondrive: Forces the partition to be created on
                                 a particular disk.
 
@@ -932,6 +936,7 @@ DESCRIPTION
              squashfs
              erofs
              swap
+             none
 
          --fsoptions: Specifies a free-form string of options to be
                       used when mounting the filesystem. This string
@@ -964,6 +969,14 @@ DESCRIPTION
          --align (in KBytes): This option is specific to wic and says
                               to start a partition on an x KBytes
                               boundary.
+
+         --offset: This option is specific to wic that says to place a partition
+                   at exactly the specified offset. If the partition cannot be
+                   placed at the specified offset, the image build will fail.
+                   Specify as an integer value optionally followed by one of the
+                   units s/S for 512 byte sector, k/K for kibibyte, M for
+                   mebibyte and G for gibibyte. The default unit if none is
+                   given is k.
 
          --no-table: This option is specific to wic. Space will be
                      reserved for the partition and it will be
@@ -1045,6 +1058,18 @@ DESCRIPTION
                            not take effect when --mkfs-extraopts is used. This should be taken into
                            account when using --mkfs-extraopts.
 
+         --type: This option is specific to wic. Valid values are 'primary',
+                 'logical'. For msdos partition tables, this option specifies
+                 the partition type.
+
+         --hidden: This option is specific to wic. This option sets the
+                   RequiredPartition bit (bit 0) on GPT partitions.
+
+         --mbr: This option is specific to wic. This option is used with the
+                gpt-hybrid partition type that uses both a GPT partition and
+                an MBR header. Partitions with this flag will be included in
+                this MBR header.
+
     * bootloader
 
       This command allows the user to specify various bootloader
@@ -1062,6 +1087,13 @@ DESCRIPTION
                       canned-wks folder or could be the full path to the
                       file. Using this option will override any other
                       bootloader option.
+
+        --ptable: Specifies the partition table format. Valid values are
+                  'msdos', 'gpt', 'gpt-hybrid'.
+
+        --source: Specifies the source plugin. If not specified, the
+                  --source value will be copied from the partition that has
+                  /boot as mountpoint.
 
       Note that bootloader functionality and boot partitions are
       implemented by the various --source plugins that implement

@@ -179,8 +179,13 @@ def fetch_url(tinfoil, srcuri, srcrev, destdir, logger, preserve_tmp=False, mirr
                 f.write('SRCREV = "%s"\n' % srcrev)
                 f.write('PV = "0.0+"\n')
                 f.write('WORKDIR = "%s"\n' % tmpworkdir)
+                f.write('UNPACKDIR = "%s"\n' % destdir)
+
                 # Set S out of the way so it doesn't get created under the workdir
-                f.write('S = "%s"\n' % os.path.join(tmpdir, 'emptysrc'))
+                s_dir = os.path.join(tmpdir, 'emptysrc')
+                bb.utils.mkdirhier(s_dir)
+                f.write('S = "%s"\n' % s_dir)
+
                 if not mirrors:
                     # We do not need PREMIRRORS since we are almost certainly
                     # fetching new source rather than something that has already
@@ -232,10 +237,6 @@ def fetch_url(tinfoil, srcuri, srcrev, destdir, logger, preserve_tmp=False, mirr
                 if e.errno != errno.ENOTEMPTY:
                     raise
 
-        bb.utils.mkdirhier(destdir)
-        for fn in os.listdir(tmpworkdir):
-            shutil.move(os.path.join(tmpworkdir, fn), destdir)
-
     finally:
         if not preserve_tmp:
             shutil.rmtree(tmpdir)
@@ -271,12 +272,3 @@ def is_src_url(param):
         return True
     return False
 
-def filter_src_subdirs(pth):
-    """
-    Filter out subdirectories of initial unpacked source trees that we do not care about.
-    Used by devtool and recipetool.
-    """
-    dirlist = os.listdir(pth)
-    filterout = ['git.indirectionsymlink', 'source-date-epoch', 'sstate-install-recipe_qa']
-    dirlist = [x for x in dirlist if x not in filterout]
-    return dirlist

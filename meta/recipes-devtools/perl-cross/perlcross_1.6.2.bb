@@ -6,7 +6,7 @@ SECTION = "devel"
 LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 # README.md is taken from https://github.com/arsv/perl-cross/blob/master/README.md
 # but is not provided inside the release tarballs
-LIC_FILES_CHKSUM = "file://${WORKDIR}/README.md;md5=252fcce2026b765fee1ad74d2fb07a3b"
+LIC_FILES_CHKSUM = "file://${UNPACKDIR}/README.md;md5=252fcce2026b765fee1ad74d2fb07a3b"
 
 inherit allarch github-releases
 
@@ -20,7 +20,7 @@ GITHUB_BASE_URI = "https://github.com/arsv/perl-cross/releases/"
 
 SRC_URI[perl-cross.sha256sum] = "131f7496152ee32067dbac2bc9b44b2f582fc778140e545701b3b2faee782f1d"
 
-S = "${WORKDIR}/perl-cross-${PV}"
+S = "${UNPACKDIR}/perl-cross-${PV}"
 
 do_configure () {
 }

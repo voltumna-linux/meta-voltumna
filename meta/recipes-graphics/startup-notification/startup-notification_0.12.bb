@@ -13,9 +13,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=a2ae2cd47d6d2f238410f5364dfbc0f2 \
                     file://libsn/sn-common.h;endline=23;md5=6d05bc0ebdcf5513a6e77cb26e8cd7e2 \
                     file://test/test-boilerplate.h;endline=23;md5=923e706b2a70586176eead261cc5bb98"
 
-
 SECTION = "libs"
-
 
 DEPENDS = "virtual/libx11 libsm xcb-util"
 
@@ -28,5 +26,4 @@ SRC_URI = "http://www.freedesktop.org/software/startup-notification/releases/${B
            file://time_t.patch \
 "
 
-SRC_URI[md5sum] = "2cd77326d4dcaed9a5a23a1232fb38e9"
 SRC_URI[sha256sum] = "3c391f7e930c583095045cd2d10eb73a64f085c7fde9d260f2652c7cb3cfbe4a"

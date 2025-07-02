@@ -468,9 +468,11 @@ class BaseConfig(object):
                 self.set("IMAGE_LINK_NAME", image_link_name)
                 logger.debug('Using IMAGE_LINK_NAME = "%s"' % image_link_name)
 
-    def set_dri_path(self):
+    def set_mesa_paths(self):
         drivers_path = os.path.join(self.bindir_native, '../lib/dri')
-        if not os.path.exists(drivers_path) or not os.listdir(drivers_path):
+        gbm_path = os.path.join(self.bindir_native, '../lib/gbm')
+        if not os.path.exists(drivers_path) or not os.listdir(drivers_path) \
+                or not os.path.exists(gbm_path) or not os.listdir(gbm_path):
             raise RunQemuError("""
 qemu has been built without opengl support and accelerated graphics support is not available.
 To enable it, add:
@@ -479,6 +481,7 @@ DISTRO_FEATURES_NATIVESDK:append = " opengl"
 to your build configuration.
 """)
         self.qemu_environ['LIBGL_DRIVERS_PATH'] = drivers_path
+        self.qemu_environ['GBM_BACKENDS_PATH'] = gbm_path
 
     def check_args(self):
         for debug in ("-d", "--debug"):
@@ -1192,7 +1195,6 @@ to your build configuration.
                 raise RunQemuError("a new one with sudo.")
 
             gid = os.getgid()
-            uid = os.getuid()
             logger.info("Setting up tap interface under sudo")
             cmd = ('sudo', self.qemuifup, str(gid))
             for _ in range(5):
@@ -1299,6 +1301,10 @@ to your build configuration.
                     elif drive_type.startswith("/dev/hd"):
                         logger.info('Using ide drive')
                         vm_drive = "-drive file=%s,format=%s" % (self.rootfs, rootfs_format)
+                    elif drive_type.startswith("/dev/mmcblk"):
+                        logger.info('Using sdcard drive')
+                        vm_drive = '-drive id=sdcard0,if=none,file=%s,format=%s -device sdhci-pci -device sd-card,drive=sdcard0' \
+                                    % (self.rootfs, rootfs_format)
                     elif drive_type.startswith("/dev/vdb"):
                         logger.info('Using block virtio drive');
                         vm_drive = '-drive id=disk0,file=%s,if=none,format=%s -device virtio-blk-device,drive=disk0%s' \
@@ -1458,7 +1464,7 @@ to your build configuration.
             self.qemu_opt += ' -display '
             if self.egl_headless == True:
                 self.check_render_nodes()
-                self.set_dri_path()
+                self.set_mesa_paths()
                 self.qemu_opt += 'egl-headless,'
             else:
                 if self.sdl == True:
@@ -1468,10 +1474,10 @@ to your build configuration.
                     self.qemu_opt += 'gtk,'
 
                 if self.gl == True:
-                    self.set_dri_path()
+                    self.set_mesa_paths()
                     self.qemu_opt += 'gl=on,'
                 elif self.gl_es == True:
-                    self.set_dri_path()
+                    self.set_mesa_paths()
                     self.qemu_opt += 'gl=es,'
             self.qemu_opt += 'show-cursor=on'
 
@@ -1672,6 +1678,9 @@ to your build configuration.
         multiconfig = self.get('MULTICONFIG')
         if multiconfig:
             multiconfig = "mc:%s" % multiconfig
+
+        if self.rootfs and not target:
+            target = self.rootfs
 
         if mach:
             cmd = 'MACHINE=%s bitbake -e %s %s' % (mach, multiconfig, target)

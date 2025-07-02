@@ -13,7 +13,9 @@ GITHUB_BASE_URI = "https://github.com/bdwgc/libatomic_ops/releases"
 
 SRC_URI[sha256sum] = "d305207fe207f2b3fb5cb4c019da12b44ce3fcbc593dfd5080d867b1a2419b51"
 
-S = "${WORKDIR}/libatomic_ops-${PV}"
+CVE_PRODUCT = "libatomic_ops"
+
+S = "${UNPACKDIR}/libatomic_ops-${PV}"
 
 ALLOW_EMPTY:${PN} = "1"
 

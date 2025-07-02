@@ -12,24 +12,14 @@ CVE_PRODUCT = "jinja2 jinja"
 
 CLEANBROKEN = "1"
 
-inherit pypi python_flit_core ptest
+inherit pypi python_flit_core ptest-python-pytest
 
-SRC_URI += " \
-	file://run-ptest \
-"
-
-do_install_ptest() {
-    install -d ${D}${PTEST_PATH}/tests
-    cp -rf ${S}/tests/* ${D}${PTEST_PATH}/tests/
-
+do_install_ptest:append() {
     # test_async items require trio module
     rm -f ${D}${PTEST_PATH}/tests/test_async.py ${D}${PTEST_PATH}/tests/test_async_filters.py
 }
 
 RDEPENDS:${PN}-ptest += " \
-    python3-pytest \
-    python3-unittest-automake-output \
-    python3-toml \
     python3-unixadmin \
 "
 
