@@ -8,7 +8,7 @@ a selected AMD machine, and will start a build:
 ### 2.1. Select a target machine
 
 Set the environment variable `MACHINE` to one of the supported AMD machines
-(i.e `milan`, `rome`, `v3000`, `genoa` or `e3000` or `siena`) that you want to build an
+(i.e `milan`, `rome`, `v3000`, `genoa` or `e3000`) that you want to build an
 image for (change the `<machine-name>` in the following example accordingly):
 
 ```sh
@@ -42,9 +42,6 @@ bitbake-layers add-layer ../meta-openembedded/meta-networking
 bitbake-layers add-layer ../meta-dpdk
 bitbake-layers add-layer ../meta-amd/meta-amd-distro
 bitbake-layers add-layer ../meta-amd/meta-amd-bsp
-bitbake-layers add-layer ../meta-openembedded/meta-filesystems
-bitbake-layers add-layer ../meta-virtualization
-bitbake-layers add-layer ../meta-security/meta-tpm/
 ```
 
 ### 2.3. Start the build
