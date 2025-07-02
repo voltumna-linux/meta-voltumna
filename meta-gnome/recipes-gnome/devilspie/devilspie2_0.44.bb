@@ -15,7 +15,6 @@ SRC_URI = "git://github.com/dsalt/devilspie2;branch=master;protocol=https \
     file://devilspie2.desktop \
 "
 
-S = "${WORKDIR}/git"
 
 inherit features_check pkgconfig gettext
 
@@ -29,7 +28,7 @@ do_compile() {
 do_install() {
     oe_runmake DESTDIR="${D}" PREFIX="${prefix}" install
     install -d ${D}/${sysconfdir}/devilspie2
-    install -m 644 ${WORKDIR}/default.lua ${D}/${sysconfdir}/devilspie2
+    install -m 644 ${UNPACKDIR}/default.lua ${D}/${sysconfdir}/devilspie2
     install -d ${D}/${sysconfdir}/xdg/autostart
-    install -m 644 ${WORKDIR}/devilspie2.desktop ${D}/${sysconfdir}/xdg/autostart
+    install -m 644 ${UNPACKDIR}/devilspie2.desktop ${D}/${sysconfdir}/xdg/autostart
 }

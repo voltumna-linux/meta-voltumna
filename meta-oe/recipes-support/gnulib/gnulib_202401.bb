@@ -16,7 +16,6 @@ SRCREV = "c99c8d491850dc3a6e0b8604a2729d8bc5c0eff1"
 SRC_URI = "git://git.savannah.gnu.org/git/gnulib.git;branch=stable-${PV};protocol=https \
 "
 
-S = "${WORKDIR}/git"
 
 do_install () {
     install -d ${D}/${datadir}/gnulib
@@ -32,6 +31,5 @@ do_packagedata[noexec] = "1"
 deltask package_write_ipk
 deltask package_write_deb
 deltask package_write_rpm
-deltask do_deploy_archives 
 
 BBCLASSEXTEND = "native"

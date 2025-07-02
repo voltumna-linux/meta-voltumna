@@ -13,7 +13,9 @@ SRC_URI = "git://gitlab.com/pibox/con2fbmap.git;protocol=https;branch=master \
            file://0001-con2fbmap-Add-missing-include-on-string.h.patch \
            "
 
-S = "${WORKDIR}/git"
+# Upstream repo does not tag
+UPSTREAM_CHECK_COMMITS = "1"
+
 
 inherit autotools
 

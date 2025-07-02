@@ -5,7 +5,6 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263"
 SRC_URI = "git://github.com/OpenPrinting/system-config-printer.git;protocol=https;branch=master"
 
 SRCREV = "895d3dec50c93bfd4f142bac9bfcc13051bf84cb"
-S = "${WORKDIR}/git"
 
 inherit autotools gettext pkgconfig python3native features_check
 
@@ -26,19 +25,14 @@ do_install:append() {
     cp -rf ${B}/cupshelpers.egg-info ${D}${PYTHON_SITEPACKAGES_DIR}
     cp -rf ${B}/cupshelpers ${D}${PYTHON_SITEPACKAGES_DIR}
     rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/*.egg
-    for f in __init__.cpython-311.pyc cupshelpers.cpython-311.pyc \
-        config.cpython-311.pyc ppds.cpython-311.pyc \
-        installdriver.cpython-311.pyc openprinting.cpython-311.pyc \
-        xmldriverprefs.cpython-311.pyc; do
-        rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/cupshelpers/__pycache__/$f
-    done
+    rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/cupshelpers/__pycache__
 }
 
 FILES:${PN} += "${libdir} ${datadir}"
 
 RDEPENDS:${PN} = " \
     cups \
-    dbus-x11 \
+    ${VIRTUAL-RUNTIME_dbus} \
     gtk+3 \
     libnotify \
     python3-core \

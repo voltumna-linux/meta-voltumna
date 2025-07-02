@@ -4,9 +4,11 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384
 
 SRC_URI = "file://usbgx.default"
 
+S = "${UNPACKDIR}"
+
 do_configure[noexec] = "1"
 do_compile[noexec] = "1"
 
 do_install() {
-    install -Dm 0644 ${WORKDIR}/usbgx.default ${D}${sysconfdir}/default/usbgx
+    install -Dm 0644 ${UNPACKDIR}/usbgx.default ${D}${sysconfdir}/default/usbgx
 }

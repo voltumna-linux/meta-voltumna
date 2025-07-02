@@ -34,7 +34,7 @@ SRC_URI[sha256sum] = "0dbf54dd2c178bd9fe62481d2c37513ee36636d8bf137cfdad96891490
 
 UPSTREAM_CHECK_URI = "http://sourceforge.net/projects/ptpd/files/releases"
 
-S = "${WORKDIR}/ptpd-${PV}"
+S = "${UNPACKDIR}/ptpd-${PV}"
 
 EXTRA_OEMAKE = ""
 
@@ -47,13 +47,13 @@ do_install() {
 
     if ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'true', 'false', d)}; then
         install -d ${D}${systemd_unitdir}/system
-        install -m 0644 ${WORKDIR}/ptpd.service ${D}${systemd_unitdir}/system
+        install -m 0644 ${UNPACKDIR}/ptpd.service ${D}${systemd_unitdir}/system
 
         sed -i -e 's#@SYSCONFDIR@#${sysconfdir}#g' ${D}${systemd_unitdir}/system/ptpd.service
         sed -i -e 's#@BINDIR@#${bindir}#g' ${D}${systemd_unitdir}/system/ptpd.service
 
         install -d ${D}${sysconfdir}/default/
-        install -m 0644 ${WORKDIR}/ptpd.conf ${D}${sysconfdir}/default/ptpd
+        install -m 0644 ${UNPACKDIR}/ptpd.conf ${D}${sysconfdir}/default/ptpd
     fi
 }
 

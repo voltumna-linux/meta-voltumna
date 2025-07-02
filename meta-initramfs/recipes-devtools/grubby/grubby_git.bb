@@ -12,7 +12,6 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=892f569a555ba9c07a568a7c0c4fa63a"
 DEPENDS = "popt util-linux rpm"
 DEPENDS:append:libc-musl = " libexecinfo argp-standalone"
 
-S = "${WORKDIR}/git"
 SRCREV = "c01b0d5bb182bde35b464d14996acf354a3ada2e"
 SRC_URI = "git://github.com/rhboot/grubby.git;protocol=https;;branch=main \
            file://0001-rename-grub2-editenv-to-grub-editenv.patch \
@@ -24,12 +23,21 @@ SRC_URI = "git://github.com/rhboot/grubby.git;protocol=https;;branch=main \
 
 RDEPENDS:${PN} += "dracut"
 
-inherit autotools-brokensep ptest
+inherit ptest
 
 EXTRA_OEMAKE = "-e 'CC=${CC}' 'LDFLAGS=${LDFLAGS}' 'LIBS=${LIBS}'"
 
 LIBS:libc-musl = "-lexecinfo -largp"
 LIBS ?= ""
+
+do_compile() {
+	oe_runmake
+}
+
+do_install() {
+	oe_runmake DESTDIR=${D} install
+}
+
 do_install_ptest() {
     install -d ${D}${PTEST_PATH}
     cp -r ${S}/test ${S}/test.sh ${D}${PTEST_PATH}

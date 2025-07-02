@@ -21,24 +21,26 @@ LICENSE = "BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://COPYING;md5=9aa91e13d644326bf281924212862184"
 
 DEPENDS = "openssl readline ncurses"
-SRCREV = "ab5ce5baff097ebb6e2a17a171858be213ee68d3"
+SRCREV = "bf774149ae7f74c12164a5b021b23520c5ca4016"
 SRC_URI = "git://codeberg.org/ipmitool/ipmitool;protocol=https;branch=master \
            ${IANA_ENTERPRISE_NUMBERS} \
            file://0001-csv-revision-Drop-the-git-revision-info.patch \
            "
+
+UPSTREAM_CHECK_GITTAGREGEX = "IPMITOOL_(?P<pver>\d+(_\d+)+)"
+
 IANA_ENTERPRISE_NUMBERS ?= ""
 
 # Add these via bbappend if this database is needed by the system
 #IANA_ENTERPRISE_NUMBERS = "http://www.iana.org/assignments/enterprise-numbers.txt;name=iana-enterprise-numbers;downloadfilename=iana-enterprise-numbers"
 #SRC_URI[iana-enterprise-numbers.sha256sum] = "cdd97fc08325667434b805eb589104ae63f7a9eb720ecea73cb55110b383934c"
 
-S = "${WORKDIR}/git"
 
 inherit autotools pkgconfig
 
 do_install:append() {
-        if [ -e ${WORKDIR}/iana-enterprise-numbers ]; then
-                install -Dm 0755 ${WORKDIR}/iana-enterprise-numbers ${D}${datadir}/misc/enterprise-numbers
+        if [ -e ${UNPACKDIR}/iana-enterprise-numbers ]; then
+                install -Dm 0755 ${UNPACKDIR}/iana-enterprise-numbers ${D}${datadir}/misc/enterprise-numbers
         fi
 }
 
@@ -57,3 +59,6 @@ EXTRA_OECONF = "--disable-dependency-tracking --enable-file-security --disable-i
                 --disable-registry-download \
                 "
 
+# http://errors.yoctoproject.org/Errors/Details/766896/
+# git/lib/ipmi_fru.c:1556:41: error: initialization of 'struct fru_multirec_mgmt *' from incompatible pointer type 'struct fru_multirect_mgmt *' [-Wincompatible-pointer-types]
+CFLAGS += "-Wno-error=incompatible-pointer-types"

@@ -13,7 +13,6 @@ SRC_URI = "git://github.com/cinemast/libjson-rpc-cpp;branch=master;protocol=http
 
 SRCREV = "ec5ce12fc9c0299e1454cc002c70218b5a6f005b"
 
-S = "${WORKDIR}/git"
 
 PACKAGECONFIG ?= ""
 PACKAGECONFIG[coverage] = "-DWITH_COVERAGE=YES,-DWITH_COVERAGE=NO,,"
@@ -26,7 +25,7 @@ EXTRA_OECMAKE += "-DCOMPILE_TESTS=NO -DCOMPILE_STUBGEN=NO -DCOMPILE_EXAMPLES=NO 
 "
 
 do_install:append() {
-	sed -i -e 's#${RECIPE_SYSROOT}##g' ${D}${libdir}/libjson-rpc-cpp/cmake/libjson-rpc-cppTargets.cmake
+	sed -i -e 's#${RECIPE_SYSROOT}#\${CMAKE_SYSROOT}#g' ${D}${libdir}/libjson-rpc-cpp/cmake/libjson-rpc-cppTargets.cmake
 }
 
 FILES:${PN}-dev += "${libdir}/libjson-rpc-cpp/cmake"

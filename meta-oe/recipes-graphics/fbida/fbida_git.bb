@@ -21,12 +21,11 @@ SRC_URI = "git://github.com/kraxel/fbida;protocol=https;branch=master \
            file://0001-fbida-Include-missing-sys-types.h.patch \
 "
 SRCREV = "eb769e3d7f4a073d4c37ed524ebd5017c6a578f5"
-S = "${WORKDIR}/git"
 
 inherit meson pkgconfig features_check
 
 # Depends on libepoxy
-REQUIRED_DISTRO_FEATURES = "opengl"
+REQUIRED_DISTRO_FEATURES = "${@bb.utils.contains('PACKAGECONFIG', 'pdf', 'opengl', '', d)}"
 
 PACKAGECONFIG ??= "gif png pdf"
 PACKAGECONFIG[gif] = "-Dgif=enabled,-Dgif=disabled,giflib"

@@ -14,17 +14,21 @@ DEPENDS = "zlib readline coreutils-native ncurses-native"
 
 INC_PR = "r1"
 
-S = "${WORKDIR}/git"
 SRC_URI = "git://github.com/crash-utility/${BPN}.git;branch=master;protocol=https \
-           ${GNU_MIRROR}/gdb/gdb-10.2.tar.gz;name=gdb;subdir=git \
+           ${GNU_MIRROR}/gdb/gdb-10.2.tar.gz;name=gdb;subdir=${BB_GIT_DEFAULT_DESTSUFFIX} \
            file://7001force_define_architecture.patch \
            file://7003cross_ranlib.patch \
            file://0001-cross_add_configure_option.patch \
            file://donnot-extract-gdb-during-do-compile.patch \
            file://gdb_build_jobs_and_not_write_crash_target.patch \
            file://0001-symbol-fix-S-cannot-work-with-kaslr-detection.patch \
+           file://0002-arm64-add-pac-mask-to-better-support-gdb-stack-unwin.patch \
+           file://0003-Fix-build-failure-in-readline-lib.patch \
+           file://0004-tools.c-do-not-use-keywords-nullptr-as-a-variable-in.patch \
+           file://0005-Fix-build-failure-on-32bit-machine-i686.patch \
+           file://0001-Use-CC-env-var-to-get-compiler-version.patch \
            "
-SRCREV = "a6832f608cb5d473739cf33bbf84ab1df8d98fd5"
+SRCREV = "f13853cef53f5c5463a51021edbc81977e2b1405"
 
 SRC_URI[gdb.sha256sum] = "b33ad58d687487a821ec8d878daab0f716be60d0936f2e3ac5cf08419ce70350"
 

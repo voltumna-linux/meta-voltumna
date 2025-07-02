@@ -1,5 +1,5 @@
 SUMMARY = "Gammu bindings for Python"
-DESCRIPTION ="Python bindings for the Gammu library."
+DESCRIPTION = "Python bindings for the Gammu library."
 HOMEPAGE = "https://wammu.eu/python-gammu/"
 BUGRACKER = "https://github.com/gammu/python-gammu/issues"
 LICENSE = "GPL-2.0-or-later"
@@ -12,7 +12,7 @@ inherit pypi setuptools3 pkgconfig
 SRC_URI += "file://0001-setup.py-StrictVersion-packaging.version.patch"
 SRC_URI[sha256sum] = "49fc70f01bc192c43ff3ec815e082df5261ea4c8d36a695e977734c4eb4df868"
 
-S = "${WORKDIR}/python-gammu-${PV}"
+S = "${UNPACKDIR}/python-gammu-${PV}"
 
 DEPENDS += "gammu python3-packaging-native"
 

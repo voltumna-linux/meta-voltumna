@@ -1,4 +1,4 @@
-SUMMARY="SSD1306 OLED I2C drive"
+SUMMARY = "SSD1306 OLED I2C drive"
 DESCRIPTION = "SSD1306 OLED I2C driver working in Linux"
 HOMEPAGE = "https://github.com/armlabs/ssd1306_linux"
 SECTION = "console/utils"
@@ -11,7 +11,6 @@ SRC_URI = " \
 "
 SRCREV = "34b42992a43fda69c6ba2557b718601cafe16251"
 
-S = "${WORKDIR}/git"
 
 # coreutils provides fmt which is used in the Makefile
 DEPENDS = "i2c-tools coreutils-native"

@@ -6,13 +6,13 @@ inherit allarch
 
 SRC_URI = "file://classic-light.xml"
 
-S = "${WORKDIR}"
+S = "${UNPACKDIR}"
 
 do_install() {
     install -d ${D}${datadir}/gtksourceview-3.0/styles
-    install -m 0644 ${WORKDIR}/classic-light.xml ${D}${datadir}/gtksourceview-3.0/styles/
+    install -m 0644 ${UNPACKDIR}/classic-light.xml ${D}${datadir}/gtksourceview-3.0/styles/
     install -d ${D}${datadir}/gtksourceview-4/styles
-    install -m 0644 ${WORKDIR}/classic-light.xml ${D}${datadir}/gtksourceview-4/styles/
+    install -m 0644 ${UNPACKDIR}/classic-light.xml ${D}${datadir}/gtksourceview-4/styles/
 }
 
 FILES:${PN} = " \

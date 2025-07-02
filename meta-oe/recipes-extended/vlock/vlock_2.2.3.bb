@@ -16,7 +16,6 @@ SRC_URI = "${GENTOO_MIRROR}/37/${BP}.tar.gz \
        file://vlock_pam \
        "
 
-SRC_URI[md5sum] = "378175c7692a8f288e65fd4dbf8a38eb"
 SRC_URI[sha256sum] = "85aa5aed1ae49351378a0bd527a013078f0f969372a63164b1944174ae1a5e39"
 
 inherit autotools-brokensep update-alternatives
@@ -50,7 +49,7 @@ do_configure () {
 do_install:append () {
     if [ ${@bb.utils.contains('DISTRO_FEATURES', 'pam', 'yes', '', d)} = yes ]; then
         install -d -m 0755 ${D}/${sysconfdir}/pam.d
-        install -m 0644 ${WORKDIR}/vlock_pam ${D}${sysconfdir}/pam.d/vlock
+        install -m 0644 ${UNPACKDIR}/vlock_pam ${D}${sysconfdir}/pam.d/vlock
     fi
 }
 

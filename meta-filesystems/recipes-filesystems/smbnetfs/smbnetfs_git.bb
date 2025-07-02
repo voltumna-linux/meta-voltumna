@@ -6,7 +6,7 @@ DESCRIPTION = "SMBNetFS is a Linux/FreeBSD filesystem that allow you to use \
 
 LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=eb723b61539feef013de476e68b5c50a"
-HOMEPAGE ="http://sourceforge.net/projects/smbnetfs"
+HOMEPAGE = "http://sourceforge.net/projects/smbnetfs"
 
 DEPENDS = "fuse samba"
 DEPENDS:append:libc-musl = " libexecinfo"
@@ -27,6 +27,5 @@ SRC_URI = "git://smbnetfs.git.sourceforge.net/gitroot/smbnetfs/smbnetfs;branch=m
 PACKAGECONFIG ??= ""
 PACKAGECONFIG[libsecret] = "--with-libsecret=yes,--with-libsecret=no,libsecret"
 
-S = "${WORKDIR}/git"
 
 LDFLAGS:append:libc-musl = " -lexecinfo"

@@ -11,9 +11,11 @@ DEPENDS = "libxml2 glibmm"
 GNOMEBN = "libxml++"
 inherit gnomebase ptest
 
-S = "${WORKDIR}/libxml++-${PV}"
+S = "${UNPACKDIR}/libxml++-${PV}"
 
 SRC_URI[archive.sha256sum] = "15c38307a964fa6199f4da6683a599eb7e63cc89198545b36349b87cf9aa0098"
+
+UPSTREAM_CHECK_REGEX = "(?P<pver>\d+(\.\d+)+)"
 
 FILES:${PN}-doc += "${datadir}/devhelp"
 FILES:${PN}-dev += "${libdir}/libxml++-${@gnome_verdir("${PV}")}/include/libxml++config.h"

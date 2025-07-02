@@ -10,16 +10,17 @@ SRC_URI = "git://github.com/libfuse/sshfs;branch=master;protocol=https \
            file://a1d58ae1be99571a88b8439b027abe6349b74658.patch \
 "
 SRCREV = "c91eb9a9a992f1a36c49a8e6f1146e45b5e1c8e7"
-S = "${WORKDIR}/git"
 
 inherit meson pkgconfig ptest
 
 SRC_URI += " \
 	file://run-ptest \
 "
-
+#python3-compile for filecmp module
 RDEPENDS:${PN}-ptest += " \
+        python3-compile \
         python3-pytest \
+        python3-unittest-automake-output \
         bash \
         fuse \
 "
@@ -27,4 +28,5 @@ RDEPENDS:${PN}-ptest += " \
 do_install_ptest() {
         install -d ${D}${PTEST_PATH}/test
         cp -rf ${S}/test/* ${D}${PTEST_PATH}/test/
+        ln -sf ${bindir}/sshfs ${D}${PTEST_PATH}/sshfs
 }

@@ -1,5 +1,5 @@
 SUMMARY = "Fast and Lightweight HTTP Server for Linux"
-HOMEPAGE = "http://monkey-project.com"
+HOMEPAGE = "https://github.com/monkey/monkey/issues/414"
 BUGTRACKER = "https://github.com/monkey/monkey/issues"
 
 LICENSE = "Apache-2.0"
@@ -13,7 +13,6 @@ SRC_URI = "git://github.com/monkey/monkey;branch=1.6;protocol=https \
            file://monkey.init"
 
 SRCREV = "7999b487fded645381d387ec0e057e92407b0d2c"
-S = "${WORKDIR}/git"
 
 UPSTREAM_CHECK_URI = "https://github.com/monkey/monkey/releases"
 UPSTREAM_CHECK_REGEX = "v(?P<pver>\d+(\.\d+)+).tar.gz"
@@ -46,7 +45,7 @@ do_configure:append() {
 do_install:append() {
     rmdir ${D}${localstatedir}/log/${BPN} ${D}${localstatedir}/run ${D}${localstatedir}/log
     rmdir --ignore-fail-on-non-empty ${D}${localstatedir}
-    install -Dm 0755 ${WORKDIR}/monkey.init ${D}${sysconfdir}/init.d/monkey
+    install -Dm 0755 ${UNPACKDIR}/monkey.init ${D}${sysconfdir}/init.d/monkey
     # Create /var/log/monkey in runtime.
     if [ "${@bb.utils.filter('DISTRO_FEATURES', 'systemd', d)}" ]; then
         install -d ${D}${nonarch_libdir}/tmpfiles.d
@@ -57,7 +56,7 @@ do_install:append() {
         echo "d ${BPN} ${BPN} 0755 ${localstatedir}/log/${BPN} none" > ${D}${sysconfdir}/default/volatiles/99_${BPN}
     fi
     if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
-        install -Dm 644 ${WORKDIR}/monkey.service ${D}/${systemd_unitdir}/system/monkey.service
+        install -Dm 644 ${UNPACKDIR}/monkey.service ${D}/${systemd_unitdir}/system/monkey.service
     fi
 }
 
@@ -90,3 +89,5 @@ CONFFILES:${PN} = "${sysconfdir}/monkey/monkey.conf \
                    ${sysconfdir}/monkey/plugins/auth/monkey.users \
                    "
 
+CVE_STATUS[CVE-2013-2183] = "cpe-incorrect: Current version (1.6.9) is not affected. Issue was addressed in version 1.3.0"
+CVE_STATUS[CVE-2013-1771] = "not-applicable-platform: this is gentoo specific CVE"

@@ -9,7 +9,6 @@ SRC_URI = " \
     file://mstpd.service \
 "
 SRCREV = "181c453fc1a00573e19f14960dcc54ad84beea7c"
-S = "${WORKDIR}/git"
 
 UPSTREAM_CHECK_GITTAGREGEX = "(?P<pver>\d+(\.\d+){2,})"
 
@@ -26,8 +25,8 @@ do_install:append() {
     rmdir ${D}${libdir} || true
 
     install -d -m 0755 ${D}${sbindir}
-    install -m 0755 ${WORKDIR}/bridge-stp ${D}${sbindir}
+    install -m 0755 ${UNPACKDIR}/bridge-stp ${D}${sbindir}
 
     install -d -m 0755 ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/mstpd.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${UNPACKDIR}/mstpd.service ${D}${systemd_system_unitdir}
 }

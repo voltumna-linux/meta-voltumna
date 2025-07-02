@@ -15,7 +15,6 @@ SRC_URI = "git://github.com/tomaszmrugalski/dibbler;branch=master;protocol=https
            "
 PV = "1.0.1+1.0.2RC1+git${SRCREV}"
 
-S = "${WORKDIR}/git"
 
 PACKAGECONFIG ??= "debug bind-reuse resolvconf dns-update"
 
@@ -41,3 +40,7 @@ FILES:${PN}-client = "${sbindir}/${PN}-client"
 FILES:${PN}-relay = "${sbindir}/${PN}-relay"
 FILES:${PN}-requestor = "${sbindir}/${PN}-requestor"
 FILES:${PN}-server = "${sbindir}/${PN}-server"
+
+# http://errors.yoctoproject.org/Errors/Details/766880/
+# git/Port-linux/interface.c:118:18: error: assignment to '__caddr_t' {aka 'char *'} from incompatible pointer type 'struct ethtool_value *' [-Wincompatible-pointer-types]
+CFLAGS += "-Wno-error=incompatible-pointer-types"

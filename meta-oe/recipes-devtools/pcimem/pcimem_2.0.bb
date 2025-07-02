@@ -10,7 +10,9 @@ COMPATIBLE_HOST = "(x86_64|aarch64|arm|riscv64)"
 SRCREV = "09724edb1783a98da2b7ae53c5aaa87493aabc9b"
 SRC_URI = "git://github.com/billfarrow/pcimem.git;branch=master;protocol=https"
 
-S = "${WORKDIR}/git"
+# Upstream repo does not tag
+UPSTREAM_CHECK_COMMITS = "1"
+
 
 do_install() {
     install -D -m 0755 ${B}/pcimem ${D}${bindir}/pcimem

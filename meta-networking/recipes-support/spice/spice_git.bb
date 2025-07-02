@@ -19,8 +19,9 @@ SRCREV = "0c2c1413a8b387ea597a95b6c867470a7c56c8ab"
 
 SRC_URI = "gitsm://gitlab.freedesktop.org/spice/spice;branch=master;protocol=https"
 
-S = "${WORKDIR}/git"
 
+CVE_STATUS[CVE-2016-0749] = "fixed-version: patched since 0.13.2"
+CVE_STATUS[CVE-2016-2150] = "fixed-version: patched since 0.13.2"
 CVE_STATUS[CVE-2018-10893] = "fixed-version: patched already, caused by inaccurate CPE in the NVD database."
 
 inherit meson gettext python3native python3-dir pkgconfig
@@ -28,7 +29,7 @@ inherit meson gettext python3native python3-dir pkgconfig
 DEPENDS = "spice-protocol jpeg pixman alsa-lib glib-2.0 gdk-pixbuf lz4 orc python3-pyparsing-native python3-six-native glib-2.0-native zlib"
 DEPENDS:append:class-nativesdk = " nativesdk-openssl"
 
-export PYTHON="${STAGING_BINDIR_NATIVE}/python3-native/python3"
+export PYTHON = "${STAGING_BINDIR_NATIVE}/python3-native/python3"
 
 do_configure:prepend() {
 	echo ${PV} > ${S}/.tarball-version

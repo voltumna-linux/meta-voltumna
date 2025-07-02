@@ -15,7 +15,9 @@ SRC_URI = "git://github.com/PADL/pam_ccreds;branch=master;protocol=https \
            file://0001-configure-Check-for-function-from-libdb-during-confi.patch \
            "
 
-S = "${WORKDIR}/git"
+# Upstream repo does not tag
+UPSTREAM_CHECK_COMMITS = "1"
+
 
 inherit autotools
 

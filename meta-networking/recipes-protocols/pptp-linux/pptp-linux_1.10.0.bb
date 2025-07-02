@@ -18,7 +18,7 @@ SRC_URI = "${SOURCEFORGE_MIRROR}/sourceforge/pptpclient/pptp-${PV}.tar.gz \
 SRC_URI[md5sum] = "8d25341352fdae5ad5b36b9f18254908"
 SRC_URI[sha256sum] = "82492db8e487ce73b182ee7f444251d20c44f5c26d6e96c553ec7093aefb5af4"
 
-S = "${WORKDIR}/pptp-${PV}"
+S = "${UNPACKDIR}/pptp-${PV}"
 
 EXTRA_OEMAKE = "-e MAKEFLAGS="
 
@@ -26,7 +26,7 @@ do_install() {
     install -d ${D}${sbindir} ${D}${sysconfdir}/ppp ${D}${mandir}/man8
     install -m 555 pptp ${D}${sbindir}
     install -m 644 pptp.8 ${D}${mandir}/man8
-    install -m 644 ${WORKDIR}/options.pptp ${D}${sysconfdir}/ppp
+    install -m 644 ${UNPACKDIR}/options.pptp ${D}${sysconfdir}/ppp
 }
 
 RDEPENDS:${PN} = "ppp"
