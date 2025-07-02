@@ -1,8 +1,9 @@
 include dpdk.inc
 
 SRC_URI += " file://0001-config-meson-get-cpu_instruction_set-from-meson-opti.patch \
-             file://CVE-2024-11614.patch \
-           "
+             file://0001-net-ionic-fix-build-with-Fedora.patch \
+             file://0001-net-gve-base-fix-build-with-Fedora.patch \
+             file://0001-Add-new-tracepoint-function-for-type-time_t.patch"
 
 STABLE = "-stable"
 BRANCH = "23.11"
