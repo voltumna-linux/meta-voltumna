@@ -11,7 +11,7 @@ DATE = "20240215"
 SRC_URI = "https://www.supermicro.com/Bios/sw_download/${DIR}/sum_${PV}_${SUFFIX}_${DATE}.tar.gz"
 SRC_URI[sha256sum] = "79cf26203493bb6a5b64fc508d9696151f89e08b79120a582d337bd5aae6c0a1"
 
-S = "${WORKDIR}/${BPN}_${PV}_${SUFFIX}"
+S = "${UNPACKDIR}/${BPN}_${PV}_${SUFFIX}"
 PACKAGES = "${BPN}"
 INSANE_SKIP:${PN} = "already-stripped ldflags debug-files file-rdeps"
 

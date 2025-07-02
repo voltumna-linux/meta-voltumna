@@ -5,6 +5,6 @@ SRC_URI:append = " \
 	"
 
 do_install:append() {
-	# Replace rezie-helper
-  	install -m 0755 ${WORKDIR}/resize-helper ${D}${sbindir}
+    # Replace resize-helper
+    install -m 0755 ${UNPACKDIR}/resize-helper ${D}${sbindir}
 }

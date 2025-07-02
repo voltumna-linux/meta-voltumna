@@ -12,7 +12,7 @@ FILES:${PN} += "${systemd_unitdir}/system"
 
 do_install() {
 	install -d ${D}${systemd_system_unitdir}
-	install -m 0644 ${WORKDIR}/prepare-kernel-devsrc.service \
+	install -m 0644 ${UNPACKDIR}/prepare-kernel-devsrc.service \
 		${D}${systemd_system_unitdir}
 }
 

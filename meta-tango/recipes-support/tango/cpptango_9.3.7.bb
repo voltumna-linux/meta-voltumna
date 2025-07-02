@@ -13,8 +13,6 @@ SRC_URI = "git://gitlab.com/tango-controls/cppTango.git;protocol=https;branch=9.
 	file://fix_wrong_comment.patch \
 "
 
-S = "${WORKDIR}/git"
-
 EXTRA_OECMAKE += " -DIDL_BASE=${STAGING_EXECPREFIXDIR} \
 	-DOMNIIDL=${STAGING_DIR_NATIVE}/usr/bin/omniidl \
 	-DCMAKE_BUILD_TYPE=Release \

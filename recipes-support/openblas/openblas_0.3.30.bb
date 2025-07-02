@@ -10,8 +10,6 @@ RDEPENDS:${PN} += "libgomp"
 SRCREV = "993fad6aebbce34a97d3f8c34d6d79d35b64cc48"
 SRC_URI = "git://github.com/xianyi/OpenBLAS.git;protocol=https;branch=release-0.3.0"
 
-S = "${WORKDIR}/git"
-
 EXTRA_OEMAKE += " \
 	FORCE_${OPENBLAS_TARGET}="1" \
 	TARGET=${OPENBLAS_TARGET} \

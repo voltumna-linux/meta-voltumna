@@ -6,7 +6,6 @@ DEPENDS:append = "dpdk"
 
 SRCREV = "48a6ff7af010a0b3a609bdc6f22acdbe26505731"
 SRC_URI = "git://gitlab.elettra.eu/cs/lib/librnmdpdk.git;protocol=https;branch=master"
-S = "${WORKDIR}/git"
 
 do_install() {
 	oe_runmake PREFIX=${D}${prefix} install

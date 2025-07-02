@@ -8,9 +8,6 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/GPL-2.0-or-lat
 SRCREV = "52ad42bb74ba4b3fcece2483f0d496494d60715f"
 SRC_URI = "git://github.com/96boards/96boards-tools;branch=master;protocol=https \
            "
-
-S = "${WORKDIR}/git"
-
 inherit systemd allarch update-rc.d
 
 do_install () {

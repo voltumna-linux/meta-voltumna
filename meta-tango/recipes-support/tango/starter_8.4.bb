@@ -13,15 +13,13 @@ SRC_URI = "\
 	file://starter.service \
 	"
 
-S = "${WORKDIR}/git"
-
 FILES:${PN} += "${bindir}"
 
 SYSTEMD_SERVICE:${PN} = "starter.service"
 
 do_install:append() {
 	install -d ${D}${systemd_unitdir}/system
-	install -m 0644 ${WORKDIR}/starter.service ${D}${systemd_unitdir}/system
+	install -m 0644 ${UNPACKDIR}/starter.service ${D}${systemd_unitdir}/system
 }
 
 inherit pkgconfig systemd cmake
