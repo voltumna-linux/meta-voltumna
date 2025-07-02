@@ -18,7 +18,6 @@ SRC_URI = "git://github.com/diamon/minicoredumper;protocol=https;branch=master \
            file://0001-corestripper-Fix-uninitialized-warning.patch \
            "
 
-S = "${WORKDIR}/git"
 
 SYSTEMD_SERVICE:${PN} = "minicoredumper.service"
 SYSTEMD_AUTO_ENABLE = "enable"
@@ -36,9 +35,9 @@ do_install:append() {
     cp -rf ${S}/etc/* ${D}/${sysconfdir}/
 
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/minicoredumper.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${UNPACKDIR}/minicoredumper.service ${D}${systemd_system_unitdir}
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/minicoredumper.init ${D}${sysconfdir}/init.d/minicoredumper
+    install -m 0755 ${UNPACKDIR}/minicoredumper.init ${D}${sysconfdir}/init.d/minicoredumper
 
     # correct path of minicoredumper
     sed -i -e s:/usr/bin/minicoredumper:${sbindir}/minicoredumper:g ${D}${sysconfdir}/init.d/minicoredumper

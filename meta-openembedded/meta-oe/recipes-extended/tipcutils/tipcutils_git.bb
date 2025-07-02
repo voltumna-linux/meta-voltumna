@@ -18,7 +18,6 @@ DEPENDS += "libdaemon"
 
 RDEPENDS:${PN} = "iproute2-tipc"
 
-S = "${WORKDIR}/git"
 
 do_configure:prepend() {
     ( cd ${S}; ${S}/bootstrap )
@@ -46,7 +45,7 @@ do_install:append() {
     # Install systemd related configuration file
     if ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'true', 'false', d)}; then
         install -d ${D}${sysconfdir}/modules-load.d
-        install -m 0644 ${WORKDIR}/tipcutils.conf ${D}${sysconfdir}/modules-load.d
+        install -m 0644 ${UNPACKDIR}/tipcutils.conf ${D}${sysconfdir}/modules-load.d
     fi
 }
 

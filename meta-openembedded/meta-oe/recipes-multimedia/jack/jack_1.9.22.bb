@@ -24,36 +24,26 @@ SRCREV = "4f58969432339a250ce87fe855fb962c67d00ddb"
 
 UPSTREAM_CHECK_GITTAGREGEX = "v(?P<pver>\d+(\.\d+)+)"
 
-S = "${WORKDIR}/git"
 
 inherit waf pkgconfig
 
 PACKAGECONFIG ??= "alsa"
 PACKAGECONFIG[alsa] = "--alsa=yes,--alsa=no,alsa-lib"
 # --dbus only stops building jackd -> add --classic
-PACKAGECONFIG[dbus] = "--dbus --classic,,dbus"
+PACKAGECONFIG[dbus] = "--dbus --classic,,dbus,python3-core"
 PACKAGECONFIG[opus] = "--opus=yes,--opus=no,libopus"
 
 # portaudio is for windows builds only
 EXTRA_OECONF = "--portaudio=no"
 
-do_install:append() {
-	if ! ${@bb.utils.contains('PACKAGECONFIG', 'dbus', True, False, d)}; then
-		rm -f ${D}${bindir}/jack_control
-	fi
-}
-
-PACKAGES =+ "libjack jack-server jack-utils"
+PACKAGE_BEFORE_PN = "libjack jack-server"
 
 RDEPENDS:jack-dev:remove = "${PN} (= ${EXTENDPKGV})"
 
 FILES:libjack = "${libdir}/*.so.* ${libdir}/jack/*.so"
+
 FILES:jack-server = " \
     ${datadir}/dbus-1/services \
     ${bindir}/jackdbus \
     ${bindir}/jackd \
 "
-FILES:jack-utils = "${bindir}/*"
-
-FILES:${PN}-doc += " ${datadir}/jack-audio-connection-kit/reference/html/*"
-

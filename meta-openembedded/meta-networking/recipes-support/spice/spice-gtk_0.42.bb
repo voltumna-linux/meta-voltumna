@@ -12,7 +12,8 @@ SRCREV = "f04479c16f0969fb394ebe74b6eff74e560a42f0"
 
 SRC_URI = "gitsm://gitlab.freedesktop.org/spice/spice-gtk.git;protocol=https;branch=master"
 
-S = "${WORKDIR}/git"
+CVE_STATUS[CVE-2012-4425] = "fixed-version: fixed since 0.15.3"
+
 
 DEPENDS = " \
 	${@bb.utils.filter('DISTRO_FEATURES', 'polkit', d)} \

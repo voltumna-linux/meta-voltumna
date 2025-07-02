@@ -13,7 +13,9 @@ SRC_URI = "git://github.com/ianlancetaylor/libbacktrace;protocol=https;branch=ma
 PV = "1.0+git"
 SRCREV = "9ae4f4ae4481b1e69d38ed810980d33103544613"
 
-S = "${WORKDIR}/git"
+# The current PV is not a git tag but a README content
+UPSTREAM_CHECK_COMMITS = "1"
+
 
 inherit autotools
 

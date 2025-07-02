@@ -16,7 +16,6 @@ SRC_URI = "git://github.com/microsoft/GSL.git;protocol=https;branch=main \
 "
 SRCREV = "a3534567187d2edc428efd3f13466ff75fe5805c"
 
-S = "${WORKDIR}/git"
 
 inherit cmake pkgconfig ptest
 
@@ -43,3 +42,8 @@ FILES:${PN}-ptest = "${bindir}/gsl*_tests"
 CVE_PRODUCT = "microsoft:gsl"
 
 BBCLASSEXTEND = "native nativesdk"
+
+# This one is reproducible only on 32bit arm MACHINEs (didn't see it with qemux86 or qemux86-64 builds)
+# http://errors.yoctoproject.org/Errors/Details/766976/
+# lib32-microsoft-gsl/4.0.0/git/tests/span_tests.cpp:1275:34: error: value computed is not used [-Werror=unused-value]
+CXXFLAGS += "-Wno-error=unused-value"

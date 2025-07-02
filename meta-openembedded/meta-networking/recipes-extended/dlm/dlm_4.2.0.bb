@@ -21,7 +21,7 @@ UPSTREAM_CHECK_REGEX = "dlm-(?P<pver>\d+(\.\d+)+)"
 LICENSE = "LGPL-2.0-or-later & GPL-2.0-only & GPL-2.0-or-later"
 LIC_FILES_CHKSUM = "file://README.license;md5=8f0bbcdd678df1bce9863492b6c8832d"
 
-S = "${WORKDIR}/dlm-dlm-${PV}"
+S = "${UNPACKDIR}/dlm-dlm-${PV}"
 
 DEPENDS += "corosync"
 
@@ -37,6 +37,7 @@ SYSTEMD_AUTO_ENABLE = "enable"
 export EXTRA_OEMAKE = ""
 
 CFPROTECTION ?= "-fcf-protection=full"
+CFPROTECTION:riscv32 = ""
 CFPROTECTION:riscv64 = ""
 CFPROTECTION:arm = ""
 CFPROTECTION:aarch64 = ""

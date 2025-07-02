@@ -10,7 +10,6 @@ SRC_URI:append:class-target = " file://oe-remote.repo.sample"
 
 inherit setuptools3-base
 
-S = "${WORKDIR}/git"
 
 do_install:append() {
     install -d ${D}${datadir}/dnf
@@ -24,7 +23,7 @@ do_install:append() {
 
 do_install:append:class-target() {
     install -d ${D}${sysconfdir}/yum.repos.d
-    install -m 0644 ${WORKDIR}/oe-remote.repo.sample ${D}${sysconfdir}/yum.repos.d
+    install -m 0644 ${UNPACKDIR}/oe-remote.repo.sample ${D}${sysconfdir}/yum.repos.d
 }
 
 do_install:append:class-nativesdk() {

@@ -6,11 +6,10 @@ LIC_FILES_CHKSUM = "file://COPYING.txt;md5=c80d1a3b623f72bb85a4c75b556551df"
 SRC_URI = "git://github.com/gflags/gflags.git;branch=master;protocol=https"
 SRCREV = "e171aa2d15ed9eb17054558e0b3a6a413bb01067"
 
-S = "${WORKDIR}/git"
 
 inherit cmake
 
-EXTRA_OECMAKE="-DBUILD_SHARED_LIBS=ON -DREGISTER_INSTALL_PREFIX=OFF -DLIB_INSTALL_DIR=${baselib}"
+EXTRA_OECMAKE = "-DBUILD_SHARED_LIBS=ON -DREGISTER_INSTALL_PREFIX=OFF -DLIB_INSTALL_DIR=${baselib}"
 
 PACKAGES =+ "${PN}-bash-completion"
 FILES:${PN}-bash-completion += "${bindir}/gflags_completions.sh"

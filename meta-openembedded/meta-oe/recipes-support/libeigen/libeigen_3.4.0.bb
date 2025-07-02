@@ -1,10 +1,10 @@
 DESCRIPTION = "Eigen is a C++ template library for linear algebra: matrices, vectors, numerical solvers, and related algorithms."
 HOMEPAGE = "http://eigen.tuxfamily.org/"
-LICENSE = "MPL-2.0 & Apache-2.0 & BSD-3-Clause & GPL-2.0-only & MINPACK"
+LICENSE = "MPL-2.0 & Apache-2.0 & BSD-3-Clause & GPL-2.0-only & Minpack"
 # The GPL code is only used for benchmark tests and does not affect what is installed.
-LICENSE:${PN} = "MPL-2.0 & Apache-2.0 & BSD-3-Clause & MINPACK"
-LICENSE:${PN}-dbg = "MPL-2.0 & Apache-2.0 & BSD-3-Clause & MINPACK"
-LICENSE:${PN}-dev = "MPL-2.0 & Apache-2.0 & BSD-3-Clause & MINPACK"
+LICENSE:${PN} = "MPL-2.0 & Apache-2.0 & BSD-3-Clause & Minpack"
+LICENSE:${PN}-dbg = "MPL-2.0 & Apache-2.0 & BSD-3-Clause & Minpack"
+LICENSE:${PN}-dev = "MPL-2.0 & Apache-2.0 & BSD-3-Clause & Minpack"
 LIC_FILES_CHKSUM = "file://COPYING.MPL2;md5=815ca599c9df247a0c7f619bab123dad \
                     file://COPYING.APACHE;md5=8de23b8e93c63005353056b2475e9aa5 \
                     file://COPYING.BSD;md5=2dd0510ee95e59ca28834b875bc96596 \
@@ -19,7 +19,6 @@ SRC_URI = "git://gitlab.com/libeigen/eigen.git;protocol=http;branch=3.4 \
 
 SRCREV = "3147391d946bb4b6c68edd901f2add6ac1f31f8c"
 
-S = "${WORKDIR}/git"
 
 inherit cmake
 

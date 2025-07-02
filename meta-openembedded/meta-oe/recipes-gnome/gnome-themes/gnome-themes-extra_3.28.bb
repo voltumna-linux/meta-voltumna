@@ -1,5 +1,5 @@
 SUMMARY = "GTK+2 standard themes"
-HOMEPAGE = "http://ftp.gnome.org/pub/GNOME/sources/gnome-themes-standard/"
+HOMEPAGE = "https://download.gnome.org/sources/gnome-themes-standard/"
 BUGTRACKER = "https://bugzilla.gnome.org/"
 SECTION = "x11/gnome"
 
@@ -18,6 +18,9 @@ DEPENDS += "intltool-native gtk+3 librsvg"
 SRC_URI = "${GNOME_MIRROR}/${BPN}/${PV}/${BPN}-${PV}.tar.xz;name=archive"
 SRC_URI[archive.md5sum] = "f9f2c6c521948da427f702372e16f826"
 SRC_URI[archive.sha256sum] = "7c4ba0bff001f06d8983cfc105adaac42df1d1267a2591798a780bac557a5819"
+
+UPSTREAM_CHECK_URI = "https://gitlab.gnome.org/Archive/gnome-themes-extra/-/tags"
+UPSTREAM_CHECK_REGEX = "(?P<pver>\d+(\.\d+)+)"
 
 EXTRA_OECONF = "--disable-gtk2-engine"
 

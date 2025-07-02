@@ -6,7 +6,7 @@ The module is split into several packages which are not described in this \
 section; unless stated otherwise, you only need to use XML::LibXML; in \
 your programs."
 
-HOMEPAGE = "http://search.cpan.org/dist/XML-LibXML-1.99/"
+HOMEPAGE = "https://metacpan.org/dist/XML-LibXML"
 SECTION = "libs"
 LICENSE = "Artistic-1.0 | GPL-1.0-or-later"
 DEPENDS += "libxml2 \
@@ -22,7 +22,7 @@ RDEPENDS:${PN} += "\
     zlib \
 "
 
-SRC_URI = "http://search.cpan.org/CPAN/authors/id/S/SH/SHLOMIF/XML-LibXML-${PV}.tar.gz;name=libxml \
+SRC_URI = "${CPAN_MIRROR}/authors/id/S/SH/SHLOMIF/XML-LibXML-${PV}.tar.gz;name=libxml \
     file://disable-libxml2-check.patch \
     file://fix-CATALOG-conditional-compile.patch \
     file://using-DOCB-conditional.patch \
@@ -34,7 +34,7 @@ LIC_FILES_CHKSUM = "file://debian/copyright;md5=64eda1bc135f0ece1d1187f2a8ac82c1
 SRC_URI[libxml.md5sum] = "dce687dd8b7e82d1c359fd74b1852f64"
 SRC_URI[libxml.sha256sum] = "f0bca4d0c2da35d879fee4cd13f352014186cedab27ab5e191f39b5d7d4f46cf"
 
-S = "${WORKDIR}/XML-LibXML-${PV}"
+S = "${UNPACKDIR}/XML-LibXML-${PV}"
 
 inherit cpan ptest-perl
 

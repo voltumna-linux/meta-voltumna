@@ -20,7 +20,6 @@ SRC_URI = "git://github.com/MycroftAI/mycroft-core.git;branch=master;protocol=ht
            file://mycroft.service \
           "
 
-S = "${WORKDIR}/git"
 
 inherit systemd features_check
 
@@ -33,17 +32,17 @@ do_install() {
     rm -r ${D}${libdir}/mycroft/.git
 
     # Install the dev opts so it doesn't ask us on initial setup.
-    install -m 644 ${WORKDIR}/dev_opts.json ${D}${libdir}/mycroft/.dev_opts.json
+    install -m 644 ${UNPACKDIR}/dev_opts.json ${D}${libdir}/mycroft/.dev_opts.json
 
     if ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'true', 'false', d)}; then
         install -d ${D}${systemd_unitdir}/system
-        install -m 644 ${WORKDIR}/mycroft-setup.service ${D}${systemd_unitdir}/system
+        install -m 644 ${UNPACKDIR}/mycroft-setup.service ${D}${systemd_unitdir}/system
         sed -i -e 's,@LIBDIR@,${libdir},g' ${D}${systemd_unitdir}/system/mycroft-setup.service
     fi
 
     if ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'true', 'false', d)}; then
         install -d ${D}${systemd_unitdir}/system
-        install -m 644 ${WORKDIR}/mycroft.service ${D}${systemd_unitdir}/system
+        install -m 644 ${UNPACKDIR}/mycroft.service ${D}${systemd_unitdir}/system
         sed -i -e 's,@LIBDIR@,${libdir},g' ${D}${systemd_unitdir}/system/mycroft.service
     fi
 }

@@ -5,7 +5,9 @@ LIC_FILES_CHKSUM = "file://devmem2.c;endline=38;md5=a9eb9f3890384519f435aedf9862
 SRC_URI = "git://github.com/denix0/devmem2.git;protocol=https;branch=main"
 SRCREV = "5b395a946894eb4f4ef5d07c80a50a88573a541e"
 
-S = "${WORKDIR}/git"
+# Upstream repo does not tag
+UPSTREAM_CHECK_COMMITS = "1"
+
 
 CFLAGS += "-DFORCE_STRICT_ALIGNMENT"
 

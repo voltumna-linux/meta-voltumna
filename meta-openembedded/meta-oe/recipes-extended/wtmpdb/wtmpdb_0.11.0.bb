@@ -10,7 +10,6 @@ SRCREV = "493e9704dbc50f141d5fbd41c823311e79d7e8d3"
 SRC_URI = "git://github.com/thkukuk/wtmpdb.git;branch=main;protocol=https \
            file://0001-include-libgen.h-for-basename.patch"
 
-S = "${WORKDIR}/git"
 
 inherit meson pkgconfig systemd features_check
 
@@ -19,7 +18,7 @@ REQUIRED_DISTRO_FEATURES = "pam"
 
 SYSTEMD_SERVICE:${PN} = "wtmpdb-update-boot.service wtmpdb-rotate.service"
 
-EXTRA_OEMESON = " -Dpamlibdir=${libdir}"
+EXTRA_OEMESON = " -Dpamlibdir=${base_libdir}/security"
 
 do_install:append () {
       if [ -d ${D}${prefix}/lib/systemd -a ${D}${prefix}/lib != `dirname ${D}${systemd_unitdir}` ]; then
@@ -33,3 +32,4 @@ do_install:append () {
 FILES:${PN} += " ${systemd_system_unitdir} "
 FILES:${PN} += " ${libdir} "
 FILES:${PN} += " ${nonarch_libdir}/tmpfiles.d/* "
+FILES:${PN} += " ${base_libdir}/security/*.so "

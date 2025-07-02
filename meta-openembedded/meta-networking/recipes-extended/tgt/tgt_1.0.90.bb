@@ -11,14 +11,12 @@ SRC_URI = "git://github.com/fujita/tgt.git;branch=master;protocol=https \
         file://0001-usr-Makefile-WARNING-fix.patch \
         file://usr-Makefile-apply-LDFLAGS-to-all-executables.patch \
         file://musl-__wordsize.patch \
-        file://CVE-2024-45751.patch \
 "
 SRC_URI += "file://tgtd.init \
             file://tgtd.service \
             file://tgtd \
 "
 
-S = "${WORKDIR}/git"
 
 CONFFILES:${PN} += "${sysconfdir}/tgt/targets.conf"
 
@@ -40,12 +38,12 @@ do_install() {
 
     if ${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', 'true', 'false', d)}; then
         install -d ${D}${sysconfdir}/init.d
-        install -m 0755 ${WORKDIR}/tgtd.init ${D}${sysconfdir}/init.d/tgtd
+        install -m 0755 ${UNPACKDIR}/tgtd.init ${D}${sysconfdir}/init.d/tgtd
     elif ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'true', 'false', d)}; then
         install -d ${D}${systemd_unitdir}/system
-        install -m 0644 ${WORKDIR}/tgtd.service ${D}${systemd_unitdir}/system/tgtd.service
+        install -m 0644 ${UNPACKDIR}/tgtd.service ${D}${systemd_unitdir}/system/tgtd.service
         install -d ${D}${sysconfdir}/sysconfig
-        install -m 0644 ${WORKDIR}/tgtd ${D}${sysconfdir}/sysconfig/tgtd
+        install -m 0644 ${UNPACKDIR}/tgtd ${D}${sysconfdir}/sysconfig/tgtd
         sed -i -e 's,@SBINDIR@,${sbindir},g' ${D}${systemd_unitdir}/system/tgtd.service
         sed -i -e 's,@BASE_BINDIR@,${base_bindir},g' ${D}${systemd_unitdir}/system/tgtd.service
         sed -i -e 's,@SYSCONFDIR@,${sysconfdir},g' ${D}${systemd_unitdir}/system/tgtd.service

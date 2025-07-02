@@ -14,6 +14,7 @@ SRC_URI = "git://github.com/lm-sensors/lm-sensors.git;protocol=https;branch=mast
            file://fancontrol.init \
            file://sensord.init \
            file://0001-Change-PIDFile-path-from-var-run-to-run.patch \
+           file://0001-Fix-building-with-GCC-14.patch \
 "
 SRCREV = "1667b850a1ce38151dae17156276f981be6fb557"
 
@@ -43,17 +44,12 @@ SYSTEMD_SERVICE:${PN}-fancontrol = "fancontrol.service"
 SYSTEMD_SERVICE:${PN}-sensord = "sensord.service"
 SYSTEMD_AUTO_ENABLE = "disable"
 
-S = "${WORKDIR}/git"
 
 EXTRA_OEMAKE = 'EXLDFLAGS="${LDFLAGS}" \
         MACHINE=${TARGET_ARCH} PREFIX=${prefix} MANDIR=${mandir} \
         LIBDIR=${libdir} \
         CC="${CC}" AR="${AR}" \
         PROG_EXTRA="sensors ${PACKAGECONFIG_CONFARGS}"'
-
-do_configure:prepend() {
-    sed -i -e 's:^#\(PROG_EXTRA\):\1:' ${S}/Makefile
-}
 
 do_compile() {
     # Respect LDFLAGS
@@ -74,11 +70,11 @@ do_install() {
     install -d ${D}${INIT_D_DIR}
 
     # Install fancontrol init script
-    install -m 0755 ${WORKDIR}/fancontrol.init ${D}${INIT_D_DIR}/fancontrol
+    install -m 0755 ${UNPACKDIR}/fancontrol.init ${D}${INIT_D_DIR}/fancontrol
 
     if ${@bb.utils.contains('PACKAGECONFIG', 'sensord', 'true', 'false', d)}; then
         # Install sensord init script
-        install -m 0755 ${WORKDIR}/sensord.init ${D}${INIT_D_DIR}/sensord
+        install -m 0755 ${UNPACKDIR}/sensord.init ${D}${INIT_D_DIR}/sensord
     fi
 
     # Insall sensord service script

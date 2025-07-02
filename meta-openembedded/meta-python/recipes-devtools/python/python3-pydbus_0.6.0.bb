@@ -14,13 +14,12 @@ SRC_URI = " \
 
 inherit ptest setuptools3
 
-S = "${WORKDIR}/git"
 
 RDEPENDS:${PN} = "python3-pygobject \
                   python3-io \
                   python3-logging"
 
-RDEPENDS:${PN}-ptest += "bash"
+RDEPENDS:${PN}-ptest += "bash python3-xml"
 
 do_install_ptest() {
         install -d ${D}${PTEST_PATH}/tests

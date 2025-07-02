@@ -8,6 +8,8 @@ SRC_URI = "git://github.com/cbrake/linux-serial-test.git;protocol=https;branch=m
 PV = "0+git"
 SRCREV = "2ee61484167eab846f7b7c565284d7c350d738d3"
 
-S = "${WORKDIR}/git"
+# Upstream repo does not tag
+UPSTREAM_CHECK_COMMITS = "1"
+
 
 inherit cmake

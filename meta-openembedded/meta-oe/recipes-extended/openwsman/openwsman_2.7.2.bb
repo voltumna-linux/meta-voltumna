@@ -24,7 +24,6 @@ SRC_URI = "git://github.com/Openwsman/openwsman.git;branch=main;protocol=https \
            file://0001-Link-with-libm-for-floor-function.patch \
            "
 
-S = "${WORKDIR}/git"
 
 LICENSE = "BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d4f53d4c6cf73b9d43186ce3be6dd0ba"
@@ -33,8 +32,6 @@ inherit systemd cmake pkgconfig python3native perlnative
 
 SYSTEMD_SERVICE:${PN} = "openwsmand.service"
 SYSTEMD_AUTO_ENABLE = "disable"
-
-LDFLAGS:append = "${@bb.utils.contains('DISTRO_FEATURES', 'ld-is-gold', " -fuse-ld=bfd ", '', d)}"
 
 EXTRA_OECMAKE = "-DBUILD_BINDINGS=NO \
                  -DBUILD_LIBCIM=NO \
@@ -57,7 +54,7 @@ do_install:append() {
     chmod 755 ${D}/${sysconfdir}/openwsman/owsmangencert.sh
     if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
         install -d ${D}/${systemd_unitdir}/system
-        install -m 644 ${WORKDIR}/openwsmand.service ${D}/${systemd_unitdir}/system
+        install -m 644 ${UNPACKDIR}/openwsmand.service ${D}/${systemd_unitdir}/system
 
         sed -i -e 's,@SBINDIR@,${sbindir},g' ${D}${systemd_unitdir}/system/openwsmand.service
         sed -i -e 's,@SYSCONFDIR@,${sysconfdir},g' ${D}${systemd_unitdir}/system/openwsmand.service
