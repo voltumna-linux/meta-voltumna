@@ -24,6 +24,7 @@ features for each [Secure Partition][^2] you would like to include:
 | se-proxy          | ts-se-proxy     |
 | smm-gateway       | ts-smm-gateway  |
 | spm-test[1-4]     | optee-spmc-test |
+| Logging           | ts-logging      |
 
 Other steps depend on your machine/platform definition:
 
@@ -37,13 +38,11 @@ Other steps depend on your machine/platform definition:
 
 2. optee-os might require platform specific OP-TEE build parameters (for example what SEL the SPM Core is implemented at).
    You can find examples in `meta-arm/recipes-security/optee/optee-os_%.bbappend` for qemuarm64-secureboot machine
-   and in `meta-arm-bsp/recipes-security/optee/optee-os-n1sdp.inc` and `meta-arm-bsp/recipes-security/optee/optee-os-corstone1000-common.inc`
-   for N1SDP and Corstone1000 platforms accordingly.
+   and in `meta-arm-bsp/recipes-security/optee/optee-os-corstone1000-common.inc` for the Corstone1000 platform.
 
 3. trusted-firmware-a might require platform specific TF-A build parameters (SPD and SPMC details on the platform).
    See `meta-arm/recipes-bsp/trusted-firmware-a/trusted-firmware-a_%.bbappend` for qemuarm64-secureboot machine
-   and in `meta-arm-bsp/recipes-bsp/trusted-firmware-a/trusted-firmware-a-n1sdp.inc` and
-   `meta-arm-bsp/recipes-bsp/trusted-firmware-a/trusted-firmware-a-corstone1000.inc` for N1SDP and Corstone1000 platforms.
+   and in `meta-arm-bsp/recipes-bsp/trusted-firmware-a/trusted-firmware-a-corstone1000.inc` for theCorstone1000 platform.
 
 4. Trusted Services supports an SPMC agonistic binary format. To build SPs to this format the `TS_ENV` variable is to be
    set to `sp`. The resulting SP binaries should be able to boot under any FF-A v1.1 compliant SPMC implementation.
@@ -58,6 +57,18 @@ Optionally for testing purposes you can add `packagegroup-ts-tests` into your im
 
   meta-arm also includes Trusted Service OEQA tests which can be used for automated testing.
 See `ci/trusted-services.yml` for an example how to include them into an image.
+
+## Configuration options
+
+Some TS recipes support yocto variables to set build configuration. These variables can be set in .conf files (machine
+specific or local.conf), or .bbappend files. 
+
+SmmGW SP recipe supports the following configuration variables
+
+| Variable name         | Type | Description                                                                                            |
+|-----------------------|------|--------------------------------------------------------------------------------------------------------|
+| SMMGW_AUTH_VAR        | Bool | Enable Authenticated variable support                                                                  |
+| SMMGW_INTERNAL_CRYPTO | Bool | Use MbedTLS build into SmmGW for authentication related crypto operations. Depends on SMMGW_AUTH_VAR=1 |
 
 
 ------
