@@ -129,6 +129,7 @@ class RunQueueStats:
 # runQueue state machine
 runQueuePrepare = 2
 runQueueSceneInit = 3
+runQueueDumpSigs = 4
 runQueueRunning = 6
 runQueueFailed = 7
 runQueueCleanUp = 8
@@ -476,7 +477,6 @@ class RunQueueData:
         self.runtaskentries = {}
 
     def runq_depends_names(self, ids):
-        import re
         ret = []
         for id in ids:
             nam = os.path.basename(id)
@@ -729,6 +729,8 @@ class RunQueueData:
                 if mc == frommc:
                     fn = taskData[mcdep].build_targets[pn][0]
                     newdep = '%s:%s' % (fn,deptask)
+                    if newdep not in taskData[mcdep].taskentries:
+                        bb.fatal("Task mcdepends on non-existent task %s" % (newdep))
                     taskData[mc].taskentries[tid].tdepends.append(newdep)
 
         for mc in taskData:
@@ -1589,14 +1591,19 @@ class RunQueue:
             self.rqdata.init_progress_reporter.next_stage()
             self.rqexe = RunQueueExecute(self)
 
-            dump = self.cooker.configuration.dump_signatures
-            if dump:
+            dumpsigs = self.cooker.configuration.dump_signatures
+            if dumpsigs:
                 self.rqdata.init_progress_reporter.finish()
-                if 'printdiff' in dump:
-                    invalidtasks = self.print_diffscenetasks()
-                self.dump_signatures(dump)
-                if 'printdiff' in dump:
-                    self.write_diffscenetasks(invalidtasks)
+                if 'printdiff' in dumpsigs:
+                    self.invalidtasks_dump = self.print_diffscenetasks()
+                self.state = runQueueDumpSigs
+
+        if self.state is runQueueDumpSigs:
+            dumpsigs = self.cooker.configuration.dump_signatures
+            retval = self.dump_signatures(dumpsigs)
+            if retval is False:
+                if 'printdiff' in dumpsigs:
+                    self.write_diffscenetasks(self.invalidtasks_dump)
                 self.state = runQueueComplete
 
         if self.state is runQueueSceneInit:
@@ -1687,33 +1694,42 @@ class RunQueue:
             bb.parse.siggen.dump_sigtask(taskfn, taskname, dataCaches[mc].stamp[taskfn], True)
 
     def dump_signatures(self, options):
-        if bb.cooker.CookerFeatures.RECIPE_SIGGEN_INFO not in self.cooker.featureset:
-            bb.fatal("The dump signatures functionality needs the RECIPE_SIGGEN_INFO feature enabled")
+        if not hasattr(self, "dumpsigs_launched"):
+            if bb.cooker.CookerFeatures.RECIPE_SIGGEN_INFO not in self.cooker.featureset:
+                bb.fatal("The dump signatures functionality needs the RECIPE_SIGGEN_INFO feature enabled")
 
-        bb.note("Writing task signature files")
+            bb.note("Writing task signature files")
 
-        max_process = int(self.cfgData.getVar("BB_NUMBER_PARSE_THREADS") or os.cpu_count() or 1)
-        def chunkify(l, n):
-            return [l[i::n] for i in range(n)]
-        tids = chunkify(list(self.rqdata.runtaskentries), max_process)
-        # We cannot use the real multiprocessing.Pool easily due to some local data
-        # that can't be pickled. This is a cheap multi-process solution.
-        launched = []
-        while tids:
-            if len(launched) < max_process:
-                p = Process(target=self._rq_dump_sigtid, args=(tids.pop(), ))
+            max_process = int(self.cfgData.getVar("BB_NUMBER_PARSE_THREADS") or os.cpu_count() or 1)
+            def chunkify(l, n):
+                return [l[i::n] for i in range(n)]
+            dumpsigs_tids = chunkify(list(self.rqdata.runtaskentries), max_process)
+
+            # We cannot use the real multiprocessing.Pool easily due to some local data
+            # that can't be pickled. This is a cheap multi-process solution.
+            self.dumpsigs_launched = []
+
+            for tids in dumpsigs_tids:
+                p = Process(target=self._rq_dump_sigtid, args=(tids, ))
                 p.start()
-                launched.append(p)
-            for q in launched:
-                # The finished processes are joined when calling is_alive()
-                if not q.is_alive():
-                    launched.remove(q)
-        for p in launched:
+                self.dumpsigs_launched.append(p)
+
+            return 1.0
+
+        for q in self.dumpsigs_launched:
+            # The finished processes are joined when calling is_alive()
+            if not q.is_alive():
+                self.dumpsigs_launched.remove(q)
+
+        if self.dumpsigs_launched:
+            return 1.0
+
+        for p in self.dumpsigs_launched:
                 p.join()
 
         bb.parse.siggen.dump_sigs(self.rqdata.dataCaches, options)
 
-        return
+        return False
 
     def print_diffscenetasks(self):
         def get_root_invalid_tasks(task, taskdepends, valid, noexec, visited_invalid):
@@ -2558,9 +2574,6 @@ class RunQueueExecute:
                     self.rqdata.runtaskentries[hashtid].unihash = unihash
                     bb.parse.siggen.set_unihash(hashtid, unihash)
                     toprocess.add(hashtid)
-                if torehash:
-                    # Need to save after set_unihash above
-                    bb.parse.siggen.save_unitaskhashes()
 
         # Work out all tasks which depend upon these
         total = set()
@@ -3021,14 +3034,13 @@ def build_scenequeue_data(sqdata, rqdata, sqrq):
     rqdata.init_progress_reporter.next_stage(len(rqdata.runtaskentries))
 
     # Sanity check all dependencies could be changed to setscene task references
-    for taskcounter, tid in enumerate(rqdata.runtaskentries):
+    for tid in rqdata.runtaskentries:
         if tid in rqdata.runq_setscene_tids:
             pass
         elif sq_revdeps_squash[tid]:
             bb.msg.fatal("RunQueue", "Something went badly wrong during scenequeue generation, halting. Please report this problem.")
         else:
             del sq_revdeps_squash[tid]
-        rqdata.init_progress_reporter.update(taskcounter)
 
     rqdata.init_progress_reporter.next_stage()
 
@@ -3318,7 +3330,7 @@ class runQueuePipe():
 
         start = len(self.queue)
         try:
-            self.queue.extend(self.input.read(102400) or b"")
+            self.queue.extend(self.input.read(512 * 1024) or b"")
         except (OSError, IOError) as e:
             if e.errno != errno.EAGAIN:
                 raise

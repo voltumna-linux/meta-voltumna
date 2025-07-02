@@ -127,17 +127,10 @@ overview of their function and contents.
       Contains the name of the currently running task. The name does not
       include the ``do_`` prefix.
 
-   :term:`BB_DANGLINGAPPENDS_WARNONLY`
-      Defines how BitBake handles situations where an append file
-      (``.bbappend``) has no corresponding recipe file (``.bb``). This
-      condition often occurs when layers get out of sync (e.g. ``oe-core``
-      bumps a recipe version and the old recipe no longer exists and the
-      other layer has not been updated to the new version of the recipe
-      yet).
-
-      The default fatal behavior is safest because it is the sane reaction
-      given something is out of sync. It is important to realize when your
-      changes are no longer being applied.
+   :term:`BB_CURRENT_MC`
+      Contains the name of the current multiconfig a task is being run under.
+      The name is taken from the multiconfig configuration file (a file
+      ``mc1.conf`` would make this variable equal to ``mc1``).
 
    :term:`BB_DEFAULT_TASK`
       The default task to use when none is specified (e.g. with the ``-c``
@@ -317,6 +310,11 @@ overview of their function and contents.
 
       For example usage, see :term:`BB_GIT_SHALLOW`.
 
+   :term:`BB_GIT_DEFAULT_DESTSUFFIX`
+      The default destination directory where the Git fetcher unpacks the
+      source code. If this variable is not set, the source code is unpacked in a
+      directory named "git".
+
    :term:`BB_GIT_SHALLOW`
       Setting this variable to "1" enables the support for fetching, using and
       generating mirror tarballs of `shallow git repositories <https://riptutorial.com/git/example/4584/shallow-clone>`_.
@@ -327,11 +325,26 @@ overview of their function and contents.
       mirror tarball. If the shallow mirror tarball cannot be fetched, it will
       try to fetch the full mirror tarball and use that.
 
-      When a mirror tarball is not available, a full git clone will be performed
-      regardless of whether this variable is set or not. Support for shallow
-      clones is not currently implemented as git does not directly support
-      shallow cloning a particular git commit hash (it only supports cloning
-      from a tag or branch reference).
+      This setting causes an initial shallow clone instead of an initial full bare clone.
+      The amount of data transferred during the initial clone will be significantly reduced.
+
+      However, every time the source revision (referenced in :term:`SRCREV`)
+      changes, regardless of whether the cache within the download directory
+      (defined by :term:`DL_DIR`) has been cleaned up or not,
+      the data transfer may be significantly higher because entirely
+      new shallow clones are required for each source revision change.
+
+      Over time, numerous shallow clones may cumulatively transfer
+      the same amount of data as an initial full bare clone.
+      This is especially the case with very large repositories.
+
+      Existing initial full bare clones, created without this setting,
+      will still be utilized.
+
+      If the Git error "Server does not allow request for unadvertised object"
+      occurs, an initial full bare clone is fetched automatically.
+      This may happen if the Git server does not allow the request
+      or if the Git client has issues with this functionality.
 
       See also :term:`BB_GIT_SHALLOW_DEPTH` and
       :term:`BB_GENERATE_SHALLOW_TARBALLS`.
@@ -525,11 +538,28 @@ overview of their function and contents.
       version 4.20 expose under ``/proc/pressure``. The threshold represents
       the difference in "total" pressure from the previous second. The
       minimum value is 1.0 (extremely slow builds) and the maximum is
-      1000000 (a pressure value unlikely to ever be reached).
+      1000000 (a pressure value unlikely to ever be reached). See
+      https://docs.kernel.org/accounting/psi.html for more information.
 
-      This threshold can be set in ``conf/local.conf`` as::
+      A default value to limit the CPU pressure to be set in ``conf/local.conf``
+      could be::
 
-         BB_PRESSURE_MAX_CPU = "500"
+         BB_PRESSURE_MAX_CPU = "15000"
+
+      Multiple values should be tested on the build host to determine what suits
+      best, depending on the need for performances versus load average during
+      the build.
+
+      .. note::
+
+         You may see numerous messages printed by BitBake in the case the
+         :term:`BB_PRESSURE_MAX_CPU` is too low:
+
+            Pressure status changed to CPU: True, IO: False, Mem: False (CPU: 1105.9/2.0, IO: 0.0/2.0, Mem: 0.0/2.0) - using 1/64 bitbake threads
+
+         This means that the :term:`BB_PRESSURE_MAX_CPU` should be increased to
+         a reasonable value for limiting the CPU pressure on the system.
+         Monitor the varying value after ``IO:`` above to set a sensible value.
 
    :term:`BB_PRESSURE_MAX_IO`
       Specifies a maximum I/O pressure threshold, above which BitBake's
@@ -541,14 +571,34 @@ overview of their function and contents.
       version 4.20 expose under ``/proc/pressure``. The threshold represents
       the difference in "total" pressure from the previous second. The
       minimum value is 1.0 (extremely slow builds) and the maximum is
-      1000000 (a pressure value unlikely to ever be reached).
+      1000000 (a pressure value unlikely to ever be reached). See
+      https://docs.kernel.org/accounting/psi.html for more information.
 
       At this point in time, experiments show that IO pressure tends to
       be short-lived and regulating just the CPU with
       :term:`BB_PRESSURE_MAX_CPU` can help to reduce it.
 
-   :term:`BB_PRESSURE_MAX_MEMORY`
+      A default value to limit the IO pressure to be set in ``conf/local.conf``
+      could be::
 
+         BB_PRESSURE_MAX_IO = "15000"
+
+      Multiple values should be tested on the build host to determine what suits
+      best, depending on the need for performances versus I/O usage during the
+      build.
+
+      .. note::
+
+         You may see numerous messages printed by BitBake in the case the
+         :term:`BB_PRESSURE_MAX_IO` is too low::
+
+            Pressure status changed to CPU: None, IO: True, Mem: False (CPU: 2236.0/None, IO: 153.6/2.0, Mem: 0.0/2.0) - using 19/64 bitbake threads
+
+         This means that the :term:`BB_PRESSURE_MAX_IO` should be increased to
+         a reasonable value for limiting the I/O pressure on the system.
+         Monitor the varying value after ``IO:`` above to set a sensible value.
+
+   :term:`BB_PRESSURE_MAX_MEMORY`
       Specifies a maximum memory pressure threshold, above which BitBake's
       scheduler will not start new tasks (providing there is at least
       one active task). If no value is set, memory pressure is not
@@ -558,13 +608,34 @@ overview of their function and contents.
       version 4.20 expose under ``/proc/pressure``. The threshold represents
       the difference in "total" pressure from the previous second. The
       minimum value is 1.0 (extremely slow builds) and the maximum is
-      1000000 (a pressure value unlikely to ever be reached).
+      1000000 (a pressure value unlikely to ever be reached). See
+      https://docs.kernel.org/accounting/psi.html for more information.
 
       Memory pressure is experienced when time is spent swapping,
       refaulting pages from the page cache or performing direct reclaim.
       This is why memory pressure is rarely seen, but setting this variable
       might be useful as a last resort to prevent OOM errors if they are
       occurring during builds.
+
+      A default value to limit the memory pressure to be set in
+      ``conf/local.conf`` could be::
+
+         BB_PRESSURE_MAX_MEMORY = "15000"
+
+      Multiple values should be tested on the build host to determine what suits
+      best, depending on the need for performances versus memory consumption
+      during the build.
+
+      .. note::
+
+         You may see numerous messages printed by BitBake in the case the
+         :term:`BB_PRESSURE_MAX_MEMORY` is too low::
+
+            Pressure status changed to CPU: None, IO: False, Mem: True (CPU: 29.5/None, IO: 0.0/2.0, Mem: 2553.3/2.0) - using 17/64 bitbake threads
+
+         This means that the :term:`BB_PRESSURE_MAX_MEMORY` should be increased to
+         a reasonable value for limiting the memory pressure on the system.
+         Monitor the varying value after ``Mem:`` above to set a sensible value.
 
    :term:`BB_RUNFMT`
       Specifies the name of the executable script files (i.e. run files)
@@ -699,6 +770,12 @@ overview of their function and contents.
       Within an executing task, this variable holds the hash of the task as
       returned by the currently enabled signature generator.
 
+   :term:`BB_USE_HOME_NPMRC`
+      Controls whether or not BitBake uses the user's .npmrc file within their
+      home directory within the npm fetcher. This can be used for authentication
+      of private NPM registries, among other uses. This is turned off by default
+      and requires the user to explicitly set it to "1" to enable.
+
    :term:`BB_VERBOSE_LOGS`
       Controls how verbose BitBake is during builds. If set, shell scripts
       echo commands and shell script output appears on standard out
@@ -766,6 +843,10 @@ overview of their function and contents.
    :term:`BBFILE_PRIORITY`
       Assigns the priority for recipe files in each layer.
 
+      This variable is used in the ``conf/layer.conf`` file and must be
+      suffixed with a `_` followed by the name of the specific layer (e.g.
+      ``BBFILE_PRIORITY_emenlow``). Colon as separator is not supported.
+
       This variable is useful in situations where the same recipe appears
       in more than one layer. Setting this variable allows you to
       prioritize a layer against other layers that contain the same recipe
@@ -780,7 +861,7 @@ overview of their function and contents.
       higher precedence. For example, the value 6 has a higher precedence
       than the value 5. If not specified, the :term:`BBFILE_PRIORITY` variable
       is set based on layer dependencies (see the :term:`LAYERDEPENDS` variable
-      for more information. The default priority, if unspecified for a
+      for more information). The default priority, if unspecified for a
       layer with no dependencies, is the lowest defined priority + 1 (or 1
       if no priorities are defined).
 

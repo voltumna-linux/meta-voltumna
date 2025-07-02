@@ -8,7 +8,6 @@
 from . import create_server, create_client
 from .server import DEFAULT_ANON_PERMS, ALL_PERMISSIONS
 from bb.asyncrpc import InvokeError
-from .client import ClientPool
 import hashlib
 import logging
 import multiprocessing
@@ -94,9 +93,6 @@ class HashEquivalenceTestSetup(object):
         return self.start_client(self.auth_server_address, user["username"], user["token"])
 
     def setUp(self):
-        if sys.version_info < (3, 5, 0):
-            self.skipTest('Python 3.5 or later required')
-
         self.temp_dir = tempfile.TemporaryDirectory(prefix='bb-hashserv')
         self.addCleanup(self.temp_dir.cleanup)
 
@@ -555,45 +551,6 @@ class HashEquivalenceCommonTests(object):
         # shares a taskhash with Task 2
         self.assertClientGetHash(self.client, taskhash2, unihash2)
 
-
-    def test_client_pool_get_unihashes(self):
-        TEST_INPUT = (
-            # taskhash                                   outhash                                                            unihash
-            ('8aa96fcffb5831b3c2c0cb75f0431e3f8b20554a', 'afe240a439959ce86f5e322f8c208e1fedefea9e813f2140c81af866cc9edf7e','218e57509998197d570e2c98512d0105985dffc9'),
-            # Duplicated taskhash with multiple output hashes and unihashes.
-            ('8aa96fcffb5831b3c2c0cb75f0431e3f8b20554a', '0904a7fe3dc712d9fd8a74a616ddca2a825a8ee97adf0bd3fc86082c7639914d', 'ae9a7d252735f0dafcdb10e2e02561ca3a47314c'),
-            # Equivalent hash
-            ("044c2ec8aaf480685a00ff6ff49e6162e6ad34e1", '0904a7fe3dc712d9fd8a74a616ddca2a825a8ee97adf0bd3fc86082c7639914d', "def64766090d28f627e816454ed46894bb3aab36"),
-            ("e3da00593d6a7fb435c7e2114976c59c5fd6d561", "1cf8713e645f491eb9c959d20b5cae1c47133a292626dda9b10709857cbe688a", "3b5d3d83f07f259e9086fcb422c855286e18a57d"),
-            ('35788efcb8dfb0a02659d81cf2bfd695fb30faf9', '2765d4a5884be49b28601445c2760c5f21e7e5c0ee2b7e3fce98fd7e5970796f', 'f46d3fbb439bd9b921095da657a4de906510d2cd'),
-            ('35788efcb8dfb0a02659d81cf2bfd695fb30fafa', '2765d4a5884be49b28601445c2760c5f21e7e5c0ee2b7e3fce98fd7e5970796f', 'f46d3fbb439bd9b921095da657a4de906510d2ce'),
-            ('9d81d76242cc7cfaf7bf74b94b9cd2e29324ed74', '8470d56547eea6236d7c81a644ce74670ca0bbda998e13c629ef6bb3f0d60b69', '05d2a63c81e32f0a36542ca677e8ad852365c538'),
-        )
-        EXTRA_QUERIES = (
-            "6b6be7a84ab179b4240c4302518dc3f6",
-        )
-
-        with ClientPool(self.server_address, 10) as client_pool:
-            for taskhash, outhash, unihash in TEST_INPUT:
-                self.client.report_unihash(taskhash, self.METHOD, outhash, unihash)
-
-            query = {idx: (self.METHOD, data[0]) for idx, data in enumerate(TEST_INPUT)}
-            for idx, taskhash in enumerate(EXTRA_QUERIES):
-                query[idx + len(TEST_INPUT)] = (self.METHOD, taskhash)
-
-            result = client_pool.get_unihashes(query)
-
-            self.assertDictEqual(result, {
-                0: "218e57509998197d570e2c98512d0105985dffc9",
-                1: "218e57509998197d570e2c98512d0105985dffc9",
-                2: "218e57509998197d570e2c98512d0105985dffc9",
-                3: "3b5d3d83f07f259e9086fcb422c855286e18a57d",
-                4: "f46d3fbb439bd9b921095da657a4de906510d2cd",
-                5: "f46d3fbb439bd9b921095da657a4de906510d2cd",
-                6: "05d2a63c81e32f0a36542ca677e8ad852365c538",
-                7: None,
-            })
-
     def test_get_unihash_batch(self):
         TEST_INPUT = (
             # taskhash                                   outhash                                                            unihash
@@ -630,48 +587,6 @@ class HashEquivalenceCommonTests(object):
             "05d2a63c81e32f0a36542ca677e8ad852365c538",
             None,
         ])
-
-    def test_client_pool_unihash_exists(self):
-        TEST_INPUT = (
-            # taskhash                                   outhash                                                            unihash
-            ('8aa96fcffb5831b3c2c0cb75f0431e3f8b20554a', 'afe240a439959ce86f5e322f8c208e1fedefea9e813f2140c81af866cc9edf7e','218e57509998197d570e2c98512d0105985dffc9'),
-            # Duplicated taskhash with multiple output hashes and unihashes.
-            ('8aa96fcffb5831b3c2c0cb75f0431e3f8b20554a', '0904a7fe3dc712d9fd8a74a616ddca2a825a8ee97adf0bd3fc86082c7639914d', 'ae9a7d252735f0dafcdb10e2e02561ca3a47314c'),
-            # Equivalent hash
-            ("044c2ec8aaf480685a00ff6ff49e6162e6ad34e1", '0904a7fe3dc712d9fd8a74a616ddca2a825a8ee97adf0bd3fc86082c7639914d', "def64766090d28f627e816454ed46894bb3aab36"),
-            ("e3da00593d6a7fb435c7e2114976c59c5fd6d561", "1cf8713e645f491eb9c959d20b5cae1c47133a292626dda9b10709857cbe688a", "3b5d3d83f07f259e9086fcb422c855286e18a57d"),
-            ('35788efcb8dfb0a02659d81cf2bfd695fb30faf9', '2765d4a5884be49b28601445c2760c5f21e7e5c0ee2b7e3fce98fd7e5970796f', 'f46d3fbb439bd9b921095da657a4de906510d2cd'),
-            ('35788efcb8dfb0a02659d81cf2bfd695fb30fafa', '2765d4a5884be49b28601445c2760c5f21e7e5c0ee2b7e3fce98fd7e5970796f', 'f46d3fbb439bd9b921095da657a4de906510d2ce'),
-            ('9d81d76242cc7cfaf7bf74b94b9cd2e29324ed74', '8470d56547eea6236d7c81a644ce74670ca0bbda998e13c629ef6bb3f0d60b69', '05d2a63c81e32f0a36542ca677e8ad852365c538'),
-        )
-        EXTRA_QUERIES = (
-            "6b6be7a84ab179b4240c4302518dc3f6",
-        )
-
-        result_unihashes = set()
-
-
-        with ClientPool(self.server_address, 10) as client_pool:
-            for taskhash, outhash, unihash in TEST_INPUT:
-                result = self.client.report_unihash(taskhash, self.METHOD, outhash, unihash)
-                result_unihashes.add(result["unihash"])
-
-            query = {}
-            expected = {}
-
-            for _, _, unihash in TEST_INPUT:
-                idx = len(query)
-                query[idx] = unihash
-                expected[idx] = unihash in result_unihashes
-
-
-            for unihash in EXTRA_QUERIES:
-                idx = len(query)
-                query[idx] = unihash
-                expected[idx] = False
-
-            result = client_pool.unihashes_exist(query)
-            self.assertDictEqual(result, expected)
 
     def test_unihash_exists_batch(self):
         TEST_INPUT = (
@@ -1053,6 +968,48 @@ class HashEquivalenceCommonTests(object):
         self.assertClientGetHash(self.client, taskhash2, None)
         # First hash is still present
         self.assertClientGetHash(self.client, taskhash, unihash)
+
+    def test_gc_stream(self):
+        taskhash = '53b8dce672cb6d0c73170be43f540460bfc347b4'
+        outhash = '5a9cb1649625f0bf41fc7791b635cd9c2d7118c7f021ba87dcd03f72b67ce7a8'
+        unihash = 'f37918cc02eb5a520b1aff86faacbc0a38124646'
+
+        result = self.client.report_unihash(taskhash, self.METHOD, outhash, unihash)
+        self.assertEqual(result['unihash'], unihash, 'Server returned bad unihash')
+
+        taskhash2 = '3bf6f1e89d26205aec90da04854fbdbf73afe6b4'
+        outhash2 = '77623a549b5b1a31e3732dfa8fe61d7ce5d44b3370f253c5360e136b852967b4'
+        unihash2 = 'af36b199320e611fbb16f1f277d3ee1d619ca58b'
+
+        result = self.client.report_unihash(taskhash2, self.METHOD, outhash2, unihash2)
+        self.assertClientGetHash(self.client, taskhash2, unihash2)
+
+        taskhash3 = 'a1117c1f5a7c9ab2f5a39cc6fe5e6152169d09c0'
+        outhash3 = '7289c414905303700a1117c1f5a7c9ab2f5a39cc6fe5e6152169d09c04f9a53c'
+        unihash3 = '905303700a1117c1f5a7c9ab2f5a39cc6fe5e615'
+
+        result = self.client.report_unihash(taskhash3, self.METHOD, outhash3, unihash3)
+        self.assertClientGetHash(self.client, taskhash3, unihash3)
+
+        # Mark the first unihash to be kept
+        ret = self.client.gc_mark_stream("ABC", (f"unihash {h}" for h in [unihash, unihash2]))
+        self.assertEqual(ret, {"count": 2})
+
+        ret = self.client.gc_status()
+        self.assertEqual(ret, {"mark": "ABC", "keep": 2, "remove": 1})
+
+        # Third hash is still there; mark doesn't delete hashes
+        self.assertClientGetHash(self.client, taskhash3, unihash3)
+
+        ret = self.client.gc_sweep("ABC")
+        self.assertEqual(ret, {"count": 1})
+
+        # Hash is gone. Taskhash is returned for second hash
+        self.assertClientGetHash(self.client, taskhash3, None)
+        # First hash is still present
+        self.assertClientGetHash(self.client, taskhash, unihash)
+        # Second hash is still present
+        self.assertClientGetHash(self.client, taskhash2, unihash2)
 
     def test_gc_switch_mark(self):
         taskhash = '53b8dce672cb6d0c73170be43f540460bfc347b4'
