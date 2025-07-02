@@ -1,5 +1,6 @@
 INSANE_SKIP:${PN}:append:sdkmingw32 = " staticdev"
-EXTRA_OECONF:append:sdkmingw32 = " --disable-nls"
+# Disable C++-20 modules features as the needed tools do not build for mingw
+EXTRA_OECONF:append:sdkmingw32 = " --disable-nls --disable-c++-tools"
 LDFLAGS:append:sdkmingw32 = " -Wl,-static"
 EXEEXT:sdkmingw32 = ".exe"
 ELFUTILS:sdkmingw32 = ""

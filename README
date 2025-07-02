@@ -13,11 +13,11 @@ This layer depends on:
 
 Layer Maintainer: Joshua Watt <jpewhacker@gmail.com>
 
-Please send changes to the yocto mailing list with [meta-mingw] in the subject line,
-cc'ing the maintainer.
+Please send changes to the yocto-patches mailing list with [meta-mingw] in the
+subject line, cc'ing the maintainer.
 
 This can be configured within the repository with the commands:
 
-git config sendemail.to yocto@lists.yoctoproject.org
+git config sendemail.to yocto-patches@lists.yoctoproject.org
 git config sendemail.cc jpewhacker@gmail.com
 git config format.subjectprefix "meta-mingw] [PATCH"
