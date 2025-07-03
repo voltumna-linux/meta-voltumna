@@ -8,8 +8,6 @@ DEFAULT_PREFERENCE = "-1"
 SRCREV = "5a2f4b2e0e5c8a08ec9d9b0d9673c395d6876cc1"
 SRC_URI = "git://gitlab.com/tango-controls/${BPN}.git;protocol=https;branch=main"
 
-S = "${WORKDIR}/git"
-
 inherit cmake
 
 BBCLASSEXTEND = "nativesdk"

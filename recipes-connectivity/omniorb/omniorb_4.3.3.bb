@@ -11,7 +11,7 @@ SRC_URI:append = "\
     file://0002-python-shebang.patch \
 "
 
-S = "${WORKDIR}/omniORB-${PV}"
+S = "${UNPACKDIR}/omniORB-${PV}"
 
 EXTRA_OECONF += "--disable-longdouble --with-openssl"
 

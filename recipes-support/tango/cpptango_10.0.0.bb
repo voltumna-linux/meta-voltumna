@@ -14,8 +14,6 @@ SRC_URI = " \
 	gitsm://gitlab.com/tango-controls/cppTango.git;protocol=https;branch=main \
 	"
 
-S = "${WORKDIR}/git"
-
 EXTRA_OECMAKE += " \
 	-DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
 	-DTANGO_USE_TELEMETRY=OFF"
