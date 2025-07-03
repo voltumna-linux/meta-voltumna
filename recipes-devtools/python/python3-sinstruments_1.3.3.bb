@@ -16,6 +16,6 @@ RDEPENDS:${PN} += "\
 	${PYTHON_PN}-scpi-protocol \
 	"
 
-inherit python3native setuptools3
+inherit python3native setuptools3_legacy
 
 BBCLASSEXTEND = "native nativesdk"
