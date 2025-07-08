@@ -20,6 +20,7 @@ SRC_URI = "git://github.com/protocolbuffers/protobuf.git;branch=3.19.x;protocol=
            file://0001-Fix-linking-error-with-ld-gold.patch \
            file://0001-Lower-init-prio-for-extension-attributes.patch \
            file://0001-Add-recursion-check-when-parsing-unknown-fields-in-J.patch \
+           file://CVE-2025-4565.patch \
            "
 SRC_URI:append:mips:toolchain-clang = " file://0001-Fix-build-on-mips-clang.patch "
 SRC_URI:append:mipsel:toolchain-clang = " file://0001-Fix-build-on-mips-clang.patch "
@@ -74,6 +75,7 @@ do_install_ptest() {
 		fi
 	done
 	cp "${S}/${TEST_SRC_DIR}/addressbook_pb2.py" "${D}/${PTEST_PATH}"
+	sed -i -e 's#env python#env python3#' ${D}/${PTEST_PATH}/add_person.py ${D}/${PTEST_PATH}/list_people.py
 	cd "$olddir"
 }
 
@@ -84,7 +86,7 @@ FILES:${PN}-lite = "${libdir}/libprotobuf-lite${SOLIBS}"
 
 RDEPENDS:${PN}-compiler = "${PN}"
 RDEPENDS:${PN}-dev += "${PN}-compiler"
-RDEPENDS:${PN}-ptest = "bash ${@bb.utils.contains('PACKAGECONFIG', 'python', 'python-protobuf', '', d)}"
+RDEPENDS:${PN}-ptest = "bash ${@bb.utils.contains('PACKAGECONFIG', 'python', 'python3-protobuf', '', d)}"
 
 MIPS_INSTRUCTION_SET = "mips"
 
