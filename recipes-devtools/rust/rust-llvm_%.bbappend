@@ -1,3 +1,3 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 
-inherit clang-native
+TOOLCHAIN_NATIVE ?= "clang"
