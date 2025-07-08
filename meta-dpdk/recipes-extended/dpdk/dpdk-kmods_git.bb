@@ -12,7 +12,7 @@ SRC_URI = "git://dpdk.org/git/dpdk-kmods;protocol=https;branch=main \
            "
 SRCREV = "e721c733cd24206399bebb8f0751b0387c4c1595"
 
-S = "${WORKDIR}/git/linux/igb_uio"
+S = "${UNPACKDIR}/${BB_GIT_DEFAULT_DESTSUFFIX}/linux/igb_uio"
 
 PV = "1.0"
 

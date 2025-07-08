@@ -17,7 +17,6 @@ SRC_URI = "git://github.com/xdp-project/xdp-tools.git;branch=v1.2;protocol=https
 
 SRCREV = "57a139f9bf6ef644f9c1deb4f7df4bb4c76d6179"
 
-S = "${WORKDIR}/git"
 
 inherit pkgconfig
 
