@@ -7,8 +7,7 @@ LIC_FILES_CHKSUM = "file://${CUSTOM_LICENSES_PATH}/EULA;md5=7bfc91523de2e84e7131
 
 SRC_URI = "file://intel-oneapi-runtime.conf"
 
-S = "${WORKDIR}/sources"
-UNPACKDIR = "${S}"
+S = "${UNPACKDIR}"
 
 do_install() {
     mkdir -p ${D}${sysconfdir}/ld.so.conf.d/
