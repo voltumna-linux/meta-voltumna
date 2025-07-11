@@ -26,4 +26,4 @@ SRC_URI = "https://downloadmirror.intel.com/852759/QAT20.L.1.2.30-00090.tar.gz;s
 
 SRC_URI[sha256sum] = "a30450052b67457e9a8eea902ee9057a883d72eb92ef45d6fe58694c50dbf807"
 
-S = "${WORKDIR}/qat20"
+S = "${UNPACKDIR}/qat20"

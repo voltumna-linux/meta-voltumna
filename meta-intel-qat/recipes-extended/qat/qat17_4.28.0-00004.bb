@@ -23,7 +23,7 @@ SRC_URI = "https://downloadmirror.intel.com/852035/QAT.L.4.28.0-00004.tar.gz;sub
 
 SRC_URI[sha256sum] = "0ac77429774c6571cff48cc6ddb0d1a44b2696612ddc89e9f5c563d0350eb716"
 
-S = "${WORKDIR}/qat17"
+S = "${UNPACKDIR}/qat17"
 
 do_install:append() {
   install -d ${D}${QAT_HEADER_FILES}/include/icp
