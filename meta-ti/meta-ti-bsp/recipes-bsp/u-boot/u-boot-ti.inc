@@ -14,7 +14,7 @@ require u-boot-mergeconfig.inc
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/u-boot:"
 
-FILES:${PN}-falcon = "boot/tispl_falcon.bin"
+FILES:${PN}-falcon = "boot/tifalcon.bin"
 
 SUMMARY = "u-boot bootloader for TI devices"
 
@@ -220,19 +220,19 @@ do_deploy:append:k3r5 () {
 }
 
 uboot_deploy_config:append:k3r5 () {
-    for f in ${B}/${config}/tiboot3-*.bin; do
+	for f in ${B}/${config}/tiboot3-*.bin; do
 		if [ -f "$f" ]; then
-            f_base=$(basename $f)
+			f_base=$(basename $f)
 			install -m 644 $f ${DEPLOYDIR}/${f_base}-${type}
-            ln -sf ${f_base}-${type} ${DEPLOYDIR}/${f_base}
+			ln -sf ${f_base}-${type} ${DEPLOYDIR}/${f_base}
 		fi
 	done
 
 	for f in ${B}/${config}/sysfw*.itb; do
 		if [ -f "$f" ]; then
-            f_base=$(basename $f)
+			f_base=$(basename $f)
 			install -m 644 $f ${DEPLOYDIR}/${f_base}-${type}
-            ln -sf ${f_base}-${type} ${DEPLOYDIR}/${f_base}
+			ln -sf ${f_base}-${type} ${DEPLOYDIR}/${f_base}
 		fi
 	done
 }
@@ -372,7 +372,7 @@ do_deploy:append:am62pxx() {
 }
 
 do_install:append:ti-falcon() {
-	install -m 0644 ${B}/tispl_falcon.bin ${D}/boot
+	install -m 0644 ${B}/tifalcon.bin ${D}/boot
 }
 
 FALCON_PKG = ""

@@ -8,7 +8,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 
 COMPATIBLE_MACHINE = "pocketbeagle2|beagle.*"
 
-inherit kernel_deprecated
+inherit kernel
 
 require recipes-kernel/linux/setup-defconfig.inc
 require recipes-kernel/linux/ti-kernel.inc
@@ -66,5 +66,3 @@ PV:aarch64 = "6.12.22+git"
 BRANCH:aarch64 = "v6.12.22-ti-arm64-r35"
 
 KERNEL_GIT_URI = "git://github.com/beagleboard/linux.git"
-
-INSANE_SKIP:kernel-modules += "debug-deps"

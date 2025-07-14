@@ -8,7 +8,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 
 COMPATIBLE_MACHINE = "beagle.*"
 
-inherit kernel_deprecated
+inherit kernel
 
 require recipes-kernel/linux/setup-defconfig.inc
 require recipes-kernel/linux/ti-kernel.inc
@@ -69,5 +69,3 @@ KERNEL_GIT_URI = "git://github.com/beagleboard/linux.git"
 
 SRC_URI += "file://no-fortify.cfg"
 KERNEL_CONFIG_FRAGMENTS += "${UNPACKDIR}/no-fortify.cfg"
-
-INSANE_SKIP:kernel-modules += "debug-deps"
