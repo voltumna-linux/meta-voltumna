@@ -16,7 +16,7 @@ import json
 
 from oeqa.selftest.case import OESelftestTestCase
 from oeqa.utils.commands import runCmd, bitbake, get_bb_var, create_temp_layer
-from oeqa.utils.commands import get_bb_vars, runqemu, get_test_layer
+from oeqa.utils.commands import get_bb_vars, runqemu, runqemu_check_taps, get_test_layer
 from oeqa.core.decorator import OETestTag
 
 oldmetapath = None
@@ -277,18 +277,8 @@ class DevtoolTestCase(OESelftestTestCase):
         machine = get_bb_var('MACHINE')
         if not machine.startswith('qemu'):
             self.skipTest('This test only works with qemu machines')
-        if not os.path.exists('/etc/runqemu-nosudo'):
+        if not runqemu_check_taps():
             self.skipTest('You must set up tap devices with scripts/runqemu-gen-tapdevs before running this test')
-        result = runCmd('PATH="$PATH:/sbin:/usr/sbin" ip tuntap show', ignore_status=True)
-        if result.status != 0:
-            result = runCmd('PATH="$PATH:/sbin:/usr/sbin" ifconfig -a', ignore_status=True)
-            if result.status != 0:
-                self.skipTest('Failed to determine if tap devices exist with ifconfig or ip: %s' % result.output)
-        for line in result.output.splitlines():
-            if line.startswith('tap'):
-                break
-        else:
-            self.skipTest('No tap devices found - you must set up tap devices with scripts/runqemu-gen-tapdevs before running this test')
 
     def _test_devtool_add_git_url(self, git_url, version, pn, resulting_src_uri, srcrev=None):
         self.track_for_cleanup(self.workspacedir)
@@ -1839,36 +1829,39 @@ class DevtoolDeployTargetTests(DevtoolBase):
         # Boot the image
         with runqemu(testimage) as qemu:
             # Now really test deploy-target
-            result = runCmd('devtool deploy-target -c %s root@%s' % (testrecipe, qemu.ip))
-            # Run a test command to see if it was installed properly
-            sshargs = '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
-            result = runCmd('ssh %s root@%s %s' % (sshargs, qemu.ip, testcommand))
-            # Check if it deployed all of the files with the right ownership/perms
-            # First look on the host - need to do this under pseudo to get the correct ownership/perms
-            bb_vars = get_bb_vars(['D', 'FAKEROOTENV', 'FAKEROOTCMD'], testrecipe)
-            installdir = bb_vars['D']
-            fakerootenv = bb_vars['FAKEROOTENV']
-            fakerootcmd = bb_vars['FAKEROOTCMD']
-            result = runCmd('%s %s find . -type f -exec ls -l {} \\;' % (fakerootenv, fakerootcmd), cwd=installdir)
-            filelist1 = self._process_ls_output(result.output)
+            for extra_opt in ['', '--strip']:
+                deploy_cmd= 'devtool deploy-target -c %s root@%s %s' % (testrecipe, qemu.ip, extra_opt)
+                self.logger.debug(deploy_cmd)
+                result = runCmd(deploy_cmd)
+                # Run a test command to see if it was installed properly
+                sshargs = '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
+                result = runCmd('ssh %s root@%s %s' % (sshargs, qemu.ip, testcommand))
+                # Check if it deployed all of the files with the right ownership/perms
+                # First look on the host - need to do this under pseudo to get the correct ownership/perms
+                bb_vars = get_bb_vars(['D', 'FAKEROOTENV', 'FAKEROOTCMD'], testrecipe)
+                installdir = bb_vars['D']
+                fakerootenv = bb_vars['FAKEROOTENV']
+                fakerootcmd = bb_vars['FAKEROOTCMD']
+                result = runCmd('%s %s find . -type f -exec ls -l {} \\;' % (fakerootenv, fakerootcmd), cwd=installdir)
+                filelist1 = self._process_ls_output(result.output)
 
-            # Now look on the target
-            tempdir2 = tempfile.mkdtemp(prefix='devtoolqa')
-            self.track_for_cleanup(tempdir2)
-            tmpfilelist = os.path.join(tempdir2, 'files.txt')
-            with open(tmpfilelist, 'w') as f:
-                for line in filelist1:
-                    splitline = line.split()
-                    f.write(splitline[-1] + '\n')
-            result = runCmd('cat %s | ssh -q %s root@%s \'xargs ls -l\'' % (tmpfilelist, sshargs, qemu.ip))
-            filelist2 = self._process_ls_output(result.output)
-            filelist1.sort(key=lambda item: item.split()[-1])
-            filelist2.sort(key=lambda item: item.split()[-1])
-            self.assertEqual(filelist1, filelist2)
-            # Test undeploy-target
-            result = runCmd('devtool undeploy-target -c %s root@%s' % (testrecipe, qemu.ip))
-            result = runCmd('ssh %s root@%s %s' % (sshargs, qemu.ip, testcommand), ignore_status=True)
-            self.assertNotEqual(result, 0, 'undeploy-target did not remove command as it should have')
+                # Now look on the target
+                tempdir2 = tempfile.mkdtemp(prefix='devtoolqa')
+                self.track_for_cleanup(tempdir2)
+                tmpfilelist = os.path.join(tempdir2, 'files.txt')
+                with open(tmpfilelist, 'w') as f:
+                    for line in filelist1:
+                        splitline = line.split()
+                        f.write(splitline[-1] + '\n')
+                result = runCmd('cat %s | ssh -q %s root@%s \'xargs ls -l\'' % (tmpfilelist, sshargs, qemu.ip))
+                filelist2 = self._process_ls_output(result.output)
+                filelist1.sort(key=lambda item: item.split()[-1])
+                filelist2.sort(key=lambda item: item.split()[-1])
+                self.assertEqual(filelist1, filelist2)
+                # Test undeploy-target
+                result = runCmd('devtool undeploy-target -c %s root@%s' % (testrecipe, qemu.ip))
+                result = runCmd('ssh %s root@%s %s' % (sshargs, qemu.ip, testcommand), ignore_status=True)
+                self.assertNotEqual(result, 0, 'undeploy-target did not remove command as it should have')
 
 class DevtoolBuildImageTests(DevtoolBase):
 
@@ -2527,7 +2520,8 @@ class DevtoolIdeSdkTests(DevtoolBase):
             'IMAGE_CLASSES += "image-combined-dbg"',
             'IMAGE_GEN_DEBUGFS = "1"',
             'IMAGE_INSTALL:append = " gdbserver %s"' % ' '.join(
-                [r + '-ptest' for r in recipe_names])
+                [r + '-ptest' for r in recipe_names]),
+            'DISTRO_FEATURES:append = " ptest"'
         ]
         self.write_config("\n".join(conf_lines))
 
