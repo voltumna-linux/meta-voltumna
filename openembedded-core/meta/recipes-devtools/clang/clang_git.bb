@@ -19,6 +19,8 @@ require common-source.inc
 
 BPN = "clang"
 
+CVE_PRODUCT += "llvm:clang"
+
 INHIBIT_DEFAULT_DEPS:class-native = "1"
 
 LDFLAGS:append:class-target:riscv32 = " -Wl,--no-as-needed -latomic -Wl,--as-needed"
@@ -55,8 +57,7 @@ PACKAGECONFIG_CLANG_COMMON = "build-id eh libedit rtti shared-libs libclang-pyth
                               ${@bb.utils.contains('TC_CXX_RUNTIME', 'llvm', 'compiler-rt libcplusplus libomp unwindlib', '', d)} \
                               "
 
-PACKAGECONFIG ??= "terminfo \
-                   ${PACKAGECONFIG_CLANG_COMMON} \
+PACKAGECONFIG ??= "${PACKAGECONFIG_CLANG_COMMON} \
                    ${@bb.utils.filter('DISTRO_FEATURES', 'lto thin-lto', d)} \
                    "
 PACKAGECONFIG:class-native = "clangd \
@@ -87,7 +88,6 @@ PACKAGECONFIG[pfm] = "-DLLVM_ENABLE_LIBPFM=ON,-DLLVM_ENABLE_LIBPFM=OFF,libpfm,"
 PACKAGECONFIG[rtti] = "-DLLVM_ENABLE_RTTI=ON,-DLLVM_ENABLE_RTTI=OFF,,"
 PACKAGECONFIG[shared-libs] = "-DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_LINK_LLVM_DYLIB=ON,,,"
 PACKAGECONFIG[split-dwarf] = "-DLLVM_USE_SPLIT_DWARF=ON,-DLLVM_USE_SPLIT_DWARF=OFF,,"
-PACKAGECONFIG[terminfo] = "-DLLVM_ENABLE_TERMINFO=ON -DCOMPILER_RT_TERMINFO_LIB=ON,-DLLVM_ENABLE_TERMINFO=OFF -DCOMPILER_RT_TERMINFO_LIB=OFF,ncurses,"
 PACKAGECONFIG[thin-lto] = "-DLLVM_ENABLE_LTO=Thin -DLLVM_BINUTILS_INCDIR=${STAGING_INCDIR},,binutils,"
 PACKAGECONFIG[unwindlib] = "-DCLANG_DEFAULT_UNWINDLIB=libunwind,-DCLANG_DEFAULT_UNWINDLIB=libgcc,,"
 PACKAGECONFIG[libclang-python] = "-DCLANG_PYTHON_BINDINGS_VERSIONS=${PYTHON_BASEVERSION},,"
@@ -298,7 +298,7 @@ PROVIDES:append:class-native = " llvm-native libclc-native"
 PROVIDES:append:class-target = " llvm libclc"
 PROVIDES:append:class-nativesdk = " nativesdk-llvm nativesdk-libclc"
 
-PACKAGES =+ "${PN}-libllvm ${PN}-lldb-python ${PN}-libclang-python ${PN}-libclang-cpp ${PN}-tidy ${PN}-format ${PN}-tools ${PN}-clc \
+PACKAGES =+ "${PN}-libllvm ${PN}-libclang-python ${PN}-libclang-cpp ${PN}-tidy ${PN}-format ${PN}-tools ${PN}-clc \
              libclang llvm-linker-tools"
 
 BBCLASSEXTEND = "native nativesdk"
