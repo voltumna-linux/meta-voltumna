@@ -3,7 +3,6 @@ SUMMARY = "Linux kernel for TI devices"
 LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 
-inherit ti-secdev
 inherit kernel
 
 require recipes-kernel/linux/setup-defconfig.inc
@@ -23,7 +22,7 @@ S = "${UNPACKDIR}/${BB_GIT_DEFAULT_DESTSUFFIX}"
 
 BRANCH ?= "ti-linux-6.12.y"
 
-SRCREV ?= "78e6abff322081d53c5a685d927476086c9b2846"
+SRCREV ?= "72f48d59b8f087fa0dd1f1e8c2c0b5bc0baa537c"
 PV = "6.12.35+git"
 
 KERNEL_REPRODUCIBILITY_PATCHES = " \
