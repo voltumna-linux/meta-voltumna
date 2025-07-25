@@ -12,7 +12,7 @@ import sys
 import errno
 import logging
 import locale
-import multiprocessing
+from bb import multiprocessing
 import importlib
 import importlib.machinery
 import importlib.util
@@ -1441,47 +1441,43 @@ def profile_function(profile, function, output_fn, process=True):
         prof.dump_stats(output_fn)
         if process:
             process_profilelog(output_fn)
-            serverlog("Raw profiling information saved to %s and processed statistics to %s.processed" % (output_fn, output_fn))
+            serverlog("Raw profiling information saved to %s and processed statistics to %s.report*" % (output_fn, output_fn))
         return ret
     else:
         return function()
 
-def process_profilelog(fn, pout = None):
+def process_profilelog(fn, fn_out = None):
     # Either call with a list of filenames and set pout or a filename and optionally pout.
-    if not pout:
-        pout = fn + '.processed'
+    import pstats
 
-    with open(pout, 'w') as pout:
-        import pstats
+    if not fn_out:
+        fn_out = fn + '.report'
+
+    def pstatopen():
         if isinstance(fn, list):
-            p = pstats.Stats(*fn, stream=pout)
-        else:
-            p = pstats.Stats(fn, stream=pout)
+            return pstats.Stats(*fn, stream=pout)
+        return pstats.Stats(fn, stream=pout)
+
+    with open(fn_out + '.time', 'w') as pout:
+        p = pstatopen()
         p.sort_stats('time')
         p.print_stats()
+
+    with open(fn_out + '.time-callers', 'w') as pout:
+        p = pstatopen()
+        p.sort_stats('time')
         p.print_callers()
+
+    with open(fn_out + '.cumulative', 'w') as pout:
+        p = pstatopen()
         p.sort_stats('cumulative')
         p.print_stats()
 
-        pout.flush()
+    with open(fn_out + '.cumulative-callers', 'w') as pout:
+        p = pstatopen()
+        p.sort_stats('cumulative')
+        p.print_callers()
 
-#
-# Was present to work around multiprocessing pool bugs in python < 2.7.3
-#
-def multiprocessingpool(*args, **kwargs):
-
-    import multiprocessing.pool
-    #import multiprocessing.util
-    #multiprocessing.util.log_to_stderr(10)
-    # Deal with a multiprocessing bug where signals to the processes would be delayed until the work
-    # completes. Putting in a timeout means the signals (like SIGINT/SIGTERM) get processed.
-    def wrapper(func):
-        def wrap(self, timeout=None):
-            return func(self, timeout=timeout if timeout is not None else 1e100)
-        return wrap
-    multiprocessing.pool.IMapIterator.next = wrapper(multiprocessing.pool.IMapIterator.next)
-
-    return multiprocessing.Pool(*args, **kwargs)
 
 def exec_flat_python_func(func, *args, **kwargs):
     """Execute a flat python function (defined with ``def funcname(args): ...``)
@@ -2226,6 +2222,15 @@ def path_is_descendant(descendant, ancestor):
 
     return False
 
+# Recomputing the sets in signal.py is expensive (bitbake -pP idle)
+# so try and use _signal directly to avoid it
+valid_signals = signal.valid_signals()
+try:
+    import _signal
+    sigmask = _signal.pthread_sigmask
+except ImportError:
+    sigmask = signal.pthread_sigmask
+
 # If we don't have a timeout of some kind and a process/thread exits badly (for example
 # OOM killed) and held a lock, we'd just hang in the lock futex forever. It is better
 # we exit at some point than hang. 5 minutes with no progress means we're probably deadlocked.
@@ -2235,7 +2240,7 @@ def path_is_descendant(descendant, ancestor):
 @contextmanager
 def lock_timeout(lock):
     try:
-        s = signal.pthread_sigmask(signal.SIG_BLOCK, signal.valid_signals())
+        s = sigmask(signal.SIG_BLOCK, valid_signals)
         held = lock.acquire(timeout=5*60)
         if not held:
             bb.server.process.serverlog("Couldn't get the lock for 5 mins, timed out, exiting.\n%s" % traceback.format_stack())
@@ -2243,17 +2248,17 @@ def lock_timeout(lock):
         yield held
     finally:
         lock.release()
-        signal.pthread_sigmask(signal.SIG_SETMASK, s)
+        sigmask(signal.SIG_SETMASK, s)
 
 # A version of lock_timeout without the check that the lock was locked and a shorter timeout
 @contextmanager
 def lock_timeout_nocheck(lock):
     l = False
     try:
-        s = signal.pthread_sigmask(signal.SIG_BLOCK, signal.valid_signals())
+        s = sigmask(signal.SIG_BLOCK, valid_signals)
         l = lock.acquire(timeout=10)
         yield l
     finally:
         if l:
             lock.release()
-        signal.pthread_sigmask(signal.SIG_SETMASK, s)
+        sigmask(signal.SIG_SETMASK, s)
