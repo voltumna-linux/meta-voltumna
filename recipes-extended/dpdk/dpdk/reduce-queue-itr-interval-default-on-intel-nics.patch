@@ -1,7 +1,7 @@
 Upstream-Status: Inappropriate
 
 diff --git a/drivers/net/intel/i40e/i40e_ethdev.h b/drivers/net/intel/i40e/i40e_ethdev.h
-index ccc8732d7d..a51a485703 100644
+index 44864292d0..e7ee93c3f7 100644
 --- a/drivers/net/intel/i40e/i40e_ethdev.h
 +++ b/drivers/net/intel/i40e/i40e_ethdev.h
 @@ -179,23 +179,23 @@ enum i40e_flxpld_layer_idx {
@@ -31,7 +31,7 @@ index ccc8732d7d..a51a485703 100644
  
  #define I40E_RSS_TYPE_NONE           0ULL
 diff --git a/drivers/net/intel/iavf/iavf.h b/drivers/net/intel/iavf/iavf.h
-index 956c60ef45..8b97c2b434 100644
+index f81c939c96..26b1291c3e 100644
 --- a/drivers/net/intel/iavf/iavf.h
 +++ b/drivers/net/intel/iavf/iavf.h
 @@ -64,21 +64,21 @@
@@ -58,10 +58,10 @@ index 956c60ef45..8b97c2b434 100644
  	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + RTE_VLAN_HLEN * 2)
  #define IAVF_ETH_MAX_LEN (RTE_ETHER_MTU + IAVF_ETH_OVERHEAD)
 diff --git a/drivers/net/intel/ice/ice_dcf_ethdev.c b/drivers/net/intel/ice/ice_dcf_ethdev.c
-index efff76afa8..92aab87f33 100644
+index 499062be40..a7d664bdef 100644
 --- a/drivers/net/intel/ice/ice_dcf_ethdev.c
 +++ b/drivers/net/intel/ice/ice_dcf_ethdev.c
-@@ -160,21 +160,21 @@ ice_dcf_init_rx_queues(struct rte_eth_dev *dev)
+@@ -159,21 +159,21 @@ ice_dcf_init_rx_queues(struct rte_eth_dev *dev)
  	ice_set_rx_function(dev);
  	ice_set_tx_function(dev);
  
@@ -85,7 +85,7 @@ index efff76afa8..92aab87f33 100644
  	/* Convert to hardware count, as writing each 1 represents 2 us */
  	return interval / 2;
 diff --git a/drivers/net/intel/ixgbe/ixgbe_ethdev.h b/drivers/net/intel/ixgbe/ixgbe_ethdev.h
-index 8ad841ea2c..b829d1e08d 100644
+index 86da9fc89b..ba80265778 100644
 --- a/drivers/net/intel/ixgbe/ixgbe_ethdev.h
 +++ b/drivers/net/intel/ixgbe/ixgbe_ethdev.h
 @@ -56,21 +56,21 @@
@@ -112,7 +112,7 @@ index 8ad841ea2c..b829d1e08d 100644
  
  #define IXGBE_RTTBCNRC_RF_INT_MASK_BASE 0x000003FF
 diff --git a/drivers/net/ngbe/ngbe_ethdev.h b/drivers/net/ngbe/ngbe_ethdev.h
-index 37c6459f51..3911ba3266 100644
+index faff57ef34..1d2eafeff2 100644
 --- a/drivers/net/ngbe/ngbe_ethdev.h
 +++ b/drivers/net/ngbe/ngbe_ethdev.h
 @@ -23,21 +23,21 @@
@@ -137,9 +137,9 @@ index 37c6459f51..3911ba3266 100644
  	RTE_ETH_RSS_IPV4 | \
  	RTE_ETH_RSS_NONFRAG_IPV4_TCP | \
  	RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
- 	RTE_ETH_RSS_IPV6 | \
+ 	RTE_ETH_RSS_NONFRAG_IPV4_SCTP | \
 diff --git a/drivers/net/txgbe/txgbe_ethdev.h b/drivers/net/txgbe/txgbe_ethdev.h
-index 302ea9f037..f1ed37a03f 100644
+index 9295d8fbd0..bf286e08be 100644
 --- a/drivers/net/txgbe/txgbe_ethdev.h
 +++ b/drivers/net/txgbe/txgbe_ethdev.h
 @@ -43,21 +43,21 @@

@@ -4,7 +4,7 @@ SRC_URI += " file://0001-config-meson-get-cpu_instruction_set-from-meson-opti.pa
 
 STABLE = ""
 BRANCH = "releases"
-SRCREV = "fa3aca8a525decfd12bd5fa01ebc98789d5f7278"
+SRCREV = "b222395561638f89562e4ef42e1eabf2d6db43dd"
 
 def get_cpu_instruction_set(bb, d):
     import re
