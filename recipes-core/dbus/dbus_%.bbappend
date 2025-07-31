@@ -1,3 +1,7 @@
+# There seems to be a mingw build issue where if either of these are specified,
+# the mingw build fails in do_compile. Work around it for now.
+EXTRA_OEMESON:remove:mingw32 = "-Dtraditional_activation=true -Dtraditional_activation=false"
+
 FILES:${PN}:append:mingw32 = "\
     ${bindir}/dbus-launch.exe \
     ${bindir}/dbus-run-session.exe \
