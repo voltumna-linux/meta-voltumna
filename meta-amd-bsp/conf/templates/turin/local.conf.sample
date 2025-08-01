@@ -1,0 +1,71 @@
+#
+# This file is your local configuration file and is where all local user settings
+# are placed. The comments in this file give some guide to the options a new user
+# to the system might want to change but pretty much any configuration option can
+# be set in this file. More adventurous users can look at
+# local.conf.sample.extended which contains other examples of configuration which
+# can be placed in this file but new users likely won't need any of them
+# initially. There's also site.conf.sample which contains examples of site specific
+# information such as proxy server addresses.
+#
+# Lines starting with the '#' character are commented out and in some cases the
+# default values are provided as comments to show people example syntax. Enabling
+# the option is a question of removing the # character and making any change to the
+# variable as required.
+
+#
+# Machine Selection
+#
+MACHINE ??= "turin"
+
+DL_DIR ?= "${TOPDIR}/../downloads"
+SSTATE_DIR ?= "${TOPDIR}/../sstate-cache"
+TMPDIR = "${TOPDIR}/tmp"
+MACHINE = "turin"
+ROOT_HOME = "/home/root"
+#
+# Extra image configuration defaults
+#
+# The EXTRA_IMAGE_FEATURES variable allows extra packages to be added to the generated
+# images. Some of these options are added to certain image types automatically. The
+# variable can contain the following options:
+#  "dbg-pkgs"       - add -dbg packages for all installed packages
+#                     (adds symbol information for debugging/profiling)
+#  "src-pkgs"       - add -src packages for all installed packages
+#                     (adds source code for debugging)
+#  "dev-pkgs"       - add -dev packages for all installed packages
+#                     (useful if you want to develop against libs in the image)
+#  "ptest-pkgs"     - add -ptest packages for all ptest-enabled packages
+#                     (useful if you want to run the package test suites)
+#  "tools-sdk"      - add development tools (gcc, make, pkgconfig etc.)
+#  "tools-debug"    - add debugging tools (gdb, strace)
+#  "eclipse-debug"  - add Eclipse remote debugging support
+#  "tools-profile"  - add profiling tools (oprofile, lttng, valgrind)
+#  "tools-testapps" - add useful testing tools (ts_print, aplay, arecord etc.)
+#  "debug-tweaks"   - make an image suitable for development
+#                     e.g. ssh root access has a blank password
+# There are other application targets that can be used here too, see
+# meta/classes-recipe/image.bbclass and
+# meta/classes-recipe/core-image.bbclass for more details.
+# We default to enabling the debugging tweaks.
+EXTRA_IMAGE_FEATURES ?= "debug-tweaks"
+
+PREFERRED_VERSION_linux-yocto = "6.6"
+PREFERRED_PROVIDER_virtual/kernel ?= "linux-yocto"
+IMAGE_FEATURES:remove=" x11-base"
+
+AMD_ENABLE_XEN = "0"
+
+IMAGE_INSTALL:append = " elfutils usbredir libxext  libaio iscsi-initiator-utils spice-protocol spice pixman libxslt dmidecode stressapptest i2c-tools sudo"
+
+# Kernel module auto-loading configuration
+KERNEL_MODULE_AUTOLOAD += "nvmem_core nvme nvme-common nvmem cxl cxl_mem cxl_port cxl_core  pci-cxl cxl_acpi cxl_pmem cxl_pc ntb_netdev "
+
+# Package manager class
+PACKAGE_CLASSES ?= "package_rpm"
+
+IMAGE_INSTALL:append = " iperf3 bridge-utils ndctl kernel-module-ntb fio stream ltp python3-modules python3-matplotlib python3-pip vnstat"
+
+IMAGE_INSTALL:append = " nvme-cli  rpm opkg lshw mokutil stress-ng hwloc tpm-tools  numactl packagegroup-core-buildessential lib64-setup coremark iproute2"
+
+DISTRO_FEATURES:append = " ptest pthread tpm systemd posix-testsuite"

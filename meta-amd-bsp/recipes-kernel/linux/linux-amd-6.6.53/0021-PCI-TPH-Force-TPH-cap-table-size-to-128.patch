@@ -1,0 +1,35 @@
+From 3413230641f06f40e3e54586c6edca434848c7c2 Mon Sep 17 00:00:00 2001
+From: Wei Huang <wei.huang2@amd.com>
+Date: Fri, 2 Feb 2024 17:14:08 -0600
+Subject: [PATCH 09/38] PCI/TPH: Force TPH cap table size to 128
+
+The TPH cap of testing device reorts table size=16, which is smaller
+than possible MSI-X index values. This might be device configuration
+error. For now let us force it to 128 as a temporary fix.
+
+Co-developed-by: Wei Huang <wei.huang2@amd.com>
+Signed-off-by: Wei Huang <wei.huang2@amd.com>
+Signed-off-by: Eric Van Tassell <Eric.VanTassell@amd.com>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ drivers/pci/pcie/tph.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/pci/pcie/tph.c b/drivers/pci/pcie/tph.c
+index 9725f1e2e0e9..7925361dd3a0 100644
+--- a/drivers/pci/pcie/tph.c
++++ b/drivers/pci/pcie/tph.c
+@@ -69,6 +69,10 @@ static int tph_get_table_size(struct pci_dev *dev, u16 *size_out)
+ 	ret = tph_get_reg_field_u32(dev, PCI_TPH_CAP,
+ 				    PCI_TPH_CAP_ST_MASK,
+ 				    PCI_TPH_CAP_ST_SHIFT, &tmp);
++
++	pr_alert_once("FIXME: force table size to 64, original cap table size=%d\n", tmp);
++	tmp = 128;
++
+ 	if (ret)
+ 		return ret;
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,52 @@
+From 48363f5a963a1b0d7d8f69c4952da3634c973df9 Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Tue, 30 Jan 2024 14:15:14 -0600
+Subject: [PATCH 14/38] x86/resctrl: Add L3_SDCIAE feature in the command line
+ options
+
+Add the command line options to enable or disable the new resctrl feature
+L3 Smart Data Cache Injection Allocation Enforcement (SDCIAE).
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ Documentation/admin-guide/kernel-parameters.txt | 2 +-
+ arch/x86/kernel/cpu/resctrl/core.c              | 2 ++
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index 16aac810fd36..ade1157798d9 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -5415,7 +5415,7 @@
+ 	rdt=		[HW,X86,RDT]
+ 			Turn on/off individual RDT features. List is:
+ 			cmt, mbmtotal, mbmlocal, l3cat, l3cdp, l2cat, l2cdp,
+-			mba, smba, bmec.
++			mba, smba, bmec, sdciae.
+ 			E.g. to turn on cmt and turn off mba use:
+ 				rdt=cmt,!mba
+ 
+diff --git a/arch/x86/kernel/cpu/resctrl/core.c b/arch/x86/kernel/cpu/resctrl/core.c
+index 8073fd304293..14b1b5ec2011 100644
+--- a/arch/x86/kernel/cpu/resctrl/core.c
++++ b/arch/x86/kernel/cpu/resctrl/core.c
+@@ -672,6 +672,7 @@ enum {
+ 	RDT_FLAG_MBA,
+ 	RDT_FLAG_SMBA,
+ 	RDT_FLAG_BMEC,
++	RDT_FLAG_SDCIAE,
+ };
+ 
+ #define RDT_OPT(idx, n, f)	\
+@@ -697,6 +698,7 @@ static struct rdt_options rdt_options[]  __initdata = {
+ 	RDT_OPT(RDT_FLAG_MBA,	    "mba",	X86_FEATURE_MBA),
+ 	RDT_OPT(RDT_FLAG_SMBA,	    "smba",	X86_FEATURE_SMBA),
+ 	RDT_OPT(RDT_FLAG_BMEC,	    "bmec",	X86_FEATURE_BMEC),
++	RDT_OPT(RDT_FLAG_SDCIAE,    "sdciae",	X86_FEATURE_SDCIAE),
+ };
+ #define NUM_RDT_OPTIONS ARRAY_SIZE(rdt_options)
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,115 @@
+From ec64ec1213f45d3a2d3182d104d773809f3ed8e3 Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Sat, 23 Mar 2024 03:37:18 +0000
+Subject: [PATCH 37/38] SDCI: Add more debug info
+
+Can be combined with the privious commit
+
+Signed-off-by: Wei Huang <wei.huang2@amd.com>
+---
+ drivers/net/ethernet/broadcom/bnxt/bnxt.c | 19 +++++++++++++++++++
+ drivers/pci/pci-driver.c                  | 11 +++++++++--
+ drivers/pci/pcie/tph.c                    |  5 ++---
+ 3 files changed, 30 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt.c b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+index e9dd3873eda7..cd279adc15da 100644
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+@@ -9299,6 +9299,21 @@ static void bnxt_free_irq(struct bnxt *bp)
+ 	}
+ }
+ 
++#define __BNXT_PRINT_IRQ
++
++#ifdef  __BNXT_PRINT_IRQ
++static void __print_bnxt_irq(struct bnxt_irq *irq)
++{
++	char buf[256];
++
++	buf[0]=0;
++	cpumap_print_to_pagebuf(0, buf, irq->cpu_mask);
++	pr_debug(" >>>> bnxt_irq: %p vector: %d msix_nr: %d have_cpumask: %d cpu_mask: 0x%s\n",
++		 irq, irq->vector, irq->msix_nr, irq->have_cpumask, buf);
++}
++#else
++#define __print_bnxt_irq(irq) do { } while(0)
++#endif
+ 
+ static void bnxt_irq_affinity_notify(struct irq_affinity_notify *notify,
+ 				     const cpumask_t *mask)
+@@ -9316,6 +9331,8 @@ static void bnxt_irq_affinity_notify(struct irq_affinity_notify *notify,
+ 			     TPH_MEM_TYPE_VM, PCI_TPH_REQ_TPH_ONLY, newtag))
+ 		pr_err("Error configuring steering tag\n");
+ 
++	__print_bnxt_irq(irq);
++
+ 	if (netif_running(irq->bp->dev)) {
+ 		int rc;
+ 
+@@ -9407,6 +9424,8 @@ static int bnxt_request_irq(struct bnxt *bp)
+ 				irq->bp = bp;
+ 				__bnxt_register_notify_irqchanges(irq);
+ 			}
++
++			__print_bnxt_irq(irq);
+ 		}
+ 	}
+ 	return rc;
+diff --git a/drivers/pci/pci-driver.c b/drivers/pci/pci-driver.c
+index 7a047a4c9e90..911f28a0cb95 100644
+--- a/drivers/pci/pci-driver.c
++++ b/drivers/pci/pci-driver.c
+@@ -324,10 +324,17 @@ static long local_pci_probe(void *_ddi)
+ 	pci_dev->driver = pci_drv;
+ 	rc = pci_drv->probe(pci_dev, ddi->id);
+ 	if (!rc) {
+-		if (pci_tph_disabled())
++		if (pci_tph_disabled()) {
++			pci_info(pci_dev, "disable tph support\n");
+ 			pcie_tph_disable(pci_dev);
+-		if (pci_tph_nostmode())
++			return rc;
++		}
++
++		if (pci_tph_nostmode()) {
++			pci_info(pci_dev, "set tph no_st mode\n");
+ 			tph_set_dev_nostmode(pci_dev);
++		}
++
+ 		return rc;
+ 	}
+ 	if (rc < 0) {
+diff --git a/drivers/pci/pcie/tph.c b/drivers/pci/pcie/tph.c
+index c7729339360e..f20de2c2256b 100644
+--- a/drivers/pci/pcie/tph.c
++++ b/drivers/pci/pcie/tph.c
+@@ -266,6 +266,8 @@ static u16 pcie_tph_retrieve_st(struct pci_dev *dev, unsigned int cpu,
+ 		tag = tph_extract_tag(tag_type, req_enable, &info);
+ 	}
+ 
++	pr_debug(">>>> pcie_tph_retrieve_st: cpu=%d tag=%d\n", cpu, tag);
++
+ 	return tag;
+ }
+ 
+@@ -496,8 +498,6 @@ int tph_set_dev_nostmode(struct pci_dev *dev)
+ {
+ 	int ret;
+ 
+-	pci_info(dev, "set tph no_st mode\n");
+-
+ 	/* set ST Mode Select to "No ST Mode" */
+ 	ret = tph_set_reg_field_u32(dev, PCI_TPH_CTRL,
+ 				    PCI_TPH_CTRL_MODE_SEL_MASK,
+@@ -517,7 +517,6 @@ int tph_set_dev_nostmode(struct pci_dev *dev)
+ 
+ int pcie_tph_disable(struct pci_dev *dev)
+ {
+-	pci_info(dev, "disable tph support\n");
+ 	return  tph_set_reg_field_u32(dev, PCI_TPH_CTRL,
+ 				      PCI_TPH_CTRL_REQ_EN_MASK,
+ 				      PCI_TPH_CTRL_REQ_EN_SHIFT,
+-- 
+2.25.1
+

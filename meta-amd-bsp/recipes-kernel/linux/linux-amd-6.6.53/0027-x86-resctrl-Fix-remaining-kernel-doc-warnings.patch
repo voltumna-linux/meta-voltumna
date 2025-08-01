@@ -1,0 +1,92 @@
+From b21446a1c885fa10c9e9c0a762fc45f38f12435f Mon Sep 17 00:00:00 2001
+From: Maciej Wieczor-Retman <maciej.wieczor-retman@intel.com>
+Date: Wed, 11 Oct 2023 08:48:42 +0200
+Subject: [PATCH 16/38] x86/resctrl: Fix remaining kernel-doc warnings
+
+The kernel test robot reported kernel-doc warnings here:
+
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:915: warning: Function parameter or member 'of' not described in 'rdt_bit_usage_show'
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:915: warning: Function parameter or member 'seq' not described in 'rdt_bit_usage_show'
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:915: warning: Function parameter or member 'v' not described in 'rdt_bit_usage_show'
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:1144: warning: Function parameter or member 'type' not described in '__rdtgroup_cbm_overlaps'
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:1224: warning: Function parameter or member 'rdtgrp' not described in 'rdtgroup_mode_test_exclusive'
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:1261: warning: Function parameter or member 'of' not described in 'rdtgroup_mode_write'
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:1261: warning: Function parameter or member 'buf' not described in 'rdtgroup_mode_write'
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:1261: warning: Function parameter or member 'nbytes' not described in 'rdtgroup_mode_write'
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:1261: warning: Function parameter or member 'off' not described in 'rdtgroup_mode_write'
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:1370: warning: Function parameter or member 'of' not described in 'rdtgroup_size_show'
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:1370: warning: Function parameter or member 's' not described in 'rdtgroup_size_show'
+  arch/x86/kernel/cpu/resctrl/rdtgroup.c:1370: warning: Function parameter or member 'v' not described in 'rdtgroup_size_show'
+
+The first two functions are missing an argument description while the
+other three are file callbacks and don't require a kernel-doc comment.
+
+Closes: https://lore.kernel.org/oe-kbuild-all/202310070434.mD8eRNAz-lkp@intel.com/
+Reported-by: kernel test robot <lkp@intel.com>
+Signed-off-by: Maciej Wieczor-Retman <maciej.wieczor-retman@intel.com>
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Cc: Peter Newman <peternewman@google.com>
+Cc: Borislav Petkov <bp@alien8.de>
+Cc: Reinette Chatre <reinette.chatre@intel.com>
+Link: https://lore.kernel.org/r/20231011064843.246592-1-maciej.wieczor-retman@intel.com
+---
+ arch/x86/kernel/cpu/resctrl/rdtgroup.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/arch/x86/kernel/cpu/resctrl/rdtgroup.c b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+index d82d5de183b1..7b2d749049ba 100644
+--- a/arch/x86/kernel/cpu/resctrl/rdtgroup.c
++++ b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+@@ -895,7 +895,7 @@ static int rdt_shareable_bits_show(struct kernfs_open_file *of,
+ 	return 0;
+ }
+ 
+-/**
++/*
+  * rdt_bit_usage_show - Display current usage of resources
+  *
+  * A domain is a shared resource that can now be allocated differently. Here
+@@ -1123,6 +1123,7 @@ static enum resctrl_conf_type resctrl_peer_type(enum resctrl_conf_type my_type)
+  * @d: The domain instance for which @closid is being tested.
+  * @cbm: Capacity bitmask being tested.
+  * @closid: Intended closid for @cbm.
++ * @type: CDP type of @r.
+  * @exclusive: Only check if overlaps with exclusive resource groups
+  *
+  * Checks if provided @cbm intended to be used for @closid on domain
+@@ -1209,6 +1210,7 @@ bool rdtgroup_cbm_overlaps(struct resctrl_schema *s, struct rdt_domain *d,
+ 
+ /**
+  * rdtgroup_mode_test_exclusive - Test if this resource group can be exclusive
++ * @rdtgrp: Resource group identified through its closid.
+  *
+  * An exclusive resource group implies that there should be no sharing of
+  * its allocated resources. At the time this group is considered to be
+@@ -1251,9 +1253,8 @@ static bool rdtgroup_mode_test_exclusive(struct rdtgroup *rdtgrp)
+ 	return true;
+ }
+ 
+-/**
++/*
+  * rdtgroup_mode_write - Modify the resource group's mode
+- *
+  */
+ static ssize_t rdtgroup_mode_write(struct kernfs_open_file *of,
+ 				   char *buf, size_t nbytes, loff_t off)
+@@ -1357,12 +1358,11 @@ unsigned int rdtgroup_cbm_to_size(struct rdt_resource *r,
+ 	return size;
+ }
+ 
+-/**
++/*
+  * rdtgroup_size_show - Display size in bytes of allocated regions
+  *
+  * The "size" file mirrors the layout of the "schemata" file, printing the
+  * size in bytes of each region instead of the capacity bitmask.
+- *
+  */
+ static int rdtgroup_size_show(struct kernfs_open_file *of,
+ 			      struct seq_file *s, void *v)
+-- 
+2.25.1
+

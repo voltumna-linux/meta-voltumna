@@ -1,0 +1,540 @@
+From 9db48abdc3d59cd26105c7eeb1c00ee5d5912baa Mon Sep 17 00:00:00 2001
+From: Sanath S <Sanath.S@amd.com>
+Date: Tue, 27 Aug 2024 15:01:49 +0530
+Subject: [PATCH 11/13] ntb_perf: File transfer support
+
+Support for NTB file transfer support.
+This version supports for thread_count <= 1
+
+Signed-off-by: Sanath S <Sanath.S@amd.com>
+---
+ drivers/ntb/test/ntb_perf.c | 361 +++++++++++++++++++++++++++++++++++-
+ 1 file changed, 351 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/ntb/test/ntb_perf.c b/drivers/ntb/test/ntb_perf.c
+index ce5ff226c878..d2ec1d41138c 100644
+--- a/drivers/ntb/test/ntb_perf.c
++++ b/drivers/ntb/test/ntb_perf.c
+@@ -106,6 +106,7 @@ MODULE_DESCRIPTION("PCIe NTB Performance Measurement Tool");
+ #define MSG_UDELAY_HIGH		2000000
+ 
+ #define PERF_BUF_LEN 65536
++#define MAX_DMA_CHANNEL_ID_SIZE 256
+ 
+ static unsigned long max_mw_size = (SZ_32G * 2);
+ module_param(max_mw_size, ulong, 0644);
+@@ -131,6 +132,12 @@ static bool use_500ms_log; /* default to 0 */
+ module_param(use_500ms_log, bool, 0644);
+ MODULE_PARM_DESC(use_500ms_log, "Logs dmachannel performance every 500ms");
+ 
++static char filepath[256] = "/path/to/file";  // Default file path
++static char dma_perf_dma_channel_id[MAX_DMA_CHANNEL_ID_SIZE] = {0};
++
++static bool file_transfer; /* default to 0 */
++module_param(file_transfer, bool, 0644);
++MODULE_PARM_DESC(file_transfer, "Use DMA engine to measure performance");
+ 
+ /*==============================================================================
+  *                         Perf driver data definition
+@@ -147,6 +154,10 @@ enum perf_cmd {
+ 	PERF_STS_DONE  = 5, /* init is done */
+ 	PERF_STS_LNKUP = 6, /* link up state flag */
+ 	PERF_PEER_LINK_RESET = 7, /* ntb_perf is unloaded on peer */
++	PERF_CMD_FILE_SIZE = 8, /* send file size */
++	PERF_CMD_FILE_DATA = 9, /* send file data */
++	PERF_CMD_FILE_EOF = 10, /* end of file transfer */
++	PERF_CMD_ACK = 11, /* acknowledge command */
+ };
+ 
+ struct perf_ctx;
+@@ -193,6 +204,7 @@ struct perf_thread {
+ 	/* Data source and measured statistics */
+ 	void *src[MAX_DMACH_CNT];
+ 	dma_addr_t dma_src_addr[MAX_DMACH_CNT];
++	u64 dma_ch_copied[MAX_DMACH_CNT];
+ 	u64 copied;
+ 	ktime_t duration;
+ 	int status;
+@@ -232,6 +244,18 @@ struct perf_ctx {
+ 	ktime_t duration, kstart;
+ 	u64 perf_speed;
+ 	u64 total_data;
++
++	/* File transfer state */
++	size_t file_size;
++	size_t chunk_size;
++	size_t file_padding_size;
++	size_t file_received;
++	struct file *file;
++	u8 *file_buffer;
++
++	/* Synchronization for file transfer */
++	atomic_t rd_complete;
++	wait_queue_head_t read_wq;
+ };
+ 
+ /*
+@@ -476,6 +500,8 @@ static int perf_cmd_exec(struct perf_peer *peer, enum perf_cmd cmd)
+ 	case PERF_CMD_SXLAT:
+ 	case PERF_CMD_RXLAT:
+ 	case PERF_CMD_CLEAR:
++	case PERF_CMD_FILE_SIZE:
++	case PERF_CMD_FILE_DATA:
+ 		break;
+ 	default:
+ 		dev_err(&peer->perf->ntb->dev, "Exec invalid command\n");
+@@ -513,6 +539,38 @@ static int perf_cmd_recv(struct perf_ctx *perf)
+ 		case PERF_PEER_LINK_RESET:
+ 			set_bit(PERF_PEER_LINK_RESET, &peer->sts);
+ 			return 0;
++		case PERF_CMD_FILE_SIZE:
++			/* Handle file size command */
++			perf->file_size = data;
++			perf->file_received = 0;
++			perf->file_padding_size = (4 - (data % 4)) % 4;
++			return perf_cmd_exec(peer, PERF_CMD_FILE_SIZE);
++		case PERF_CMD_FILE_DATA:
++			/* Handle file data command */
++			if ((perf->file_received + data) > (perf->file_size + perf->file_padding_size)) {
++				pr_err("Received more data than expected\n");
++				return -EINVAL;
++			}
++
++			if ((perf->file_received + data) == (perf->file_size + perf->file_padding_size)) {
++				data = data - perf->file_padding_size;
++			}
++
++			perf->chunk_size = data;
++			perf->file_received += data;
++
++			return perf_cmd_exec(peer, PERF_CMD_FILE_DATA);
++		case PERF_CMD_FILE_EOF:
++			/* Handle end of file command */
++			if (perf->file_received != perf->file_size) {
++				pr_err("File transfer incomplete\n");
++				return -EINVAL;
++			}
++			break;
++		case PERF_CMD_ACK:
++			atomic_set(&perf->rd_complete, 1);
++			wake_up(&perf->read_wq);
++			break;
+ 		default:
+ 			dev_err(&perf->ntb->dev, "Recv invalid command\n");
+ 			return -EINVAL;
+@@ -691,10 +749,36 @@ static int perf_setup_inbuf(struct perf_peer *peer)
+ static void perf_service_work(struct work_struct *work)
+ {
+ 	struct perf_peer *peer = to_peer_service(work);
++	struct perf_ctx *perf = peer->perf;
+ 
+ 	if (test_and_clear_bit(PERF_CMD_SSIZE, &peer->sts))
+ 		perf_cmd_send(peer, PERF_CMD_SSIZE, peer->outbuf_size);
+ 
++	if (test_and_clear_bit(PERF_CMD_FILE_SIZE, &peer->sts)) {
++		perf->file = filp_open(filepath, O_WRONLY | O_CREAT | O_LARGEFILE, 0644);
++		if (IS_ERR(perf->file)) {
++			pr_err("Failed to open file: %s %ld\n", filepath),PTR_ERR(perf->file);
++			perf_terminate_test(peer->perf);
++		}
++		perf_cmd_send(peer, PERF_CMD_ACK, 0);
++	}
++
++
++	if (test_and_clear_bit(PERF_CMD_FILE_DATA, &peer->sts)) {
++		/* Write the buffer contents to the file */
++		size_t total_written = 0;
++		while (total_written < perf->chunk_size) {
++			ssize_t bytes = kernel_write(perf->file, peer->inbuf + total_written,
++			perf->chunk_size - total_written, &perf->file->f_pos);
++			if (bytes < 0) {
++				pr_err("Error writing to file: %zd\n", bytes);
++				break;
++			}
++			total_written += bytes;
++		}
++		perf_cmd_send(peer, PERF_CMD_ACK, 0);
++	}
++
+ 	if (test_and_clear_bit(PERF_CMD_RSIZE, &peer->sts))
+ 		perf_setup_inbuf(peer);
+ 
+@@ -850,6 +934,70 @@ static void perf_dma_copy_callback(void *data)
+ 	wake_up(&pthr->dma_wait);
+ }
+ 
++static int perf_copy_filechunk(struct perf_thread *pthr,
++		void __iomem *dst, void *src, size_t len, int tidx)
++{
++	struct perf_ctx *perf = pthr->perf;
++	struct dma_async_tx_descriptor *tx;
++	struct device *dma_dev;
++	int try = 0, ret = 0;
++	struct perf_peer *peer = pthr->perf->test_peer;
++	void __iomem *vbase;
++	void __iomem *dst_vaddr;
++	dma_addr_t dma_dst_addr, dma_src_addr;
++	struct perf_dma_callback_data *perf_dma_data = &pthr->perf_dma_data;
++
++	if (!use_dma) {
++		memcpy_toio(dst, src, len);
++		goto ret_check_tsync;
++	}
++
++	perf_dma_data->pthr = pthr;
++	dma_dev = pthr->dma_chan[tidx]->device->dev;
++	perf_dma_data->didx = tidx;
++	if (!is_dma_copy_aligned(pthr->dma_chan[tidx]->device, offset_in_page(src),
++				offset_in_page(dst), len))
++		return -EIO;
++
++	vbase = peer->outbuf;
++	dst_vaddr = dst;
++	dma_dst_addr = pthr->dma_dst_addr[tidx] + (dst_vaddr - vbase);
++	dma_src_addr = pthr->dma_src_addr[tidx] + (dst_vaddr - vbase);
++
++	do {
++		tx = dmaengine_prep_dma_memcpy(pthr->dma_chan[tidx], dma_dst_addr,
++				dma_src_addr, len, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
++		if (!tx)
++			msleep(DMA_MDELAY);
++	} while (!tx && (try++ < DMA_TRIES));
++
++	if (!tx) {
++		ret = -EIO;
++		goto err_free_resource;
++	}
++
++	tx->callback = perf_dma_copy_callback;
++	tx->callback_param = perf_dma_data;
++
++	ret = dma_submit_error(dmaengine_submit(tx));
++	if (ret)
++		goto err_free_resource;
++
++	atomic_inc(&pthr->dma_sync);
++	dma_async_issue_pending(pthr->dma_chan[tidx]);
++
++ret_check_tsync:
++        atomic_set(&peer->perf->rd_complete, 0);
++        perf_cmd_send(peer, PERF_CMD_FILE_DATA, len);
++        wait_event_interruptible(peer->perf->read_wq,
++                        (atomic_read(&peer->perf->rd_complete) == 1));
++	return likely(atomic_read(&pthr->perf->tsync) > 0) ? 0 : -EINTR;
++
++err_free_resource:
++	return ret;
++}
++
++
+ static int perf_copy_chunk(struct perf_thread *pthr,
+ 			   void __iomem *dst, void *src, size_t len)
+ {
+@@ -896,6 +1044,7 @@ static int perf_copy_chunk(struct perf_thread *pthr,
+ 			goto err_free_resource;
+ 		}
+ 
++		pthr->dma_ch_copied[tidx] += len;
+ 		tx->callback = perf_dma_copy_callback;
+ 		tx->callback_param = perf_dma_data;
+ 
+@@ -914,11 +1063,34 @@ static int perf_copy_chunk(struct perf_thread *pthr,
+ 	return ret;
+ }
+ 
++
++static bool is_dmaengine_enabled(char* buffer, const char* str)
++{
++    int bufferlen = strlen(buffer);
++    int strlen = strlen(str);
++
++    for (int i = 0; i <= bufferlen - strlen; i++) {
++        int j;
++        for (j = 0; j < strlen; j++) {
++            if (buffer[i + j] != str[j])
++                break;
++        }
++        if (j == strlen) {
++            return true;
++        }
++    }
++
++    return false;
++}
++
+ static bool perf_dma_filter(struct dma_chan *chan, void *data)
+ {
+ 	struct perf_ctx *perf = data;
+ 	int node;
+ 
++        if (!(dma_perf_dma_channel_id[0] == '\0'))
++                return(is_dmaengine_enabled(&dma_perf_dma_channel_id[0],dev_name(chan->device->dev)));
++
+ 	node = dev_to_node(&perf->ntb->dev);
+ 
+ 	if(!use_dma_2p)
+@@ -945,7 +1117,8 @@ static int perf_init_test(struct perf_thread *pthr)
+ 	if (!use_dma) {
+ 		pthr->src[0] = dma_alloc_coherent(&perf->ntb->pdev->dev, perf->test_peer->outbuf_size,
+ 				&pthr->dma_src_addr[0], GFP_KERNEL);
+-		get_random_bytes(pthr->src[0], perf->test_peer->outbuf_size);
++		if (!file_transfer)
++			get_random_bytes(pthr->src[0], perf->test_peer->outbuf_size);
+ 		return 0;
+ 	}
+ 
+@@ -968,7 +1141,8 @@ static int perf_init_test(struct perf_thread *pthr)
+ 		if (!pthr->src[tidx])
+ 			goto err_free;
+ 
+-		get_random_bytes(pthr->src[tidx], perf->test_peer->outbuf_size);
++		if (!file_transfer)
++			get_random_bytes(pthr->src[tidx], perf->test_peer->outbuf_size);
+ 
+ 		pthr->dma_dst_addr[tidx] =
+ 			dma_map_resource(pthr->dma_chan[tidx]->device->dev,
+@@ -1014,6 +1188,93 @@ static int perf_init_test(struct perf_thread *pthr)
+ 	return -ENODEV;
+ }
+ 
++static int perf_run_filetest(struct perf_thread *pthr)
++{
++	struct perf_peer *peer = pthr->perf->test_peer;
++	struct perf_ctx *perf = pthr->perf;
++	void __iomem *flt_dst, *bnd_dst;
++	u64 total_size, chunk_size, remaining_bytes;
++	void *flt_src;
++	int ret = 0;
++	struct file *f;
++	size_t padding;
++	int tidx;
++
++	total_size = perf->total_data;
++	perf_cmd_send(peer, PERF_CMD_FILE_SIZE, total_size);
++
++	/* Wait until peer acknowledges after preparing buffers */
++	wait_event_interruptible(peer->perf->read_wq, (atomic_read(&peer->perf->rd_complete) == 1));
++
++	chunk_size = 1ULL << chunk_order;
++	chunk_size = min_t(u64, peer->outbuf_size, chunk_size);
++	remaining_bytes = total_size % chunk_size;
++
++	flt_src = pthr->src[0];
++	bnd_dst = peer->outbuf + peer->outbuf_size;
++
++	flt_dst = peer->outbuf;
++
++	/* Open the file for reading */
++	f = filp_open(filepath, O_RDONLY | O_LARGEFILE, 0);
++	if (IS_ERR(f)) {
++		pr_err("Failed to open file: %s\n", filepath);
++		return PTR_ERR(f);
++	}
++
++	pthr->duration = ktime_get();
++
++	/* Copied field is cleared on test launch stage */
++	while (pthr->copied < total_size) {  
++		if(flt_dst >= (peer->outbuf + max_mw_size) )
++			flt_dst = peer->outbuf;  
++
++		for (tidx = 0; tidx < perf->dch_cnt; tidx++) {
++			if (!(pthr->copied < total_size))
++				break;
++
++			if (pthr->copied + chunk_size > total_size) {
++				chunk_size = remaining_bytes;
++
++				/* Calculate padding needed for 4-byte alignment */
++				padding = (4 - (chunk_size % 4)) % 4;
++				kernel_read(f, flt_src, chunk_size, &f->f_pos);
++				chunk_size += padding; // Adjust chunk size to include padding
++			} else {
++				kernel_read(f, flt_src, chunk_size, &f->f_pos);
++			}
++
++			ret = perf_copy_filechunk(pthr, flt_dst, flt_src, chunk_size, tidx);
++			if (ret) {
++				dev_err(&perf->ntb->dev, "%d: Got error %d on test\n",
++						pthr->tidx, ret);
++				return ret;
++			}
++
++			pthr->dma_ch_copied[tidx] += chunk_size;
++			pthr->copied += chunk_size;
++			flt_dst += chunk_size;
++			flt_src += chunk_size;
++			if (flt_dst >= bnd_dst || flt_dst < peer->outbuf) {
++				flt_dst = peer->outbuf;
++				flt_src = pthr->src[0];
++			}
++			/* Give up CPU to give a chance for other threads to use it */
++			schedule();
++		}
++	}
++
++	perf_cmd_send(peer, PERF_CMD_FILE_EOF, 0);
++
++	/* Wait until peer acknowledges after preparing buffers */
++	wait_event_interruptible(peer->perf->read_wq, (atomic_read(&peer->perf->rd_complete) == 1));
++
++	filp_close(f, NULL);
++
++	return 0;
++}
++
++
+ static int perf_run_test(struct perf_thread *pthr)
+ {
+ 	struct perf_peer *peer = pthr->perf->test_peer;
+@@ -1117,7 +1378,11 @@ static void perf_thread_work(struct work_struct *work)
+ 	 * synchronization is performed only if test fininshed
+ 	 * without an error or interruption.
+ 	 */
+-	ret = perf_run_test(pthr);
++	if (file_transfer) {
++		ret = perf_run_filetest(pthr);
++	} else {
++		ret = perf_run_test(pthr);
++	}
+ 	if (ret)
+ 		pthr->status = ret;
+ 
+@@ -1188,6 +1453,28 @@ static void perf_print_test_complete_cnt(struct work_struct *work)
+ 	queue_delayed_work(my_workqueue, &my_work, msecs_to_jiffies(500));
+ }
+ 
++static u64 get_file_size(void)
++{
++	struct file *f;
++	struct kstat stat;
++	size_t nbytes;
++
++	// Open the file for reading
++	f = filp_open(filepath, O_RDONLY | O_LARGEFILE, 0);
++	if (IS_ERR(f)) {  
++		pr_err("Failed to open file: %s\n", filepath);
++		return PTR_ERR(f);
++	}
++
++	// Get the file size
++	vfs_getattr(&f->f_path, &stat, STATX_SIZE, AT_STATX_SYNC_AS_STAT);
++	nbytes = stat.size;
++
++	filp_close(f, NULL);
++
++	return (u64)nbytes;
++}
++
+ static int perf_submit_test(struct perf_peer *peer)
+ {
+ 	struct perf_ctx *perf = peer->perf;
+@@ -1211,9 +1498,12 @@ static int perf_submit_test(struct perf_peer *peer)
+ 	}
+ 	tmr_chunk_size = 1ULL << chunk_order;
+ 
+-
+-	perf->total_data = (1ULL << total_order);
+-	perf->total_data *= (perf->tcnt * perf->dch_cnt);
++	if (file_transfer) {
++		perf->total_data = get_file_size();
++	} else {
++		perf->total_data = (1ULL << total_order);
++		perf->total_data *= (perf->tcnt * perf->dch_cnt);
++	}
+ 
+ 	for (tidx = 0; tidx < MAX_THREADS_CNT; tidx++) {
+ 		pthr = &perf->threads[tidx];
+@@ -1293,12 +1583,14 @@ static int perf_read_stats(struct perf_ctx *perf, char *buf,
+ 			div64_u64(pthr->copied, ktime_to_us(pthr->duration)));
+ 	     } else {
+ 		for (didx = 0; didx < perf->dch_cnt; didx++) {
++				if (pthr->dma_ch_copied[didx]) {
+ 			(*pos) += scnprintf(buf + *pos, size - *pos,
+ 				"%d: %s : copied %llu bytes in %llu usecs, %llu MBytes/s\n",
+-				tidx, dma_chan_name(pthr->dma_chan[didx]), pthr->copied, ktime_to_us(pthr->duration),
+-				div64_u64(pthr->copied, ktime_to_us(pthr->duration)));
++							tidx, dma_chan_name(pthr->dma_chan[didx]), pthr->dma_ch_copied[didx], ktime_to_us(pthr->duration),
++							div64_u64(pthr->dma_ch_copied[didx], ktime_to_us(pthr->duration)));
++				}
++			}
+ 		}
+-	     }
+ 	}
+ 
+ 	(*pos) += scnprintf(buf + *pos, size - *pos, "\n Total throughput : %llu MBytes/s\n", perf->perf_speed);
+@@ -1317,7 +1609,7 @@ static void perf_init_threads(struct perf_ctx *perf)
+ 	perf->dch_cnt = DEF_THREADS_CNT;
+ 	perf->test_peer = &perf->peers[0];
+ 	init_waitqueue_head(&perf->twait);
+-
++	init_waitqueue_head(&perf->read_wq);
+ 	for (tidx = 0; tidx < MAX_THREADS_CNT; tidx++) {
+ 		pthr = &perf->threads[tidx];
+ 
+@@ -1547,6 +1839,50 @@ static const struct file_operations perf_dbgfs_dch_cnt = {
+ 	.write = perf_dbgfs_write_dch_cnt
+ };
+ 
++static ssize_t perf_dbgfs_read_filepath(struct file *filep, char __user *ubuf,
++					size_t size, loff_t *offp)
++{
++	return simple_read_from_buffer(ubuf, size, offp, filepath, strlen(filepath));
++}
++
++static ssize_t perf_dbgfs_write_filepath(struct file *filep, const char __user *ubuf,
++					size_t size, loff_t *offp)
++{
++	if (size >= sizeof(filepath))
++		return -EINVAL;
++
++	if (copy_from_user(filepath, ubuf, size))
++		return -EFAULT;
++
++	filepath[size] = '\0';  // Null-terminate the string
++	return size;
++}
++
++static const struct file_operations perf_dbgfs_filepath = {
++	.open = simple_open,
++	.read = perf_dbgfs_read_filepath,
++	.write = perf_dbgfs_write_filepath,
++};
++
++static ssize_t perf_dbgfs_write_dmaengine(struct file *file, const char __user *buffer,
++                                   size_t count, loff_t *ppos)
++{
++    if (count >= MAX_DMA_CHANNEL_ID_SIZE)
++            return -EINVAL;
++
++    if (copy_from_user(&dma_perf_dma_channel_id[0], buffer, count))
++            return -EFAULT;
++
++    dma_perf_dma_channel_id[count] = '\0';
++
++    return count;
++}
++
++static const struct file_operations perf_dbgfs_dmaengine = {
++        .write = perf_dbgfs_write_dmaengine
++};
++
++
+ static void perf_setup_dbgfs(struct perf_ctx *perf)
+ {
+ 	struct pci_dev *pdev = perf->ntb->pdev;
+@@ -1569,6 +1905,11 @@ static void perf_setup_dbgfs(struct perf_ctx *perf)
+ 	debugfs_create_file("dma_ch_per_thread", 0600, perf->dbgfs_dir, perf,
+ 			    &perf_dbgfs_dch_cnt);
+ 
++	debugfs_create_file("dma_engine", 0644, perf->dbgfs_dir, NULL,
++                            &perf_dbgfs_dmaengine);
++
++	debugfs_create_file("filepath", 0600, perf->dbgfs_dir, NULL,&perf_dbgfs_filepath);
++
+ 	/* They are made read-only for test exec safety and integrity */
+ 	debugfs_create_u8("chunk_order", 0500, perf->dbgfs_dir, &chunk_order);
+ 
+-- 
+2.39.2
+

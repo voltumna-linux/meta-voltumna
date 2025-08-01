@@ -1,0 +1,29 @@
+From e9b80f96637743d6a5b1a96d89eaaf517ba8dbdd Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Wed, 27 Mar 2024 14:55:22 +0000
+Subject: [PATCH 38/38] SDCI: Force queue size to be 1
+
+On Broadcom devices, we saw random kernel panic with queue size > 1.
+This hack forces queue size to be 1 to avoid the problem.
+
+Signed-off-by: Manoj Panicker <manoj.panicker2@amd.com>
+---
+ drivers/net/ethernet/broadcom/bnxt/bnxt.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt.c b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+index cd279adc15da..afe60f3730a3 100644
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+@@ -13760,6 +13760,8 @@ static int bnxt_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 	}
+ 
+ 	max_irqs = bnxt_get_max_irq(pdev);
++	/* Hack: force queue to be 1 */
++	max_irqs = 1;
+ 	dev = alloc_etherdev_mq(sizeof(*bp), max_irqs);
+ 	if (!dev)
+ 		return -ENOMEM;
+-- 
+2.25.1
+
