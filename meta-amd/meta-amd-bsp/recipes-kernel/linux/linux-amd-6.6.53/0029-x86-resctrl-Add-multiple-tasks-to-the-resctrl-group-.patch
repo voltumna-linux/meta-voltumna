@@ -1,0 +1,109 @@
+From 21ff6f78b464d5c112813e233fcb5378397ccf58 Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Mon, 16 Oct 2023 19:23:00 -0500
+Subject: [PATCH 18/38] x86/resctrl: Add multiple tasks to the resctrl group at
+ once
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The resctrl task assignment for monitor or control group needs to be
+done one at a time. For example:
+
+  $mount -t resctrl resctrl /sys/fs/resctrl/
+  $mkdir /sys/fs/resctrl/ctrl_grp1
+  $echo 123 > /sys/fs/resctrl/ctrl_grp1/tasks
+  $echo 456 > /sys/fs/resctrl/ctrl_grp1/tasks
+  $echo 789 > /sys/fs/resctrl/ctrl_grp1/tasks
+
+This is not user-friendly when dealing with hundreds of tasks.
+
+Support multiple task assignment in one command with tasks ids separated
+by commas. For example:
+
+  $echo 123,456,789 > /sys/fs/resctrl/ctrl_grp1/tasks
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+Signed-off-by: Borislav Petkov (AMD) <bp@alien8.de>
+Reviewed-by: Peter Newman <peternewman@google.com>
+Reviewed-by: Tan Shaopeng <tan.shaopeng@jp.fujitsu.com>
+Reviewed-by: Fenghua Yu <fenghua.yu@intel.com>
+Reviewed-by: Reinette Chatre <reinette.chatre@intel.com>
+Reviewed-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Tested-by: Peter Newman <peternewman@google.com>
+Tested-by: Tan Shaopeng <tan.shaopeng@jp.fujitsu.com>
+Link: https://lore.kernel.org/r/20231017002308.134480-2-babu.moger@amd.com
+---
+ Documentation/arch/x86/resctrl.rst     |  9 ++++++++-
+ arch/x86/kernel/cpu/resctrl/rdtgroup.c | 25 ++++++++++++++++++++++---
+ 2 files changed, 30 insertions(+), 4 deletions(-)
+
+diff --git a/Documentation/arch/x86/resctrl.rst b/Documentation/arch/x86/resctrl.rst
+index cb05d90111b4..8154e9975d1e 100644
+--- a/Documentation/arch/x86/resctrl.rst
++++ b/Documentation/arch/x86/resctrl.rst
+@@ -299,7 +299,14 @@ All groups contain the following files:
+ "tasks":
+ 	Reading this file shows the list of all tasks that belong to
+ 	this group. Writing a task id to the file will add a task to the
+-	group. If the group is a CTRL_MON group the task is removed from
++	group. Multiple tasks can be added by separating the task ids
++	with commas. Tasks will be assigned sequentially. Multiple
++	failures are not supported. A single failure encountered while
++	attempting to assign a task will cause the operation to abort and
++	already added tasks before the failure will remain in the group.
++	Failures will be logged to /sys/fs/resctrl/info/last_cmd_status.
++
++	If the group is a CTRL_MON group the task is removed from
+ 	whichever previous CTRL_MON group owned the task and also from
+ 	any MON group that owned the task. If the group is a MON group,
+ 	then the task must already belong to the CTRL_MON parent of this
+diff --git a/arch/x86/kernel/cpu/resctrl/rdtgroup.c b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+index f4e25fbdb1ab..161b63c86328 100644
+--- a/arch/x86/kernel/cpu/resctrl/rdtgroup.c
++++ b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+@@ -696,11 +696,10 @@ static ssize_t rdtgroup_tasks_write(struct kernfs_open_file *of,
+ 				    char *buf, size_t nbytes, loff_t off)
+ {
+ 	struct rdtgroup *rdtgrp;
++	char *pid_str;
+ 	int ret = 0;
+ 	pid_t pid;
+ 
+-	if (kstrtoint(strstrip(buf), 0, &pid) || pid < 0)
+-		return -EINVAL;
+ 	rdtgrp = rdtgroup_kn_lock_live(of->kn);
+ 	if (!rdtgrp) {
+ 		rdtgroup_kn_unlock(of->kn);
+@@ -715,7 +714,27 @@ static ssize_t rdtgroup_tasks_write(struct kernfs_open_file *of,
+ 		goto unlock;
+ 	}
+ 
+-	ret = rdtgroup_move_task(pid, rdtgrp, of);
++	while (buf && buf[0] != '\0' && buf[0] != '\n') {
++		pid_str = strim(strsep(&buf, ","));
++
++		if (kstrtoint(pid_str, 0, &pid)) {
++			rdt_last_cmd_printf("Task list parsing error pid %s\n", pid_str);
++			ret = -EINVAL;
++			break;
++		}
++
++		if (pid < 0) {
++			rdt_last_cmd_printf("Invalid pid %d\n", pid);
++			ret = -EINVAL;
++			break;
++		}
++
++		ret = rdtgroup_move_task(pid, rdtgrp, of);
++		if (ret) {
++			rdt_last_cmd_printf("Error while processing task %d\n", pid);
++			break;
++		}
++	}
+ 
+ unlock:
+ 	rdtgroup_kn_unlock(of->kn);
+-- 
+2.25.1
+

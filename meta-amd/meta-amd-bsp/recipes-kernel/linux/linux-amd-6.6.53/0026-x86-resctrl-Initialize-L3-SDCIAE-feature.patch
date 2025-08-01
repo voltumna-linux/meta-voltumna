@@ -1,0 +1,68 @@
+From d15df55664e8446fa4c8677a2e0d8ef53137e52c Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Tue, 30 Jan 2024 14:15:15 -0600
+Subject: [PATCH 15/38] x86/resctrl: Initialize L3 SDCIAE feature
+
+Initialize SDCIAE (L3 Smart Data Cache Injection Allocation Enforcement)
+feature.
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+---
+ arch/x86/kernel/cpu/resctrl/core.c | 12 ++++++++++++
+ include/linux/resctrl.h            |  2 ++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/arch/x86/kernel/cpu/resctrl/core.c b/arch/x86/kernel/cpu/resctrl/core.c
+index 14b1b5ec2011..311b6d4aaa08 100644
+--- a/arch/x86/kernel/cpu/resctrl/core.c
++++ b/arch/x86/kernel/cpu/resctrl/core.c
+@@ -297,6 +297,11 @@ static void rdt_get_cdp_l2_config(void)
+ 	rdt_get_cdp_config(RDT_RESOURCE_L2);
+ }
+ 
++static void rdt_get_sdciae_alloc_cfg(struct rdt_resource *r)
++{
++	r->sdciae_capable = true;
++}
++
+ static void
+ mba_wrmsr_amd(struct rdt_domain *d, struct msr_param *m, struct rdt_resource *r)
+ {
+@@ -794,6 +799,13 @@ static __init bool get_rdt_alloc_resources(void)
+ 			rdt_get_cdp_l3_config();
+ 		ret = true;
+ 	}
++
++	if (rdt_cpu_has(X86_FEATURE_SDCIAE)) {
++		r = &rdt_resources_all[RDT_RESOURCE_L3].r_resctrl;
++		rdt_get_sdciae_alloc_cfg(r);
++		ret = true;
++	}
++
+ 	if (rdt_cpu_has(X86_FEATURE_CAT_L2)) {
+ 		/* CPUID 0x10.2 fields are same format at 0x10.1 */
+ 		r = &rdt_resources_all[RDT_RESOURCE_L2].r_resctrl;
+diff --git a/include/linux/resctrl.h b/include/linux/resctrl.h
+index 8334eeacfec5..d8a929e7eba7 100644
+--- a/include/linux/resctrl.h
++++ b/include/linux/resctrl.h
+@@ -162,6 +162,7 @@ struct resctrl_schema;
+  * @evt_list:		List of monitoring events
+  * @fflags:		flags to choose base and info files
+  * @cdp_capable:	Is the CDP feature available on this resource
++ * @sdciae_capable:	Is SDCIAE feature available on this resource
+  */
+ struct rdt_resource {
+ 	int			rid;
+@@ -182,6 +183,7 @@ struct rdt_resource {
+ 	struct list_head	evt_list;
+ 	unsigned long		fflags;
+ 	bool			cdp_capable;
++	bool			sdciae_capable;
+ };
+ 
+ /**
+-- 
+2.25.1
+

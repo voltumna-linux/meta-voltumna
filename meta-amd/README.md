@@ -125,4 +125,4 @@ may take longer.
 The per layer gatekeepers are the following.
 
 - meta-amd-bsp: Rahul Kumar <rahul.kumar1@amd.com>
-- meta-amd-distro: Rahul Kumar <rahul.kumar1@amd.com>
+- meta-amd-bsp-distro: Rahul Kumar <rahul.kumar1@amd.com>

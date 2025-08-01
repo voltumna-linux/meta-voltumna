@@ -1,0 +1,29 @@
+From 2438bff299d6e9408188136aca526fc67d608ded Mon Sep 17 00:00:00 2001
+From: Kalyan Rankireddy <Kalyan.Rankireddy@amd.com>
+Date: Tue, 6 Feb 2024 19:26:53 +0530
+Subject: [PATCH] EDAC/amd64: Add support for family 19h, models 40h-4fh
+
+Signed-off-by: Kalyan Rankireddy <Kalyan.Rankireddy@amd.com>
+Change-Id: I541a802dd35cdc1455621b46fd3efe819988e091
+---
+ drivers/edac/amd64_edac.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/edac/amd64_edac.c b/drivers/edac/amd64_edac.c
+index b61c7f02a8c1..393532a30f95 100644
+--- a/drivers/edac/amd64_edac.c
++++ b/drivers/edac/amd64_edac.c
+@@ -4133,6 +4133,10 @@ static int per_family_init(struct amd64_pvt *pvt)
+ 				pvt->max_mcs		= 8;
+ 			}
+ 			break;
++		case 0x40 ... 0x4f:
++			pvt->ctl_name 			= "F19h_M40h";
++			pvt->max_mcs 			= 4;
++			break;
+ 		case 0x50 ... 0x5f:
+ 			pvt->ctl_name			= "F19h_M50h";
+ 			break;
+-- 
+2.43.0
+
