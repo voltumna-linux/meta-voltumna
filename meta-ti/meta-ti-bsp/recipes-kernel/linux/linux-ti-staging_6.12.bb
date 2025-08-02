@@ -8,7 +8,6 @@ inherit kernel
 
 require recipes-kernel/linux/setup-defconfig.inc
 require recipes-kernel/linux/ti-kernel.inc
-include ${@ 'recipes-kernel/linux/ti-kernel-devicetree-prefix.inc' if d.getVar('KERNEL_DEVICETREE_PREFIX') else ''}
 include ${@ 'recipes-kernel/linux/ti-extras.inc' if d.getVar('TI_EXTRAS') else ''}
 
 DEPENDS += "gmp-native libmpc-native"
@@ -23,7 +22,7 @@ S = "${WORKDIR}/git"
 
 BRANCH ?= "ti-linux-6.12.y"
 
-SRCREV ?= "72f48d59b8f087fa0dd1f1e8c2c0b5bc0baa537c"
+SRCREV ?= "ce4785d01a0b962c7d9cb12f56dbae02514213eb"
 PV = "6.12.35+git"
 
 # Special configuration for remoteproc/rpmsg IPC modules
