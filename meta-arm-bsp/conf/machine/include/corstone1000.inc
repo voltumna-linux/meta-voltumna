@@ -7,8 +7,8 @@ PREFERRED_VERSION_trusted-firmware-m ?= "2.1.%"
 
 # TF-A
 TFA_PLATFORM = "corstone1000"
-PREFERRED_VERSION_trusted-firmware-a ?= "2.12.%"
-PREFERRED_VERSION_tf-a-tests ?= "2.12.%"
+PREFERRED_VERSION_trusted-firmware-a ?= "2.13.%"
+PREFERRED_VERSION_tf-a-tests ?= "2.13.%"
 
 TFA_BL2_BINARY = "bl2-corstone1000.bin"
 TFA_FIP_BINARY = "fip-corstone1000.bin"
@@ -23,8 +23,8 @@ TS_SP_SE_PROXY_CONFIG = "corstone1000"
 # Include smm-gateway and se-proxy SPs into optee-os binary
 MACHINE_FEATURES += "ts-smm-gateway ts-se-proxy"
 
-# u-boot
-PREFERRED_VERSION_u-boot ?= "2023.07%"
+# U-Boot
+PREFERRED_VERSION_u-boot ?= "2025.04%"
 MACHINE_FEATURES += "efi"
 EFI_PROVIDER ?= "grub-efi"
 
