@@ -7,8 +7,7 @@ IMAGE_FEATURES:append = " debug-tweaks \
 IMAGE_INSTALL:append = " info man-pages"
 
 # To keep in sync with SDK
-IMAGE_INSTALL:append = " binutils cpp gcc libgcc-dev g++ libstdc++-dev libgomp-dev libasan-dev libubsan-dev \
-	clang python3-pylint"
+IMAGE_INSTALL:append = " binutils cpp gcc libgcc-dev g++ libstdc++-dev libgomp-dev libasan-dev libubsan-dev"
 IMAGE_INSTALL:append:arm = " dtc"
 IMAGE_INSTALL:append:x86 = " liblsan-dev libtsan-dev"
 IMAGE_INSTALL:append:x86-64 = " liblsan-dev libtsan-dev"
