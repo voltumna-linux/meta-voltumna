@@ -2,14 +2,6 @@
 LTO:toolchain-clang:class-target = "${@bb.utils.contains('DISTRO_FEATURES', 'thin-lto', '-flto=thin', '-flto -fuse-ld=lld', d)}"
 LTO:toolchain-clang:class-nativesdk = "${@bb.utils.contains('DISTRO_FEATURES', 'thin-lto', '-flto=thin', '-flto -fuse-ld=lld', d)}"
 
-COMPILER_RT:toolchain-clang:armeb = "-rtlib=libgcc ${UNWINDLIB}"
-UNWINDLIB:toolchain-clang:armeb = "--unwindlib=libgcc"
-LIBCPLUSPLUS::toolchain-clang:armv5 = "-stdlib=libstdc++"
-
-# Clang does not support octeontx2 processor
-TUNE_CCARGS_MARCH_OPTS ??= ""
-TUNE_CCARGS:remove:toolchain-clang = "-mcpu=octeontx2${TUNE_CCARGS_MARCH_OPTS}"
-
 # Reconcile some ppc anamolies
 TUNE_CCARGS:remove:toolchain-clang:powerpc = "-mhard-float -mno-spe"
 TUNE_CCARGS:append:toolchain-clang:libc-musl:powerpc64 = " -mlong-double-64"
@@ -30,16 +22,6 @@ TC_CXX_RUNTIME:armv5 = "gnu"
 #TOOLCHAIN:class-cross-canadian = "gcc"
 #TOOLCHAIN:class-crosssdk = "gcc"
 #TOOLCHAIN:class-cross = "gcc"
-
-#OVERRIDES =. "${@['', 'toolchain-${TOOLCHAIN}:']['${TOOLCHAIN}' != '']}"
-OVERRIDES =. "${@['', 'runtime-${TC_CXX_RUNTIME}:']['${TC_CXX_RUNTIME}' != '']}"
-OVERRIDES[vardepsexclude] += "TC_CXX_RUNTIME"
-
-YOCTO_ALTERNATE_EXE_PATH:toolchain-clang:class-target = "${STAGING_BINDIR}/llvm-config"
-YOCTO_ALTERNATE_LIBDIR:toolchain-clang:class-target = "/${BASELIB}"
-
-#YOCTO_ALTERNATE_EXE_PATH:toolchain-clang:class-target[export] = "1"
-#YOCTO_ALTERNATE_LIBDIR:toolchain-clang:class-target[export] = "1"
 
 #DEPENDS:append:toolchain-clang:class-target = " clang-cross-${TARGET_ARCH} "
 #DEPENDS:remove:toolchain-clang:allarch = "clang-cross-${TARGET_ARCH}"
