@@ -1,0 +1,1 @@
+../../openembedded-core/meta/recipes-kernel/linux/linux-yocto_5.10.bb

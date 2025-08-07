@@ -19,7 +19,7 @@ SRC_URI:append = " \
 	file://vfio.cfg \
 	file://nvram.cfg \
 	file://hpet.cfg \
-	file://vtd.cfg \
+	file://vtd-intel.cfg \
 	file://serial_console.cfg \
 	file://ipmi.cfg \
 	\

@@ -19,10 +19,11 @@ SRC_URI:append = " \
 	file://vfio.cfg \
 	file://nvram.cfg \
 	file://hpet.cfg \
-	file://vtd-intel.cfg \
+	file://vtd-amd.cfg \
 	file://serial_console.cfg \
 	file://ipmi.cfg \
 	\
+	file://static_intel_drivers.cfg \
 	file://0001-igb-Stop-PTP-related-workqueues-if-aren-t-necessary.patch \
 	file://resctrl.cfg \
 	file://0001-sched-core-Fix-arch_scale_freq_tick-on-tickless-syst.patch \
