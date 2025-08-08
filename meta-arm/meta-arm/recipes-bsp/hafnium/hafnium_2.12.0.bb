@@ -1,16 +1,13 @@
 SUMMARY = "Hafnium"
 DESCRIPTION = "A reference Secure Partition Manager (SPM) for systems that implement the Armv8.4-A Secure-EL2 extension"
-DEPENDS = "gn-native ninja-native bison-native bc-native dtc-native openssl-native clang-native"
+DEPENDS = "gn-native ninja-native bison-native bc-native dtc-native openssl-native clang-native lld-native"
 
 LICENSE = "BSD-3-Clause & GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=782b40c14bad5294672c500501edc103"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
-CLANGNATIVE = ""
-CLANGNATIVE:runtime-llvm = "clang-native"
-
-inherit deploy python3native pkgconfig ${CLANGNATIVE}
+inherit deploy
 
 SRC_URI = "gitsm://git.trustedfirmware.org/hafnium/hafnium.git;protocol=https;branch=master \
            file://0001-arm-hafnium-fix-kernel-tool-linking.patch  \
@@ -20,14 +17,14 @@ SRCREV = "2cf2ca7c4b81ab18e9cd363d9a5c8288e2a94fda"
 B = "${WORKDIR}/build"
 
 COMPATIBLE_MACHINE ?= "invalid"
-COMPATIBLE_MACHINE:qemuarm64 = "qemuarm64"
+COMPATIBLE_MACHINE:qemuarm64-secureboot = "qemuarm64"
 
 # Default build 'reference'
 HAFNIUM_PROJECT ?= "reference"
 
 # Platform must be set for each machine
 HAFNIUM_PLATFORM ?= "invalid"
-HAFNIUM_PLATFORM:qemuarm64 = "secure_qemu_aarch64"
+HAFNIUM_PLATFORM:qemuarm64-secureboot = "secure_qemu_aarch64"
 
 # do_deploy will install everything listed in this variable. It is set by
 # default to hafnium
@@ -69,5 +66,3 @@ do_deploy() {
     cp -rf ${D}/firmware/* ${DEPLOYDIR}/
 }
 addtask deploy after do_install
-
-EXCLUDE_FROM_WORLD = "1"
