@@ -12,7 +12,7 @@ CVE_PRODUCT = "linaro:op-tee op-tee:op-tee_os"
 
 DEPENDS = "python3-pyelftools-native python3-cryptography-native"
 
-DEPENDS:append:toolchain-clang = " compiler-rt"
+DEPENDS:append:toolchain-clang = " lld-native compiler-rt"
 
 SRC_URI = "git://github.com/OP-TEE/optee_os.git;branch=master;protocol=https"
 
@@ -31,7 +31,7 @@ EXTRA_OEMAKE += " HOST_PREFIX=${HOST_PREFIX}"
 EXTRA_OEMAKE += " CROSS_COMPILE64=${HOST_PREFIX}"
 
 # Enable BTI in optee
-EXTREA_OEMAKE += "${@bb.utils.contains('MACHINE_FEATURES', 'arm-branch-protection', ' CFG_CORE_BTI=1 CFG_TA_BTI=1 CFG_CORE_PAUTH=y CFG_TA_PAUTH=y', '', d)}"
+EXTRA_OEMAKE += "${@bb.utils.contains('MACHINE_FEATURES', 'arm-branch-protection', ' CFG_CORE_BTI=1 CFG_TA_BTI=1 CFG_CORE_PAUTH=y CFG_TA_PAUTH=y', '', d)}"
 
 LDFLAGS[unexport] = "1"
 CPPFLAGS[unexport] = "1"
