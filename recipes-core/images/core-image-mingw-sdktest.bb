@@ -7,11 +7,10 @@ require ${COREBASE}/meta/recipes-core/images/core-image-minimal.bb
 # to include them
 TOOLCHAIN_HOST_TASK += "\
     nativesdk-curl \
-    nativesdk-dbus \
+    nativesdk-dbus-tools \
     nativesdk-dtc \
     nativesdk-libarchive \
     nativesdk-ninja \
     nativesdk-swig \
     nativesdk-wayland \
     "
-
