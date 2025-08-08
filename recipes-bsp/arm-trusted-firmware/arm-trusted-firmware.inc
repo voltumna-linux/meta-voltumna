@@ -13,28 +13,39 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 ATF_PROT ?= "https"
 ATF_BRANCH ?= "socfpga_v2.3"
-ATF_REPO ?= "git://github.com/altera-opensource/arm-trusted-firmware.git"
+ATF_REPO ?= "git://github.com/altera-fpga/arm-trusted-firmware.git"
 
 SRC_URI = "${ATF_REPO};protocol=${ATF_PROT};branch=${ATF_BRANCH}"
 
 S = "${WORKDIR}/git"
 
-COMPATIBLE_MACHINE = "(agilex7_dk_si_agf014ea|agilex7_dk_si_agf014eb|agilex7_dk_si_agi027fb|agilex7_dk_si_agi027fa|agilex7_dk_dev_agf027f1es|agilex7_dk_dev_agm039fes|agilex5|stratix10|n5x)"
+COMPATIBLE_MACHINE = "(agilex3|agilex5_dk_a5e065bb32aes1|agilex5_dk_a5e013bb32aesi0|agilex5_dk_a5e013bb32aes|agilex5_dk_a5e013bb32aes_5s|agilex5_mk_a5e065bb32aes1|agilex5_mudv_cvr|agilex5_mucv|agilex7_dk_si_agf014ea|agilex7_dk_si_agf014eb|agilex7_dk_si_agi027fb|agilex7_dk_si_agi027fa|agilex7_dk_si_agi027fc|agilex7_dk_dev_agf027f1es|agilex7_dk_dev_agm039fes|agilex7_dk_dev_agm039fb|agilex7_dk_dev_agf023fa|agilex5|stratix10|stratix10_htile|n5x)"
 ATFPLAT = "${MACHINE}"
+ATFPLAT:agilex3 = "agilex3"
+ATFPLAT:agilex5_dk_a5e065bb32aes1 = "agilex5"
+ATFPLAT:agilex5_dk_a5e013bb32aesi0 = "agilex5"
+ATFPLAT:agilex5_dk_a5e013bb32aes = "agilex5"
+ATFPLAT:agilex5_dk_a5e013bb32aes_5s = "agilex5"
+ATFPLAT:agilex5_mk_a5e065bb32aes1 = "agilex5"
+ATFPLAT:agilex5_mudv_cvr = "agilex5"
+ATFPLAT:agilex5_mucv = "agilex5"
 ATFPLAT:agilex7_dk_si_agf014ea = "agilex"
 ATFPLAT:agilex7_dk_si_agf014eb = "agilex"
 ATFPLAT:agilex7_dk_si_agi027fb = "agilex"
 ATFPLAT:agilex7_dk_si_agi027fa = "agilex"
+ATFPLAT:agilex7_dk_si_agi027fc = "agilex"
 ATFPLAT:agilex7_dk_dev_agf027f1es = "agilex"
 ATFPLAT:agilex7_dk_dev_agm039fes = "agilex"
+ATFPLAT:agilex7_dk_dev_agm039fb = "agilex"
+ATFPLAT:agilex7_dk_dev_agf023fa = "agilex"
+ATFPLAT:stratix10_htile = "stratix10"
 
-LDFLAGS="--no-warn-rwx-segments"
 CFLAGS="-Wno-error=array-bounds"
 
 # Let the Makefile handle setting up the CFLAGS and LDFLAGS as it is a standalone application
-EXTRA_OEMAKE = 'CROSS_COMPILE="${TARGET_PREFIX}" PLAT="${ATFPLAT}" CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" DEPRECATED=1'
+EXTRA_OEMAKE = 'CROSS_COMPILE="${TARGET_PREFIX}" PLAT="${ATFPLAT}" CFLAGS="${CFLAGS}" DEPRECATED=1'
 # CFLAGS[unexport] = "1"
-# LDFLAGS[unexport] = "1"
+LDFLAGS[unexport] = "1"
 AS[unexport] = "1"
 LD[unexport] = "1"
 PARALLEL_MAKE = ""
