@@ -27,5 +27,21 @@ do_configure:prepend() {
 		${S}/config/rte_config.h
 }
 
+do_install:append() {
+	install -d ${D}${sysconfdir}/modules-load.d/
+	cat <<-__EOF__ >> ${D}${sysconfdir}/modules-load.d/vfio-pci.conf
+	vfio_pci
+	__EOF__
+
+	cat <<-__EOF__ >> ${D}${sysconfdir}/modules-load.d/vfio-iommu-type1.conf
+	vfio_iommu_type1
+	__EOF__
+
+	install -d ${D}${sysconfdir}/modprobe.d/
+	cat <<-__EOF__ >> ${D}${sysconfdir}/modprobe.d/vfio-iommu-type1.conf
+	options vfio_iommu_type1 allow_unsafe_interrupts=1
+	__EOF__
+}
+
 BBCLASSEXTEND = "nativesdk"
 MACHINE_FEATURES:remove = "qemu-usermode"
