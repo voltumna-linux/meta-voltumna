@@ -25,7 +25,7 @@ SRC_URI:append = " \
 	file://osnoise.cfg \
 	\
 	file://resctrl.cfg \
-        file://amd-hw.cfg \
+        file://amd-extra.cfg \
 	"
 
 SRC_URI:append:kvm = " \
