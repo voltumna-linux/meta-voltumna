@@ -1,8 +1,53 @@
+From 2971b2e356ef8d8e43735d0278c5dab13ba6772c Mon Sep 17 00:00:00 2001
+From: Zhenguo Yao <yaozhenguo1@gmail.com>
+Date: Fri, 5 Nov 2021 13:43:28 -0700
+Subject: [PATCH 1/5] hugetlbfs: extend the definition of hugepages parameter
+ to support node allocation
+
+We can specify the number of hugepages to allocate at boot.  But the
+hugepages is balanced in all nodes at present.  In some scenarios, we
+only need hugepages in one node.  For example: DPDK needs hugepages
+which are in the same node as NIC.
+
+If DPDK needs four hugepages of 1G size in node1 and system has 16 numa
+nodes we must reserve 64 hugepages on the kernel cmdline.  But only four
+hugepages are used.  The others should be free after boot.  If the
+system memory is low(for example: 64G), it will be an impossible task.
+
+So extend the hugepages parameter to support specifying hugepages on a
+specific node.  For example add following parameter:
+
+  hugepagesz=1G hugepages=0:1,1:3
+
+It will allocate 1 hugepage in node0 and 3 hugepages in node1.
+
+Link: https://lkml.kernel.org/r/20211005054729.86457-1-yaozhenguo1@gmail.com
+Signed-off-by: Zhenguo Yao <yaozhenguo1@gmail.com>
+Reviewed-by: Mike Kravetz <mike.kravetz@oracle.com>
+Cc: Zhenguo Yao <yaozhenguo1@gmail.com>
+Cc: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: Nathan Chancellor <nathan@kernel.org>
+Cc: Michael Ellerman <mpe@ellerman.id.au>
+Cc: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Cc: Paul Mackerras <paulus@samba.org>
+Cc: Jonathan Corbet <corbet@lwn.net>
+Cc: Mike Rapoport <rppt@kernel.org>
+Cc: Matthew Wilcox (Oracle) <willy@infradead.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+---
+ .../admin-guide/kernel-parameters.txt         |   8 +-
+ Documentation/admin-guide/mm/hugetlbpage.rst  |  12 +-
+ arch/powerpc/mm/hugetlbpage.c                 |   9 +-
+ include/linux/hugetlb.h                       |   6 +-
+ mm/hugetlb.c                                  | 153 +++++++++++++++---
+ 5 files changed, 155 insertions(+), 33 deletions(-)
+
 diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index 308dc1c26cac..785940e1212c 100644
+index f577c29f20930..f6f00f3f08da3 100644
 --- a/Documentation/admin-guide/kernel-parameters.txt
 +++ b/Documentation/admin-guide/kernel-parameters.txt
-@@ -1530,23 +1530,25 @@
+@@ -1536,23 +1536,25 @@
  
  			Reserve a cma area of given size and allocate gigantic
  			hugepages using the cma allocator. If enabled, the
@@ -32,7 +77,7 @@ index 308dc1c26cac..785940e1212c 100644
  			Documentation/admin-guide/mm/hugetlbpage.rst.
  			Format: size[KMG]
 diff --git a/Documentation/admin-guide/mm/hugetlbpage.rst b/Documentation/admin-guide/mm/hugetlbpage.rst
-index f7b1c7462991..75d54d0179ba 100644
+index f7b1c74629911..75d54d0179ba7 100644
 --- a/Documentation/admin-guide/mm/hugetlbpage.rst
 +++ b/Documentation/admin-guide/mm/hugetlbpage.rst
 @@ -113,30 +113,40 @@ hugepagesz
@@ -78,7 +123,7 @@ index f7b1c7462991..75d54d0179ba 100644
  
  		hugepages=256
 diff --git a/arch/powerpc/mm/hugetlbpage.c b/arch/powerpc/mm/hugetlbpage.c
-index 36c3800769fb..a1417c865b6d 100644
+index 36c3800769fbf..a1417c865b6de 100644
 --- a/arch/powerpc/mm/hugetlbpage.c
 +++ b/arch/powerpc/mm/hugetlbpage.c
 @@ -221,31 +221,36 @@ int __init pseries_alloc_bootmem_huge_page(struct hstate *hstate)
@@ -121,10 +166,10 @@ index 36c3800769fb..a1417c865b6d 100644
  	unsigned int index;
  	void *ptes[];
 diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h
-index 99b73fc4a824..ad568904a23b 100644
+index b9fbb6d4150e2..2f9c47c030d1d 100644
 --- a/include/linux/hugetlb.h
 +++ b/include/linux/hugetlb.h
-@@ -483,20 +483,21 @@ struct hstate {
+@@ -482,20 +482,21 @@ struct hstate {
  	unsigned int order;
  	unsigned long mask;
  	unsigned long max_huge_pages;
@@ -146,7 +191,7 @@ index 99b73fc4a824..ad568904a23b 100644
  #endif
  	char name[HSTATE_NAME_LEN];
  };
-@@ -509,22 +510,23 @@ struct huge_bootmem_page {
+@@ -508,22 +509,23 @@ struct huge_bootmem_page {
  struct page *alloc_huge_page(struct vm_area_struct *vma,
  				unsigned long addr, int avoid_reserve);
  struct page *alloc_huge_page_nodemask(struct hstate *h, int preferred_nid,
@@ -173,7 +218,7 @@ index 99b73fc4a824..ad568904a23b 100644
  
  extern struct hstate hstates[HUGE_MAX_HSTATE];
 diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index 81949f6d29af..8fe47d72bb4f 100644
+index c42c76447e103..992e90ddb674e 100644
 --- a/mm/hugetlb.c
 +++ b/mm/hugetlb.c
 @@ -58,20 +58,21 @@ static unsigned long hugetlb_cma_size __initdata;
@@ -269,7 +314,8 @@ index 81949f6d29af..8fe47d72bb4f 100644
  /*
   * Put bootmem huge pages into the standard lists after mem_map is up.
   * Note: This only applies to gigantic (order > MAX_ORDER) pages.
-@@ -2498,50 +2505,97 @@ static void __init gather_bootmem_prealloc(void)
+@@ -2497,67 +2504,111 @@ static void __init gather_bootmem_prealloc(void)
+ 
  		/*
  		 * We need to restore the 'stolen' pages to totalram_pages
  		 * in order to fix confusing memory reports from free(1) and
@@ -279,7 +325,6 @@ index 81949f6d29af..8fe47d72bb4f 100644
  		cond_resched();
  	}
  }
- 
 +static void __init hugetlb_hstate_alloc_pages_onenode(struct hstate *h, int nid)
 +{
 +	unsigned long i;
@@ -310,14 +355,13 @@ index 81949f6d29af..8fe47d72bb4f 100644
 +	h->max_huge_pages -= (h->max_huge_pages_node[nid] - i);
 +	h->max_huge_pages_node[nid] = i;
 +}
-+
+ 
  static void __init hugetlb_hstate_alloc_pages(struct hstate *h)
  {
  	unsigned long i;
  	nodemask_t *node_alloc_noretry;
- 
 +	bool node_specific_alloc = false;
-+
+ 
 +	/* skip gigantic hugepages allocation if hugetlb_cma enabled */
 +	if (hstate_is_gigantic(h) && hugetlb_cma_size) {
 +		pr_warn_once("HugeTLB: hugetlb_cma is enabled, skip boot time allocation\n");
@@ -372,7 +416,23 @@ index 81949f6d29af..8fe47d72bb4f 100644
  	if (i < h->max_huge_pages) {
  		char buf[32];
  
-@@ -3199,20 +3253,24 @@ static int __init hugetlb_init(void)
+ 		string_get_size(huge_page_size(h), 1, STRING_UNITS_2, buf, 32);
+ 		pr_warn("HugeTLB: allocating %lu of page size %s failed.  Only allocated %lu hugepages.\n",
+ 			h->max_huge_pages, buf, i);
+ 		h->max_huge_pages = i;
+ 	}
+-free:
+ 	kfree(node_alloc_noretry);
+ }
+ 
+ static void __init hugetlb_init_hstates(void)
+ {
+ 	struct hstate *h;
+ 
+ 	for_each_hstate(h) {
+ 		if (minimum_order > huge_page_order(h))
+ 			minimum_order = huge_page_order(h);
+@@ -3199,20 +3250,24 @@ static int __init hugetlb_init(void)
  
  				string_get_size(huge_page_size(&default_hstate),
  					1, STRING_UNITS_2, buf, 32);
@@ -397,7 +457,7 @@ index 81949f6d29af..8fe47d72bb4f 100644
  
  	hugetlb_sysfs_init();
  	hugetlb_register_all_nodes();
-@@ -3259,31 +3317,39 @@ void __init hugetlb_add_hstate(unsigned int order)
+@@ -3259,31 +3314,39 @@ void __init hugetlb_add_hstate(unsigned int order)
  		INIT_LIST_HEAD(&h->hugepage_freelists[i]);
  	INIT_LIST_HEAD(&h->hugepage_activelist);
  	h->next_nid_to_alloc = first_memory_node;
@@ -437,7 +497,7 @@ index 81949f6d29af..8fe47d72bb4f 100644
  	/*
  	 * !hugetlb_max_hstate means we haven't parsed a hugepagesz= parameter
  	 * yet, so this hugepages= parameter goes to the "default hstate".
-@@ -3293,34 +3359,70 @@ static int __init hugepages_setup(char *s)
+@@ -3293,34 +3356,70 @@ static int __init hugepages_setup(char *s)
  	else if (!hugetlb_max_hstate)
  		mhp = &default_hstate_max_huge_pages;
  	else
@@ -510,7 +570,7 @@ index 81949f6d29af..8fe47d72bb4f 100644
   * variable 'parsed_valid_hugepagesz' is used to determine if prior
   * hugepagesz argument was valid.
   */
-@@ -3368,20 +3470,21 @@ static int __init hugepagesz_setup(char *s)
+@@ -3368,20 +3467,21 @@ static int __init hugepagesz_setup(char *s)
  }
  __setup("hugepagesz=", hugepagesz_setup);
  
@@ -532,7 +592,7 @@ index 81949f6d29af..8fe47d72bb4f 100644
  	size = (unsigned long)memparse(s, NULL);
  
  	if (!arch_hugetlb_valid_size(size)) {
-@@ -3396,20 +3499,23 @@ static int __init default_hugepagesz_setup(char *s)
+@@ -3396,20 +3496,23 @@ static int __init default_hugepagesz_setup(char *s)
  
  	/*
  	 * The number of default huge pages (for this size) could have been
@@ -556,3 +616,6 @@ index 81949f6d29af..8fe47d72bb4f 100644
  __setup("default_hugepagesz=", default_hugepagesz_setup);
  
  static unsigned int allowed_mems_nr(struct hstate *h)
+-- 
+2.43.0
+

@@ -1,0 +1,71 @@
+From dcabc0856a2f34fb210a19ac37d3b186fd507d44 Mon Sep 17 00:00:00 2001
+From: Luiz Capitulino <luizcap@redhat.com>
+Date: Mon, 10 Feb 2025 22:48:56 -0500
+Subject: [PATCH 5/5] mm: hugetlb: avoid fallback for specific node allocation
+ of 1G pages
+
+When using the HugeTLB kernel command-line to allocate 1G pages from a
+specific node, such as:
+
+   default_hugepagesz=1G hugepages=1:1
+
+If node 1 happens to not have enough memory for the requested number of 1G
+pages, the allocation falls back to other nodes.  A quick way to reproduce
+this is by creating a KVM guest with a memory-less node and trying to
+allocate 1 1G page from it.  Instead of failing, the allocation will
+fallback to other nodes.
+
+This defeats the purpose of node specific allocation.  Also, specific node
+allocation for 2M pages don't have this behavior: the allocation will just
+fail for the pages it can't satisfy.
+
+This issue happens because HugeTLB calls memblock_alloc_try_nid_raw() for
+1G boot-time allocation as this function falls back to other nodes if the
+allocation can't be satisfied.  Use memblock_alloc_exact_nid_raw()
+instead, which ensures that the allocation will only be satisfied from the
+specified node.
+
+Link: https://lkml.kernel.org/r/20250211034856.629371-1-luizcap@redhat.com
+Fixes: b5389086ad7b ("hugetlbfs: extend the definition of hugepages parameter to support node allocation")
+Signed-off-by: Luiz Capitulino <luizcap@redhat.com>
+Acked-by: Oscar Salvador <osalvador@suse.de>
+Acked-by: David Hildenbrand <david@redhat.com>
+Cc: "Mike Rapoport (IBM)" <rppt@kernel.org>
+Cc: Muchun Song <muchun.song@linux.dev>
+Cc: Zhenguo Yao <yaozhenguo1@gmail.com>
+Cc: Frank van der Linden <fvdl@google.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+ mm/hugetlb.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mm/hugetlb.c b/mm/hugetlb.c
+index 4d5db765dc961..d18aa4980e787 100644
+--- a/mm/hugetlb.c
++++ b/mm/hugetlb.c
+@@ -2447,21 +2447,21 @@ int alloc_bootmem_huge_page(struct hstate *h, int nid)
+ 	__attribute__ ((weak, alias("__alloc_bootmem_huge_page")));
+ int __alloc_bootmem_huge_page(struct hstate *h, int nid)
+ {
+ 	struct huge_bootmem_page *m = NULL; /* initialize for clang */
+ 	int nr_nodes, node;
+ 
+ 	if (nid != NUMA_NO_NODE && nid >= nr_online_nodes)
+ 		return 0;
+ 	/* do node specific alloc */
+ 	if (nid != NUMA_NO_NODE) {
+-		m = memblock_alloc_try_nid_raw(huge_page_size(h), huge_page_size(h),
++		m = memblock_alloc_exact_nid_raw(huge_page_size(h), huge_page_size(h),
+ 				0, MEMBLOCK_ALLOC_ACCESSIBLE, nid);
+ 		if (!m)
+ 			return 0;
+ 		goto found;
+ 	}
+ 	/* allocate from next node when distributing huge pages */
+ 	for_each_node_mask_to_alloc(h, nr_nodes, node, &node_states[N_MEMORY]) {
+ 		m = memblock_alloc_try_nid_raw(
+ 				huge_page_size(h), huge_page_size(h),
+ 				0, MEMBLOCK_ALLOC_ACCESSIBLE, node);
+-- 
+2.43.0
+

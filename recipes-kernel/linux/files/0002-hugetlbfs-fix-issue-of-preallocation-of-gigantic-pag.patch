@@ -1,0 +1,55 @@
+From b4d1d74597660b763c9a623f0e5bbdb70339983c Mon Sep 17 00:00:00 2001
+From: Zhenguo Yao <yaozhenguo1@gmail.com>
+Date: Fri, 10 Dec 2021 14:47:08 -0800
+Subject: [PATCH 2/5] hugetlbfs: fix issue of preallocation of gigantic pages
+ can't work
+
+Preallocation of gigantic pages can't work bacause of commit
+b5389086ad7b ("hugetlbfs: extend the definition of hugepages parameter
+to support node allocation").  When nid is NUMA_NO_NODE(-1),
+alloc_bootmem_huge_page will always return without doing allocation.
+Fix this by adding more check.
+
+Link: https://lkml.kernel.org/r/20211129133803.15653-1-yaozhenguo1@gmail.com
+Fixes: b5389086ad7b ("hugetlbfs: extend the definition of hugepages parameter to support node allocation")
+Signed-off-by: Zhenguo Yao <yaozhenguo1@gmail.com>
+Reviewed-by: Mike Kravetz <mike.kravetz@oracle.com>
+Tested-by: Maxim Levitsky <mlevitsk@redhat.com>
+Reviewed-by: Muchun Song <songmuchun@bytedance.com>
+Reviewed-by: Baolin Wang <baolin.wang@linux.alibaba.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+---
+ mm/hugetlb.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mm/hugetlb.c b/mm/hugetlb.c
+index 992e90ddb674e..e5f8bf84c5d3d 100644
+--- a/mm/hugetlb.c
++++ b/mm/hugetlb.c
+@@ -2443,21 +2443,21 @@ struct page *alloc_huge_page(struct vm_area_struct *vma,
+ 	return ERR_PTR(-ENOSPC);
+ }
+ 
+ int alloc_bootmem_huge_page(struct hstate *h, int nid)
+ 	__attribute__ ((weak, alias("__alloc_bootmem_huge_page")));
+ int __alloc_bootmem_huge_page(struct hstate *h, int nid)
+ {
+ 	struct huge_bootmem_page *m = NULL; /* initialize for clang */
+ 	int nr_nodes, node;
+ 
+-	if (nid >= nr_online_nodes)
++	if (nid != NUMA_NO_NODE && nid >= nr_online_nodes)
+ 		return 0;
+ 	/* do node specific alloc */
+ 	if (nid != NUMA_NO_NODE) {
+ 		m = memblock_alloc_try_nid_raw(huge_page_size(h), huge_page_size(h),
+ 				0, MEMBLOCK_ALLOC_ACCESSIBLE, nid);
+ 		if (!m)
+ 			return 0;
+ 		goto found;
+ 	}
+ 	/* allocate from next node when distributing huge pages */
+-- 
+2.43.0
+

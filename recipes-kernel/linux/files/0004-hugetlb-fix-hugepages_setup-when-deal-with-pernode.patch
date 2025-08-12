@@ -1,0 +1,101 @@
+From 8daa3f28c21bbeb0023c2a92232592876923bb5e Mon Sep 17 00:00:00 2001
+From: Peng Liu <liupeng256@huawei.com>
+Date: Fri, 29 Apr 2022 14:36:57 -0700
+Subject: [PATCH 4/5] hugetlb: fix hugepages_setup when deal with pernode
+
+Hugepages can be specified to pernode since "hugetlbfs: extend the
+definition of hugepages parameter to support node allocation", but the
+following problem is observed.
+
+Confusing behavior is observed when both 1G and 2M hugepage is set
+after "numa=off".
+ cmdline hugepage settings:
+  hugepagesz=1G hugepages=0:3,1:3
+  hugepagesz=2M hugepages=0:1024,1:1024
+ results:
+  HugeTLB registered 1.00 GiB page size, pre-allocated 0 pages
+  HugeTLB registered 2.00 MiB page size, pre-allocated 1024 pages
+
+Furthermore, confusing behavior can be also observed when an invalid node
+behind a valid node.  To fix this, never allocate any typical hugepage
+when an invalid parameter is received.
+
+Link: https://lkml.kernel.org/r/20220413032915.251254-3-liupeng256@huawei.com
+Fixes: b5389086ad7b ("hugetlbfs: extend the definition of hugepages parameter to support node allocation")
+Signed-off-by: Peng Liu <liupeng256@huawei.com>
+Reviewed-by: Mike Kravetz <mike.kravetz@oracle.com>
+Cc: Baolin Wang <baolin.wang@linux.alibaba.com>
+Cc: David Hildenbrand <david@redhat.com>
+Cc: Liu Yuntao <liuyuntao10@huawei.com>
+Cc: Muchun Song <songmuchun@bytedance.com>
+Cc: Zhenguo Yao <yaozhenguo1@gmail.com>
+Cc: Kefeng Wang <wangkefeng.wang@huawei.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+ mm/hugetlb.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/mm/hugetlb.c b/mm/hugetlb.c
+index f9e60094b57af..4d5db765dc961 100644
+--- a/mm/hugetlb.c
++++ b/mm/hugetlb.c
+@@ -3318,20 +3318,34 @@ void __init hugetlb_add_hstate(unsigned int order)
+ 	snprintf(h->name, HSTATE_NAME_LEN, "hugepages-%lukB",
+ 					huge_page_size(h)/1024);
+ 
+ 	parsed_hstate = h;
+ }
+ 
+ bool __init __weak hugetlb_node_alloc_supported(void)
+ {
+ 	return true;
+ }
++
++static void __init hugepages_clear_pages_in_node(void)
++{
++	if (!hugetlb_max_hstate) {
++		default_hstate_max_huge_pages = 0;
++		memset(default_hugepages_in_node, 0,
++			MAX_NUMNODES * sizeof(unsigned int));
++	} else {
++		parsed_hstate->max_huge_pages = 0;
++		memset(parsed_hstate->max_huge_pages_node, 0,
++			MAX_NUMNODES * sizeof(unsigned int));
++	}
++}
++
+ /*
+  * hugepages command line processing
+  * hugepages normally follows a valid hugepagsz or default_hugepagsz
+  * specification.  If not, ignore the hugepages value.  hugepages can also
+  * be the first huge page command line  option in which case it implicitly
+  * specifies the number of huge pages for the default size.
+  */
+ static int __init hugepages_setup(char *s)
+ {
+ 	unsigned long *mhp;
+@@ -3405,20 +3419,21 @@ static int __init hugepages_setup(char *s)
+ 	 */
+ 	if (hugetlb_max_hstate && parsed_hstate->order >= MAX_ORDER)
+ 		hugetlb_hstate_alloc_pages(parsed_hstate);
+ 
+ 	last_mhp = mhp;
+ 
+ 	return 1;
+ 
+ invalid:
+ 	pr_warn("HugeTLB: Invalid hugepages parameter %s\n", p);
++	hugepages_clear_pages_in_node();
+ 	return 0;
+ }
+ __setup("hugepages=", hugepages_setup);
+ 
+ /*
+  * hugepagesz command line processing
+  * A specific huge page size can only be specified once with hugepagesz.
+  * hugepagesz is followed by hugepages on the command line.  The global
+  * variable 'parsed_valid_hugepagesz' is used to determine if prior
+  * hugepagesz argument was valid.
+-- 
+2.43.0
+

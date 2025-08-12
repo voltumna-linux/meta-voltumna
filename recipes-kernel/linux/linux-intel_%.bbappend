@@ -27,7 +27,11 @@ SRC_URI:append = " \
 	file://0001-igb-Stop-PTP-related-workqueues-if-aren-t-necessary.patch \
 	file://resctrl.cfg \
 	file://0001-sched-core-Fix-arch_scale_freq_tick-on-tickless-syst.patch \
-	file://0001-hugetlbfs-extend-the-definition-of-hugepages-paramet.patch \
+        file://0001-hugetlbfs-extend-the-definition-of-hugepages-paramet.patch \
+        file://0002-hugetlbfs-fix-issue-of-preallocation-of-gigantic-pag.patch \
+        file://0003-hugetlbfs-fix-a-truncation-issue-in-hugepages-parame.patch \
+        file://0004-hugetlb-fix-hugepages_setup-when-deal-with-pernode.patch \
+        file://0005-mm-hugetlb-avoid-fallback-for-specific-node-allocati.patch \
 	"
 
 SRC_URI:append:kvm = " \

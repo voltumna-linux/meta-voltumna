@@ -1,0 +1,64 @@
+From 68b74382201d63500b3382755de07ec02c4885a4 Mon Sep 17 00:00:00 2001
+From: Liu Yuntao <liuyuntao10@huawei.com>
+Date: Fri, 25 Feb 2022 19:11:02 -0800
+Subject: [PATCH 3/5] hugetlbfs: fix a truncation issue in hugepages parameter
+
+When we specify a large number for node in hugepages parameter, it may
+be parsed to another number due to truncation in this statement:
+
+	node = tmp;
+
+For example, add following parameter in command line:
+
+	hugepagesz=1G hugepages=4294967297:5
+
+and kernel will allocate 5 hugepages for node 1 instead of ignoring it.
+
+I move the validation check earlier to fix this issue, and slightly
+simplifies the condition here.
+
+Link: https://lkml.kernel.org/r/20220209134018.8242-1-liuyuntao10@huawei.com
+Fixes: b5389086ad7be0 ("hugetlbfs: extend the definition of hugepages parameter to support node allocation")
+Signed-off-by: Liu Yuntao <liuyuntao10@huawei.com>
+Reviewed-by: Mike Kravetz <mike.kravetz@oracle.com>
+Cc: <stable@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+---
+ mm/hugetlb.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/mm/hugetlb.c b/mm/hugetlb.c
+index e5f8bf84c5d3d..f9e60094b57af 100644
+--- a/mm/hugetlb.c
++++ b/mm/hugetlb.c
+@@ -3366,24 +3366,24 @@ static int __init hugepages_setup(char *s)
+ 	while (*p) {
+ 		count = 0;
+ 		if (sscanf(p, "%lu%n", &tmp, &count) != 1)
+ 			goto invalid;
+ 		/* Parameter is node format */
+ 		if (p[count] == ':') {
+ 			if (!hugetlb_node_alloc_supported()) {
+ 				pr_warn("HugeTLB: architecture can't support node specific alloc, ignoring!\n");
+ 				return 0;
+ 			}
++			if (tmp >= nr_online_nodes)
++				goto invalid;
+ 			node = tmp;
+ 			p += count + 1;
+-			if (node < 0 || node >= nr_online_nodes)
+-				goto invalid;
+ 			/* Parse hugepages */
+ 			if (sscanf(p, "%lu%n", &tmp, &count) != 1)
+ 				goto invalid;
+ 			if (!hugetlb_max_hstate)
+ 				default_hugepages_in_node[node] = tmp;
+ 			else
+ 				parsed_hstate->max_huge_pages_node[node] = tmp;
+ 			*mhp += tmp;
+ 			/* Go to parse next node*/
+ 			if (p[count] == ',')
+-- 
+2.43.0
+
