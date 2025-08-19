@@ -7,31 +7,32 @@ LIC_FILES_CHKSUM = "file://LICENSE.txt;md5=855580e1a55a9af704c90fae138fe0d1"
 DEFAULT_PREFERENCE = "-1"
 
 DEPENDS += "\
-	boost \
 	cpptango \
+	${PYTHON_PN}-pybind11 \
 	${PYTHON_PN}-numpy-native \
 	"
 
-SRCREV = "82dff8fe0150a5e57699a7c413bb7367cb6c76c7"
+SRCREV = "2ccbd491d442662307cd02758b416319a9d85ac9"
 SRC_URI = "\
-	gitsm://gitlab.com/tango-controls/pytango.git;protocol=https;branch=stable \
+	gitsm://gitlab.com/tango-controls/pytango.git;protocol=https;branch=cpptango-10.1.0 \
 	file://python3.8-support.patch \
 	"
-
+INSANE_SKIP_${PN} += "buildpaths"
 S = "${WORKDIR}/git"
 
 FILES_${PN} += " ${PYTHON_SITEPACKAGES_DIR}"
-do_install_append() {
-	rm -fr ${D}/*
 
+do_install_append() {
+        rm -fr ${D}/*
 	install -d ${D}${PYTHON_SITEPACKAGES_DIR}
 
 	install -m 0644 ${S}/PyTango/__init__.py ${D}${PYTHON_SITEPACKAGES_DIR}/PyTango.py
 	cp -r ${S}/tango ${D}${PYTHON_SITEPACKAGES_DIR}
 	rm -fr ${D}${PYTHON_SITEPACKAGES_DIR}/tango/databaseds
-	PYTHON_LIBVER="$(echo ${PYTHON_BASEVERSION} | sed 's/\([0-9]*\).\([0-9]*\)/\1\2/g')"
-	install -m 0755 ${B}/_tango.so.${PV} \
-		${D}${PYTHON_SITEPACKAGES_DIR}/tango/_tango.cpython-${PYTHON_LIBVER}-${BUILD_SYS}-gnu.so
+
+        PYTHON_LIBVER="$(echo ${PYTHON_BASEVERSION} | sed 's/\([0-9]*\).\([0-9]*\)/\1\2/g')"
+        install -m 0755 ${B}/_tango.so.${PV}.0 \
+            ${D}${PYTHON_SITEPACKAGES_DIR}/tango/_tango.cpython-${PYTHON_LIBVER}-${BUILD_SYS}-gnu.so
 
 	${PYTHON_PN} ${STAGING_LIBDIR}/${PYTHON_DIR}/py_compile.py ${D}${PYTHON_SITEPACKAGES_DIR}/PyTango.py
 	${PYTHON_PN} ${STAGING_LIBDIR}/${PYTHON_DIR}/py_compile.py ${D}${PYTHON_SITEPACKAGES_DIR}/tango/*.py
@@ -46,7 +47,3 @@ RDEPENDS_${PN} += "\
 inherit pkgconfig cmake python3native python3targetconfig
 
 BBCLASSEXTEND = "nativesdk"
-
-EXTRA_OECMAKE = "\
-	-DBOOST_PYTHON_SUFFIX="38" \
-	"	
