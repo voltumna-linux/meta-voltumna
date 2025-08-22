@@ -4,7 +4,7 @@ mkdir -p /run/rnm-dpdk
 touch /run/rnm-dpdk/rnm.conf
 
 . /etc/rnm.conf
-. /sys/class/net/$RNM_NETIF/device/uevent
+export $(cat /sys/class/net/$RNM_NETIF/device/uevent)
 echo RNM_NETIF=$PCI_SLOT_NAME >> /run/rnm-dpdk/rnm.conf
 
 NAME=$(hostname)-rnm
