@@ -9,9 +9,9 @@ RDEPENDS_${PN} += "omniorb"
 
 DEFAULT_PREFERENCE = "-1"
 
-SRCREV = "9ea5407e26d6dbf3ee787e23725e0f44e69f627a"
+SRCREV = "b3999a86ee8c3e503b3c326e8b899aecfdf4eedf"
 SRC_URI = " \
-	gitsm://gitlab.com/tango-controls/cppTango.git;protocol=https;branch=main \
+	gitsm://gitlab.com/tango-controls/cppTango.git;protocol=https;branch=main;nobranch=1 \
 	"
 
 S = "${WORKDIR}/git"

@@ -1,8 +1,8 @@
 diff --git a/tango/utils.py b/tango/utils.py
-index 6479bfc3..87b0fdc7 100644
+index 9866f371..2691b03b 100644
 --- a/tango/utils.py
 +++ b/tango/utils.py
-@@ -27,20 +27,22 @@ import time
+@@ -32,20 +32,22 @@ import weakref
  import typing
  import numpy as np
  
@@ -15,8 +15,7 @@ index 6479bfc3..87b0fdc7 100644
  
 +from typing import Dict
 +
- from tango import (
-     __auto_die_callbacks_holder,
+ from tango._tango import (
      AttrQuality,
      StdStringVector,
      StdDoubleVector,
@@ -25,7 +24,8 @@ index 6479bfc3..87b0fdc7 100644
      DbDevInfos,
      DbDevExportInfos,
      CmdArgType,
-@@ -2223,21 +2225,21 @@ try:
+     AttrDataFormat,
+@@ -2245,21 +2247,21 @@ try:
              TraceContextTextMapPropagator().inject(carrier)
              traceparent = carrier.get("traceparent", "")
              tracestate = carrier.get("tracestate", "")
