@@ -3,12 +3,12 @@ HOMEPAGE = "http://www.freerdp.com"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
 
-DEPENDS = "openssl libusb1 uriparser cairo icu pkcs11-helper zlib jpeg"
+DEPENDS = "openssl libusb1 uriparser cairo icu pkcs11-helper zlib jpeg json-c"
 
 inherit pkgconfig cmake
 
-SRCREV = "eda5c99686e15327f2f37b9cadf307e852b96adf"
-SRC_URI = "git://github.com/FreeRDP/FreeRDP.git;branch=master;protocol=https"
+SRCREV = "854937b55bbb81a92114cc1e6f5ddcaa8d22a669"
+SRC_URI = "git://github.com/FreeRDP/FreeRDP.git;branch=master;protocol=https;tag=${PV}"
 
 
 CVE_PRODUCT = "freerdp"
@@ -49,7 +49,7 @@ PACKAGECONFIG[manpages] = "-DWITH_MANPAGES=ON,-DWITH_MANPAGES=OFF, libxslt-nativ
 PACKAGECONFIG[ffmpeg] = "-DWITH_DSP_FFMPEG=ON -DWITH_FFMPEG=ON -DWITH_SWSCALE=ON, -DWITH_DSP_FFMPEG=OFF -DWITH_FFMPEG=OFF -DWITH_SWSCALE=OFF,ffmpeg"
 PACKAGECONFIG[krb5] = "-DWITH_KRB5=ON -DWITH_KRB5_NO_NTLM_FALLBACK=OFF,-DWITH_KRB5=OFF,krb5"
 PACKAGECONFIG[openh264] = "-DWITH_OPENH264=ON,-DWITH_OPENH264=OFF,openh264"
-PACKAGECONFIG[opencl] = "-DWITH_OPENCL=ON,-DWITH_OPENCL=OFF,opencl-icd-loader"
+PACKAGECONFIG[opencl] = "-DWITH_OPENCL=ON,-DWITH_OPENCL=OFF,virtual/libopencl1"
 PACKAGECONFIG[lame] = "-DWITH_LAME=ON,-DWITH_LAME=OFF,lame"
 PACKAGECONFIG[faad] = "-DWITH_FAAD=ON,-DWITH_FAAD=OFF,faad2"
 PACKAGECONFIG[faac] = "-DWITH_FAAC=ON,-DWITH_FAAC=OFF,faac"
@@ -59,5 +59,12 @@ do_configure:append() {
     sed -i -e 's|${WORKDIR}||g' ${B}/winpr/include/winpr/buildflags.h
 }
 
+PACKAGES =+ "${PN}-proxy-plugins"
+
+FILES:${PN}-proxy-plugins += "${libdir}/${BPN}/proxy/*.so*"
+
 FILES:${PN} += "${datadir}"
+
 SYSROOT_DIRS += "${bindir}"
+
+INSANE_SKIP:${PN}-proxy-plugins  += "dev-so"
