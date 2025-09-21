@@ -4,13 +4,13 @@ LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=86d3f3a95c324c9479bd8986968f4327"
 SECTION = "base"
 
-inherit pkgconfig cmake
+inherit pkgconfig cmake features_check
+
+REQUIRED_DISTRO_FEATURES = "opencl"
 
 DEPENDS += "opencl-headers"
 
-PROVIDES = "virtual/opencl-icd"
-RPROVIDES:${PN} = "virtual-opencl-icd"
-
+PROVIDES = "virtual/libopencl1"
 
 SRCREV = "861b68b290e76d08e7241608479c16431f529945"
 SRC_URI = "git://github.com/KhronosGroup/OpenCL-ICD-Loader.git;branch=main;protocol=https"
@@ -52,3 +52,4 @@ FILES:libicdlog = "${libdir}/libIcdLog.so"
 FILES:libicdlog-dbg = "${libdir}/.debug/libIcdLog.so"
 
 RDEPENDS:${PN} = "libicdlog"
+RRECOMMENDS:${PN} = "virtual-opencl-icd"
