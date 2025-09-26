@@ -9,7 +9,6 @@ require conf/machine/include/ti-bsp.inc
 # Graphics providers and variables
 require conf/machine/include/mesa-pvr.inc
 PREFERRED_PROVIDER_virtual/gpudriver ?= "${BSP_SGX_DRIVER_PROVIDER}"
-PVR_DISPLAY_CONTROLLER_ALIAS ?= "omapdrm"
 
 KERNEL_IMAGETYPE = "zImage"
 
@@ -60,7 +59,7 @@ MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image-zimage"
 MACHINE_ESSENTIAL_EXTRA_RRECOMMENDS += "amx3-cm3 prueth-fw pruhsr-fw pruprp-fw"
 
 # List common SoC features, may need to add touchscreen for specific machines
-MACHINE_FEATURES = "apm usbgadget usbhost vfat ext2 screen alsa gpu"
+MACHINE_FEATURES = "apm usbgadget usbhost vfat ext2 screen alsa"
 
 IMAGE_FSTYPES += "tar.xz wic.xz wic.bmap"
 WKS_FILE ?= "sdimage-2part.wks"
