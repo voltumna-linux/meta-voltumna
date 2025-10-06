@@ -33,17 +33,19 @@ RDEPENDS_${PN} = "\
 "
 
 SRC_URI = "gitsm://github.com/taisei-project/taisei.git;branch=v1.4.x;protocol=https;tag=v${PV}"
-SRCREV = "02b7c71ae7d7a53202378e384f2cb26df9164f22"
+SRCREV = "6a484e6e61cc51a22a9943762dc2ff6883914f38"
 
 inherit features_check meson mime mime-xdg pkgconfig python3native
 
 REQUIRED_DISTRO_FEATURES = "opengl"
 
-PACKAGECONFIG ??= ""
+PACKAGECONFIG ??= "${@bb.utils.filter('DISTRO_FEATURES', 'lto', d)}"
 
 PACKAGECONFIG[a_null] = "-Da_null=true,-Da_null=false"
 PACKAGECONFIG[developer] = "-Ddeveloper=true,-Ddeveloper=false"
 PACKAGECONFIG[docs] = "-Ddocs=true,-Ddocs=false,python3-docutils-native"
+PACKAGECONFIG[rtti] = "-Dcpp_rtti=true,-Dcpp_rtti=false,"
+PACKAGECONFIG[lto] = "-Db_lto=true,-Db_lto=false,"
 
 EXTRA_OEMESON += "-Dstrip=false"
 
