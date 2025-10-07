@@ -40,6 +40,7 @@ SRC_URI = "http://web.mit.edu/kerberos/dist/${BPN}/${SHRT_VER}/${BP}.tar.gz \
            file://CVE-2025-3576-pre.patch;striplevel=2 \
            file://CVE-2025-3576-01.patch;striplevel=2 \
            file://CVE-2025-3576-02.patch;striplevel=2 \
+           file://CVE-2025-24528.patch;striplevel=2 \
 "
 SRC_URI[md5sum] = "aa4337fffa3b61f22dbd0167f708818f"
 SRC_URI[sha256sum] = "1a4bba94df92f6d39a197a10687653e8bfbc9a2076e129f6eb92766974f86134"
@@ -162,7 +163,8 @@ FILES:${PN}-kdc = "${libdir}/krb5/plugins/kdb/db2.so \
 
 FILES:${PN}-kdc-ldap = "${libdir}/krb5/libkdb_ldap${SOLIBS} \
                         ${libdir}/krb5/plugins/kdb/kldap.so \
-                        ${sbindir}/kdb5_ldap_util"
+                        ${sbindir}/kdb5_ldap_util \
+                        ${libdir}/libkdb_ldap${SOLIBS}"
 
 FILES:${PN}-kpropd = "${sbindir}/kpropd"
 FILES:${PN}-otp = "${libdir}/krb5/plugins/preauth/otp.so"
