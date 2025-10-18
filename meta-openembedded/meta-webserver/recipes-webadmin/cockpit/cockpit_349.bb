@@ -7,16 +7,13 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=4fbd65380cdd255951079008b364516c"
 SRC_URI += " \
     https://github.com/cockpit-project/cockpit/releases/download/${PV}/cockpit-${PV}.tar.xz \
     file://0001-Warn-not-error-if-xsltproc-is-not-found.patch \
-    file://0001-Makefile-common.am-Create-src-common-directory-befor.patch \
     file://cockpit.pam \
     "
-SRC_URI[sha256sum] = "df51ef5920fae69e1b435f657376aa93772c0c1720b954a3bac10ebba26bfedf"
+SRC_URI[sha256sum] = "2fa8eef40968135fb6df866a415eba8d4d5adbf4d44f293f28d4f3c841b301bb"
 
-inherit gettext pkgconfig autotools systemd features_check
-inherit ${@bb.utils.contains('PACKAGECONFIG', 'old-bridge', '', 'python3targetconfig', d)}
+inherit gettext pkgconfig autotools systemd features_check python3targetconfig
 
-DEPENDS += "glib-2.0-native intltool-native gnutls virtual/gettext json-glib krb5 libpam systemd python3-setuptools-native"
-DEPENDS += "${@bb.utils.contains('PACKAGECONFIG', 'old-bridge', '', 'python3-pip-native', d)}"
+DEPENDS += "glib-2.0-native intltool-native gnutls virtual/gettext json-glib krb5 libpam systemd python3-pip-native python3-setuptools-native"
 
 COMPATIBLE_HOST:libc-musl = "null"
 
@@ -112,7 +109,7 @@ FILES:${PN}-bridge = " \
     ${libexecdir}/cockpit-askpass \
     ${PYTHON_SITEPACKAGES_DIR} \
 "
-RDEPENDS:${PN}-bridge = "${@bb.utils.contains('PACKAGECONFIG', 'old-bridge', '', 'python3', d)}"
+RDEPENDS:${PN}-bridge = "python3"
 
 FILES:${PN}-desktop = "${libexecdir}/cockpit-desktop"
 RDEPENDS:${PN}-desktop += "bash"
@@ -174,8 +171,8 @@ FILES:${PN} += " \
     ${nonarch_libdir}/firewalld \
 "
 RDEPENDS:${PN} += "${PN}-bridge"
-# Needs bash for /usr/libexec/cockpit-certificate-helper
-RDEPENDS:${PN} += "bash"
+# Needs bash and mv for /usr/libexec/cockpit-certificate-helper
+RDEPENDS:${PN} += "bash coreutils"
 
 do_install:append() {
     pkgdatadir=${datadir}/cockpit
