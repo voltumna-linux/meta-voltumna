@@ -1,6 +1,6 @@
-From 16b9af737c77b153fca4f36cbdbe94f7416c0b42 Mon Sep 17 00:00:00 2001
+From d714165c8bb3cac420077cfa61e3df87ea7f8b2c Mon Sep 17 00:00:00 2001
 From: Malte Skarupke <malteskarupke@fastmail.fm>
-Date: Mon, 16 Jun 2025 23:38:40 -0700
+Date: Tue, 14 Oct 2025 05:34:06 -0700
 Subject: [PATCH] nptl: Remove unnecessary quadruple check in pthread_cond_wait
 
 pthread_cond_wait was checking whether it was in a closed group no less than
@@ -22,9 +22,10 @@ Removing the duplicate checks clarifies the code.
 
 The following commits have been cherry-picked from Glibc master branch:
 Bug : https://sourceware.org/bugzilla/show_bug.cgi?id=25847
+commit: 4f7b051f8ee3feff1b53b27a906f245afaa9cee1
 
-Upstream-Status: Backport
-[https://sourceware.org/git/?p=glibc.git;a=commit;h=4f7b051f8ee3feff1b53b27a906f245afaa9cee1]
+Upstream-Status: Submitted
+[https://sourceware.org/pipermail/libc-stable/2025-July/002276.html]
 
 Signed-off-by: Sunil Dora <sunilkumar.dora@windriver.com>
 ---
@@ -32,7 +33,7 @@ Signed-off-by: Sunil Dora <sunilkumar.dora@windriver.com>
  1 file changed, 49 deletions(-)
 
 diff --git a/nptl/pthread_cond_wait.c b/nptl/pthread_cond_wait.c
-index cee1968756..47e834cade 100644
+index cee19687..47e834ca 100644
 --- a/nptl/pthread_cond_wait.c
 +++ b/nptl/pthread_cond_wait.c
 @@ -366,7 +366,6 @@ static __always_inline int

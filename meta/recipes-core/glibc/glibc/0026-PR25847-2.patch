@@ -1,6 +1,6 @@
-From 6aab1191e35a3da66e8c49d95178a9d77c119a1f Mon Sep 17 00:00:00 2001
+From 306ea7810f5f6709ef3942a7be75077203b5d201 Mon Sep 17 00:00:00 2001
 From: Malte Skarupke <malteskarupke@fastmail.fm>
-Date: Mon, 16 Jun 2025 23:17:53 -0700
+Date: Tue, 14 Oct 2025 04:27:19 -0700
 Subject: [PATCH] nptl: Update comments and indentation for new condvar
  implementation
 
@@ -9,9 +9,10 @@ Also fixing indentation where it was using spaces instead of tabs.
 
 The following commits have been cherry-picked from Glibc master branch:
 Bug : https://sourceware.org/bugzilla/show_bug.cgi?id=25847
+commit: 0cc973160c23bb67f895bc887dd6942d29f8fee3
 
-Upstream-Status: Backport
-[https://sourceware.org/git/?p=glibc.git;a=commit;h=0cc973160c23bb67f895bc887dd6942d29f8fee3]
+Upstream-Status: Submitted
+[https://sourceware.org/pipermail/libc-stable/2025-July/002275.html]
 
 Signed-off-by: Sunil Dora <sunilkumar.dora@windriver.com>
 ---
@@ -20,7 +21,7 @@ Signed-off-by: Sunil Dora <sunilkumar.dora@windriver.com>
  2 files changed, 22 insertions(+), 22 deletions(-)
 
 diff --git a/nptl/pthread_cond_common.c b/nptl/pthread_cond_common.c
-index 8dd7037923..306a207dd6 100644
+index a55eee3e..350a16fa 100644
 --- a/nptl/pthread_cond_common.c
 +++ b/nptl/pthread_cond_common.c
 @@ -221,8 +221,9 @@ __condvar_quiesce_and_switch_g1 (pthread_cond_t *cond, uint64_t wseq,
@@ -36,7 +37,7 @@ index 8dd7037923..306a207dd6 100644
         __g_signals since it provides enough signals for all possible
         remaining waiters.  As a result, they can each consume a signal
 diff --git a/nptl/pthread_cond_wait.c b/nptl/pthread_cond_wait.c
-index 1cb3dbf7b0..cee1968756 100644
+index 1cb3dbf7..cee19687 100644
 --- a/nptl/pthread_cond_wait.c
 +++ b/nptl/pthread_cond_wait.c
 @@ -249,7 +249,7 @@ __condvar_cleanup_waiting (void *arg)
