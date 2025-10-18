@@ -1,6 +1,6 @@
-From 28a5082045429fdc5a4744d45fdc5b5202528eaa Mon Sep 17 00:00:00 2001
+From 5f22e8cf95cf6b3b2e16ddb03820ae3e77fd420d Mon Sep 17 00:00:00 2001
 From: Malte Skarupke <malteskarupke@fastmail.fm>
-Date: Mon, 16 Jun 2025 23:29:49 -0700
+Date: Tue, 14 Oct 2025 04:47:48 -0700
 Subject: [PATCH] nptl: Remove unnecessary catch-all-wake in condvar group
  switch
 
@@ -15,17 +15,18 @@ switch g1 when it should, so we wouldn't even have entered this code path.
 
 The following commits have been cherry-picked from Glibc master branch:
 Bug : https://sourceware.org/bugzilla/show_bug.cgi?id=25847
+commit: b42cc6af11062c260c7dfa91f1c89891366fed3e
 
-Upstream-Status: Backport
-[https://sourceware.org/git/?p=glibc.git;a=commit;h=b42cc6af11062c260c7dfa91f1c89891366fed3e]
+Upstream-Status: Submitted
+[https://sourceware.org/pipermail/libc-stable/2025-July/002274.html]
 
 Signed-off-by: Sunil Dora <sunilkumar.dora@windriver.com>
 ---
- nptl/pthread_cond_common.c | 30 +-----------------------------
- 1 file changed, 1 insertion(+), 29 deletions(-)
+ nptl/pthread_cond_common.c | 31 +------------------------------
+ 1 file changed, 1 insertion(+), 30 deletions(-)
 
 diff --git a/nptl/pthread_cond_common.c b/nptl/pthread_cond_common.c
-index 306a207dd6..f976a533a1 100644
+index 350a16fa..f976a533 100644
 --- a/nptl/pthread_cond_common.c
 +++ b/nptl/pthread_cond_common.c
 @@ -221,13 +221,7 @@ __condvar_quiesce_and_switch_g1 (pthread_cond_t *cond, uint64_t wseq,
@@ -43,7 +44,7 @@ index 306a207dd6..f976a533a1 100644
  
    /* Update __g1_start, which finishes closing this group.  The value we add
       will never be negative because old_orig_size can only be zero when we
-@@ -240,28 +234,6 @@ __condvar_quiesce_and_switch_g1 (pthread_cond_t *cond, uint64_t wseq,
+@@ -240,29 +234,6 @@ __condvar_quiesce_and_switch_g1 (pthread_cond_t *cond, uint64_t wseq,
  
    unsigned int lowseq = ((old_g1_start + old_orig_size) << 1) & ~1U;
  
@@ -69,6 +70,7 @@ index 306a207dd6..f976a533a1 100644
 -
 -    futex_wake (cond->__data.__g_signals + g1, INT_MAX, private);
 -   }
+-
    /* At this point, the old G1 is now a valid new G2 (but not in use yet).
       No old waiter can neither grab a signal nor acquire a reference without
       noticing that __g1_start is larger.
