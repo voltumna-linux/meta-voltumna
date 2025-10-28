@@ -15,7 +15,7 @@ IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMEN
 	procps psmisc ldd less tzdata tzdata-europe polkit lsof socat stress-ng sed tar xz grep gawk \
 	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip \
 	nfs-utils-client iproute2 iproute2-ip iproute2-devlink ethtool inetutils-ping inetutils-telnet \
-	net-tools curl libnss-resolve strace ltrace gdb libasan libubsan e2fsprogs-mke2fs btop"
+	net-tools curl libnss-resolve strace ltrace gdb libasan libubsan e2fsprogs-mke2fs btop picocom"
 IMAGE_INSTALL:append:x86 = " thermald liblsan libtsan linux-firmware-ice nvme-cli"
 IMAGE_INSTALL:append:x86-64 = " thermald liblsan libtsan linux-firmware-ice nvme-cli"
 
