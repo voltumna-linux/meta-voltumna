@@ -1,24 +1,4 @@
-This is the Debian GNU/Linux package debianutils.
-
-It is an original Debian package.  Programs in it were maintained by
-Guy Maor <maor@debian.org>, and are now maintained by Clint Adams
-<schizo@debian.org>.
-
-All its programs except readlink, savelog, and which may be
-redistributed under the terms of the GNU GPL, Version 2 or later,
-found on Debian systems in the file /usr/share/common-licenses/GPL.
-
-which is in the public domain.
-
-readlink is Copyright (c) 1997 Kenneth Stailey, and may also be
-distributed under the terms of the BSD copyright.
-
-savelog may be redistributed under the following terms: (The rest of
-this file consists of savelog's distribution terms.)
-
-#ident	"@(#)smail:RELEASE-3_2:COPYING,v 1.2 1996/06/14 18:59:10 woods Exp"
-
-		     SMAIL GENERAL PUBLIC LICENSE
+SMAIL GENERAL PUBLIC LICENSE
 		       (Clarified 11 Feb 1988)
 
  Copyright (C)  1988 Landon Curt Noll & Ronald S. Karr
