@@ -12,7 +12,7 @@ DEPENDS += "\
 	${PYTHON_PN}-numpy-native \
 	"
 
-SRCREV = "43a5828dacbb2718e64c3adc9c33e9bff8ea3506"
+SRCREV = "4919735498faf56020c37836f1380d62a0dc805c"
 SRC_URI = "\
 	gitsm://gitlab.com/tango-controls/pytango.git;protocol=https;branch=stable \
 	"
