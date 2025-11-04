@@ -1,4 +1,4 @@
-KBRANCH ?= "v6.12/standard/tiny/base"
+KBRANCH ?= "v6.17/standard/tiny/base"
 
 LINUX_KERNEL_TYPE = "tiny"
 KCONFIG_MODE = "--allnoconfig"
@@ -6,9 +6,9 @@ KCONFIG_MODE = "--allnoconfig"
 require recipes-kernel/linux/linux-yocto.inc
 
 # CVE exclusions
-include recipes-kernel/linux/cve-exclusion_6.12.inc
+include recipes-kernel/linux/cve-exclusion_6.17.inc
 
-LINUX_VERSION ?= "6.12.55"
+LINUX_VERSION ?= "6.17.6"
 LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 
 DEPENDS += "${@bb.utils.contains('ARCH', 'x86', 'elfutils-native', '', d)}"
@@ -17,13 +17,13 @@ DEPENDS += "openssl-native util-linux-native"
 KMETA = "kernel-meta"
 KCONF_BSP_AUDIT_LEVEL = "2"
 
-SRCREV_machine ?= "c77f4d163458157a4c88d9cd9e175543a5d20140"
-SRCREV_meta ?= "3f0dcb29edf14029f130bc493a939b67ea27852e"
+SRCREV_machine ?= "19af2117bca4cf9244bb7b561ddf42c3cd7d51ff"
+SRCREV_meta ?= "b4e4cfd96ab92d6bdf9d4498dde977aa66ee0702"
 
 PV = "${LINUX_VERSION}+git"
 
 SRC_URI = "git://git.yoctoproject.org/linux-yocto.git;branch=${KBRANCH};name=machine;protocol=https \
-           git://git.yoctoproject.org/yocto-kernel-cache;type=kmeta;name=meta;branch=yocto-6.12;destsuffix=${KMETA};protocol=https"
+           git://git.yoctoproject.org/yocto-kernel-cache;type=kmeta;name=meta;branch=yocto-6.17;destsuffix=${KMETA};protocol=https"
 
 COMPATIBLE_MACHINE = "^(qemux86|qemux86-64|qemuarm64|qemuarm|qemuarmv5)$"
 

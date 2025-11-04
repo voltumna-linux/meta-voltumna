@@ -1,50 +1,50 @@
-KBRANCH ?= "v6.12/standard/base"
+KBRANCH ?= "v6.17/standard/base"
 
 require recipes-kernel/linux/linux-yocto.inc
 
 # CVE exclusions
 include recipes-kernel/linux/cve-exclusion.inc
-include recipes-kernel/linux/cve-exclusion_6.12.inc
+include recipes-kernel/linux/cve-exclusion_6.17.inc
 
 # board specific branches
-KBRANCH:qemuarm  ?= "v6.12/standard/arm-versatile-926ejs"
-KBRANCH:qemuarm64 ?= "v6.12/standard/base"
-KBRANCH:qemumips ?= "v6.12/standard/mti-malta32"
-KBRANCH:qemuppc  ?= "v6.12/standard/qemuppc"
-KBRANCH:qemuriscv64  ?= "v6.12/standard/base"
-KBRANCH:qemuriscv32  ?= "v6.12/standard/base"
-KBRANCH:qemux86  ?= "v6.12/standard/base"
-KBRANCH:qemux86.104 ?= "v6.12/standard/base"
-KBRANCH:qemuloongarch64  ?= "v6.12/standard/base"
-KBRANCH:qemumips64 ?= "v6.12/standard/mti-malta64"
+KBRANCH:qemuarm  ?= "v6.17/standard/arm-versatile-926ejs"
+KBRANCH:qemuarm64 ?= "v6.17/standard/base"
+KBRANCH:qemumips ?= "v6.17/standard/mti-malta"
+KBRANCH:qemuppc  ?= "v6.17/standard/qemuppc"
+KBRANCH:qemuriscv64  ?= "v6.17/standard/base"
+KBRANCH:qemuriscv32  ?= "v6.17/standard/base"
+KBRANCH:qemux86  ?= "v6.17/standard/base"
+KBRANCH:qemux86-64 ?= "v6.17/standard/base"
+KBRANCH:qemuloongarch64  ?= "v6.17/standard/base"
+KBRANCH:qemumips64 ?= "v6.17/standard/mti-malta"
 
-SRCREV_machine:qemuarm ?= "e646fbdc560660a283cb67b585c37ae73610c31b"
-SRCREV_machine:qemuarm64 ?= "c77f4d163458157a4c88d9cd9e175543a5d20140"
-SRCREV_machine:qemuloongarch64 ?= "c77f4d163458157a4c88d9cd9e175543a5d20140"
-SRCREV_machine:qemumips ?= "b1b7883585a3e1adce260c566b8986b5c8d5a12e"
-SRCREV_machine:qemuppc ?= "c77f4d163458157a4c88d9cd9e175543a5d20140"
-SRCREV_machine:qemuriscv64 ?= "c77f4d163458157a4c88d9cd9e175543a5d20140"
-SRCREV_machine:qemuriscv32 ?= "c77f4d163458157a4c88d9cd9e175543a5d20140"
-SRCREV_machine:qemux86 ?= "c77f4d163458157a4c88d9cd9e175543a5d20140"
-SRCREV_machine:qemux86-64 ?= "c77f4d163458157a4c88d9cd9e175543a5d20140"
-SRCREV_machine:qemumips64 ?= "74368748436dddfe2b5cef23fe9f4c149709cc97"
-SRCREV_machine ?= "c77f4d163458157a4c88d9cd9e175543a5d20140"
-SRCREV_meta ?= "3f0dcb29edf14029f130bc493a939b67ea27852e"
+SRCREV_machine:qemuarm ?= "565a0d8d4266f4357e9fea437ad72699aed95606"
+SRCREV_machine:qemuarm64 ?= "19af2117bca4cf9244bb7b561ddf42c3cd7d51ff"
+SRCREV_machine:qemuloongarch64 ?= "19af2117bca4cf9244bb7b561ddf42c3cd7d51ff"
+SRCREV_machine:qemumips ?= "62ea92a539f58803a222be98b81118403074206e"
+SRCREV_machine:qemuppc ?= "19af2117bca4cf9244bb7b561ddf42c3cd7d51ff"
+SRCREV_machine:qemuriscv64 ?= "19af2117bca4cf9244bb7b561ddf42c3cd7d51ff"
+SRCREV_machine:qemuriscv32 ?= "19af2117bca4cf9244bb7b561ddf42c3cd7d51ff"
+SRCREV_machine:qemux86 ?= "19af2117bca4cf9244bb7b561ddf42c3cd7d51ff"
+SRCREV_machine:qemux86-64 ?= "19af2117bca4cf9244bb7b561ddf42c3cd7d51ff"
+SRCREV_machine:qemumips64 ?= "9fb4ff0187c85426f21fd40d4c61b742800f65c4"
+SRCREV_machine ?= "19af2117bca4cf9244bb7b561ddf42c3cd7d51ff"
+SRCREV_meta ?= "b4e4cfd96ab92d6bdf9d4498dde977aa66ee0702"
 
 # set your preferred provider of linux-yocto to 'linux-yocto-upstream', and you'll
 # get the <version>/base branch, which is pure upstream -stable, and the same
 # meta SRCREV as the linux-yocto-standard builds. Select your version using the
 # normal PREFERRED_VERSION settings.
 BBCLASSEXTEND = "devupstream:target"
-SRCREV_machine:class-devupstream ?= "fcd03f7736b1fa2b2181a7306d14008aa36b66ed"
+SRCREV_machine:class-devupstream ?= "371f1e070fa95c71356104a406855a361aad5668"
 PN:class-devupstream = "linux-yocto-upstream"
-KBRANCH:class-devupstream = "v6.12/base"
+KBRANCH:class-devupstream = "v6.17/base"
 
 SRC_URI = "git://git.yoctoproject.org/linux-yocto.git;name=machine;branch=${KBRANCH};protocol=https \
-           git://git.yoctoproject.org/yocto-kernel-cache;type=kmeta;name=meta;branch=yocto-6.12;destsuffix=${KMETA};protocol=https"
+           git://git.yoctoproject.org/yocto-kernel-cache;type=kmeta;name=meta;branch=yocto-6.17;destsuffix=${KMETA};protocol=https"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
-LINUX_VERSION ?= "6.12.55"
+LINUX_VERSION ?= "6.17.6"
 
 PV = "${LINUX_VERSION}+git"
 
