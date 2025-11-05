@@ -20,6 +20,7 @@ PTESTS_FAST_META_OE = "\
     jq \
     leveldb \
     libcereal \
+    libdbi-perl \
     libgpiod \
     libjcat \
     libio-pty-perl \
@@ -32,6 +33,7 @@ PTESTS_FAST_META_OE = "\
     libxml++-5.0 \
     libyang \
     lmdb \
+    mbedtls \
     microsoft-gsl \
     minicoredumper \
     minizip-ng \
@@ -71,7 +73,6 @@ PTESTS_SLOW_META_OE:remove:libc-musl = "kernel-selftest"
 
 PTESTS_PROBLEMS_META_OE = "\
     keyutils \
-    libdbi-perl \
     mariadb \
     ostree \
     poco \
