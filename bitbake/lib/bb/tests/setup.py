@@ -148,9 +148,10 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
                 "oe-fragments": ["test-fragment-2"]
             },
             {
-                "name": "gizmo-notemplate-with-thisdir",
-                "description": "Gizmo notemplate configuration using THISDIR",
-                "bb-layers": ["layerC","layerD/meta-layer","{THISDIR}/layerE/meta-layer"],
+                "name": "gizmo-notemplate-with-filerelative-layers",
+                "description": "Gizmo notemplate configuration using filerelative layers",
+                "bb-layers": ["layerC","layerD/meta-layer"],
+                "bb-layers-file-relative": ["layerE/meta-layer"],
                 "oe-fragments": ["test-fragment-2"]
             }
         ]
@@ -177,13 +178,21 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
         self.git('add {}'.format(name), cwd=self.testrepopath)
         self.git('commit -m "Adding {}"'.format(name), cwd=self.testrepopath)
 
-    def check_setupdir_files(self, setuppath, test_file_content, json_config):
+    def check_setupdir_files(self, setuppath, test_file_content):
+        with open(os.path.join(setuppath, 'config', "config-upstream.json")) as f:
+            config_upstream = json.load(f)
         with open(os.path.join(setuppath, 'layers', 'test-repo', 'test-file')) as f:
             self.assertEqual(f.read(), test_file_content)
-        bitbake_config = json_config["bitbake-config"]
+        bitbake_config = config_upstream["bitbake-config"]
         bb_build_path = os.path.join(setuppath, 'build')
         bb_conf_path = os.path.join(bb_build_path, 'conf')
         self.assertTrue(os.path.exists(os.path.join(bb_build_path, 'init-build-env')))
+
+        with open(os.path.join(setuppath, 'config', "sources-fixed-revisions.json")) as f:
+            sources_fixed_revisions = json.load(f)
+        self.assertTrue('test-repo' in sources_fixed_revisions['sources'].keys())
+        revision = self.git('rev-parse HEAD', cwd=self.testrepopath).strip()
+        self.assertEqual(revision, sources_fixed_revisions['sources']['test-repo']['git-remote']['rev'])
 
         if "oe-template" in bitbake_config:
             with open(os.path.join(bb_conf_path, 'conf-summary.txt')) as f:
@@ -196,14 +205,13 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
             with open(os.path.join(bb_conf_path, 'bblayers.conf')) as f:
                 bblayers = f.read()
                 for l in bitbake_config["bb-layers"]:
-                    if l.startswith('{THISDIR}/'):
-                        thisdir_layer = os.path.join(
-                            os.path.dirname(json_config["path"]),
-                            l.removeprefix("{THISDIR}/"),
+                    self.assertIn(os.path.join(setuppath, "layers", l), bblayers)
+                for l in bitbake_config.get("bb-layers-file-relative") or []:
+                    filerelative_layer = os.path.join(
+                            os.path.dirname(config_upstream["path"]),
+                            l,
                         )
-                        self.assertIn(thisdir_layer, bblayers)
-                    else:
-                        self.assertIn(os.path.join(setuppath, "layers", l), bblayers)
+                    self.assertIn(filerelative_layer, bblayers)
 
         if 'oe-fragment' in bitbake_config.keys():
             for f in bitbake_config["oe-fragments"]:
@@ -290,15 +298,13 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
                                                                   'gizmo-env-passthrough',
                                                                   'gizmo-no-fragment',
                                                                   'gadget-notemplate','gizmo-notemplate',
-                                                                  'gizmo-notemplate-with-thisdir')}
+                                                                  'gizmo-notemplate-with-filerelative-layers')}
                                }
         for cf, v in test_configurations.items():
             for c in v['buildconfigs']:
                 out = self.runbbsetup("init --non-interactive {} {}".format(v['cmdline'], c))
                 setuppath = os.path.join(self.tempdir, 'bitbake-builds', '{}-{}'.format(cf, c))
-                with open(os.path.join(setuppath, 'config', "config-upstream.json")) as f:
-                    config_upstream = json.load(f)
-                self.check_setupdir_files(setuppath, test_file_content, config_upstream)
+                self.check_setupdir_files(setuppath, test_file_content)
                 os.environ['BBPATH'] = os.path.join(setuppath, 'build')
                 out = self.runbbsetup("status")
                 self.assertIn("Configuration in {} has not changed".format(setuppath), out[0])
@@ -327,9 +333,7 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
             if c in ('gadget', 'gizmo'):
                 self.assertIn("Existing bitbake configuration directory renamed to {}/build/conf-backup.".format(setuppath), out[0])
                 self.assertIn('-{}+{}'.format(prev_test_file_content, test_file_content), out[0])
-            with open(os.path.join(setuppath, 'config', "config-upstream.json")) as f:
-                config_upstream = json.load(f)
-            self.check_setupdir_files(setuppath, test_file_content, config_upstream)
+            self.check_setupdir_files(setuppath, test_file_content)
 
         # make a new branch in the test layer repo, change a file on that branch,
         # make a new commit, update the top level json config to refer to that branch,
@@ -353,6 +357,4 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
             if c in ('gadget', 'gizmo'):
                 self.assertIn("Existing bitbake configuration directory renamed to {}/build/conf-backup.".format(setuppath), out[0])
                 self.assertIn('-{}+{}'.format(prev_test_file_content, test_file_content), out[0])
-            with open(os.path.join(setuppath, 'config', "config-upstream.json")) as f:
-                config_upstream = json.load(f)
-            self.check_setupdir_files(setuppath, test_file_content, config_upstream)
+            self.check_setupdir_files(setuppath, test_file_content)
