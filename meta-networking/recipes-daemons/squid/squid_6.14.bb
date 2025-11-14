@@ -9,26 +9,29 @@ HOMEPAGE = "http://www.squid-cache.org"
 SECTION = "web"
 LICENSE = "GPL-2.0-or-later"
 
-MAJ_VER = "${@oe.utils.trim_version("${PV}", 1)}"
-MIN_VER = "${@oe.utils.trim_version("${PV}", 2)}"
+PV_U = "${@d.getVar('PV').replace('.', '_')}"
 
-SRC_URI = "http://www.squid-cache.org/Versions/v${MAJ_VER}/${BPN}-${PV}.tar.xz \
+SRC_URI = "https://github.com/squid-cache/${BPN}/releases/download/SQUID_${PV_U}/${BPN}-${PV}.tar.xz \
            file://Set-up-for-cross-compilation.patch \
            file://Skip-AC_RUN_IFELSE-tests.patch \
            file://squid-use-serial-tests-config-needed-by-ptest.patch \
            file://run-ptest \
            file://volatiles.03_squid \
            file://0002-squid-make-squid-conf-tests-run-on-target-device.patch \
+           file://0001-libltdl-remove-reference-to-nonexisting-directory.patch \
            file://squid.nm \
-           file://CVE-2024-37894.patch \
            file://CVE-2025-59362.patch \
            "
 
-SRC_URI[sha256sum] = "1ad72d46e1cb556e9561214f0fb181adb87c7c47927ef69bc8acd68a03f61882"
+SRC_URI[sha256sum] = "9eafe06f58a199b918e79d33d8aa03afb9ae0c11d18974dca0b44c2669cab6dd"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263 \
-                    file://errors/COPYRIGHT;md5=d324bc1f9447d1d1588d75b22a678dc4 \
+                    file://errors/COPYRIGHT;md5=c2a0e15750d3a9743af9109fecc05622 \
                     "
+
+UPSTREAM_CHECK_URI = "https://github.com/squid-cache/${BPN}/releases/"
+UPSTREAM_CHECK_REGEX = "v?(?P<pver>\d+(\.\d+)+)"
+
 DEPENDS = "libtool"
 
 inherit autotools pkgconfig useradd ptest perlnative systemd

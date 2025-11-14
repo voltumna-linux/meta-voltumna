@@ -9,8 +9,10 @@ SECTION = "net"
 LICENSE = "BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=5308494bc0590c0cb036afd781d78f06"
 
-SRC_URI = "git://github.com/NLnetLabs/unbound.git;protocol=https;branch=branch-1.19.3 \
+SRC_URI = "git://github.com/NLnetLabs/unbound.git;protocol=https;nobranch=1 \
            file://CVE-2024-8508.patch \
+           file://CVE-2024-33655.patch \
+           file://CVE-2025-11411.patch \
            "
 SRCREV = "48b6c60a24e9a5d6d369a7a37c9fe2a767f26abd"
 
