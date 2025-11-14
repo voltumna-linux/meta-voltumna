@@ -43,7 +43,12 @@ REQUIRED_DISTRO_FEATURES = "x11"
 
 SHPV = "${@gnome_verdir("${PV}")}"
 
-SRC_URI = "https://download.gimp.org/pub/${BPN}/v${SHPV}/${BP}.tar.bz2"
+SRC_URI = "https://download.gimp.org/pub/${BPN}/v${SHPV}/${BP}.tar.bz2 \
+           file://CVE-2022-30067.patch \
+           file://CVE-2022-32990-1.patch \
+           file://CVE-2022-32990-2.patch \
+           file://CVE-2022-32990-3.patch \
+           "
 SRC_URI[sha256sum] = "88815daa76ed7d4277eeb353358bafa116cd2fcd2c861d95b95135c1d52b67dc"
 
 EXTRA_OECONF = "--disable-python \
@@ -67,3 +72,6 @@ do_compile:prepend() {
 FILES:${PN}  += "${datadir}/metainfo"
 
 RDEPENDS:${PN} += "mypaint-brushes-1.0"
+
+# It has been fixed in version 2.2.16
+CVE_CHECK_IGNORE += "CVE-2007-3741"
