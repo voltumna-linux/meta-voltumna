@@ -8,17 +8,15 @@ import logging
 import os
 import sys
 import argparse
-import warnings
 import json
 import shutil
 import time
-import stat
-import tempfile
 import configparser
 import datetime
 import glob
 import subprocess
 import copy
+import textwrap
 
 default_registry = os.path.normpath(os.path.dirname(__file__) + "/../default-registry")
 
@@ -29,6 +27,12 @@ import bb.msg
 import bb.process
 
 logger = bb.msg.logger_create('bitbake-setup', sys.stdout)
+
+# These settings can only be set in the global context
+GLOBAL_ONLY_SETTINGS = (
+    "top-dir-prefix",
+    "top-dir-name",
+)
 
 def cache_dir(top_dir):
     return os.path.join(top_dir, '.bitbake-setup-cache')
@@ -240,8 +244,8 @@ def setup_bitbake_build(bitbake_config, layerdir, setupdir, thisdir):
     siteconf_symlink = os.path.join(bitbake_confdir, "site.conf")
     siteconf = os.path.normpath(os.path.join(setupdir, '..', "site.conf"))
     if os.path.lexists(siteconf_symlink):
-        os.remove(symlink)
-    os.symlink(os.path.relpath(siteconf, bitbake_confdir) ,siteconf_symlink)
+        os.remove(siteconf_symlink)
+    os.symlink(os.path.relpath(siteconf, bitbake_confdir), siteconf_symlink)
 
 
     init_script = os.path.join(bitbake_builddir, "init-build-env")
@@ -343,7 +347,7 @@ def choose_bitbake_config(configs, parameters, non_interactive):
             raise Exception("Bitbake configuration {} not found; replace with one of {}".format(config_id, configs_dict))
         return configs_dict[config_id]
 
-    enumerated_configs = list(enumerate(flattened_configs))
+    enumerated_configs = list(enumerate(flattened_configs, 1))
     if len(enumerated_configs) == 1:
         only_config = flattened_configs[0]
         print("\nSelecting the only available bitbake configuration {}".format(only_config["name"]))
@@ -356,12 +360,12 @@ def choose_bitbake_config(configs, parameters, non_interactive):
     for n, config_data in enumerated_configs:
         print("{}. {}\t{}".format(n, config_data["name"], config_data["description"]))
     print("\nPlease select one of the above bitbake configurations by its number:")
-    config_n = int_input([i[0] for i in enumerated_configs])
+    config_n = int_input([i[0] for i in enumerated_configs]) - 1
     return flattened_configs[config_n]
 
 def choose_config(configs, non_interactive):
     not_expired_configs = [k for k in configs.keys() if not has_expired(configs[k].get("expires", None))]
-    config_list = list(enumerate(not_expired_configs))
+    config_list = list(enumerate(not_expired_configs, 1))
     if len(config_list) == 1:
         only_config = config_list[0][1]
         print("\nSelecting the only available configuration {}\n".format(only_config))
@@ -380,7 +384,7 @@ def choose_config(configs, non_interactive):
         else:
            print("{}. {}\t{}".format(n, config_name, config_desc))
     print("\nPlease select one of the above configurations by its number:")
-    config_n = int_input([i[0] for i in config_list])
+    config_n = int_input([i[0] for i in config_list]) - 1
     return config_list[config_n][1]
 
 def choose_fragments(possibilities, parameters, non_interactive, skip_selection):
@@ -400,11 +404,11 @@ def choose_fragments(possibilities, parameters, non_interactive, skip_selection)
             raise Exception("Unable to choose from options in non-interactive mode: {}".format(v["options"]))
 
         print("\n" + v["description"] + ":")
-        options_enumerated = list(enumerate(v["options"]))
+        options_enumerated = list(enumerate(v["options"], 1))
         for n,o in options_enumerated:
             print("{}. {}".format(n, o))
         print("\nPlease select one of the above options by its number:")
-        option_n = int_input([i[0] for i in options_enumerated])
+        option_n = int_input([i[0] for i in options_enumerated]) - 1
         choices[k] = options_enumerated[option_n][1]
     return choices
 
@@ -455,12 +459,21 @@ def init_config(top_dir, settings, args, d):
         progress = event.progress if event.progress > 0 else 0
         print("{}% {}                ".format(progress, rate), file=stdout, end='\r')
 
-    create_siteconf(top_dir, args.non_interactive)
+    create_siteconf(top_dir, args.non_interactive, settings)
     source_overrides = json.load(open(args.source_overrides)) if args.source_overrides else {'sources':{}}
     upstream_config = obtain_config(top_dir, settings, args, source_overrides, d)
     print("\nRun 'bitbake-setup init --non-interactive {}' to select this configuration non-interactively.\n".format(" ".join(upstream_config['non-interactive-cmdline-options'])))
 
-    setupdir = os.path.join(os.path.abspath(top_dir), args.setup_dir_name or "{}-{}".format(upstream_config['name']," ".join(upstream_config['non-interactive-cmdline-options'][1:]).replace(" ","-").replace("/","_")))
+    if args.setup_dir_name:
+        setup_dir_name = args.setup_dir_name
+    else:
+        setup_dir_name = "{}-{}".format(upstream_config['name']," ".join(upstream_config['non-interactive-cmdline-options'][1:]).replace(" ","-").replace("/","_"))
+        if not args.non_interactive:
+            n = input(f"Enter setup directory name: [{setup_dir_name}] ")
+            if n:
+                setup_dir_name = n
+
+    setupdir = os.path.join(os.path.abspath(top_dir), setup_dir_name)
     if os.path.exists(os.path.join(setupdir, "layers")):
         print(f"Setup already initialized in:\n    {setupdir}\nUse 'bitbake-setup status' to check if it needs to be updated, or 'bitbake-setup update' to perform the update.\nIf you would like to start over and re-initialize in this directory, remove it, and run 'bitbake-setup init' again.")
         return
@@ -653,21 +666,30 @@ def install_buildtools(top_dir, settings, args, d):
     print("Buildtools archive is downloaded into {} and its content installed into {}".format(buildtools_download_dir, buildtools_install_dir))
     subprocess.check_call("{} -d {} --downloads-directory {}".format(install_buildtools, buildtools_install_dir, buildtools_download_dir), shell=True)
 
-def create_siteconf(top_dir, non_interactive=True):
+def create_siteconf(top_dir, non_interactive, settings):
     siteconfpath = os.path.join(top_dir, 'site.conf')
-    print('A common site.conf file will be created, please edit or replace before running builds\n    {}\n'.format(siteconfpath))
-    if not non_interactive:
-        y_or_n = input('Proceed? (y/N): ')
-        if y_or_n != 'y':
-            exit()
-
-    os.makedirs(os.path.dirname(top_dir), exist_ok=True)
     if os.path.exists(siteconfpath):
-        backup_siteconf = siteconfpath + "-backup.{}".format(time.strftime("%Y%m%d%H%M%S"))
-        os.rename(siteconfpath, backup_siteconf)
-        print("Previous settings are in {}".format(backup_siteconf))
-    with open(siteconfpath, 'w') as siteconffile:
-        siteconffile.write('# This file is intended for build host-specific bitbake settings\n')
+        print('A site.conf file already exists. Please remove it if you would like to replace it with a default one')
+    else:
+        print('A common site.conf file will be created, please edit or replace before running builds\n    {}\n'.format(siteconfpath))
+        if not non_interactive:
+            y_or_n = input('Proceed? (y/N): ')
+            if y_or_n != 'y':
+                exit()
+
+        os.makedirs(os.path.dirname(top_dir), exist_ok=True)
+        with open(siteconfpath, 'w') as siteconffile:
+            siteconffile.write(
+                textwrap.dedent(
+                    """\
+                    # This file is intended for build host-specific bitbake settings
+                    DL_DIR = "{dl_dir}"
+                    """.format(
+                        dl_dir=settings["default"]["dl-dir"],
+                    )
+                )
+            )
+
 
 def topdir_settings_path(top_dir):
     return os.path.join(top_dir, 'settings.conf')
@@ -684,6 +706,9 @@ def load_settings(settings_path):
 
 def change_setting(top_dir, args):
     if vars(args)['global']:
+        settings_path = global_settings_path(args)
+    elif args.setting in GLOBAL_ONLY_SETTINGS:
+        print(f"{args.setting} can only be set in the global config; '--global' is implied")
         settings_path = global_settings_path(args)
     else:
         settings_path = topdir_settings_path(top_dir)
@@ -853,7 +878,7 @@ def main():
 
         builtin_settings = {}
         builtin_settings['default'] = {
-                         'top-dir-prefix':os.path.expanduser('~'),
+                         'top-dir-prefix':os.getcwd(),
                          'top-dir-name':'bitbake-builds',
                          'registry':default_registry,
                          }
