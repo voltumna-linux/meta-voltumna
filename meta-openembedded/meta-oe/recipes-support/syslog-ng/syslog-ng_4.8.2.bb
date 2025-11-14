@@ -29,6 +29,7 @@ SRC_URI:append:powerpc64le = " file://0001-plugin.c-workaround-powerpc64le-segfa
 SRC_URI[sha256sum] = "7d1ebe70746009dc06bd2fa5c412a1985579a9c887292f766cc775d169d60e68"
 
 UPSTREAM_CHECK_URI = "https://github.com/balabit/syslog-ng/releases"
+UPSTREAM_CHECK_REGEX = "releases/tag/syslog-ng-(?P<pver>\d+(\.\d+)+)"
 
 CVE_STATUS[CVE-2022-38725] = "cpe-incorrect: cve-check wrongly matches cpe:2.3:a:oneidentity:syslog-ng:*:*:*:*:premium:*:*:* < 7.0.32"
 
@@ -61,7 +62,6 @@ PACKAGECONFIG[http] = "--enable-http,--disable-http,curl,"
 PACKAGECONFIG[smtp] = "--enable-smtp --with-libesmtp=${STAGING_LIBDIR},--disable-smtp,libesmtp,"
 PACKAGECONFIG[stomp] = "--enable-stomp,--disable-stomp,,"
 PACKAGECONFIG[json] = "--enable-json,--disable-json,json-c,"
-PACKAGECONFIG[tcp-wrapper] = "--enable-tcp-wrapper,--disable-tcp-wrapper,tcp-wrappers,"
 PACKAGECONFIG[geoip] = "--enable-geoip,--disable-geoip,geoip,"
 PACKAGECONFIG[native] = "--enable-native,--disable-native,,"
 PACKAGECONFIG[examples] = "--enable-example-modules,--disable-example-modules,,"
