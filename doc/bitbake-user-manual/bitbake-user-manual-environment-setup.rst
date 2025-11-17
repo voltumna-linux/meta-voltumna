@@ -25,12 +25,20 @@ the following tasks:
 Quick Start
 ===========
 
-#. ``bitbake-setup`` is part of the BitBake repository under
-   ``./bin/bitbake-setup``. To start, run:
+#. If you haven't already, clone the BitBake repository:
 
    .. code-block:: shell
 
-      $ ./bin/bitbake-setup init
+      $ git clone https://git.openembedded.org/bitbake
+
+#. ``bitbake-setup`` is part of the BitBake source tree under
+   ``./bitbake/bin/bitbake-setup``.
+
+   To start, run:
+
+   .. code-block:: shell
+
+      $ ./bitbake/bin/bitbake-setup init
 
    This command will ask you to choose which configurations to use available as
    part of the default BitBake :term:`generic configurations <generic
@@ -43,9 +51,10 @@ Quick Start
       about ``bitbake-setup`` input configuration files.
 
 #. With the default choices, the ``bitbake-setup init`` command creates the
-   following directories::
+   following files and directories::
 
-      ~/bitbake-builds/
+      ./bitbake-builds/
+      ├── site.conf
       └── poky-master-poky-distro_poky-machine_qemux86-64/
           ├── build/
           ├── config/
@@ -53,7 +62,7 @@ Quick Start
 
    With:
 
-   -  ``~/bitbake-build``: the :term:`Top Directory`, where ``bitbake-setup``
+   -  ``./bitbake-builds``: the :term:`Top Directory`, where ``bitbake-setup``
       configures everything. This directory can be configured with the
       :ref:`ref-bbsetup-setting-top-dir-prefix` and
       :ref:`ref-bbsetup-setting-top-dir-name` settings.
@@ -75,6 +84,14 @@ Quick Start
       <bitbake-user-manual/bitbake-user-manual-intro:Layers>` and other
       repositories managed by ``bitbake-setup`` are stored and updated.
 
+   -  ``site.conf``: a BitBake configuration file that contains site specific
+      configurations for your build environment. When it is created, it contains
+      some variable definitions that are based on your current :term:`settings`.
+      Comments in this file will help you understand what these variables
+      correspond to.
+
+      These configurations are shared between the :term:`setups <Setup>`.
+
 #. Source the ``init-build-env`` file present in the :term:`BitBake Build`
    directory:
 
@@ -94,10 +111,11 @@ Terminology
 The ``bitbake-setup`` tool revolves around some common terms we define in this
 section.
 
-``bitbake-setup`` works with a specific hierarchy of directories, that can be
-represented as follows::
+``bitbake-setup`` works with a specific hierarchy of files and directories, that
+can be represented as follows::
 
    Top Directory
+   ├── site.conf
    ├── Setup 1
    │   ├── build/
    │   ├── config/
@@ -121,7 +139,8 @@ The "Top Directory" and "Setup" directories are defined as follows:
       :ref:`ref-bbsetup-setting-top-dir-name` settings.
 
       The top directory contains one or more :term:`Setup` directories, each of
-      them containing a :term:`Setup`.
+      them containing a :term:`Setup`, and a :term:`Site Configuration File`
+      (named ``site.conf``).
 
    :term:`Setup`
       A Setup is the result of the :ref:`ref-bbsetup-command-init`
@@ -135,6 +154,15 @@ The "Top Directory" and "Setup" directories are defined as follows:
       -  Sources such as :ref:`layers
          <bitbake-user-manual/bitbake-user-manual-intro:Layers>` or other
          repositories managed by ``bitbake-setup`` (``layers/`` directory).
+
+   :term:`Site Configuration File`
+      This file named ``site.conf`` is a unique file located in the :term:`Top
+      Directory`, and holds top-level BitBake configuration statements shared
+      between the :term:`Setups <Setup>`.
+
+      When it is created, it contains some variable definitions that are based
+      on your current :term:`settings`. Comments in this file will help you
+      understand what these variables correspond to.
 
 The following components are involved to create the content of these directories:
 
