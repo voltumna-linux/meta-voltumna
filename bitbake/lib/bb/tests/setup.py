@@ -6,6 +6,8 @@
 
 from bb.tests.fetch import FetcherTest
 import json
+import hashlib
+import glob
 
 class BitbakeSetupTest(FetcherTest):
     def setUp(self):
@@ -100,8 +102,7 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
                 },
                 "branch": "%s",
                 "rev": "%s"
-            },
-            "path": "test-repo"
+            }
         }
     },
     "description": "Test configuration",
@@ -311,7 +312,7 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
                 os.environ['BBPATH'] = os.path.join(setuppath, 'build')
                 out = self.runbbsetup("status")
                 self.assertIn("Configuration in {} has not changed".format(setuppath), out[0])
-                out = self.runbbsetup("update")
+                out = self.runbbsetup("update --update-bb-conf='yes'")
                 self.assertIn("Configuration in {} has not changed".format(setuppath), out[0])
 
         # install buildtools
@@ -332,7 +333,7 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
             os.environ['BBPATH'] = os.path.join(setuppath, 'build')
             out = self.runbbsetup("status")
             self.assertIn("Layer repository file://{} checked out into {}/layers/test-repo updated revision master from".format(self.testrepopath, setuppath), out[0])
-            out = self.runbbsetup("update")
+            out = self.runbbsetup("update --update-bb-conf='yes'")
             if c in ('gadget', 'gizmo'):
                 self.assertIn("Existing bitbake configuration directory renamed to {}/build/conf-backup.".format(setuppath), out[0])
                 self.assertIn('-{}+{}'.format(prev_test_file_content, test_file_content), out[0])
@@ -356,8 +357,41 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
             out = self.runbbsetup("status")
             self.assertIn("Configuration in {} has changed:".format(setuppath), out[0])
             self.assertIn('-                    "rev": "master"\n+                    "rev": "another-branch"', out[0])
-            out = self.runbbsetup("update")
+            out = self.runbbsetup("update --update-bb-conf='yes'")
             if c in ('gadget', 'gizmo'):
                 self.assertIn("Existing bitbake configuration directory renamed to {}/build/conf-backup.".format(setuppath), out[0])
                 self.assertIn('-{}+{}'.format(prev_test_file_content, test_file_content), out[0])
             self.check_setupdir_files(setuppath, test_file_content)
+
+        # do the same as the previous test, but now without updating the bitbake configuration (--update-bb-conf=no)
+        # and check that files have not been modified
+        def _conf_chksum(confdir: str) -> list:
+            sums = []
+            for f in glob.glob(f'{confdir}/*'):
+                if os.path.isfile(f) and not os.path.islink(f):
+                    with open(f, 'rb') as fd:
+                        sha = hashlib.sha256()
+                        sha.update(fd.read())
+                        sums.append(os.path.basename(f) + '_' + sha.hexdigest())
+            return sums
+
+        prev_test_file_content = test_file_content
+        test_file_content = 'modified-in-branch-no-bb-conf-update\n'
+        branch = "another-branch-no-bb-conf-update"
+        self.git('checkout -b {}'.format(branch), cwd=self.testrepopath)
+        self.add_file_to_testrepo('test-file', test_file_content)
+        json_1 = self.add_json_config_to_registry('test-config-1.conf.json', branch, branch)
+        for c in ('gadget', 'gizmo',
+                  'gizmo-env-passthrough',
+                  'gizmo-no-fragment',
+                  'gadget-notemplate', 'gizmo-notemplate'):
+            setuppath = os.path.join(self.tempdir, 'bitbake-builds', 'test-config-1-{}'.format(c))
+            os.environ['BBPATH'] = os.path.join(setuppath, 'build')
+            # write something in local.conf and bblayers.conf
+            for f in ["local.conf", "bblayers.conf"]:
+                with open(f"{setuppath}/build/conf/{f}", "w") as fd:
+                    fd.write("deadbeef")
+            sums_before = _conf_chksum(f"{setuppath}/build/conf")
+            out = self.runbbsetup("update --update-bb-conf='no'")
+            sums_after = _conf_chksum(f"{setuppath}/build/conf")
+            self.assertEqual(sums_before, sums_after)
