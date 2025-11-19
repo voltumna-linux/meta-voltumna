@@ -17,6 +17,8 @@ import glob
 import subprocess
 import copy
 import textwrap
+import signal
+import functools
 
 default_registry = os.path.normpath(os.path.dirname(__file__) + "/../default-registry")
 
@@ -93,7 +95,7 @@ def checkout_layers(layers, layerdir, d):
     print("Fetching layer/tool repositories into {}".format(layerdir))
     for r_name in layers:
         r_data = layers[r_name]
-        repodir = r_data["path"]
+        repodir = r_data.get("path", r_name)
         repodirs.append(repodir)
 
         r_remote = r_data['git-remote']
@@ -132,7 +134,7 @@ def checkout_layers(layers, layerdir, d):
 
     return layers_fixed_revisions
 
-def setup_bitbake_build(bitbake_config, layerdir, setupdir, thisdir):
+def setup_bitbake_build(bitbake_config, layerdir, setupdir, thisdir, update_bb_conf):
     def _setup_build_conf(layers, filerelative_layers, build_conf_dir):
         os.makedirs(build_conf_dir)
         layers_s = []
@@ -222,9 +224,13 @@ def setup_bitbake_build(bitbake_config, layerdir, setupdir, thisdir):
         raise Exception("Cannot complete setting up a bitbake build directory from OpenEmbedded template '{}' as oe-setup-build was not found in any layers; please use oe-init-build-env manually.".format(template))
 
     bitbake_confdir = os.path.join(bitbake_builddir, 'conf')
-    backup_bitbake_confdir = bitbake_confdir + "-backup.{}".format(time.strftime("%Y%m%d%H%M%S"))
+    timestamp = time.strftime("%Y%m%d%H%M%S")
+    backup_bitbake_confdir = os.path.join(bitbake_builddir, 'conf-backup.{}'.format(timestamp))
+    upstream_bitbake_confdir = os.path.join(bitbake_builddir, 'conf-upstream.{}'.format(timestamp))
+
     if os.path.exists(bitbake_confdir):
         os.rename(bitbake_confdir, backup_bitbake_confdir)
+        print("Existing bitbake configuration directory renamed to {}".format(backup_bitbake_confdir))
 
     if layers:
         filerelative_layers = bitbake_config.get("bb-layers-file-relative") or []
@@ -255,16 +261,32 @@ def setup_bitbake_build(bitbake_config, layerdir, setupdir, thisdir):
         bb.process.run("{} -c '. {} && bitbake-config-build enable-fragment {}'".format(shell, init_script, " ".join(fragments)))
 
     if os.path.exists(backup_bitbake_confdir):
-        bitbake_config_diff = get_diff(backup_bitbake_confdir, bitbake_confdir)
-        if bitbake_config_diff:
-            print("Existing bitbake configuration directory renamed to {}".format(backup_bitbake_confdir))
-            print("The bitbake configuration has changed:")
-            print(bitbake_config_diff)
-        else:
-            shutil.rmtree(backup_bitbake_confdir)
+        conf_diff = get_diff(backup_bitbake_confdir, bitbake_confdir)
+        if not conf_diff:
+            print('New bitbake configuration from upstream is the same as the current one, no need to update it.')
+            shutil.rmtree(bitbake_confdir)
+            os.rename(backup_bitbake_confdir, bitbake_confdir)
+            return
+
+        print('Upstream bitbake configuration changes were found:')
+        print(conf_diff)
+
+        if update_bb_conf == 'prompt':
+            y_or_n = input('Apply these changes to the current configuration? (y/N): ')
+            if y_or_n != 'y':
+                update_bb_conf = 'no'
+
+        if update_bb_conf == 'no':
+            print('Ignoring upstream bitbake configuration changes')
+            print(f'Leaving the upstream configuration in {upstream_bitbake_confdir}')
+            os.rename(bitbake_confdir, upstream_bitbake_confdir)
+            os.rename(backup_bitbake_confdir, bitbake_confdir)
+            return
+
+        print('Applying upstream bitbake configuration changes')
+        print(f'Leaving the previous configuration in {backup_bitbake_confdir}')
 
     print("This bitbake configuration provides:\n    {}\n".format(bitbake_config["description"]))
-
     readme = """{}\n\nAdditional information is in {} and {}\n
 Source the environment using '. {}' to run builds from the command line.
 The bitbake configuration files (local.conf, bblayers.conf and more) can be found in {}/conf
@@ -289,7 +311,7 @@ def get_registry_config(registry_path, id):
                 return os.path.join(root, f)
     raise Exception("Unable to find {} in available configurations; use 'list' sub-command to see what is available".format(id))
 
-def update_build(config, confdir, setupdir, layerdir, d):
+def update_build(config, confdir, setupdir, layerdir, d, update_bb_conf="prompt"):
     layer_config = copy.deepcopy(config["data"]["sources"])
     layer_overrides = config["source-overrides"]["sources"]
     for k,v in layer_overrides.items():
@@ -298,7 +320,7 @@ def update_build(config, confdir, setupdir, layerdir, d):
     sources_fixed_revisions = checkout_layers(layer_config, layerdir, d)
     bitbake_config = config["bitbake-config"]
     thisdir = os.path.dirname(config["path"]) if config["type"] == 'local' else None
-    setup_bitbake_build(bitbake_config, layerdir, setupdir, thisdir)
+    setup_bitbake_build(bitbake_config, layerdir, setupdir, thisdir, update_bb_conf)
     write_sources_fixed_revisions(confdir, sources_fixed_revisions)
 
 def int_input(allowed_values):
@@ -452,14 +474,16 @@ def obtain_config(top_dir, settings, args, source_overrides, d):
     upstream_config['skip-selection'] = args.skip_selection
     return upstream_config
 
-def init_config(top_dir, settings, args, d):
+def init_config(top_dir, settings, args):
+    create_siteconf(top_dir, args.non_interactive, settings)
+
+    d = init_bb_cache(top_dir, settings, args)
     stdout = sys.stdout
     def handle_task_progress(event, d):
         rate = event.rate if event.rate else ''
         progress = event.progress if event.progress > 0 else 0
         print("{}% {}                ".format(progress, rate), file=stdout, end='\r')
 
-    create_siteconf(top_dir, args.non_interactive, settings)
     source_overrides = json.load(open(args.source_overrides)) if args.source_overrides else {'sources':{}}
     upstream_config = obtain_config(top_dir, settings, args, source_overrides, d)
     print("\nRun 'bitbake-setup init --non-interactive {}' to select this configuration non-interactively.\n".format(" ".join(upstream_config['non-interactive-cmdline-options'])))
@@ -502,7 +526,7 @@ def init_config(top_dir, settings, args, d):
     bb.event.register("bb.build.TaskProgress", handle_task_progress, data=d)
 
     write_upstream_config(confdir, upstream_config)
-    update_build(upstream_config, confdir, setupdir, layerdir, d)
+    update_build(upstream_config, confdir, setupdir, layerdir, d, update_bb_conf="yes")
     commit_config(confdir)
 
     bb.event.remove("bb.build.TaskProgress", None)
@@ -521,7 +545,7 @@ def are_layers_changed(layers, layerdir, d):
     changed = False
     for r_name in layers:
         r_data = layers[r_name]
-        repodir = r_data["path"]
+        repodir = r_data.get("path", r_name)
 
         r_remote = r_data['git-remote']
         rev = r_remote['rev']
@@ -565,14 +589,16 @@ def build_status(top_dir, settings, args, d, update=False):
         print('\nConfiguration in {} has changed:\n{}'.format(setupdir, config_diff))
         if update:
             commit_config(confdir)
-            update_build(new_upstream_config, confdir, setupdir, layerdir, d)
+            update_build(new_upstream_config, confdir, setupdir, layerdir, d,
+                         update_bb_conf=args.update_bb_conf)
         else:
             bb.process.run('git -C {} restore config-upstream.json'.format(confdir))
         return
 
     if are_layers_changed(current_upstream_config["data"]["sources"], layerdir, d):
         if update:
-            update_build(current_upstream_config, confdir, setupdir, layerdir, d)
+            update_build(current_upstream_config, confdir, setupdir, layerdir,
+                         d, update_bb_conf=args.update_bb_conf)
         return
 
     print("\nConfiguration in {} has not changed.".format(setupdir))
@@ -677,12 +703,21 @@ def create_siteconf(top_dir, non_interactive, settings):
             if y_or_n != 'y':
                 exit()
 
-        os.makedirs(os.path.dirname(top_dir), exist_ok=True)
+        os.makedirs(top_dir, exist_ok=True)
         with open(siteconfpath, 'w') as siteconffile:
             siteconffile.write(
                 textwrap.dedent(
                     """\
                     # This file is intended for build host-specific bitbake settings
+
+                    # Where to place downloads
+                    #
+                    # During a first build the system will download many different source code
+                    # tarballs from various upstream projects. This can take a while, particularly
+                    # if your network connection is slow. These are all stored in DL_DIR. When
+                    # wiping and rebuilding you can preserve this directory to speed up this part of
+                    # subsequent builds. This directory is safe to share between multiple builds on
+                    # the same machine too.
                     DL_DIR = "{dl_dir}"
                     """.format(
                         dl_dir=settings["default"]["dl-dir"],
@@ -781,6 +816,15 @@ def merge_settings(builtin_settings, global_settings, topdir_settings, cmdline_s
 
     return all_settings
 
+def sigint_handler(sig, frame, func, top_dir):
+    print(f'\nShutting down...')
+    if isinstance(top_dir, str) and os.path.exists(top_dir):
+        if func in [init_config, build_update]:
+            print(f'{top_dir} may contain an incomplete setup!')
+        elif func == install_buildtools:
+            print(f'{top_dir} may contain an incomplete buildtools installation!')
+    exit()
+
 def main():
     def add_setup_dir_arg(parser):
         setup_dir = get_setup_dir_via_bbpath()
@@ -823,6 +867,7 @@ def main():
 
     parser_update = subparsers.add_parser('update', help='Update a setup to be in sync with configuration')
     add_setup_dir_arg(parser_update)
+    parser_update.add_argument('--update-bb-conf', choices=['prompt', 'yes', 'no'], default='prompt', help='Update bitbake configuration files (bblayers.conf, local.conf) (default: prompt)')
     parser_update.set_defaults(func=build_update)
 
     parser_install_buildtools = subparsers.add_parser('install-buildtools', help='Install buildtools which can help fulfil missing or incorrect dependencies on the host machine')
@@ -886,6 +931,12 @@ def main():
         global_settings = load_settings(global_settings_path(args))
         top_dir = get_top_dir(args, merge_settings(builtin_settings, global_settings, {}, args.cmdline_settings))
 
+        # register handler now to pass top_dir
+        _handler = functools.partial(sigint_handler,
+                                     func=args.func,
+                                     top_dir=os.path.abspath(top_dir))
+        signal.signal(signal.SIGINT, _handler)
+
         # This cannot be set with the rest of the builtin settings as top_dir needs to be determined first
         builtin_settings['default']['dl-dir'] = os.path.join(top_dir, '.bitbake-setup-downloads')
 
@@ -898,8 +949,12 @@ def main():
 
         print('Bitbake-setup is using {} as top directory ("bitbake-setup settings --help" shows how to change it).\n'.format(top_dir, global_settings_path(args)))
 
-        d = init_bb_cache(top_dir, all_settings, args)
-        args.func(top_dir, all_settings, args, d)
+        if args.func == init_config:
+            init_config(top_dir, all_settings, args)
+        else:
+            d = init_bb_cache(top_dir, all_settings, args)
+            args.func(top_dir, all_settings, args, d)
+
         save_bb_cache()
     else:
         from argparse import Namespace
