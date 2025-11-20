@@ -19,6 +19,7 @@ import copy
 import textwrap
 import signal
 import functools
+import string
 
 default_registry = os.path.normpath(os.path.dirname(__file__) + "/../default-registry")
 
@@ -492,6 +493,20 @@ def init_config(top_dir, settings, args):
         setup_dir_name = args.setup_dir_name
     else:
         setup_dir_name = "{}-{}".format(upstream_config['name']," ".join(upstream_config['non-interactive-cmdline-options'][1:]).replace(" ","-").replace("/","_"))
+        if 'setup-dir-name' in upstream_config['bitbake-config']:
+            mapping = {
+                    k: v.replace(" ", "-").replace("/", "_")
+                    for k, v in upstream_config['bitbake-config']['oe-fragment-choices'].items()
+            }
+            config_setup_dir_name = string.Template(upstream_config['bitbake-config']['setup-dir-name']).substitute(mapping)
+            config_setup_dir = os.path.join(top_dir, config_setup_dir_name)
+            if os.path.exists(config_setup_dir):
+                print("Setup directory {} (as suggested by configuration) already exists, using the full name instead.\n".format(config_setup_dir))
+            elif settings['default']['use-full-setup-dir-name'] != 'no':
+                print("Using the full setup directory name instead of {} suggested by configuration, as set in the settings.\n".format(config_setup_dir))
+            else:
+                setup_dir_name = config_setup_dir_name
+
         if not args.non_interactive:
             n = input(f"Enter setup directory name: [{setup_dir_name}] ")
             if n:
@@ -654,10 +669,15 @@ def list_registry(registry_path, with_expired):
                     json_data[config_name] = {"description": config_desc}
     return json_data
 
-def list_configs(top_dir, settings, args, d):
+def list_configs(settings, args):
+    import tempfile
+    top_dir = tempfile.mkdtemp(prefix="bitbake-setup-list-")
+    d = init_bb_cache(top_dir, settings, args)
     registry_path = update_registry(settings["default"]["registry"], cache_dir(top_dir), d)
     json_data = list_registry(registry_path, args.with_expired)
-    print("\nAvailable configurations:")
+    shutil.rmtree(top_dir)
+
+    print("Available configurations:")
     for config_name, config_data in json_data.items():
         expiry_date = config_data.get("expires", None)
         config_desc = config_data["description"]
@@ -697,7 +717,16 @@ def create_siteconf(top_dir, non_interactive, settings):
     if os.path.exists(siteconfpath):
         print('A site.conf file already exists. Please remove it if you would like to replace it with a default one')
     else:
-        print('A common site.conf file will be created, please edit or replace before running builds\n    {}\n'.format(siteconfpath))
+        print(f'{top_dir} looks like a new top directory. If you would like to use a different directory, answer "n" below and either:')
+        print('\t1) Change the default bitbake-setup settings:')
+        print('\t\tbitbake-setup settings set default top-level-prefix <PATH>')
+        print('\t\tbitbake-setup settings set default top-level-name <NAME>')
+        print('\t2) Pass one or more options on the command line to change the top level directory in that invocation only:')
+        print('\t\tbitbake-setup --setting default top-dir-prefix <PATH> ...')
+        print('\t\tbitbake-setup --setting default top-dir-name <NAME> ...')
+        print()
+
+        print('A common site.conf file will be created, please check it is correct before running builds\n    {}\n'.format(siteconfpath))
         if not non_interactive:
             y_or_n = input('Proceed? (y/N): ')
             if y_or_n != 'y':
@@ -926,6 +955,7 @@ def main():
                          'top-dir-prefix':os.getcwd(),
                          'top-dir-name':'bitbake-builds',
                          'registry':default_registry,
+                         'use-full-setup-dir-name':'no',
                          }
 
         global_settings = load_settings(global_settings_path(args))
@@ -946,8 +976,11 @@ def main():
         if args.func == settings_func:
             settings_func(top_dir, all_settings, args)
             return
+        if args.func == list_configs:
+            list_configs(all_settings, args)
+            return
 
-        print('Bitbake-setup is using {} as top directory ("bitbake-setup settings --help" shows how to change it).\n'.format(top_dir, global_settings_path(args)))
+        print('Bitbake-setup is using {} as top directory.\n'.format(top_dir, global_settings_path(args)))
 
         if args.func == init_config:
             init_config(top_dir, all_settings, args)

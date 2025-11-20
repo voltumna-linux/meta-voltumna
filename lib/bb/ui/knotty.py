@@ -39,6 +39,7 @@ interactive = sys.stdout.isatty()
 
 class BBProgress(progressbar.ProgressBar):
     def __init__(self, msg, maxval, widgets=None, extrapos=-1, resize_handler=None):
+        self.id = msg
         self.msg = msg
         self.extrapos = extrapos
         if not widgets:
@@ -84,6 +85,7 @@ class NonInteractiveProgress(object):
     fobj = sys.stdout
 
     def __init__(self, msg, maxval):
+        self.id = msg
         self.msg = msg
         self.maxval = maxval
         self.finished = False
@@ -115,6 +117,20 @@ def pluralise(singular, plural, qty):
     else:
         return plural % qty
 
+def get_pressure_message(pressure_state, pressure_values):
+    cpu_pressure, io_pressure, mem_pressure = pressure_state
+    pressure_strs = []
+    if cpu_pressure:
+        pressure_strs.append("CPU pressure (>%sus)" % pressure_values[1])
+    if io_pressure:
+        pressure_strs.append("I/O pressure (>%sus)" % pressure_values[3])
+    if mem_pressure:
+        pressure_strs.append("MEM pressure (>%sus)" % pressure_values[5])
+
+    if not pressure_strs:
+        pressure_strs.append("No pressure")
+
+    return "%s is limiting task startup" % ", ".join(pressure_strs)
 
 class InteractConsoleLogFilter(logging.Filter):
     def __init__(self, tf):
@@ -122,7 +138,7 @@ class InteractConsoleLogFilter(logging.Filter):
         super().__init__()
 
     def filter(self, record):
-        if record.levelno == bb.msg.BBLogFormatter.NOTE and (record.msg.startswith("Running") or record.msg.startswith("recipe ")):
+        if record.levelno == bb.msg.BBLogFormatter.NOTE and (record.msg.startswith("Running") or record.msg.startswith("recipe ") or "limiting task startup" in record.msg):
             return False
         self.tf.clearFooter()
         return True
@@ -260,16 +276,16 @@ class TerminalFilter(object):
             self.helper.needUpdate = True
             need_update = self.helper.needUpdate
         else:
-            # Do not let to update faster then _DEFAULT_PRINT_INTERVAL
+            # Do not update faster than _DEFAULT_PRINT_INTERVAL
             # to avoid heavy print() flooding.
             need_update = self.helper.needUpdate and (deltatime > self._DEFAULT_PRINT_INTERVAL)
 
-        if self.footer_present and (not need_update):
-            # Footer update is not need.
+        if self.footer_present and not need_update:
+            # Footer update is not needed.
             return
-        else:
-            # Footer update is need and store its "lasttime" value.
-            self.lasttime = currenttime
+ 
+        # Remember the time when the footer was last updated.
+        self.lasttime = currenttime
 
         self.helper.needUpdate = False
         if (not self.helper.tasknumber_total or self.helper.tasknumber_current == self.helper.tasknumber_total) and not len(activetasks):
@@ -281,16 +297,16 @@ class TerminalFilter(object):
         self._footer_buf.seek(0)
 
         tasks = []
-        for t in activetasks.keys():
-            start_time = activetasks[t].get("starttime", None)
+        for task in activetasks.values():
+            start_time = task.get("starttime", None)
             if start_time:
-                msg = "%s - %s (pid %s)" % (activetasks[t]["title"], self.elapsed(currenttime - start_time), activetasks[t]["pid"])
+                msg = "%s - %s (pid %s)" % (task["title"], self.elapsed(currenttime - start_time), task["pid"])
             else:
-                msg = "%s (pid %s)" % (activetasks[t]["title"], activetasks[t]["pid"])
-            progress = activetasks[t].get("progress", None)
+                msg = "%s (pid %s)" % (task["title"], task["pid"])
+            progress = task.get("progress", None)
             if progress is not None:
-                pbar = activetasks[t].get("progressbar", None)
-                rate = activetasks[t].get("rate", None)
+                pbar = task.get("progressbar", None)
+                rate = task.get("rate", None)
                 if not pbar or pbar.bouncing != (progress < 0):
                     if progress < 0:
                         pbar = BBProgress("0: %s" % msg, 100, widgets=[' ', progressbar.BouncingSlider(), ''], extrapos=3, resize_handler=self.sigwinch_handle)
@@ -299,7 +315,7 @@ class TerminalFilter(object):
                         pbar = BBProgress("0: %s" % msg, 100, widgets=[' ', progressbar.Percentage(), ' ', progressbar.Bar(), ''], extrapos=5, resize_handler=self.sigwinch_handle)
                         pbar.bouncing = False
                     pbar.fd = self._footer_buf
-                    activetasks[t]["progressbar"] = pbar
+                    task["progressbar"] = pbar
                 tasks.append((pbar, msg, progress, rate, start_time))
             else:
                 tasks.append(msg)
@@ -319,6 +335,11 @@ class TerminalFilter(object):
                 msg = "Setscene tasks: %s" % scene_tasks
                 content += msg + "\n"
                 print(msg, file=self._footer_buf)
+
+                if any(self.helper.pressure_state):
+                    msg = get_pressure_message(self.helper.pressure_state, self.helper.pressure_values)
+                    content += msg + "\n"
+                    print(msg, file=self._footer_buf)
 
             if self.quiet:
                 msg = "Running tasks (%s, %s)" % (scene_tasks, cur_tasks)
@@ -433,7 +454,8 @@ _evt_list = [ "bb.runqueue.runQueueExitWait", "bb.event.LogExecTTY", "logging.Lo
               "bb.event.MultipleProviders", "bb.event.NoProvider", "bb.runqueue.sceneQueueTaskStarted",
               "bb.runqueue.runQueueTaskStarted", "bb.runqueue.runQueueTaskFailed", "bb.runqueue.sceneQueueTaskFailed",
               "bb.event.BuildBase", "bb.build.TaskStarted", "bb.build.TaskSucceeded", "bb.build.TaskFailedSilent",
-              "bb.build.TaskProgress", "bb.event.ProcessStarted", "bb.event.ProcessProgress", "bb.event.ProcessFinished"]
+              "bb.build.TaskProgress", "bb.event.ProcessStarted", "bb.event.ProcessProgress", "bb.event.ProcessFinished",
+              "bb.runqueue.PSIEvent"]
 
 def drain_events_errorhandling(eventHandler):
     # We don't have logging setup, we do need to show any events we see before exiting
@@ -585,6 +607,10 @@ def main(server, eventHandler, params, tf = TerminalFilter):
                         "handlers": ["BitBake.verbconsolelog"],
                     },
                     "BitBake.RunQueue.HashEquiv": {
+                        "level": "VERBOSE",
+                        "handlers": ["BitBake.verbconsolelog"],
+                    },
+                    "BitBake.RunQueue.PSI": {
                         "level": "VERBOSE",
                         "handlers": ["BitBake.verbconsolelog"],
                     }
@@ -886,23 +912,28 @@ def main(server, eventHandler, params, tf = TerminalFilter):
                 if params.options.quiet > 1:
                     continue
                 termfilter.clearFooter()
+                if parseprogress:
+                    parseprogress.finish()
                 parseprogress = new_progress(event.processname, event.total)
                 parseprogress.start(False)
                 continue
             if isinstance(event, bb.event.ProcessProgress):
                 if params.options.quiet > 1:
                     continue
-                if parseprogress:
+                if parseprogress and parseprogress.id == event.processname:
                     parseprogress.update(event.progress)
-                else:
-                    bb.warn("Got ProcessProgress event for someting that never started?")
                 continue
             if isinstance(event, bb.event.ProcessFinished):
                 if params.options.quiet > 1:
                     continue
-                if parseprogress:
+                if parseprogress and parseprogress.id == event.processname:
                     parseprogress.finish()
-                parseprogress = None
+                    parseprogress = None
+                continue
+            if isinstance(event, bb.runqueue.PSIEvent):
+                if params.options.quiet > 1:
+                    continue
+                logger.info(get_pressure_message(event.pressure_state, event.pressure_values))
                 continue
 
             # ignore
