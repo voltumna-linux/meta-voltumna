@@ -79,7 +79,7 @@ class SkippedPackage:
 
 
 class CookerFeatures(object):
-    _feature_list = [HOB_EXTRA_CACHES, BASEDATASTORE_TRACKING, SEND_SANITYEVENTS, RECIPE_SIGGEN_INFO] = list(range(4))
+    _feature_list = [HOB_EXTRA_CACHES, BASEDATASTORE_TRACKING, SEND_SANITYEVENTS, RECIPE_SIGGEN_INFO, SKIP_FRAGMENTS] = list(range(5))
 
     def __init__(self):
         self._features=set()
@@ -89,6 +89,11 @@ class CookerFeatures(object):
         if f not in CookerFeatures._feature_list:
             return
         self._features.add(f)
+
+    def delFeature(self, f):
+        if f not in self._features:
+            return
+        self._features.remove(f)
 
     def __contains__(self, f):
         return f in self._features
@@ -237,7 +242,10 @@ class BBCooker:
         original_featureset = list(self.featureset)
         for feature in features:
             self.featureset.setFeature(feature)
-        bb.debug(1, "Features set %s (was %s)" % (original_featureset, list(self.featureset)))
+        for orig_feature in original_featureset:
+            if orig_feature not in features:
+                self.featureset.delFeature(orig_feature)
+        bb.debug(1, "Features set %s (was %s)" % (list(self.featureset), original_featureset))
         if (original_featureset != list(self.featureset)) and self.state != State.ERROR and hasattr(self, "data"):
             self.reset()
 
@@ -277,6 +285,11 @@ class BBCooker:
             except ImportError as exc:
                 logger.critical("Unable to import extra RecipeInfo '%s' from '%s': %s" % (cache_name, module_name, exc))
                 raise bb.BBHandledException()
+
+        if CookerFeatures.SKIP_FRAGMENTS in self.featureset:
+            self.enableSkipFragments()
+        else:
+            self.disableSkipFragments()
 
         self.databuilder = bb.cookerdata.CookerDataBuilder(self.configuration, False)
         self.databuilder.parseBaseConfiguration()
@@ -354,6 +367,12 @@ You can also remove the BB_HASHSERVE_UPSTREAM setting, but this may result in si
         self.configuration.tracking = False
         if hasattr(self, "data"):
             self.data.disableTracking()
+
+    def enableSkipFragments(self):
+        self.configuration.skip_fragments = True
+
+    def disableSkipFragments(self):
+        self.configuration.skip_fragments = False
 
     def revalidateCaches(self):
         bb.parse.clear_cache()
