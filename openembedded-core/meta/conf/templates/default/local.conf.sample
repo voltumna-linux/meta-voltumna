@@ -85,8 +85,8 @@ MACHINE ??= "qemux86-64"
 #  - 'package_ipk' for ipk files are used by opkg (a debian style embedded package manager)
 #  - 'package_rpm' for rpm style packages
 # E.g.: PACKAGE_CLASSES ?= "package_rpm package_deb package_ipk"
-# We default to ipk:
-PACKAGE_CLASSES ?= "package_ipk"
+# We default to ipk (via meta/conf/distro/defaultsetup.conf included in meta/conf/bitbake.conf):
+#PACKAGE_CLASSES ?= "package_ipk"
 
 #
 # SDK target architecture
@@ -122,8 +122,10 @@ PACKAGE_CLASSES ?= "package_ipk"
 # There are other features that can be used here too, see
 # meta/classes-recipe/image.bbclass and
 # meta/classes-recipe/core-image.bbclass for more details.
-# We default to allowing root login without a password for convenience.
-EXTRA_IMAGE_FEATURES ?= "allow-empty-password empty-root-password allow-root-login"
+#
+# The following will allow root login without a password for convenience.
+# Use with care, and never in product builds.
+#EXTRA_IMAGE_FEATURES ?= "allow-empty-password empty-root-password allow-root-login"
 
 #
 # Additional image features
