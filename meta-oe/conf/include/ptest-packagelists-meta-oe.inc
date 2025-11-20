@@ -54,6 +54,7 @@ PTESTS_FAST_META_OE = "\
     xmlsec1 \
     zeromq \
     cjson \
+    libplist \
 "
 PTESTS_FAST_META_OE:append:x86 = " mcelog"
 PTESTS_FAST_META_OE:append:x86-64 = " mcelog"
@@ -72,7 +73,7 @@ PTESTS_SLOW_META_OE = "\
 "
 PTESTS_SLOW_META_OE:append:x86 = " kernel-selftest"
 PTESTS_SLOW_META_OE:append:x86-64 = " kernel-selftest"
-PTESTS_SLOW_META_OE:remove:libc-musl = "kernel-selftest mariadb"
+PTESTS_SLOW_META_OE:remove:libc-musl = "kernel-selftest"
 
 PTESTS_PROBLEMS_META_OE = "\
     keyutils \
@@ -81,4 +82,4 @@ PTESTS_PROBLEMS_META_OE = "\
     psqlodbc \
     rsyslog \
 "
-PTESTS_PROBLEMS_META_OE:append:libc-musl = " jemalloc minicoredumper oprofile mariadb"
+PTESTS_PROBLEMS_META_OE:append:libc-musl = " jemalloc minicoredumper oprofile"
