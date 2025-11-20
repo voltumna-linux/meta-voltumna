@@ -19,10 +19,18 @@ SRC_URI = "${SOURCEFORGE_MIRROR}/wvware/${BPN}/${PV}/${BPN}-${PV}.tar.gz;name=ta
            file://libwmf-0.2.8.4-intoverflow.patch \
            file://libwmf-0.2.8.4-useafterfree.patch \
            file://0001-configure-use-pkg-config-for-freetype.patch \
-          "
+           file://CVE-2015-0848-CVE-2015-4588.patch \
+           file://CVE-2015-4695.patch \
+           file://CVE-2015-4696.patch \
+           file://CVE-2016-9011.patch \
+           "
 
 SRC_URI[tarball.md5sum] = "d1177739bf1ceb07f57421f0cee191e0"
 SRC_URI[tarball.sha256sum] = "5b345c69220545d003ad52bfd035d5d6f4f075e65204114a9e875e84895a7cf8"
+
+do_install:append() {
+    sed -i -e 's@${RECIPE_SYSROOT}@@g' ${D}${bindir}/libwmf-config
+}
 
 FILES:${PN}-dbg += "${libdir}/gtk-2.0/2.10.0/loaders/.debug"
 FILES:${PN}-dev += "${libdir}/gtk-2.0/2.10.0/loaders/*.la"
