@@ -28,10 +28,10 @@ class ConfigFragmentsPlugin(LayerPlugin):
         summary = d.getVar('BB_CONF_FRAGMENT_SUMMARY')
         description = d.getVar('BB_CONF_FRAGMENT_DESCRIPTION')
         if not summary:
-            raise Exception('Please add a one-line summary as BB_CONF_FRAGMENT_SUMMARY = \"...\" variable at the beginning of {}'.format(path))
+            bb.fatal('Please add a one-line summary as BB_CONF_FRAGMENT_SUMMARY = "..." variable at the beginning of {}'.format(path))
 
         if not description:
-            raise Exception('Please add a description as BB_CONF_FRAGMENT_DESCRIPTION = \"...\" variable at the beginning of {}'.format(path))
+            bb.fatal('Please add a description as BB_CONF_FRAGMENT_DESCRIPTION = "..." variable at the beginning of {}'.format(path))
 
         return summary, description
 
@@ -75,11 +75,13 @@ class ConfigFragmentsPlugin(LayerPlugin):
                  print('{}\tSets {} = "{}"'.format(f, builtin_dict[prefix], value))
             print('')
 
+        allfragments = self.discover_fragments()
+
         all_enabled_fragments = (self.tinfoil.config_data.getVar('OE_FRAGMENTS') or "").split()
         all_builtin_fragments = (self.tinfoil.config_data.getVar('OE_FRAGMENTS_BUILTIN') or "").split()
         print_builtin_fragments(all_builtin_fragments, all_enabled_fragments)
 
-        for layername, layerdata in self.discover_fragments().items():
+        for layername, layerdata in allfragments.items():
             layerdir = layerdata['layerdir']
             fragments = layerdata['fragments']
             enabled_fragments = [f for f in fragments if f['name'] in all_enabled_fragments]
@@ -115,7 +117,11 @@ class ConfigFragmentsPlugin(LayerPlugin):
     def create_conf(self, confpath):
         if not os.path.exists(confpath):
             with open(confpath, 'w') as f:
-                f.write('# Automated config file controlled by tools\n')
+                f.write("""# Automated config file controlled by tools
+#
+# Run 'bitbake-config-build enable-fragment <fragment-name>' to enable additional fragments
+# or replace built-in ones (e.g. machine/<name> or distro/<name> to change MACHINE or DISTRO).
+""")
         with open(confpath, 'r') as f:
             lines = f.read()
         if "OE_FRAGMENTS += " not in lines:
@@ -139,7 +145,7 @@ class ConfigFragmentsPlugin(LayerPlugin):
         fragments = self.discover_fragments()
         for f in args.fragmentname:
             if not self.get_fragment(f, fragments) and not self.builtin_fragment_exists(f):
-                raise Exception("Fragment {} does not exist; use 'list-fragments' to see the full list.".format(f))
+                bb.fatal("Fragment {} does not exist; use 'list-fragments' to see the full list.".format(f))
 
         self.create_conf(args.confpath)
         modified = bb.utils.edit_metadata_file(args.confpath, ["OE_FRAGMENTS"], enable_helper)
@@ -197,7 +203,9 @@ class ConfigFragmentsPlugin(LayerPlugin):
 
         parser_enable_fragment = self.add_command(sp, 'enable-fragment', self.do_enable_fragment, parserecipes=False)
         parser_enable_fragment.add_argument("--confpath", default=default_confpath, help='Configuration file which contains a list of enabled fragments (default is {}).'.format(default_confpath))
-        parser_list_fragments.add_argument('--quiet', '-q', action='store_true', help='Do not print descriptions of the newly enabled fragments')
+        # Store the quiet argument in quiet_dummy. This is because --quiet is a
+        # global option and this one is only here to add an entry for --help.
+        parser_enable_fragment.add_argument('--quiet', '-q', action='store_true', dest='quiet_dummy', help='Do not print descriptions of the newly enabled fragments')
         parser_enable_fragment.add_argument('fragmentname', help='The name of the fragment (use list-fragments to see them)', nargs='+')
 
         parser_disable_fragment = self.add_command(sp, 'disable-fragment', self.do_disable_fragment, parserecipes=False)
