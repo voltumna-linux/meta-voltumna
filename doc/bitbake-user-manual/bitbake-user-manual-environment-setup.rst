@@ -334,7 +334,7 @@ In addition, the command can take the following arguments:
 
    .. code-block:: shell
 
-      $ ./bitbake/bin/bitbake-setup init https://git.openembedded.org/bitbake/plain/default-registry/configurations/oe-nodistro.conf.json
+      $ ./bitbake/bin/bitbake-setup init https://git.openembedded.org/bitbake/plain/default-registry/configurations/oe-nodistro-master.conf.json
 
 -  This example initializes a :term:`Setup` with: 
 
@@ -662,7 +662,7 @@ They contain the following sections:
                  "git-remote": {
                      "remotes": {
                          "origin": {
-                             "uri": "git://git.openembedded.org/bitbake;protocol=https"
+                             "uri": "https://git.openembedded.org/bitbake"
                          }
                      },
                      "branch": "master",
@@ -675,9 +675,8 @@ They contain the following sections:
 
    Sources can be specified with the following options:
 
-   -  ``uri`` (**required**): a URI that follows the BitBake Git fetcher syntax.
-      See the :doc:`/bitbake-user-manual/bitbake-user-manual-fetching` section
-      for more information on the Git fetcher.
+   -  ``uri`` (**required**): a URI that follows the git URI syntax.
+      See https://git-scm.com/docs/git-clone#_git_urls for more information.
 
    -  ``rev`` (**required**): the revision to checkout. Can be the name of the
       branch to checkout on the latest revision of the specified ``branch``.
@@ -846,7 +845,7 @@ Generic Configuration Examples
 
 OpenEmbedded "nodistro" configuration for master branches:
 
-.. literalinclude:: ../../default-registry/configurations/oe-nodistro.conf.json
+.. literalinclude:: ../../default-registry/configurations/oe-nodistro-master.conf.json
    :language: json
 
 Poky distribution configuration for master branches:
@@ -879,7 +878,7 @@ Here is an example file that overrides the branch of the BitBake repository to
                    "branch": "master-next",
                    "remotes": {
                        "origin": {
-                           "uri": "git://git.openembedded.org/bitbake;protocol=https"
+                           "uri": "https://git.openembedded.org/bitbake"
                        }
                    },
                    "rev": "master-next"
