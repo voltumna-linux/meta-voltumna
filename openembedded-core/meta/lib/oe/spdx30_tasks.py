@@ -503,7 +503,13 @@ def create_spdx(d):
     if include_vex != "none":
         patched_cves = oe.cve_check.get_patched_cves(d)
         for cve_id in patched_cves:
-            mapping, detail, description = oe.cve_check.decode_cve_status(d, cve_id)
+            # decode_cve_status is decoding CVE_STATUS, so patch files need to be hardcoded
+            if cve_id in (d.getVarFlags("CVE_STATUS") or {}):
+                mapping, detail, description = oe.cve_check.decode_cve_status(d, cve_id)
+            else:
+                mapping = "Patched"
+                detail = "backported-patch"  # fix-file-included is not available in scarthgap
+                description = None
 
             if not mapping or not detail:
                 bb.warn(f"Skipping {cve_id} — missing or unknown CVE status")
@@ -625,6 +631,14 @@ def create_spdx(d):
             )
             set_var_field("SUMMARY", spdx_package, "summary", package=package)
             set_var_field("DESCRIPTION", spdx_package, "description", package=package)
+
+            if d.getVar("SPDX_PACKAGE_URL:%s" % package) or d.getVar("SPDX_PACKAGE_URL"):
+                set_var_field(
+                    "SPDX_PACKAGE_URL",
+                    spdx_package,
+                    "software_packageUrl",
+                    package=package
+                )
 
             pkg_objset.new_scoped_relationship(
                 [oe.sbom30.get_element_link_id(build)],
