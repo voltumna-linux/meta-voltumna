@@ -12,6 +12,7 @@ PTESTS_FAST_META_OE = "\
     cli11 \
     cmocka \
     cunit \
+    ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'dbus-broker', '', d)} \
     duktape \
     exiv2 \
     fuse3 \
@@ -53,6 +54,7 @@ PTESTS_FAST_META_OE = "\
     utf8proc \
     uthash \
     xmlsec1 \
+    ${@bb.utils.contains('DISTRO_FEATURES', 'pam', 'xrdp', '', d)} \
     zeromq \
     cjson \
     libplist \

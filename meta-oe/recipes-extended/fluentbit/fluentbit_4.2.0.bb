@@ -17,7 +17,7 @@ DEPENDS = "\
 "
 DEPENDS:append:libc-musl = " fts"
 
-SRCREV = "b12e507090273576d1156342780c7c6d358fa579"
+SRCREV = "6bc014390c5485b96521c56b98369b44b9faa08b"
 SRC_URI = "\
     git://github.com/fluent/fluent-bit.git;branch=master;protocol=https \
     file://0001-lib-Do-not-use-private-makefile-targets-in-CMakelist.patch \
@@ -26,7 +26,6 @@ SRC_URI = "\
 "
 SRC_URI:append:libc-musl = "\
     file://0004-chunkio-Link-with-fts-library-with-musl.patch \
-    file://0005-Use-posix-strerror_r-with-musl.patch \
 "
 
 # prefix tag with "v" to avoid upgrade to random tags like "20220215"
@@ -58,10 +57,11 @@ PACKAGECONFIG ??= "\
 PACKAGECONFIG:remove:toolchain-clang = "ipo"
 
 # Use system libs
-PACKAGECONFIG[prefer-system-libs] = "-DFLB_PREFER_SYSTEM_LIBS=Yes,-DFLB_PREFER_SYSTEM_LIBS=No, nghttp2 c-ares"
+PACKAGECONFIG[prefer-system-libs] = "-DFLB_PREFER_SYSTEM_LIBS=Yes,-DFLB_PREFER_SYSTEM_LIBS=No, nghttp2 c-ares msgpack-c zstd"
 DEPENDS += " ${@bb.utils.contains('PACKAGECONFIG', 'prefer-system-libs backtrace', 'libbacktrace', '', d)}"
 DEPENDS += " ${@bb.utils.contains('PACKAGECONFIG', 'prefer-system-libs jemalloc', 'jemalloc', '', d)}"
 DEPENDS += " ${@bb.utils.contains('PACKAGECONFIG', 'prefer-system-libs luajit', 'luajit', '', d)}"
+DEPENDS += " ${@bb.utils.contains('PACKAGECONFIG', 'prefer-system-libs sqldb', 'sqlite3', '', d)}"
 
 PACKAGECONFIG[all] = "-DFLB_ALL=Yes,-DFLB_ALL=No"
 PACKAGECONFIG[arrow] = "-DFLB_ARROW=Yes,-DFLB_ARROW=No"
