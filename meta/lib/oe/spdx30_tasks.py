@@ -356,77 +356,78 @@ def add_download_files(d, objset):
     for download_idx, src_uri in enumerate(urls):
         fd = fetch.ud[src_uri]
 
-        file_name = os.path.basename(fetch.localpath(src_uri))
-        if oe.patch.patch_path(src_uri, fetch, "", expand=False):
-            primary_purpose = oe.spdx30.software_SoftwarePurpose.patch
-        else:
-            primary_purpose = oe.spdx30.software_SoftwarePurpose.source
+        for name in fd.names:
+            file_name = os.path.basename(fetch.localpath(src_uri))
+            if oe.patch.patch_path(src_uri, fetch, "", expand=False):
+                primary_purpose = oe.spdx30.software_SoftwarePurpose.patch
+            else:
+                primary_purpose = oe.spdx30.software_SoftwarePurpose.source
 
-        if fd.type == "file":
-            if os.path.isdir(fd.localpath):
-                walk_idx = 1
-                for root, dirs, files in os.walk(fd.localpath, onerror=walk_error):
-                    dirs.sort()
-                    files.sort()
-                    for f in files:
-                        f_path = os.path.join(root, f)
-                        if os.path.islink(f_path):
-                            # TODO: SPDX doesn't support symlinks yet
-                            continue
+            if fd.type == "file":
+                if os.path.isdir(fd.localpath):
+                    walk_idx = 1
+                    for root, dirs, files in os.walk(fd.localpath, onerror=walk_error):
+                        dirs.sort()
+                        files.sort()
+                        for f in files:
+                            f_path = os.path.join(root, f)
+                            if os.path.islink(f_path):
+                                # TODO: SPDX doesn't support symlinks yet
+                                continue
 
-                        file = objset.new_file(
-                            objset.new_spdxid(
-                                "source", str(download_idx + 1), str(walk_idx)
-                            ),
-                            os.path.join(
-                                file_name, os.path.relpath(f_path, fd.localpath)
-                            ),
-                            f_path,
-                            purposes=[primary_purpose],
-                        )
+                            file = objset.new_file(
+                                objset.new_spdxid(
+                                    "source", str(download_idx + 1), str(walk_idx)
+                                ),
+                                os.path.join(
+                                    file_name, os.path.relpath(f_path, fd.localpath)
+                                ),
+                                f_path,
+                                purposes=[primary_purpose],
+                            )
 
-                        inputs.add(file)
-                        walk_idx += 1
+                            inputs.add(file)
+                            walk_idx += 1
+
+                else:
+                    file = objset.new_file(
+                        objset.new_spdxid("source", str(download_idx + 1)),
+                        file_name,
+                        fd.localpath,
+                        purposes=[primary_purpose],
+                    )
+                    inputs.add(file)
 
             else:
-                file = objset.new_file(
-                    objset.new_spdxid("source", str(download_idx + 1)),
-                    file_name,
-                    fd.localpath,
-                    purposes=[primary_purpose],
-                )
-                inputs.add(file)
-
-        else:
-            dl = objset.add(
-                oe.spdx30.software_Package(
-                    _id=objset.new_spdxid("source", str(download_idx + 1)),
-                    creationInfo=objset.doc.creationInfo,
-                    name=file_name,
-                    software_primaryPurpose=primary_purpose,
-                    software_downloadLocation=oe.spdx_common.fetch_data_to_uri(
-                        fd, fd.names[0]
-                    ),
-                )
-            )
-
-            if fd.method.supports_checksum(fd):
-                # TODO Need something better than hard coding this
-                for checksum_id in ["sha256", "sha1"]:
-                    expected_checksum = getattr(
-                        fd, "%s_expected" % checksum_id, None
+                dl = objset.add(
+                    oe.spdx30.software_Package(
+                        _id=objset.new_spdxid("source", str(download_idx + 1)),
+                        creationInfo=objset.doc.creationInfo,
+                        name=file_name,
+                        software_primaryPurpose=primary_purpose,
+                        software_downloadLocation=oe.spdx_common.fetch_data_to_uri(
+                            fd, name
+                        ),
                     )
-                    if expected_checksum is None:
-                        continue
+                )
 
-                    dl.verifiedUsing.append(
-                        oe.spdx30.Hash(
-                            algorithm=getattr(oe.spdx30.HashAlgorithm, checksum_id),
-                            hashValue=expected_checksum,
+                if fd.method.supports_checksum(fd):
+                    # TODO Need something better than hard coding this
+                    for checksum_id in ["sha256", "sha1"]:
+                        expected_checksum = getattr(
+                            fd, "%s_expected" % checksum_id, None
                         )
-                    )
+                        if expected_checksum is None:
+                            continue
 
-            inputs.add(dl)
+                        dl.verifiedUsing.append(
+                            oe.spdx30.Hash(
+                                algorithm=getattr(oe.spdx30.HashAlgorithm, checksum_id),
+                                hashValue=expected_checksum,
+                            )
+                        )
+
+                inputs.add(dl)
 
     return inputs
 
@@ -450,6 +451,22 @@ def set_purposes(d, element, *var_names, force_purposes=[]):
     element.software_additionalPurpose = [
         getattr(oe.spdx30.software_SoftwarePurpose, p) for p in purposes[1:]
     ]
+
+
+def _get_cves_info(d):
+    patched_cves = oe.cve_check.get_patched_cves(d)
+    for cve_id in (d.getVarFlags("CVE_STATUS") or {}):
+        mapping, detail, description = oe.cve_check.decode_cve_status(d, cve_id)
+        if not mapping or not detail:
+            bb.warn(f"Skipping {cve_id} — missing or unknown CVE status")
+            continue
+        yield cve_id, mapping, detail, description
+        patched_cves.discard(cve_id)
+
+    # decode_cve_status is decoding CVE_STATUS, so patch files need to be hardcoded
+    for cve_id in patched_cves:
+        # fix-file-included is not available in scarthgap
+        yield cve_id, "Patched", "backported-patch", None
 
 
 def create_spdx(d):
@@ -501,20 +518,7 @@ def create_spdx(d):
     # Add CVEs
     cve_by_status = {}
     if include_vex != "none":
-        patched_cves = oe.cve_check.get_patched_cves(d)
-        for cve_id in patched_cves:
-            # decode_cve_status is decoding CVE_STATUS, so patch files need to be hardcoded
-            if cve_id in (d.getVarFlags("CVE_STATUS") or {}):
-                mapping, detail, description = oe.cve_check.decode_cve_status(d, cve_id)
-            else:
-                mapping = "Patched"
-                detail = "backported-patch"  # fix-file-included is not available in scarthgap
-                description = None
-
-            if not mapping or not detail:
-                bb.warn(f"Skipping {cve_id} — missing or unknown CVE status")
-                continue
-
+        for cve_id, mapping, detail, description in _get_cves_info(d):
             # If this CVE is fixed upstream, skip it unless all CVEs are
             # specified.
             if (
