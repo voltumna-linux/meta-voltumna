@@ -33,18 +33,15 @@ LIC_FILES_CHKSUM = " \
     file://tests/testgtk.c;endline=25;md5=49d06770681b8322466b52ed19d29fb2 \
 "
 
-MAJ_VER = "${@oe.utils.trim_version("${PV}", 2)}"
+SRC_URI[archive.sha256sum] = "5e8240edecafaff2b8baf4663bdceaa668ef10a207bee4d7f90e010e10bddc5c"
 
-UPSTREAM_CHECK_REGEX = "gtk-(?P<pver>\d+\.(\d*[02468])+(\.\d+)+)\.tar.xz"
-
-SRC_URI = "http://ftp.gnome.org/pub/gnome/sources/gtk/${MAJ_VER}/gtk-${PV}.tar.xz"
-SRC_URI[sha256sum] = "e1817c650ddc3261f9a8345b3b22a26a5d80af154630dedc03cc7becefffd0fa"
-
-S = "${UNPACKDIR}/gtk-${PV}"
+S = "${UNPACKDIR}/${GNOMEBN}-${PV}"
 
 CVE_PRODUCT = "gnome:gtk"
 
-inherit meson gettext pkgconfig gi-docgen update-alternatives gsettings features_check gobject-introspection
+GNOMEBN = "gtk"
+
+inherit gettext gnomebase gi-docgen update-alternatives gsettings features_check gobject-introspection
 
 # TBD: nativesdk
 # gobject-introspection.bbclass pins introspection off for nativesk. As long as
@@ -69,7 +66,7 @@ PACKAGECONFIG:class-nativesdk = "${@bb.utils.filter('DISTRO_FEATURES', 'x11', d)
 PACKAGECONFIG[x11] = "-Dx11-backend=true,-Dx11-backend=false,at-spi2-atk fontconfig libx11 libxext libxcursor libxi libxdamage libxrandr libxrender libxcomposite libxfixes xinerama"
 PACKAGECONFIG[wayland] = "-Dwayland-backend=true,-Dwayland-backend=false,wayland wayland-protocols virtual/egl virtual/libgles2 wayland-native"
 PACKAGECONFIG[cloudproviders] = "-Dcloudproviders=enabled,-Dcloudproviders=disabled,libcloudproviders"
-PACKAGECONFIG[cups] = "-Dprint-cups=enabled,-Dprint-cups=disabled,cups,cups gtk4-printbackend-cups"
+PACKAGECONFIG[cups] = "-Dprint-cups=enabled,-Dprint-cups=disabled,cups,cups"
 PACKAGECONFIG[colord] = "-Dcolord=enabled,-Dcolord=disabled,colord"
 PACKAGECONFIG[iso-codes] = ",,iso-codes,iso-codes"
 # gtk4 wants gstreamer-player-1.0 -> gstreamer1.0-plugins-bad
@@ -84,10 +81,9 @@ CFLAGS += "-Wno-error=int-conversion"
 LIBV = "4.0.0"
 
 FILES:${PN}:append = " \
-    ${datadir}/glib-2.0/schemas/ \
+    ${datadir}/bash-completion \
     ${datadir}/gtk-4.0/emoji/ \
     ${datadir}/metainfo/ \
-    ${datadir}/icons/hicolor/*/apps/org.gtk.PrintEditor4*.* \
     ${libdir}/gtk-4.0/${LIBV}/media \
     ${bindir}/gtk4-update-icon-cache \
     ${bindir}/gtk4-launch \
@@ -121,14 +117,8 @@ RRECOMMENDS:${PN} = "${GTKBASE_RRECOMMENDS}"
 RRECOMMENDS:${PN}:libc-glibc = "${GTKGLIBC_RRECOMMENDS}"
 RDEPENDS:${PN}-dev += "${@bb.utils.contains("PACKAGECONFIG", "wayland", "wayland-protocols", "", d)}"
 
-PACKAGES_DYNAMIC += "^gtk4-printbackend-.*"
 python populate_packages:prepend () {
     import os.path
-
-    gtk_libdir = d.expand('${libdir}/gtk-4.0/${LIBV}')
-    printmodules_root = os.path.join(gtk_libdir, 'printbackends');
-
-    do_split_packages(d, printmodules_root, r'^libprintbackend-(.*)\.so$', 'gtk4-printbackend-%s', 'GTK printbackend module for %s')
 
     if (d.getVar('DEBIAN_NAMES')):
         d.setVar(d.expand('PKG:${PN}'), '${MLPREFIX}libgtk-4.0')
