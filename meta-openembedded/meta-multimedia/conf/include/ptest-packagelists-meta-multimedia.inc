@@ -7,10 +7,13 @@
 # ptests which take less than ~30s each
 
 PTESTS_FAST_META_MULTIMEDIA = "\
+    gssdp \
+    gupnp-av \
     libopenmpt\
 "
 
 PTESTS_SLOW_META_MULTIMEDIA = "\
+    gupnp \
 "
 
 PTESTS_PROBLEMS_META_MULTIMEDIA = "\
