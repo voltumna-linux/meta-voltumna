@@ -1,1 +1,1 @@
-ACTION=="add", ATTR{device}=="0x00a3", RUN+="/root/edtmknod", 
+ACTION=="add", ATTR{device}=="0x00a3", RUN+="/usr/sbin/edtmknod", 
