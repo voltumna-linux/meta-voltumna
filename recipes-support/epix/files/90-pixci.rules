@@ -1,0 +1,1 @@
+ACTION=="add", ATTR{device}=="0xe004", RUN+="/usr/sbin/pixcimknod", 

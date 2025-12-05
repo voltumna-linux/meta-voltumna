@@ -1,0 +1,7 @@
+#!/bin/sh
+
+rm -f /dev/pixci                    
+PIXCI_MAJOR=$(awk "\$2==\"PIXCI(R)\" {print \$1}" /proc/devices)
+mknod /dev/pixci c $PIXCI_MAJOR 0 > /root/log
+chown root:controls /dev/pixci
+chmod 660 /dev/pixci
