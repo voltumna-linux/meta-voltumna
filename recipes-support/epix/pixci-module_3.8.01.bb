@@ -5,8 +5,6 @@ LICENSE = "CLOSED"
 SRC_URI = " \
     https://www.epixinc.com/support/files/downloads/xcaplnx_x86_64.bin \
     file://Makefile \
-    file://90-pixci.rules \
-    file://pixcimknod \
     "
 
 SRC_URI[sha256sum] = "67a65af19fdbb898658547cac05e7a775e6431e1c920768623a9811e70f6ddea"
@@ -34,11 +32,6 @@ inherit module
 
 RPROVIDES:${PN} += "kernel-module-pixci"
 
-FILES:${PN} += " \
-        ${sbindir} \
-	${sysconfdir}/udev/rules.d \
-        "
-
 MODULES_MODULE_SYMVERS_LOCATION = "drivers/x86_64/src_5.13"
 EXTRA_OEMAKE += "-C ${MODULES_MODULE_SYMVERS_LOCATION}"
 MAKE_TARGETS = ""
@@ -48,10 +41,4 @@ do_install() {
     cd ${S}/${MODULES_MODULE_SYMVERS_LOCATION}
     install -d ${D}${nonarch_base_libdir}/modules/${KERNEL_VERSION}/kernel/misc
     install -m 0644 pixci_x86_64.ko ${D}${nonarch_base_libdir}/modules/${KERNEL_VERSION}/kernel/misc/pixci.ko
-
-    install -d ${D}${sysconfdir}/udev/rules.d/
-    install -m 0644 ${WORKDIR}/90-pixci.rules ${D}${sysconfdir}/udev/rules.d/
-    
-    install -d ${D}${sbindir}
-    install -m 0755 ${WORKDIR}/pixcimknod ${D}${sbindir}
 }
