@@ -184,7 +184,7 @@ def setup_bitbake_build(bitbake_config, layerdir, setupdir, thisdir, update_bb_c
 
     def _make_init_build_env(builddir, oeinitbuildenvdir):
         builddir = os.path.realpath(builddir)
-        cmd = "cd {}\nset {}\n. ./oe-init-build-env\n".format(oeinitbuildenvdir, builddir)
+        cmd = 'cd {}\nset {}\n. ./oe-init-build-env\nset --\n'.format(oeinitbuildenvdir, builddir)
         initbuild_in_builddir = os.path.join(builddir, 'init-build-env')
 
         with open(initbuild_in_builddir, 'w') as f:
@@ -330,16 +330,16 @@ def update_build(config, confdir, setupdir, layerdir, d, update_bb_conf="prompt"
     setup_bitbake_build(bitbake_config, layerdir, setupdir, thisdir, update_bb_conf)
     write_sources_fixed_revisions(confdir, sources_fixed_revisions)
 
-def int_input(allowed_values):
+def int_input(allowed_values, prompt=''):
     n = None
     while n is None:
         try:
-            n = int(input())
+            n = int(input(prompt))
         except ValueError:
-            print('Not a valid number, please try again:')
+            prompt = 'Not a valid number, please try again: '
             continue
         if n not in allowed_values:
-            print('Number {} not one of {}, please try again:'.format(n, allowed_values))
+            prompt = 'Number {} not one of {}, please try again: '.format(n, allowed_values)
             n = None
     return n
 
@@ -388,8 +388,8 @@ def choose_bitbake_config(configs, parameters, non_interactive):
     print("\nAvailable bitbake configurations:")
     for n, config_data in enumerated_configs:
         print("{}. {}\t{}".format(n, config_data["name"], config_data["description"]))
-    print("\nPlease select one of the above bitbake configurations by its number:")
-    config_n = int_input([i[0] for i in enumerated_configs]) - 1
+    config_n = int_input([i[0] for i in enumerated_configs],
+                         "\nPlease select one of the above bitbake configurations by its number: ") - 1
     return flattened_configs[config_n]
 
 def choose_config(configs, non_interactive):
@@ -412,8 +412,8 @@ def choose_config(configs, non_interactive):
            print("{}. {}\t{} (supported until {})".format(n, config_name, config_desc, expiry_date))
         else:
            print("{}. {}\t{}".format(n, config_name, config_desc))
-    print("\nPlease select one of the above configurations by its number:")
-    config_n = int_input([i[0] for i in config_list]) - 1
+    config_n = int_input([i[0] for i in config_list],
+                         "\nPlease select one of the above configurations by its number: ") - 1
     return config_list[config_n][1]
 
 def choose_fragments(possibilities, parameters, non_interactive, skip_selection):
@@ -436,8 +436,8 @@ def choose_fragments(possibilities, parameters, non_interactive, skip_selection)
         options_enumerated = list(enumerate(v["options"], 1))
         for n,o in options_enumerated:
             print("{}. {}".format(n, o))
-        print("\nPlease select one of the above options by its number:")
-        option_n = int_input([i[0] for i in options_enumerated]) - 1
+        option_n = int_input([i[0] for i in options_enumerated],
+                             "\nPlease select one of the above options by its number: ") - 1
         choices[k] = options_enumerated[option_n][1]
     return choices
 
@@ -514,7 +514,7 @@ def init_config(top_dir, settings, args):
                 setup_dir_name = config_setup_dir_name
 
         if not args.non_interactive:
-            n = input(f"Enter setup directory name: [{setup_dir_name}] ")
+            n = input(f"Enter setup directory name [{setup_dir_name}]: ")
             if n:
                 setup_dir_name = n
 
@@ -725,8 +725,8 @@ def create_siteconf(top_dir, non_interactive, settings):
     else:
         print(f'{top_dir} looks like a new top directory. If you would like to use a different directory, answer "n" below and either:')
         print('\t1) Change the default bitbake-setup settings:')
-        print('\t\tbitbake-setup settings set default top-level-prefix <PATH>')
-        print('\t\tbitbake-setup settings set default top-level-name <NAME>')
+        print('\t\tbitbake-setup settings set default top-dir-prefix <PATH>')
+        print('\t\tbitbake-setup settings set default top-dir-name <NAME>')
         print('\t2) Pass one or more options on the command line to change the top level directory in that invocation only:')
         print('\t\tbitbake-setup --setting default top-dir-prefix <PATH> ...')
         print('\t\tbitbake-setup --setting default top-dir-name <NAME> ...')
