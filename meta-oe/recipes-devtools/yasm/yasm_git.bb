@@ -17,7 +17,10 @@ SRC_URI = "git://github.com/yasm/yasm.git;branch=master;protocol=https \
            file://0001-yasm-Set-build-date-to-SOURCE_DATE_EPOCH.patch \
            file://0002-yasm-Use-BUILD_DATE-for-reproducibility.patch \
            file://CVE-2024-22653.patch \
-"
+           file://CVE-2023-29579.patch \
+           file://CVE-2021-33464.patch \
+           file://CVE-2021-33456.patch \
+           "
 
 S = "${WORKDIR}/git"
 
@@ -34,3 +37,4 @@ do_configure:prepend() {
      sed -i -e "s/^echo \"\/\* generated \$ac_cv_stdint_message \*\/\" >>\$ac_stdint$"// ${S}/m4/ax_create_stdint_h.m4
 }
 
+CVE_PRODUCT += "tortall:yasm yasm_project:yasm"
