@@ -1054,13 +1054,14 @@ bitbake will treat that as direct value assignment in its configuration::
 Locating Include Files
 ----------------------
 
-BitBake uses the :term:`BBPATH` variable to locate needed include files.
-Additionally, BitBake searches the current directory for :ref:`include
-<ref-include-directive>` and :ref:`require <require-inclusion>` directives.
+BitBake first searches the current directory for needed include files for
+:ref:`include <ref-include-directive>` and :ref:`require <require-inclusion>`
+directives.
+BitBake also uses the :term:`BBPATH` variable.
 
 .. note::
 
-   The BBPATH variable is analogous to the environment variable PATH .
+   The BBPATH variable is analogous to the environment variable PATH.
 
 For these two directives, BitBake includes the first file it finds.
 
@@ -1135,7 +1136,7 @@ would be searched in this order::
 
 .. note::
 
-   Note that the order of the list above does not depend on where the class in
+   Note that the order of the list above does not depend on where the class is
    inherited from.
 
 Likewise, for classes inherited with the :term:`INHERIT` variable, the
