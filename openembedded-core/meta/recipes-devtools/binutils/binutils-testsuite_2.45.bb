@@ -45,6 +45,8 @@ python check_prepare() {
         content.append('set target_triplet {0}'.format(suffix_sys(d.getVar("TARGET_SYS"))))
         content.append("set development true")
         content.append("set experimental false")
+        # This is normally written into ld/enablings.exp
+        content.append("set enable_libctf yes")
 
         content.append(d.expand('set CXXFILT "${TARGET_PREFIX}c++filt"'))
         content.append(d.expand('set CC "${TARGET_PREFIX}gcc --sysroot=${STAGING_DIR_TARGET} ${TUNE_CCARGS}"'))
@@ -61,7 +63,7 @@ python check_prepare() {
         return "\n".join(content)
 
     for i in ["binutils", "gas", "ld"]:
-        builddir = os.path.join(d.getVar("B"), i)
+        builddir = os.path.join(d.getVar("B"), i, "testsuite")
         if not os.path.isdir(builddir):
             os.makedirs(builddir)
         with open(os.path.join(builddir, "site.exp"), "w") as f:
@@ -70,13 +72,17 @@ python check_prepare() {
 
 CHECK_TARGETS ??= "binutils gas ld"
 
-do_check[dirs] = "${B} ${B}/binutils ${B}/gas ${B}/ld"
+do_check[dirs] = "${B} ${B}/binutils/testsuite ${B}/gas/testsuite ${B}/ld/testsuite"
 do_check[prefuncs] += "check_prepare"
 do_check[nostamp] = "1"
 do_check() {
     export LC_ALL=C
+
+    # Needs to be unset for binutils/testsuite/bintils-all/ar.exp:replacing_non_deterministic_member() to pass.
+    unset SOURCE_DATE_EPOCH
+
     for i in ${CHECK_TARGETS}; do
-        (cd ${B}/$i; runtest \
+        (cd ${B}/$i/testsuite; runtest \
             --tool $i \
             --srcdir ${S}/$i/testsuite \
             --ignore 'plugin.exp' \
