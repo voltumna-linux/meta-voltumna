@@ -86,3 +86,7 @@ CONFFILES:${PN} = "${sysconfdir}/monkey/monkey.conf \
                    ${sysconfdir}/monkey/plugins/auth/monkey.users \
                    "
 
+# cpe-incorrect: Current version (1.6.9) is not affected. Issue was addressed in version 1.3.0
+CVE_CHECK_IGNORE += "CVE-2013-2183"
+# not-applicable-platform: this is gentoo specific CVE
+CVE_CHECK_IGNORE += "CVE-2013-1771"
