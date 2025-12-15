@@ -10,6 +10,7 @@ ConditionPathIsDirectory=/runtime/site/%H/log
 [Service]
 User=root
 Group=root
+EnvironmentFile=/etc/runtime-lib.conf
 EnvironmentFile=/run/tango/corba
 ExecStart=/usr/bin/Starter %H
 KillMode=process
