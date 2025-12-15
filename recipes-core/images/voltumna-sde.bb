@@ -71,4 +71,15 @@ set_killuserprocess() {
 	sed -ie 's,#KillUserProcesses=yes,KillUserProcesses=no,g' ${IMAGE_ROOTFS}${sysconfdir}/systemd/logind.conf
 }
 
-ROOTFS_POSTPROCESS_COMMAND:append = " install_sdk_sh; install_environment_setup_sh; set_killuserprocess;"
+set_runtime_lib() {
+	cat <<-__EOF__ >> ${IMAGE_ROOTFS}${sysconfdir}/runtime-lib.conf
+        LD_LIBRARY_PATH=/runtime/lib
+	__EOF__
+	cat <<-__EOF__ >> ${IMAGE_ROOTFS}${sysconfdir}/profile.d/runtime-lib.sh
+        set -a
+        source /etc/runtime-lib.conf
+        set +a
+	__EOF__
+}
+
+ROOTFS_POSTPROCESS_COMMAND:append = " install_sdk_sh; install_environment_setup_sh; set_killuserprocess; set_runtime_lib;"
