@@ -20,8 +20,8 @@ This layer depends on:
 Guidelines for submitting patches
 ====================================
 
-Please submit any patches against meta-dpdk to the meta-intel
-mailing list (meta-intel@lists.yoctoproject.org). Also, if your patches are
+Please submit any patches against meta-dpdk to the yocto-patches
+mailing list (yocto-patches@lists.yoctoproject.org). Also, if your patches are
 available via a public git repository, please also include a URL to
 the repo and branch containing your patches as that makes it easier
 for maintainers to grab and test your patches.
@@ -69,4 +69,4 @@ a patch or patchset within 24 hours of the time it was posted.  For
 larger and/or more involved patches and patchsets, the review process
 may take longer.
 
-Maintainer: Anuj Mittal <anuj.mittal@intel.com>
+Maintainer: Anuj Mittal <anuj.mittal@oss.qualcomm.com>
