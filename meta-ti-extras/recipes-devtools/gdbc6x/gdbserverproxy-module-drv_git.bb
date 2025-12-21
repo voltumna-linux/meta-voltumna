@@ -7,13 +7,14 @@ PV:append = "+git"
 SRC_URI:append = "\
     file://0001-Support-Linux-kernels-v5.15.patch;patchdir=../.. \
     file://0002-Support-Linux-kernels-v6.6.patch;patchdir=../.. \
+    file://0003-Support-Linux-kernels-v6.15.patch;patchdir=../.. \
 "
 
 S:append = "/kernel_module/gdbproxy-mod"
 
 inherit module
 
-COMPATIBLE_MACHINE = "omap-a15"
+COMPATIBLE_MACHINE = "am57xx"
 
 EXTRA_OEMAKE = "PLATFORM=DRA7xx_PLATFORM KVERSION=${KERNEL_VERSION} KERNEL_SRC=${STAGING_KERNEL_DIR}"
 
