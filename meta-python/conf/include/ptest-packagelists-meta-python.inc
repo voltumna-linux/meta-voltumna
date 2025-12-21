@@ -20,6 +20,7 @@ PTESTS_FAST_META_PYTHON = "\
     python3-cachetools \
     python3-cbor2 \
     python3-configobj \
+    python3-pyconnman \
     python3-click \
     python3-dasbus \
     python3-dominate \
@@ -38,8 +39,11 @@ PTESTS_FAST_META_PYTHON = "\
     python3-gpiod \
     python3-gpt-image \
     python3-gunicorn \
+    python3-h2 \
+    python3-hpack \
     python3-html2text \
     python3-httptools \
+    python3-hyperframe \
     python3-inflection \
     python3-inotify \
     python3-intervals \
@@ -62,6 +66,7 @@ PTESTS_FAST_META_PYTHON = "\
     python3-portion \
     python3-precise-runner \
     python3-prettytable \
+    python3-priority \
     python3-propcache \
     python3-pyais \
     python3-pydantic \
@@ -129,6 +134,7 @@ PTESTS_SLOW_META_PYTHON = "\
     python3-pillow \
     python3-pint \
     python3-pykickstart \
+    python3-pyro5 \
     python3-pytest-localserver \
     python3-scrypt \
     python3-traitlets \
