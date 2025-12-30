@@ -16,6 +16,9 @@ SRC_URI = "http://w1.fi/releases/wpa_supplicant-${PV}.tar.gz \
            file://wpa_supplicant.conf-sane \
            file://99_wpa_supplicant \
            file://0001-macsec_linux-Hardware-offload-requires-Linux-headers.patch \
+           file://0002-defconfig-Update-Opportunistic-Wireless-Encryption-O.patch \
+           file://0003-defconfig-Document-IEEE-802.11be-as-a-published-amen.patch \
+           file://0004-defconfig-Uncomment-CONFIG_IEEE80211BE-y.patch \
            file://CVE-2025-24912-01.patch \
            file://CVE-2025-24912-02.patch \
            "
@@ -45,7 +48,8 @@ do_configure () {
 		echo 'CONFIG_TLS=gnutls' >>wpa_supplicant/.config
 		sed -i -e 's/\(^CONFIG_DPP=\)/#\1/' \
 		    -e 's/\(^CONFIG_EAP_PWD=\)/#\1/' \
-		    -e 's/\(^CONFIG_SAE=\)/#\1/' wpa_supplicant/.config
+		    -e 's/\(^CONFIG_SAE=\)/#\1/' \
+		    -e 's/\(^CONFIG_OWE=\)/#\1/' wpa_supplicant/.config
 	fi
 
 	# For rebuild
