@@ -26,10 +26,10 @@ SRC_URI = "git://github.com/TigerVNC/tigervnc.git;branch=1.15-branch;protocol=ht
 
 # Keep sync with xorg-server in oe-core
 XORG_PN ?= "xorg-server"
-XORG_PV ?= "21.1.16"
+XORG_PV ?= "21.1.18"
 SRC_URI += "${XORG_MIRROR}/individual/xserver/${XORG_PN}-${XORG_PV}.tar.xz;name=xorg"
 XORG_S = "${UNPACKDIR}/${XORG_PN}-${XORG_PV}"
-SRC_URI[xorg.sha256sum] = "b14a116d2d805debc5b5b2aac505a279e69b217dae2fae2dfcb62400471a9970"
+SRC_URI[xorg.sha256sum] = "c878d1930d87725d4a5bf498c24f4be8130d5b2646a9fd0f2994deff90116352"
 
 # It is the directory containing the Xorg source for the
 # machine on which you are building TigerVNC.
@@ -42,6 +42,16 @@ do_patch_xserver () {
     cp -rfl ${XORG_S}/* ${XSERVER_SOURCE_DIR}
     # Apply the patch to integrate the vnc server
     patch -p1 -b --suffix .vnc --directory ${XSERVER_SOURCE_DIR} <${S}/unix/xserver21.patch
+}
+
+# It is very easy to miss xserver updates in oe-core, and this recipe's xserver
+# gets out of sync due to this. Hopefully this warning will help.
+do_configure[prefuncs] += "do_verify_xserver_version"
+do_verify_xserver_version() {
+    OE_CORE_XSERVER_VERSION=$(pkg-config --modversion xorg-server)
+    if [ "$OE_CORE_XSERVER_VERSION" != "${XORG_PV}" ]; then
+        bbwarn "TigerVNC xorg-server version (${XORG_PV}) is different from oe-core's xorg-xserver version ($OE_CORE_XSERVER_VERSION)"
+    fi
 }
 
 EXTRA_OECONF = "--disable-xorg --disable-xnest --disable-xvfb \
@@ -87,3 +97,13 @@ FILES:${PN} += " \
 SYSTEMD_SERVICE:${PN} = "vncserver@.service"
 
 CVE_STATUS[CVE-2014-8241] = "fixed-version: The vulnerable code is not present in the used version (1.15.0)"
+CVE_STATUS[CVE-2023-6377] = "fixed-version: The vulnerable code is not present in the used xserver version (21.1.18)"
+CVE_STATUS[CVE-2023-6478] = "fixed-version: The vulnerable code is not present in the used xserver version (21.1.18)"
+CVE_STATUS[CVE-2025-26594] = "fixed-version: The vulnerable code is not present in the used xserver version (21.1.18)"
+CVE_STATUS[CVE-2025-26595] = "fixed-version: The vulnerable code is not present in the used xserver version (21.1.18)"
+CVE_STATUS[CVE-2025-26596] = "fixed-version: The vulnerable code is not present in the used xserver version (21.1.18)"
+CVE_STATUS[CVE-2025-26597] = "fixed-version: The vulnerable code is not present in the used xserver version (21.1.18)"
+CVE_STATUS[CVE-2025-26598] = "fixed-version: The vulnerable code is not present in the used xserver version (21.1.18)"
+CVE_STATUS[CVE-2025-26599] = "fixed-version: The vulnerable code is not present in the used xserver version (21.1.18)"
+CVE_STATUS[CVE-2025-26600] = "fixed-version: The vulnerable code is not present in the used xserver version (21.1.18)"
+CVE_STATUS[CVE-2025-26601] = "fixed-version: The vulnerable code is not present in the used xserver version (21.1.18)"
