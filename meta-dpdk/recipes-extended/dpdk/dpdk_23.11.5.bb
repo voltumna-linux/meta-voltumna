@@ -1,13 +1,11 @@
 include dpdk.inc
 
 SRC_URI += " file://0001-config-meson-get-cpu_instruction_set-from-meson-opti.patch \
-             file://0001-net-ionic-fix-build-with-Fedora.patch \
-             file://0001-net-gve-base-fix-build-with-Fedora.patch \
              file://0001-Add-new-tracepoint-function-for-type-time_t.patch"
 
 STABLE = "-stable"
 BRANCH = "23.11"
-SRCREV = "a6ec5765cf83d3d58cbd6d4ed5b92b4a06f8a808"
+SRCREV = "62f583c49bf67dd4d6733ece14e55fe6839e66d1"
 
 def get_cpu_instruction_set(bb, d):
     import re
