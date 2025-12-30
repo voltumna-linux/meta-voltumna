@@ -7,10 +7,13 @@
 # ptests which take less than ~30s each
 
 PTESTS_FAST_META_MULTIMEDIA = "\
+    crossguid \
     gssdp \
     gupnp-av \
     gupnp-igd \
-    libopenmpt\
+    libmediaart-2.0 \
+    libopenmpt \
+    wireplumber \
 "
 
 PTESTS_SLOW_META_MULTIMEDIA = "\
