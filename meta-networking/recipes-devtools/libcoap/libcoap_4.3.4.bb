@@ -11,6 +11,7 @@ SRC_URI = "git://github.com/obgm/libcoap.git;branch=main;protocol=https \
            file://run-ptest \
            file://CVE-2024-0962.patch \
            file://CVE-2024-31031.patch \
+           file://CVE-2025-59391.patch \
            "
 SRCREV = "5fd2f89ef068214130e5d60b7087ef48711fa615"
 
@@ -62,3 +63,6 @@ PACKAGE_BEFORE_PN += "\
 
 FILES:${PN}-bin = "${bindir}"
 FILES:${PN}-dev += "${datadir}/${BPN}/examples"
+
+CVE_STATUS[CVE-2025-50518] = "disputed: happens only when library is used incorrectly"
+CVE_STATUS[CVE-2023-51847] = "not-applicable-config: Doesn't apply to our configuration so we can safely ignore it."
