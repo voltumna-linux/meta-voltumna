@@ -9,6 +9,9 @@ SRC_URI = "http://download.sourceforge.net/mingw/Other/UserContributed/regex/min
            "
 SRC_URI[sha256sum] = "7147b7f806ec3d007843b38e19f42a5b7c65894a57ffc297a76b0dcd5f675d76"
 
+UPSTREAM_CHECK_URI = "https://sourceforge.net/projects/mingw/files/Other/UserContributed/regex/"
+UPSTREAM_CHECK_REGEX = "mingw-regex-(?P<pver>\d+(\.\d+)+)"
+
 inherit autotools
 
 # Specify any options you want to pass to the configure script using EXTRA_OECONF:
