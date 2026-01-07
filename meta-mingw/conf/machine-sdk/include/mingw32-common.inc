@@ -59,3 +59,6 @@ GCCPIE:mingw32 = ""
 
 # wine and wineserver are required to test MinGW SDKs
 HOSTTOOLS_NONFATAL += "wine wineserver"
+
+# handle symlinks
+INHERIT += "mingw_sdk_handle_symlink"

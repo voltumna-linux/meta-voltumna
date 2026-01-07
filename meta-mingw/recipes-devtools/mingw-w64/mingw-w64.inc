@@ -1,5 +1,5 @@
 LICENSE = "ZPL-2.1"
-LIC_FILES_CHKSUM = "file://${WORKDIR}/mingw-w64-v${PV}/COPYING;md5=bb936f0e04d8f1e19ad545100cee9654"
+LIC_FILES_CHKSUM = "file://${UNPACKDIR}/mingw-w64-v${PV}/COPYING;md5=bb936f0e04d8f1e19ad545100cee9654"
 
 COMPATIBLE_HOST = ".*-mingw.*"
 
