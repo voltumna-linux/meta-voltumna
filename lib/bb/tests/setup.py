@@ -89,21 +89,12 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
         bbsetup = os.path.abspath(os.path.dirname(__file__) +  "/../../../bin/bitbake-setup")
         return bb.process.run("{} --global-settings {} {}".format(bbsetup, os.path.join(self.tempdir, 'global-config'), cmd))
 
-    def add_json_config_to_registry(self, name, rev, branch):
+
+    def _add_json_config_to_registry_helper(self, name, sources):
         config = """
 {
     "sources": {
-        "test-repo": {
-            "git-remote": {
-                "remotes": {
-                    "origin": {
-                        "uri": "file://%s"
-                    }
-                },
-                "branch": "%s",
-                "rev": "%s"
-            }
-        }
+%s
     },
     "description": "Test configuration",
     "bitbake-setup": {
@@ -160,13 +151,29 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
     },
     "version": "1.0"
 }
-""" % (self.testrepopath, branch, rev)
+""" % (sources)
         os.makedirs(os.path.join(self.registrypath, os.path.dirname(name)), exist_ok=True)
         with open(os.path.join(self.registrypath, name), 'w') as f:
             f.write(config)
         self.git('add {}'.format(name), cwd=self.registrypath)
         self.git('commit -m "Adding {}"'.format(name), cwd=self.registrypath)
         return json.loads(config)
+
+    def add_json_config_to_registry(self, name, rev, branch):
+        sources = """
+        "test-repo": {
+            "git-remote": {
+                "remotes": {
+                    "origin": {
+                        "uri": "file://%s"
+                    }
+                },
+                "branch": "%s",
+                "rev": "%s"
+            }
+        }
+""" % (self.testrepopath, branch, rev)
+        return self._add_json_config_to_registry_helper(name, sources)
 
     def add_file_to_testrepo(self, name, content, script=False):
         fullname = os.path.join(self.testrepopath, name)
@@ -179,6 +186,14 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
             os.chmod(fullname, st.st_mode | stat.S_IEXEC)
         self.git('add {}'.format(name), cwd=self.testrepopath)
         self.git('commit -m "Adding {}"'.format(name), cwd=self.testrepopath)
+
+    def config_is_unchanged(self, setuppath):
+        os.environ['BBPATH'] = os.path.join(setuppath, 'build')
+        out = self.runbbsetup("status")
+        self.assertIn("Configuration in {} has not changed".format(setuppath), out[0])
+        out = self.runbbsetup("update --update-bb-conf='yes'")
+        self.assertIn("Configuration in {} has not changed".format(setuppath), out[0])
+        del os.environ['BBPATH']
 
     def check_setupdir_files(self, setuppath, test_file_content):
         with open(os.path.join(setuppath, 'config', "config-upstream.json")) as f:
@@ -227,6 +242,8 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
             self.assertTrue('BUILD_DATE' in init_build_env)
             self.assertTrue('BUILD_SERVER' in init_build_env)
             # a more throrough test could be to initialize a bitbake build-env, export FOO to the shell environment, set the env-passthrough on it and finally check against 'bitbake-getvar FOO'
+
+        self.config_is_unchanged(setuppath)
 
     def get_setup_path(self, cf, c):
         if c == 'gizmo':
@@ -314,42 +331,9 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
                 out = self.runbbsetup("init --non-interactive {} {}".format(v['cmdline'], c))
                 setuppath = self.get_setup_path(cf, c)
                 self.check_setupdir_files(setuppath, test_file_content)
-                os.environ['BBPATH'] = os.path.join(setuppath, 'build')
-                out = self.runbbsetup("status")
-                self.assertIn("Configuration in {} has not changed".format(setuppath), out[0])
-                out = self.runbbsetup("update --update-bb-conf='yes'")
-                self.assertIn("Configuration in {} has not changed".format(setuppath), out[0])
-
-        # check source overrides, local sources provided with symlinks, and custom setup dir name
-        source_override_content = """
-{
-    "sources": {
-        "test-repo": {
-            "local": {
-                "path": "."
-            }
-        }
-    }
-}"""
-        override_filename = 'source-overrides.json'
-        custom_setup_dir = 'special-setup-dir'
-        self.add_file_to_testrepo(override_filename, source_override_content)
-        out = self.runbbsetup("init --non-interactive --source-overrides {} --setup-dir-name {} test-config-1 gadget".format(os.path.join(self.testrepopath, override_filename), custom_setup_dir))
-        custom_setup_path = os.path.join(self.tempdir, 'bitbake-builds', custom_setup_dir)
-        custom_layer_path = os.path.join(custom_setup_path, 'layers', 'test-repo')
-        self.assertTrue(os.path.islink(custom_layer_path))
-        self.assertEqual(self.testrepopath, os.path.realpath(custom_layer_path))
-
-        # same but use command line options to specify local overrides
-        custom_setup_dir = 'special-setup-dir-with-cmdline-overrides'
-        out = self.runbbsetup("init --non-interactive -L test-repo {} --setup-dir-name {} test-config-1 gadget".format(self.testrepopath, custom_setup_dir))
-        custom_setup_path = os.path.join(self.tempdir, 'bitbake-builds', custom_setup_dir)
-        custom_layer_path = os.path.join(custom_setup_path, 'layers', 'test-repo')
-        self.assertTrue(os.path.islink(custom_layer_path))
-        self.assertEqual(self.testrepopath, os.path.realpath(custom_layer_path))
 
         # install buildtools
-        out = self.runbbsetup("install-buildtools")
+        out = self.runbbsetup("install-buildtools --setup-dir {}".format(setuppath))
         self.assertIn("Buildtools installed into", out[0])
         self.assertTrue(os.path.exists(os.path.join(setuppath, 'buildtools')))
 
@@ -428,3 +412,32 @@ print("BBPATH is {{}}".format(os.environ["BBPATH"]))
             out = self.runbbsetup("update --update-bb-conf='no'")
             sums_after = _conf_chksum(f"{setuppath}/build/conf")
             self.assertEqual(sums_before, sums_after)
+
+        # check source overrides, local sources provided with symlinks, and custom setup dir name
+        def _check_local_sources(custom_setup_dir):
+            custom_setup_path = os.path.join(self.tempdir, 'bitbake-builds', custom_setup_dir)
+            custom_layer_path = os.path.join(custom_setup_path, 'layers', 'test-repo')
+            self.assertTrue(os.path.islink(custom_layer_path))
+            self.assertEqual(self.testrepopath, os.path.realpath(custom_layer_path))
+            self.config_is_unchanged(custom_setup_path)
+
+        source_override_content = """
+{
+    "sources": {
+        "test-repo": {
+            "local": {
+                "path": "."
+            }
+        }
+    }
+}"""
+        override_filename = 'source-overrides.json'
+        custom_setup_dir = 'special-setup-dir'
+        self.add_file_to_testrepo(override_filename, source_override_content)
+        out = self.runbbsetup("init --non-interactive --source-overrides {} --setup-dir-name {} test-config-1 gadget".format(os.path.join(self.testrepopath, override_filename), custom_setup_dir))
+        _check_local_sources(custom_setup_dir)
+
+        # same but use command line options to specify local overrides
+        custom_setup_dir = 'special-setup-dir-with-cmdline-overrides'
+        out = self.runbbsetup("init --non-interactive -L test-repo {} --setup-dir-name {} test-config-1 gadget".format(self.testrepopath, custom_setup_dir))
+        _check_local_sources(custom_setup_dir)
