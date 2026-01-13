@@ -26,6 +26,28 @@ SRC_URI = "git://github.com/ImageMagick/ImageMagick.git;branch=main;protocol=htt
     file://CVE-2023-34474.patch \
     file://CVE-2023-5341.patch \
     file://CVE-2022-28463.patch \
+    file://0001-ImageMagick-Fix-CVE-2025-53014.patch \
+    file://0002-ImageMagick-Fix-CVE-2025-53101.patch \
+    file://0003-ImageMagick-Fix-CVE-2025-55160.patch \
+    file://0004-ImageMagick-Fix-CVE-2025-55005.patch \
+    file://0005-ImageMagick-Fix-CVE-2025-53019.patch \
+    file://0006-ImageMagick-Fix-CVE-2025-55004.patch \
+    file://0007-ImageMagick-Add-support-patch-to-fix-CVE-2025-57803.patch \
+    file://0007-ImageMagick-Fix-CVE-2025-57803.patch \
+    file://0008-ImageMagick-Fix-CVE-2025-57807.patch \
+    file://0009-ImageMagick-Fix-CVE-2025-55154.patch \
+    file://0010-ImageMagick-Add-support-patch-1-to-fix-CVE-2025-5529.patch \
+    file://0010-ImageMagick-Add-support-patch-2-to-fix-CVE-2025-5529.patch \
+    file://0010-ImageMagick-Add-support-patch-3-to-fix-CVE-2025-5529.patch \
+    file://0010-ImageMagick-Fix-CVE-2025-55298-1.patch \
+    file://0010-ImageMagick-Fix-CVE-2025-55298-2.patch \
+    file://0011-ImageMagick-Add-support-patch-1-to-fix-CVE-2023-3415.patch \
+    file://0011-ImageMagick-Add-support-patch-2-to-fix-CVE-2023-3415.patch \
+    file://0011-ImageMagick-Add-support-patch-3-to-fix-CVE-2023-3415.patch \
+    file://0011-ImageMagick-Fix-CVE-2023-34151.patch \
+    file://CVE-2022-1115.patch \
+    file://CVE-2025-65955.patch \
+    file://CVE-2025-62171.patch \
 "
 
 SRCREV = "35b4991eb0939a327f3489988c366e21068b0178"
