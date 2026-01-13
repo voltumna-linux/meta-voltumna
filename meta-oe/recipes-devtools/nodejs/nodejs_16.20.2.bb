@@ -30,6 +30,8 @@ SRC_URI = "http://nodejs.org/dist/v${PV}/node-v${PV}.tar.xz \
            file://CVE-2024-22019.patch \
            file://CVE-2024-22025.patch \
            file://CVE-2023-46809.patch \
+           file://CVE-2023-39333.patch \
+           file://CVE-2024-27983.patch \
            "
 SRC_URI:append:class-target = " \
            file://0001-Using-native-binaries.patch \
@@ -44,7 +46,16 @@ SRC_URI[sha256sum] = "576f1a03c455e491a8d132b587eb6b3b84651fc8974bb3638433dd44d2
 
 S = "${WORKDIR}/node-v${PV}"
 
-CVE_PRODUCT += "node.js"
+CVE_PRODUCT = "nodejs node.js"
+
+# the vulnerabilities were introduced in v20
+CVE_CHECK_IGNORE = "CVE-2023-30583 CVE-2023-30584 CVE-2023-30587 CVE-2024-36137"
+
+# the vulnerability was introduced later (with libuv 1.45)
+CVE_CHECK_IGNORE += "CVE-2024-22017"
+
+# this vulnerabilities affect only Windows
+CVE_CHECK_IGNORE += "CVE-2024-3566 CVE-2024-36138"
 
 # v8 errors out if you have set CCACHE
 CCACHE = ""

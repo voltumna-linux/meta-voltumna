@@ -12,17 +12,21 @@ SRC_URI = "git://github.com/proftpd/proftpd.git;branch=${BRANCH};protocol=https 
            file://proftpd-basic.init \
            file://default \
            file://close-RequireValidShell-check.patch \
-           file://contrib.patch  \
+           file://contrib.patch \
            file://build_fixup.patch \
            file://proftpd.service \
            file://CVE-2023-51713.patch \
            file://CVE-2024-57392.patch \
            file://CVE-2023-48795.patch \
+           file://CVE-2024-48651.patch \
            "
 
 S = "${WORKDIR}/git"
 
 inherit autotools-brokensep useradd update-rc.d systemd multilib_script
+
+# fixed-version: version 1.2.0rc3 removed affected module
+CVE_CHECK_IGNORE += "CVE-2001-0027"
 
 PACKAGECONFIG ??= "shadow \
                    ${@bb.utils.filter('DISTRO_FEATURES', 'ipv6 pam', d)} \
