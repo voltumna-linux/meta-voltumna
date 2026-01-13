@@ -12,9 +12,9 @@ DEPENDS += "\
 	${PYTHON_PN}-numpy-native \
 	"
 
-SRCREV = "4919735498faf56020c37836f1380d62a0dc805c"
+SRCREV = "effb17d5171263e0d0372948456382ebb9a7dc35"
 SRC_URI = "\
-	gitsm://gitlab.com/tango-controls/pytango.git;protocol=https;branch=stable \
+	gitsm://gitlab.com/tango-controls/pytango.git;protocol=https;branch=maintenance/10.1.x \
 	"
 INSANE_SKIP:${PN} += "buildpaths"
 S = "${WORKDIR}/git"
