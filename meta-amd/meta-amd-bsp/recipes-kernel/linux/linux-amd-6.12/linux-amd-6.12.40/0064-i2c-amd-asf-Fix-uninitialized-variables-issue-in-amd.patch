@@ -1,0 +1,36 @@
+From f51c4fa84e332f957ff91cf46a76bdc30f21acff Mon Sep 17 00:00:00 2001
+From: Qianqiang Liu <qianqiang.liu@163.com>
+Date: Fri, 27 Sep 2024 21:34:44 +0800
+Subject: [PATCH 096/127] i2c: amd-asf: Fix uninitialized variables issue in
+ amd_asf_process_target
+
+The len variable is not initialized, which may cause the for loop to
+behave unexpectedly.
+
+Fixes: 9b25419ad397 ("i2c: amd-asf: Add routine to handle the ASF slave process")
+Signed-off-by: Qianqiang Liu <qianqiang.liu@163.com>
+Reviewed-by: Dan Carpenter <dan.carpenter@linaro.org>
+Acked-by: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>
+Signed-off-by: Andi Shyti <andi.shyti@kernel.org>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Change-Id: I44ecf419589fefe138de8b2e6cc808c69eccbdb0
+---
+ drivers/i2c/busses/i2c-amd-asf-plat.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-amd-asf-plat.c b/drivers/i2c/busses/i2c-amd-asf-plat.c
+index 5d5fb63b55b1..3d24d526e760 100644
+--- a/drivers/i2c/busses/i2c-amd-asf-plat.c
++++ b/drivers/i2c/busses/i2c-amd-asf-plat.c
+@@ -61,7 +61,7 @@ static void amd_asf_process_target(struct work_struct *work)
+ 	unsigned short piix4_smba = dev->port_addr->start;
+ 	u8 data[ASF_BLOCK_MAX_BYTES];
+ 	u8 bank, reg, cmd;
+-	u8 len, idx, val;
++	u8 len = 0, idx, val;
+ 
+ 	/* Read target status register */
+ 	reg = inb_p(ASFSLVSTA);
+-- 
+2.43.0
+

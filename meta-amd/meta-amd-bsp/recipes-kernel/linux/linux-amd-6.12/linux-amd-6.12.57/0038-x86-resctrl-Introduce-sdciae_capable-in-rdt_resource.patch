@@ -1,0 +1,62 @@
+From a85ce3408c17ce606059a50e071ca6220cf3ccb0 Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Fri, 9 Aug 2024 10:24:11 -0500
+Subject: [PATCH 08/12] x86/resctrl: Introduce sdciae_capable in rdt_resource
+
+Detect SDCIAE`(L3 Smart Data Cache Injection Allocation Enforcement)
+feature and initialize sdciae_capable.
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+---
+ arch/x86/kernel/cpu/resctrl/core.c | 7 +++++++
+ include/linux/resctrl.h            | 2 ++
+ 2 files changed, 9 insertions(+)
+
+diff --git a/arch/x86/kernel/cpu/resctrl/core.c b/arch/x86/kernel/cpu/resctrl/core.c
+index 6e6d525c4df1..d4c24686c2d3 100644
+--- a/arch/x86/kernel/cpu/resctrl/core.c
++++ b/arch/x86/kernel/cpu/resctrl/core.c
+@@ -304,6 +304,11 @@ static void rdt_get_cdp_config(int level)
+ 	rdt_resources_all[level].r_resctrl.cdp_capable = true;
+ }
+ 
++static void rdt_get_sdciae_alloc_cfg(struct rdt_resource *r)
++{
++	r->sdciae_capable = true;
++}
++
+ static void rdt_get_cdp_l3_config(void)
+ {
+ 	rdt_get_cdp_config(RDT_RESOURCE_L3);
+@@ -929,6 +934,8 @@ static __init bool get_rdt_alloc_resources(void)
+ 		rdt_get_cache_alloc_cfg(1, r);
+ 		if (rdt_cpu_has(X86_FEATURE_CDP_L3))
+ 			rdt_get_cdp_l3_config();
++		if (rdt_cpu_has(X86_FEATURE_SDCIAE))
++			rdt_get_sdciae_alloc_cfg(r);
+ 		ret = true;
+ 	}
+ 	if (rdt_cpu_has(X86_FEATURE_CAT_L2)) {
+diff --git a/include/linux/resctrl.h b/include/linux/resctrl.h
+index d94abba1c716..1e68906b16e0 100644
+--- a/include/linux/resctrl.h
++++ b/include/linux/resctrl.h
+@@ -202,6 +202,7 @@ enum resctrl_scope {
+  * @evt_list:		List of monitoring events
+  * @fflags:		flags to choose base and info files
+  * @cdp_capable:	Is the CDP feature available on this resource
++ * @sdciae_capable:	Is SDCIAE feature available on this resource
+  */
+ struct rdt_resource {
+ 	int			rid;
+@@ -224,6 +225,7 @@ struct rdt_resource {
+ 	struct list_head	evt_list;
+ 	unsigned long		fflags;
+ 	bool			cdp_capable;
++	bool			sdciae_capable;
+ };
+ 
+ /**
+-- 
+2.17.1
+

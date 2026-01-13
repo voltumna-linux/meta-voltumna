@@ -1,0 +1,52 @@
+From b078a63e51b2ab2b36853c1fffc169cb871d9da8 Mon Sep 17 00:00:00 2001
+From: Raju Rangoju <Raju.Rangoju@amd.com>
+Date: Fri, 16 May 2025 15:36:56 +0530
+Subject: [PATCH 10/12] spi: spi_amd: Remove read{q,b} usage on DMA buffer
+
+Add changes to replace the usage of read{q,b} MMIO accessors with direct
+memory copy logic for reading data from DMA buffer.
+
+Co-developed-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Signed-off-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Signed-off-by: Raju Rangoju <Raju.Rangoju@amd.com>
+Link: https://patch.msgid.link/20250516100658.585654-2-Raju.Rangoju@amd.com
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Change-Id: I95b5f5c613cb29ae171e2da57a6c29df5e0ede4f
+---
+ drivers/spi/spi-amd.c | 16 +++++++++++-----
+ 1 file changed, 11 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/spi/spi-amd.c b/drivers/spi/spi-amd.c
+index dd98ea11a04e..8c448476f3f5 100644
+--- a/drivers/spi/spi-amd.c
++++ b/drivers/spi/spi-amd.c
+@@ -618,15 +618,21 @@ static void amd_spi_mem_data_in(struct amd_spi *amd_spi,
+ 	 * Use index mode otherwise.
+ 	 */
+ 	if (amd_spi->version == AMD_HID2_SPI && amd_is_spi_read_cmd(op->cmd.opcode)) {
++		u64 *dma_buf64 = (u64 *)amd_spi->dma_virt_addr;
++		u8 *dma_buf;
++
+ 		amd_spi_hiddma_read(amd_spi, op);
+ 
+-		for (i = 0; left_data >= 8; i++, left_data -= 8)
+-			*buf_64++ = readq((u8 __iomem *)amd_spi->dma_virt_addr + (i * 8));
++		/* Copy data from DMA buffer */
++		while (left_data >= 8) {
++			*buf_64++ = *dma_buf64++;
++			left_data -= 8;
++		}
+ 
+ 		buf = (u8 *)buf_64;
+-		for (i = 0; i < left_data; i++)
+-			buf[i] = readb((u8 __iomem *)amd_spi->dma_virt_addr +
+-				       (nbytes - left_data + i));
++		dma_buf = (u8 *)dma_buf64;
++		while (left_data--)
++			*buf++ = *dma_buf++;
+ 
+ 		/* Reset HID RX memory logic */
+ 		data = amd_spi_readreg32(amd_spi, AMD_SPI_HID2_CNTRL);
+-- 
+2.43.0
+

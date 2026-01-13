@@ -1,0 +1,46 @@
+From 41f5eaeb565f76e01e4b0bc8daa17030e2f87ac4 Mon Sep 17 00:00:00 2001
+From: Basavaraj Natikar <Basavaraj.Natikar@amd.com>
+Date: Sat, 2 Mar 2024 01:10:37 +0530
+Subject: [PATCH 05/16] REVERT commit a89c82249c3763780522f763dd2e615e2ea114de
+
+commit a89c82249c3763780522f763dd2e615e2ea114de
+Author: Maciej W. Rozycki <macro@orcam.me.uk>
+Date:   Sun Jun 11 18:20:10 2023 +0100
+
+    PCI: Work around PCIe link training failures
+
+Signed-off-by: Basavaraj Natikar <Basavaraj.Natikar@amd.com>
+---
+ drivers/pci/pci.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
+index 661f98c6c63a..1012ba57ca7f 100644
+--- a/drivers/pci/pci.c
++++ b/drivers/pci/pci.c
+@@ -4785,11 +4785,12 @@ static bool pcie_wait_for_link_delay(struct pci_dev *pdev, bool active,
+ 		msleep(20);
+ 	rc = pcie_wait_for_link_status(pdev, false, active);
+ 	if (active) {
++#if 0
+ 		if (rc)
+ 			rc = pcie_failed_link_retrain(pdev);
+ 		if (rc)
+ 			return false;
+-
++#endif
+ 		msleep(delay);
+ 		return true;
+ 	}
+@@ -4797,7 +4798,7 @@ static bool pcie_wait_for_link_delay(struct pci_dev *pdev, bool active,
+ 	if (rc)
+ 		return false;
+ 
+-	return true;
++	return rc;
+ }
+ 
+ /**
+-- 
+2.39.2
+

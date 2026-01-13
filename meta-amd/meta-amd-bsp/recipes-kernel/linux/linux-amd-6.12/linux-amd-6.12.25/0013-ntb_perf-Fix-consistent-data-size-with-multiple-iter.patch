@@ -1,0 +1,32 @@
+From da5d5fa1047b63b209040a1d930fd2b1535df093 Mon Sep 17 00:00:00 2001
+From: Sanath S <Sanath.S@amd.com>
+Date: Tue, 15 Apr 2025 17:51:52 +0530
+Subject: [PATCH 14/16] ntb_perf: Fix consistent data size with multiple
+ iterations
+
+Add missing initialization between each iterations of run.
+
+Signed-off-by: Sanath S <Sanath.S@amd.com>
+---
+ drivers/ntb/test/ntb_perf.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/ntb/test/ntb_perf.c b/drivers/ntb/test/ntb_perf.c
+index c4e0048f7682..3cb76b07dc08 100644
+--- a/drivers/ntb/test/ntb_perf.c
++++ b/drivers/ntb/test/ntb_perf.c
+@@ -1522,8 +1522,10 @@ static int perf_submit_test(struct perf_peer *peer)
+ 		pthr->status = -ENODATA;
+ 		pthr->copied = 0;
+ 		pthr->duration = ktime_set(0, 0);
+-		for (didx = 0; didx < perf->dch_cnt; didx++)
++		for (didx = 0; didx < perf->dch_cnt; didx++) {
+ 			pthr->dma_desc_complete_count[didx] = 0;
++			pthr->dma_ch_copied[didx] = 0;
++		}
+ 		if (tidx < perf->tcnt) {
+ 			ret = perf_init_test(pthr);
+ 			if (ret) {
+-- 
+2.39.2
+

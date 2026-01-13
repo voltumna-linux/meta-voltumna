@@ -1,0 +1,204 @@
+From 54ea94e982cf322cc051d9d53df3df4c21738680 Mon Sep 17 00:00:00 2001
+From: Babu Moger <babu.moger@amd.com>
+Date: Fri, 9 Aug 2024 12:01:21 -0500
+Subject: [PATCH 10/12] x86/resctrl: Add interface to enable/disable SDCIAE
+
+The SDCIAE (SDCI Allocation Enforcement) PQE feature allows system software
+to configure the portion of the L3 cache used for SDCI.
+
+When enabled, SDCIAE forces all SDCI lines to be placed into the L3 cache
+partitions identified by the highest-supported L3_MASK_n register as
+reported by CPUID Fn0000_0010_EDX_x1.MAX_COS. For example, if MAX_COS=15,
+SDCI lines will be allocated into the L3 cache partitions determined by
+the bitmask in the L3_MASK_15 register.
+
+Introduce interface to enable/disable SDCIAE feature on user input.
+
+Signed-off-by: Babu Moger <babu.moger@amd.com>
+---
+ Documentation/arch/x86/resctrl.rst     | 22 +++++++
+ arch/x86/kernel/cpu/resctrl/core.c     |  1 +
+ arch/x86/kernel/cpu/resctrl/internal.h |  1 +
+ arch/x86/kernel/cpu/resctrl/rdtgroup.c | 88 ++++++++++++++++++++++++++
+ 4 files changed, 112 insertions(+)
+
+diff --git a/Documentation/arch/x86/resctrl.rst b/Documentation/arch/x86/resctrl.rst
+index a824affd741d..cb1532dd843f 100644
+--- a/Documentation/arch/x86/resctrl.rst
++++ b/Documentation/arch/x86/resctrl.rst
+@@ -135,6 +135,28 @@ related to allocation:
+ 			"1":
+ 			      Non-contiguous 1s value in CBM is supported.
+ 
++"sdciae":
++		Indicates if the system can support SDCIAE (L3 Smart Data Cache
++		Injection Allocation Enforcement) feature.
++
++		Smart Data Cache Injection (SDCI) is a mechanism that enables
++		direct insertion of data from I/O devices into the L3 cache.
++		By directly caching data from I/O devices rather than first
++		storing the I/O data in DRAM, SDCI reduces demands on DRAM
++		bandwidth and reduces latency to the processor consuming the
++		I/O data. The SDCIAE feature allows system software to configure
++		limit the portion of the L3 cache used for SDCI.
++
++			"0":
++			      Feature is not enabled.
++			"1":
++			      Feature is enabled.
++
++		Feature can be enabled/disabled by writing to the interface.
++		Example::
++
++			# echo 1 > /sys/fs/resctrl/info/L3/sdciae
++
+ Memory bandwidth(MB) subdirectory contains the following files
+ with respect to allocation:
+ 
+diff --git a/arch/x86/kernel/cpu/resctrl/core.c b/arch/x86/kernel/cpu/resctrl/core.c
+index d4c24686c2d3..a4c7943404ff 100644
+--- a/arch/x86/kernel/cpu/resctrl/core.c
++++ b/arch/x86/kernel/cpu/resctrl/core.c
+@@ -307,6 +307,7 @@ static void rdt_get_cdp_config(int level)
+ static void rdt_get_sdciae_alloc_cfg(struct rdt_resource *r)
+ {
+ 	r->sdciae_capable = true;
++	resctrl_sdciae_rftype_init();
+ }
+ 
+ static void rdt_get_cdp_l3_config(void)
+diff --git a/arch/x86/kernel/cpu/resctrl/internal.h b/arch/x86/kernel/cpu/resctrl/internal.h
+index ceb0e8e1ed76..9a3da6d49144 100644
+--- a/arch/x86/kernel/cpu/resctrl/internal.h
++++ b/arch/x86/kernel/cpu/resctrl/internal.h
+@@ -662,6 +662,7 @@ void rdt_domain_reconfigure_cdp(struct rdt_resource *r);
+ void __init thread_throttle_mode_init(void);
+ void __init mbm_config_rftype_init(const char *config);
+ void rdt_staged_configs_clear(void);
++void __init resctrl_sdciae_rftype_init(void);
+ bool closid_allocated(unsigned int closid);
+ int resctrl_find_cleanest_closid(void);
+ 
+diff --git a/arch/x86/kernel/cpu/resctrl/rdtgroup.c b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+index c62d6183bfe4..58e4df195207 100644
+--- a/arch/x86/kernel/cpu/resctrl/rdtgroup.c
++++ b/arch/x86/kernel/cpu/resctrl/rdtgroup.c
+@@ -171,6 +171,27 @@ void closid_free(int closid)
+ 	__set_bit(closid, &closid_free_map);
+ }
+ 
++/*
++ * SDCIAE feature uses max CLOSID to route the SDCI traffic.
++ * Get the max CLOSID number
++ */
++static u32 get_sdciae_closid(struct rdt_resource *r)
++{
++	return resctrl_arch_get_num_closid(r) - 1;
++}
++
++static int closid_alloc_sdciae(struct rdt_resource *r)
++{
++	u32 sdciae_closid = get_sdciae_closid(r);
++
++	if (closid_free_map & (1 << sdciae_closid)) {
++		closid_free_map &= ~(1 << sdciae_closid);
++		return sdciae_closid;
++	} else {
++		return -ENOSPC;
++	}
++}
++
+ /**
+  * closid_allocated - test if provided closid is in use
+  * @closid: closid to be tested
+@@ -1850,6 +1871,57 @@ int resctrl_arch_set_sdciae_enabled(enum resctrl_res_level l, bool enable)
+ 	return 0;
+ }
+ 
++static int resctrl_sdciae_show(struct kernfs_open_file *of,
++			       struct seq_file *seq, void *v)
++{
++	seq_printf(seq, "%x\n", resctrl_arch_get_sdciae_enabled(RDT_RESOURCE_L3));
++	return 0;
++}
++
++static ssize_t resctrl_sdciae_write(struct kernfs_open_file *of, char *buf,
++				    size_t nbytes, loff_t off)
++{
++	struct resctrl_schema *s = of->kn->parent->priv;
++	struct rdt_resource *r = s->res;
++	unsigned int enable;
++	u32 sdciae_closid;
++	int ret;
++
++	if (!r->sdciae_capable)
++		return -EINVAL;
++
++	ret = kstrtouint(buf, 0, &enable);
++	if (ret)
++		return ret;
++
++	cpus_read_lock();
++	mutex_lock(&rdtgroup_mutex);
++
++	rdt_last_cmd_clear();
++
++	/* Update the MSR only when there is a change */
++	if (resctrl_arch_get_sdciae_enabled(RDT_RESOURCE_L3) != enable) {
++		if (enable) {
++			ret = closid_alloc_sdciae(r);
++			if (ret < 0) {
++				rdt_last_cmd_puts("SDCIAE CLOSID is not available\n");
++				goto out_sdciae;
++			}
++		} else {
++			sdciae_closid = get_sdciae_closid(r);
++			closid_free(sdciae_closid);
++		}
++
++		ret = resctrl_arch_set_sdciae_enabled(RDT_RESOURCE_L3, enable);
++	}
++
++out_sdciae:
++	mutex_unlock(&rdtgroup_mutex);
++	cpus_read_unlock();
++
++	return ret ?: nbytes;
++}
++
+ /* rdtgroup information files for one cache resource. */
+ static struct rftype res_common_files[] = {
+ 	{
+@@ -2002,6 +2074,13 @@ static struct rftype res_common_files[] = {
+ 		.seq_show	= rdtgroup_schemata_show,
+ 		.fflags		= RFTYPE_CTRL_BASE,
+ 	},
++	{
++		.name		= "sdciae",
++		.mode		= 0644,
++		.kf_ops		= &rdtgroup_kf_single_ops,
++		.seq_show	= resctrl_sdciae_show,
++		.write		= resctrl_sdciae_write,
++	},
+ 	{
+ 		.name		= "mode",
+ 		.mode		= 0644,
+@@ -2101,6 +2180,15 @@ void __init mbm_config_rftype_init(const char *config)
+ 		rft->fflags = RFTYPE_MON_INFO | RFTYPE_RES_CACHE;
+ }
+ 
++void __init resctrl_sdciae_rftype_init(void)
++{
++	struct rftype *rft;
++
++	rft = rdtgroup_get_rftype_by_name("sdciae");
++	if (rft)
++		rft->fflags = RFTYPE_CTRL_INFO | RFTYPE_RES_CACHE;
++}
++
+ /**
+  * rdtgroup_kn_mode_restrict - Restrict user access to named resctrl file
+  * @r: The resource group with which the file is associated.
+-- 
+2.17.1
+

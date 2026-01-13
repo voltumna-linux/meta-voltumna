@@ -1,0 +1,58 @@
+From b451e936f5accf11fdc0cf8df3facf9de71bad63 Mon Sep 17 00:00:00 2001
+From: bherikaj <bherikamleshbhai.j@amd.com>
+Date: Fri, 19 Dec 2025 11:08:01 +0000
+Subject: [PATCH] spi: amd-espi: Make in-band reset optional via kernel
+ parameter
+
+    Add a kernel command-line parameter to enable(espi-amd.espi_reset=1) or disable(default) the AMD eSPI
+    in-band reset during probe. The reset is performed only when explicitly
+    enabled.
+---
+ drivers/spi/espi-amd.c | 24 ++++++++++++++++++++----
+ 1 file changed, 20 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/spi/espi-amd.c b/drivers/spi/espi-amd.c
+index f61f4f1ed9c0..fc64fad617cc 100644
+--- a/drivers/spi/espi-amd.c
++++ b/drivers/spi/espi-amd.c
+@@ -41,6 +41,19 @@
+ #define ESPI_CONFIGURATION_HDATA0(a)		(((a) >> 8) & 0xff)
+ #define ESPI_CONFIGURATION_HDATA1(a)		((a) & 0xff)
+ 
++/*
++ *   eSPI in-band reset enable flag:
++ *   espi-amd.espi_reset=1  -> ENABLE reset during probe
++ *   espi-amd.espi_reset=0  -> DISABLE reset
++ *   Note: This is a module parameter. To set via kernel cmdline, use:
++ *       espi-amd.espi_reset=1
++*/
++
++static bool espi_reset = false; /* default: disabled */
++module_param_named(espi_reset, espi_reset, bool, 0444);
++MODULE_PARM_DESC(espi_reset,
++    "Enable AMD eSPI in-band reset at boot (1=enabled; set 0 to disable)");
++
+ enum amd_espi_versions {
+ 	AMD_ESPI_V1 = 1,     /* AMDI0070 */
+ };
+@@ -1104,10 +1117,13 @@ static int amd_espi_init_slave(struct amd_espi *amd_espi, struct espi_device *es
+ 		return ret;
+ 	}
+ 
+-	ret = amd_espi_inband_reset(amd_espi);
+-	if (ret != CB_SUCCESS) {
+-		pr_err("AMD_ESPI: In-band reset failed!\n");
+-		return ret;
++	if (espi_reset) {
++		pr_info("AMD eSPI: Triggering in-band reset\n");
++		ret = amd_espi_inband_reset(amd_espi);
++		if (ret != CB_SUCCESS) {
++			pr_err("AMD_ESPI: In-band reset failed!\n");
++			return ret;
++		}
+ 	}
+ 
+ 	ret = set_def_initial_config(master, espi_dev);
+-- 
+2.43.0
+

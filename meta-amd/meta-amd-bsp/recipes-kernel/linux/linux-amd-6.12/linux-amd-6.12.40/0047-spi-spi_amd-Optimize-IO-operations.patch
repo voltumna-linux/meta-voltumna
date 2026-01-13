@@ -1,0 +1,128 @@
+From b9aba2943cba86a5d183a1f95e3af2e27a4f6950 Mon Sep 17 00:00:00 2001
+From: rgaridap <ramesh.garidapuri@amd.com>
+Date: Thu, 21 Aug 2025 07:41:36 +0000
+Subject: [PATCH 04/12] spi: spi_amd: Optimize IO operations
+
+Read and write the maximum number of data bytes at once, rather than byte
+by byte. This improves AMD SPI controller driver performance by reducing
+the time required to access FIFO registers. For example, with the new
+changes, 64 bytes of data from the FIFO queue can be read in 8 read calls
+(8 bytes per call) instead of 64 read calls(1 byte per call).
+
+Co-developed-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Signed-off-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Co-developed-by: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Signed-off-by: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Signed-off-by: Raju Rangoju <Raju.Rangoju@amd.com>
+Link: https://patch.msgid.link/20240925133644.2922359-6-Raju.Rangoju@amd.com
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Change-Id: Ibb60702025754e86ab9cbeb279dd8e886379ccb7
+Signed-off-by: amlakshm <AmmuThivya.LakshmiS@amd.com>
+
+Change-Id: If7d8bd3a28436772e3a44924f16fe5c85c038657
+---
+ drivers/spi/spi-amd.c | 53 +++++++++++++++++++++++++++++++++----------
+ 1 file changed, 41 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/spi/spi-amd.c b/drivers/spi/spi-amd.c
+index 7841f3292a62..eadb627889bd 100644
+--- a/drivers/spi/spi-amd.c
++++ b/drivers/spi/spi-amd.c
+@@ -14,6 +14,7 @@
+ #include <linux/platform_device.h>
+ #include <linux/spi/spi.h>
+ #include <linux/spi/spi-mem.h>
++#include <linux/io-64-nonatomic-lo-hi.h>
+ 
+ #define AMD_SPI_CTRL0_REG	0x00
+ #define AMD_SPI_EXEC_CMD	BIT(16)
+@@ -140,6 +141,16 @@ static inline void amd_spi_writereg32(struct amd_spi *amd_spi, int idx, u32 val)
+ 	writel(val, ((u8 __iomem *)amd_spi->io_remap_addr + idx));
+ }
+ 
++static inline u64 amd_spi_readreg64(struct amd_spi *amd_spi, int idx)
++{
++	return readq((u8 __iomem *)amd_spi->io_remap_addr + idx);
++}
++
++static inline void amd_spi_writereg64(struct amd_spi *amd_spi, int idx, u64 val)
++{
++	writeq(val, ((u8 __iomem *)amd_spi->io_remap_addr + idx));
++}
++
+ static inline void amd_spi_setclear_reg32(struct amd_spi *amd_spi, int idx, u32 set, u32 clear)
+ {
+ 	u32 tmp = amd_spi_readreg32(amd_spi, idx);
+@@ -448,15 +459,23 @@ static void amd_spi_mem_data_out(struct amd_spi *amd_spi,
+ 				 const struct spi_mem_op *op)
+ {
+ 	int base_addr = AMD_SPI_FIFO_BASE + op->addr.nbytes;
+-	u8 *buf = (u8 *)op->data.buf.out;
++	u64 *buf_64 = (u64 *)op->data.buf.out;
+ 	u32 nbytes = op->data.nbytes;
++	u32 left_data = nbytes;
++	u8 *buf;
+ 	int i;
+ 
+ 	amd_spi_set_opcode(amd_spi, op->cmd.opcode);
+ 	amd_spi_set_addr(amd_spi, op);
+ 
+-	for (i = 0; i < nbytes; i++)
+-		amd_spi_writereg8(amd_spi, (base_addr + i), buf[i]);
++	for (i = 0; left_data >= 8; i++, left_data -= 8)
++		amd_spi_writereg64(amd_spi, base_addr + op->dummy.nbytes + (i * 8), *buf_64++);
++
++	buf = (u8 *)buf_64;
++	for (i = 0; i < left_data; i++) {
++		amd_spi_writereg8(amd_spi, base_addr + op->dummy.nbytes + nbytes + i - left_data,
++				  buf[i]);
++	}
+ 
+ 	amd_spi_set_tx_count(amd_spi, op->addr.nbytes + op->data.nbytes);
+ 	amd_spi_set_rx_count(amd_spi, 0);
+@@ -467,23 +486,33 @@ static void amd_spi_mem_data_out(struct amd_spi *amd_spi,
+ static void amd_spi_mem_data_in(struct amd_spi *amd_spi,
+ 				const struct spi_mem_op *op)
+ {
+-	int offset = (op->addr.nbytes == 0) ? 0 : 1;
+-	u8 *buf = (u8 *)op->data.buf.in;
++	int base_addr = AMD_SPI_FIFO_BASE + op->addr.nbytes;
++	u64 *buf_64 = (u64 *)op->data.buf.in;
+ 	u32 nbytes = op->data.nbytes;
+-	int base_addr, i;
+-
+-	base_addr = AMD_SPI_FIFO_BASE + op->addr.nbytes + offset;
++	u32 left_data = nbytes;
++	u8 *buf;
++	int i;
+ 
+ 	amd_spi_set_opcode(amd_spi, op->cmd.opcode);
+ 	amd_spi_set_addr(amd_spi, op);
+-	amd_spi_set_tx_count(amd_spi, op->addr.nbytes);
+-	amd_spi_set_rx_count(amd_spi, op->data.nbytes + 1);
++	amd_spi_set_tx_count(amd_spi, op->addr.nbytes + op->dummy.nbytes);
++
++	for (i = 0; i < op->dummy.nbytes; i++)
++		amd_spi_writereg8(amd_spi, (base_addr + i), 0xff);
++
++	amd_spi_set_rx_count(amd_spi, op->data.nbytes);
+ 	amd_spi_clear_fifo_ptr(amd_spi);
+ 	amd_spi_execute_opcode(amd_spi);
+ 	amd_spi_busy_wait(amd_spi);
+ 
+-	for (i = 0; i < nbytes; i++)
+-		buf[i] = amd_spi_readreg8(amd_spi, base_addr + i);
++	for (i = 0; left_data >= 8; i++, left_data -= 8)
++		*buf_64++ = amd_spi_readreg64(amd_spi, base_addr + op->dummy.nbytes +
++					      (i * 8));
++
++	buf = (u8 *)buf_64;
++	for (i = 0; i < left_data; i++)
++		buf[i] = amd_spi_readreg8(amd_spi, base_addr + op->dummy.nbytes +
++					  nbytes + i - left_data);
+ }
+ 
+ static int amd_spi_exec_mem_op(struct spi_mem *mem,
+-- 
+2.43.0
+

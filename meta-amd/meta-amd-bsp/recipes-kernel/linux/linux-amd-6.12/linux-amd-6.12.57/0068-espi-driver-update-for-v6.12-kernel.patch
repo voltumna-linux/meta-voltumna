@@ -1,0 +1,35 @@
+From d6ea92b3d787d760426c9e41f988afd02e7b8fe9 Mon Sep 17 00:00:00 2001
+From: smavila <smavila@amd.com>
+Date: Thu, 8 Jan 2026 10:47:17 +0530
+Subject: [PATCH 2/2] espi driver update for v6.12 kernel
+
+Signed-off-by: smavila <smavila@amd.com>
+---
+ drivers/spi/espi-amd.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/spi/espi-amd.c b/drivers/spi/espi-amd.c
+index 251736b0f3a1..fc64fad617cc 100644
+--- a/drivers/spi/espi-amd.c
++++ b/drivers/spi/espi-amd.c
+@@ -2368,7 +2368,7 @@ static int amd_espi_probe(struct platform_device *pdev)
+ 	return ret;
+ }
+ 
+-static int amd_espi_remove(struct platform_device *pdev)
++static void amd_espi_remove(struct platform_device *pdev)
+ {
+ 	struct amd_espi *amd_espi = platform_get_drvdata(pdev);
+ 
+@@ -2378,7 +2378,7 @@ static int amd_espi_remove(struct platform_device *pdev)
+ 	class_destroy(amd_espi_dev_class);
+ 	unregister_chrdev_region(amd_espi->dev_minor, ESPI_DEV_MINORS);
+ 
+-	return 0;
++	return;
+ }
+ 
+ #ifdef CONFIG_ACPI
+-- 
+2.43.0
+
