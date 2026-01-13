@@ -1,0 +1,189 @@
+From a5394647efc9c5c1be1d5fe52189e2bcfe32d273 Mon Sep 17 00:00:00 2001
+From: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>
+Date: Mon, 23 Sep 2024 13:33:57 +0530
+Subject: [PATCH 087/127] i2c: amd-asf: Add ACPI support for AMD ASF Controller
+
+The AMD ASF controller is presented to the operating system as an ACPI
+device. The AMD ASF driver can use ACPI to obtain information about the
+ASF controller's attributes, such as the ASF address space and interrupt
+number, and to handle ASF interrupts.
+
+Currently, the piix4 driver assumes that a specific port address is
+designated for AUX operations. However, with the introduction of ASF, the
+same port address may also be used by the ASF controller. Therefore, a
+check needs to be added to ensure that if ASF is advertised and enabled in
+ACPI, the AUX port should not be configured.
+
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Co-developed-by: Sanket Goswami <Sanket.Goswami@amd.com>
+Signed-off-by: Sanket Goswami <Sanket.Goswami@amd.com>
+Signed-off-by: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>
+Signed-off-by: Andi Shyti <andi.shyti@kernel.org>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Change-Id: I93e02c80f1f5083e98e523c588fbf59c1df6a276
+---
+ drivers/i2c/busses/Kconfig            | 16 ++++++
+ drivers/i2c/busses/Makefile           |  1 +
+ drivers/i2c/busses/i2c-amd-asf-plat.c | 70 +++++++++++++++++++++++++++
+ drivers/i2c/busses/i2c-piix4.c        | 12 ++++-
+ 4 files changed, 98 insertions(+), 1 deletion(-)
+ create mode 100644 drivers/i2c/busses/i2c-amd-asf-plat.c
+
+diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
+index 0e679cc50148..e171eef68c7d 100644
+--- a/drivers/i2c/busses/Kconfig
++++ b/drivers/i2c/busses/Kconfig
+@@ -95,6 +95,22 @@ config I2C_AMD_MP2
+ 	  This driver can also be built as modules.  If so, the modules will
+ 	  be called i2c-amd-mp2-pci and i2c-amd-mp2-plat.
+ 
++config I2C_AMD_ASF
++	tristate "AMD ASF I2C Controller Support"
++	depends on I2C_PIIX4
++	help
++	  This option enables support for the AMD ASF (Alert Standard Format)
++	  I2C controller. The AMD ASF controller is an SMBus controller with
++	  built-in ASF functionality, allowing it to issue generic SMBus
++	  packets and communicate with the DASH controller using MCTP over
++	  ASF.
++
++	  If you have an AMD system with ASF support and want to enable this
++	  functionality, say Y or M here. If unsure, say N.
++
++	  To compile this driver as a module, choose M here: the module will
++	  be called i2c_amd_asf_plat.
++
+ config I2C_HIX5HD2
+ 	tristate "Hix5hd2 high-speed I2C driver"
+ 	depends on ARCH_HISI || ARCH_HIX5HD2 || COMPILE_TEST
+diff --git a/drivers/i2c/busses/Makefile b/drivers/i2c/busses/Makefile
+index ecc07c50f2a0..62e80be08354 100644
+--- a/drivers/i2c/busses/Makefile
++++ b/drivers/i2c/busses/Makefile
+@@ -38,6 +38,7 @@ obj-$(CONFIG_I2C_POWERMAC)	+= i2c-powermac.o
+ # Embedded system I2C/SMBus host controller drivers
+ obj-$(CONFIG_I2C_ALTERA)	+= i2c-altera.o
+ obj-$(CONFIG_I2C_AMD_MP2)	+= i2c-amd-mp2-pci.o i2c-amd-mp2-plat.o
++obj-$(CONFIG_I2C_AMD_ASF)	+= i2c-amd-asf-plat.o
+ obj-$(CONFIG_I2C_ASPEED)	+= i2c-aspeed.o
+ obj-$(CONFIG_I2C_AT91)		+= i2c-at91.o
+ i2c-at91-objs			:= i2c-at91-core.o i2c-at91-master.o
+diff --git a/drivers/i2c/busses/i2c-amd-asf-plat.c b/drivers/i2c/busses/i2c-amd-asf-plat.c
+new file mode 100644
+index 000000000000..72c203ec48c4
+--- /dev/null
++++ b/drivers/i2c/busses/i2c-amd-asf-plat.c
+@@ -0,0 +1,70 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * AMD Alert Standard Format Platform Driver
++ *
++ * Copyright (c) 2024, Advanced Micro Devices, Inc.
++ * All Rights Reserved.
++ *
++ * Authors: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>
++ *	    Sanket Goswami <Sanket.Goswami@amd.com>
++ */
++
++#include <linux/device.h>
++#include <linux/errno.h>
++#include <linux/gfp_types.h>
++#include <linux/i2c.h>
++#include <linux/io.h>
++#include <linux/ioport.h>
++#include <linux/module.h>
++#include <linux/mod_devicetable.h>
++#include <linux/platform_device.h>
++#include <linux/sprintf.h>
++
++#include "i2c-piix4.h"
++
++struct amd_asf_dev {
++	struct i2c_adapter adap;
++	struct sb800_mmio_cfg mmio_cfg;
++	struct resource *port_addr;
++};
++
++static int amd_asf_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct amd_asf_dev *asf_dev;
++
++	asf_dev = devm_kzalloc(dev, sizeof(*asf_dev), GFP_KERNEL);
++	if (!asf_dev)
++		return dev_err_probe(dev, -ENOMEM, "Failed to allocate memory\n");
++
++	asf_dev->mmio_cfg.use_mmio = true;
++	asf_dev->port_addr = platform_get_resource(pdev, IORESOURCE_IO, 0);
++	if (!asf_dev->port_addr)
++		return dev_err_probe(dev, -EINVAL, "missing IO resources\n");
++
++	asf_dev->adap.owner = THIS_MODULE;
++	asf_dev->adap.dev.parent = dev;
++
++	i2c_set_adapdata(&asf_dev->adap, asf_dev);
++	snprintf(asf_dev->adap.name, sizeof(asf_dev->adap.name), "AMD ASF adapter");
++
++	return devm_i2c_add_adapter(dev, &asf_dev->adap);
++}
++
++static const struct acpi_device_id amd_asf_acpi_ids[] = {
++	{ "AMDI001A" },
++	{ }
++};
++MODULE_DEVICE_TABLE(acpi, amd_asf_acpi_ids);
++
++static struct platform_driver amd_asf_driver = {
++	.driver = {
++		.name = "i2c-amd-asf",
++		.acpi_match_table = amd_asf_acpi_ids,
++	},
++	.probe = amd_asf_probe,
++};
++module_platform_driver(amd_asf_driver);
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("AMD Alert Standard Format Driver");
+diff --git a/drivers/i2c/busses/i2c-piix4.c b/drivers/i2c/busses/i2c-piix4.c
+index febbd9950d8f..6315991b79fa 100644
+--- a/drivers/i2c/busses/i2c-piix4.c
++++ b/drivers/i2c/busses/i2c-piix4.c
+@@ -101,6 +101,7 @@
+ 
+ #define SB800_PIIX4_FCH_PM_ADDR			0xFED80300
+ #define SB800_PIIX4_FCH_PM_SIZE			8
++#define SB800_ASF_ACPI_PATH			"\\_SB.ASFC"
+ 
+ /* insmod parameters */
+ 
+@@ -1043,6 +1044,9 @@ static int piix4_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ {
+ 	int retval;
+ 	bool is_sb800 = false;
++	bool is_asf = false;
++	acpi_status status;
++	acpi_handle handle;
+ 
+ 	if ((dev->vendor == PCI_VENDOR_ID_ATI &&
+ 	     dev->device == PCI_DEVICE_ID_ATI_SBX00_SMBUS &&
+@@ -1105,10 +1109,16 @@ static int piix4_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ 		}
+ 	}
+ 
++	status = acpi_get_handle(NULL, (acpi_string)SB800_ASF_ACPI_PATH, &handle);
++	if (ACPI_SUCCESS(status))
++		is_asf = true;
++
+ 	if (dev->vendor == PCI_VENDOR_ID_AMD &&
+ 	    (dev->device == PCI_DEVICE_ID_AMD_HUDSON2_SMBUS ||
+ 	     dev->device == PCI_DEVICE_ID_AMD_KERNCZ_SMBUS)) {
+-		retval = piix4_setup_sb800(dev, id, 1);
++		/* Do not setup AUX port if ASF is enabled */
++		if (!is_asf)
++			retval = piix4_setup_sb800(dev, id, 1);
+ 	}
+ 
+ 	if (retval > 0) {
+-- 
+2.43.0
+

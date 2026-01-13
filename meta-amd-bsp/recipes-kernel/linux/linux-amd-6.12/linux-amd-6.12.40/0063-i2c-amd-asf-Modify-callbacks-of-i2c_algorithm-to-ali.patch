@@ -1,0 +1,42 @@
+From ccf37835d2a27bfb6377d0a783f4f9206a074561 Mon Sep 17 00:00:00 2001
+From: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>
+Date: Mon, 17 Feb 2025 14:32:56 +0530
+Subject: [PATCH 095/127] i2c: amd-asf: Modify callbacks of i2c_algorithm to
+ align with the latest revision
+
+Adjust the i2c_algorithm callbacks to be consistent with the most recent
+revision by updating the callback names from master_xfer, reg_slave, and
+unreg_slave to the current naming convention: xfer, reg_target, and
+unreg_target.
+
+Co-developed-by: Sanket Goswami <Sanket.Goswami@amd.com>
+Signed-off-by: Sanket Goswami <Sanket.Goswami@amd.com>
+Signed-off-by: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>
+Signed-off-by: Andi Shyti <andi.shyti@kernel.org>
+Link: https://lore.kernel.org/r/20250217090258.398540-1-Shyam-sundar.S-k@amd.com
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Change-Id: I0df319c8fd2a5c89d57be1ace94dd3bf77f533e2
+---
+ drivers/i2c/busses/i2c-amd-asf-plat.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-amd-asf-plat.c b/drivers/i2c/busses/i2c-amd-asf-plat.c
+index 5a8a1bca965c..5d5fb63b55b1 100644
+--- a/drivers/i2c/busses/i2c-amd-asf-plat.c
++++ b/drivers/i2c/busses/i2c-amd-asf-plat.c
+@@ -272,9 +272,9 @@ static u32 amd_asf_func(struct i2c_adapter *adapter)
+ }
+ 
+ static const struct i2c_algorithm amd_asf_smbus_algorithm = {
+-	.master_xfer = amd_asf_xfer,
+-	.reg_slave = amd_asf_reg_target,
+-	.unreg_slave = amd_asf_unreg_target,
++	.xfer = amd_asf_xfer,
++	.reg_target = amd_asf_reg_target,
++	.unreg_target = amd_asf_unreg_target,
+ 	.functionality = amd_asf_func,
+ };
+ 
+-- 
+2.43.0
+

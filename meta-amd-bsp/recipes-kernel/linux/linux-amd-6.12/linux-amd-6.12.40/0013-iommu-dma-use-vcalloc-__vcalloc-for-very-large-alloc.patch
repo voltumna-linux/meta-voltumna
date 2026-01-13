@@ -1,0 +1,32 @@
+From 7712e2d781cccec8360eae956f7d2e3fe56fb039 Mon Sep 17 00:00:00 2001
+From: Sanath S <Sanath.S@amd.com>
+Date: Tue, 13 May 2025 09:54:09 +0530
+Subject: [PATCH 16/16] iommu-dma: use vcalloc/__vcalloc for very large
+ allocatons
+
+Allocations whose size is related to the memslot size can be arbitrarily
+large.  Do not use kvzalloc/kvcalloc, as those are limited to "not crazy"
+sizes that fit in 32 bits.  Now that it is available, they can use either
+vcalloc or __vcalloc, the latter if accounting is required.
+
+Signed-off-by: Sanath S <Sanath.S@amd.com>
+---
+ drivers/iommu/dma-iommu.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
+index 2a9fa0c8cc00..0775636b7a59 100644
+--- a/drivers/iommu/dma-iommu.c
++++ b/drivers/iommu/dma-iommu.c
+@@ -893,7 +893,7 @@ static struct page **__iommu_dma_alloc_pages(struct device *dev,
+ 	if (!order_mask)
+ 		return NULL;
+ 
+-	pages = kvcalloc(count, sizeof(*pages), GFP_KERNEL);
++	pages = __vcalloc(count, sizeof(*pages), GFP_KERNEL);
+ 	if (!pages)
+ 		return NULL;
+ 
+-- 
+2.39.2
+
