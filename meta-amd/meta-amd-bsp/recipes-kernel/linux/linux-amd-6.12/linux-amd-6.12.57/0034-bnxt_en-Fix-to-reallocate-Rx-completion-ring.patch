@@ -1,0 +1,150 @@
+From 77244e504574ad98d29a0d2cf52bb6a1a3c9c53f Mon Sep 17 00:00:00 2001
+From: amlakshm <AmmuThivya.LakshmiS@amd.com>
+Date: Fri, 12 Sep 2025 05:21:18 +0000
+Subject: [PATCH] bnxt_en: Fix to reallocate Rx completion ring
+
+In order to program the correct ST during an IRQ affinity
+change, we need to free/re-allocate the Rx completion ring.
+Free the Rx completion ring both in HW and SW in queue_stop()
+and do the corresponding re-allocation for the same in queue_start))
+
+Signed-off-by: Somnath Kotur <somnath.kotur@broadcom.com>
+---
+ drivers/net/ethernet/broadcom/bnxt/bnxt.c | 70 +++++++++++++++++++++--
+ 1 file changed, 66 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt.c b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+index 90895775a99d..5f2b4a09167c 100644
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+@@ -7054,7 +7054,23 @@ static void bnxt_set_db(struct bnxt *bp, struct bnxt_db_info *db, u32 ring_type,
+ 	}
+ 	bnxt_set_db_mask(bp, db, ring_type);
+ }
++static int bnxt_hwrm_cp_ring_alloc_p5(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
++{
++	struct bnxt_napi *bnapi = cpr->bnapi;
++	u32 type = HWRM_RING_ALLOC_CMPL;
++	struct bnxt_ring_struct *ring;
++	u32 map_idx = bnapi->index;
++	int rc;
+ 
++	ring = &cpr->cp_ring_struct;
++	ring->handle = BNXT_SET_NQ_HDL(cpr);
++	rc = hwrm_ring_alloc_send_msg(bp, ring, type, map_idx);
++	if (rc)
++		return rc;
++	bnxt_set_db(bp, &cpr->cp_db, type, map_idx, ring->fw_ring_id);
++	bnxt_db_cq(bp, &cpr->cp_db, cpr->cp_raw_cons);
++	return 0;
++}
+ static int bnxt_hwrm_rx_ring_alloc(struct bnxt *bp,
+ 				   struct bnxt_rx_ring_info *rxr)
+ {
+@@ -7296,6 +7312,32 @@ static void bnxt_hwrm_rx_agg_ring_free(struct bnxt *bp,
+ 	ring->fw_ring_id = INVALID_HW_RING_ID;
+ 	bp->grp_info[grp_idx].agg_fw_ring_id = INVALID_HW_RING_ID;
+ }
++static void bnxt_hwrm_cp_ring_free(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
++{
++	struct bnxt_ring_struct *ring;
++
++	ring = &cpr->cp_ring_struct;
++	if (ring->fw_ring_id == INVALID_HW_RING_ID)
++		return;
++
++	hwrm_ring_free_send_msg(bp, ring, RING_FREE_REQ_RING_TYPE_L2_CMPL,
++				INVALID_HW_RING_ID);
++	ring->fw_ring_id = INVALID_HW_RING_ID;
++}
++
++static void bnxt_free_one_cp_ring(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
++{
++	struct bnxt_ring_struct *ring = &cpr->cp_ring_struct;
++	int i;
++
++	bnxt_hwrm_cp_ring_free(bp, cpr);
++	cpr->cp_raw_cons = 0;
++	cpr->toggle = 0;
++
++	for (i = 0; i < bp->cp_nr_pages; i++)
++		if (cpr->cp_desc_ring[i])
++			memset(cpr->cp_desc_ring[i], 0, ring->ring_mem.page_size);
++}
+ 
+ static void bnxt_hwrm_ring_free(struct bnxt *bp, bool close_path)
+ {
+@@ -15520,10 +15562,14 @@ static int bnxt_queue_start(struct net_device *dev, void *qmem, int idx)
+ 	rc = bnxt_hwrm_rx_ring_alloc(bp, rxr);
+ 	if (rc)
+ 		return rc;
+-	rc = bnxt_hwrm_rx_agg_ring_alloc(bp, rxr);
++	rc = bnxt_hwrm_cp_ring_alloc_p5(bp, rxr->rx_cpr);
+ 	if (rc)
+ 		goto err_free_hwrm_rx_ring;
+ 
++	rc = bnxt_hwrm_rx_agg_ring_alloc(bp, rxr);
++	if (rc)
++		goto err_free_hwrm_cp_ring;
++
+ 	bnxt_db_write(bp, &rxr->rx_db, rxr->rx_prod);
+ 	if (bp->flags & BNXT_FLAG_AGG_RINGS)
+ 		bnxt_db_write(bp, &rxr->rx_agg_db, rxr->rx_agg_prod);
+@@ -15532,6 +15578,10 @@ static int bnxt_queue_start(struct net_device *dev, void *qmem, int idx)
+ 	cpr->sw_stats->rx.rx_resets++;
+ 
+ 	mru = bp->dev->mtu + ETH_HLEN + VLAN_HLEN;
++	INIT_WORK(&cpr->dim.work, bnxt_dim_work);
++	cpr->dim.mode = DIM_CQ_PERIOD_MODE_START_FROM_EQE;
++ 
++	napi_enable(&rxr->bnapi->napi);
+ 	for (i = 0; i < bp->nr_vnics; i++) {
+ 		vnic = &bp->vnic_info[i];
+ 
+@@ -15540,7 +15590,9 @@ static int bnxt_queue_start(struct net_device *dev, void *qmem, int idx)
+ 			return rc;
+ 	}
+ 	return bnxt_set_rss_ctx_vnic_mru(bp, mru, idx);
+-
++ 
++err_free_hwrm_cp_ring:
++	bnxt_hwrm_cp_ring_free(bp, rxr->rx_cpr);
+ err_free_hwrm_rx_ring:
+ 	bnxt_hwrm_rx_ring_free(bp, rxr, false);
+ 	return rc;
+@@ -15550,7 +15602,10 @@ static int bnxt_queue_stop(struct net_device *dev, void *qmem, int idx)
+ {
+ 	struct bnxt *bp = netdev_priv(dev);
+ 	struct bnxt_rx_ring_info *rxr;
++  struct bnxt_cp_ring_info *cpr;
+ 	struct bnxt_vnic_info *vnic;
++  struct bnxt_napi *bnapi;
++ 
+ 	int i;
+ 
+ 	for (i = 0; i < bp->nr_vnics; i++) {
+@@ -15564,12 +15619,19 @@ static int bnxt_queue_stop(struct net_device *dev, void *qmem, int idx)
+ 	rxr = &bp->rx_ring[idx];
+ 	cancel_work_sync(&rxr->bnapi->cp_ring.dim.work);
+ 	bnxt_hwrm_rx_ring_free(bp, rxr, false);
+-	bnxt_hwrm_rx_agg_ring_free(bp, rxr, false);
+-	rxr->rx_next_cons = 0;
++	bnxt_hwrm_rx_agg_ring_free(bp, rxr, false);	
+ 	page_pool_disable_direct_recycling(rxr->page_pool);
++ 
+ 	if (bnxt_separate_head_pool())
+ 		page_pool_disable_direct_recycling(rxr->head_pool);
+ 
++	bnapi = rxr->bnapi;
++	cpr = &bnapi->cp_ring;
++	napi_disable(&bnapi->napi);
++	cancel_work_sync(&cpr->dim.work);
++
++	bnxt_free_one_cp_ring(bp, rxr->rx_cpr);
++
+ 	memcpy(qmem, rxr, sizeof(*rxr));
+ 	bnxt_init_rx_ring_struct(bp, qmem);
+ 
+-- 
+2.43.0
+

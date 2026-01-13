@@ -1,25 +1,11 @@
-FILESEXTRAPATHS:prepend := "${THISDIR}/linux-amd:"
+FILES:${KERNEL_PACKAGE_NAME}-modules += "/boot"
+FILES:${KERNEL_PACKAGE_NAME}-modules += "/lib/modules/${KERNEL_VERSION}/modules*"
+PACKAGES += "extra-modules"
 
-SRC_URI:append:v3000 := " \
-           file://xgbe.cfg \
-           file://amd_io.cfg \
-           file://v3000-edac.scc \
-           file://v3000-eSPI.scc \
-	  "
+LINUX_VERSION_EXTENSION = "-amd-${LINUX_KERNEL_TYPE}"
 
-SRC_URI:append:siena := " \
-           file://ntb.scc \
-           file://ntb.cfg \
-           file://amd_io.cfg \
-           file://prof.scc \
-           file://prof.cfg \
-	  "
+KERNEL_EXTRA_FEATURES ?= "features/netfilter/netfilter.scc \
+                          features/security/security.scc"
 
-SRC_URI:append:turin := " \
-           file://ntb.scc \
-           file://ntb.cfg \
-           file://amd_io.cfg \
-           file://prof.scc \
-           file://prof.cfg \
-	  "
+KERNEL_FEATURES:append = " ${KERNEL_EXTRA_FEATURES}"
 

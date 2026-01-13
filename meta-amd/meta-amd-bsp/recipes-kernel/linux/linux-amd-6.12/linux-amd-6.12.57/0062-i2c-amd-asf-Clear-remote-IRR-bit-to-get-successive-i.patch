@@ -1,0 +1,67 @@
+From 1dcc511b04b69f97755e64c4e2d2f489266e6f4c Mon Sep 17 00:00:00 2001
+From: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>
+Date: Mon, 23 Sep 2024 13:34:00 +0530
+Subject: [PATCH 094/127] i2c: amd-asf: Clear remote IRR bit to get successive
+ interrupt
+
+To ensure successive interrupts upon packet reception, it is necessary to
+clear the remote IRR bit by writing the interrupt number to the EOI
+register. The base address for this operation is provided by the BIOS and
+retrieved by the driver by traversing the ASF object's namespace.
+
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Co-developed-by: Sanket Goswami <Sanket.Goswami@amd.com>
+Signed-off-by: Sanket Goswami <Sanket.Goswami@amd.com>
+Signed-off-by: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>
+Signed-off-by: Andi Shyti <andi.shyti@kernel.org>
+Signed-off-by: Sudheesh Mavila <sudheesh.mavila@amd.com>
+Change-Id: Idd19d6739ebb7ee8bb9c9335d9fcaf64d4908f51
+---
+ drivers/i2c/busses/i2c-amd-asf-plat.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/drivers/i2c/busses/i2c-amd-asf-plat.c b/drivers/i2c/busses/i2c-amd-asf-plat.c
+index 03e45f3b4ad1..5a8a1bca965c 100644
+--- a/drivers/i2c/busses/i2c-amd-asf-plat.c
++++ b/drivers/i2c/busses/i2c-amd-asf-plat.c
+@@ -48,6 +48,7 @@
+ 
+ struct amd_asf_dev {
+ 	struct i2c_adapter adap;
++	void __iomem *eoi_base;
+ 	struct i2c_client *target;
+ 	struct delayed_work work_buf;
+ 	struct sb800_mmio_cfg mmio_cfg;
+@@ -300,6 +301,7 @@ static int amd_asf_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+ 	struct amd_asf_dev *asf_dev;
++	struct resource *eoi_addr;
+ 	int ret, irq;
+ 
+ 	asf_dev = devm_kzalloc(dev, sizeof(*asf_dev), GFP_KERNEL);
+@@ -311,6 +313,21 @@ static int amd_asf_probe(struct platform_device *pdev)
+ 	if (!asf_dev->port_addr)
+ 		return dev_err_probe(dev, -EINVAL, "missing IO resources\n");
+ 
++	/*
++	 * The resource obtained via ACPI might not belong to the ASF device address space. Instead,
++	 * it could be within other IP blocks of the ASIC, which are crucial for generating
++	 * subsequent interrupts. Therefore, we avoid using devm_platform_ioremap_resource() and
++	 * use platform_get_resource() and devm_ioremap() separately to prevent any address space
++	 * conflicts.
++	 */
++	eoi_addr = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++	if (!eoi_addr)
++		return dev_err_probe(dev, -EINVAL, "missing MEM resources\n");
++
++	asf_dev->eoi_base = devm_ioremap(dev, eoi_addr->start, resource_size(eoi_addr));
++	if (!asf_dev->eoi_base)
++		return dev_err_probe(dev, -EBUSY, "failed mapping IO region\n");
++
+ 	ret = devm_delayed_work_autocancel(dev, &asf_dev->work_buf, amd_asf_process_target);
+ 	if (ret)
+ 		return dev_err_probe(dev, ret, "failed to create work queue\n");
+-- 
+2.43.0
+

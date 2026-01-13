@@ -1,0 +1,94 @@
+From 98e62ac2ed1862052b1d8f7a2c1bb4b34e0e4472 Mon Sep 17 00:00:00 2001
+From: Raju Rangoju <Raju.Rangoju@amd.com>
+Date: Wed, 28 May 2025 15:51:01 +0530
+Subject: [PATCH] ae4dma: avoid race during descriptors cleanup
+
+Under heavy load with low chunk orders (for example CO=10), the firmware
+processes descriptors rapidly. The driver frees descriptors upon
+receiving interrupts at a similar pace.
+
+Accessing descriptors immediately after firmware submission can cause a
+race condition, leading to use-after-free bugs in the driver.
+
+Avoid race by use of reference counting.
+
+Signed-off-by: Raju Rangoju <Raju.Rangoju@amd.com>
+---
+ drivers/dma/ae4dma/ae4dma-dmaengine.c | 26 +++++++++++++++++++++++---
+ drivers/dma/ae4dma/ae4dma.h           |  1 +
+ 2 files changed, 24 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/dma/ae4dma/ae4dma-dmaengine.c b/drivers/dma/ae4dma/ae4dma-dmaengine.c
+index 03f28eb10ad6..e61ab71083af 100644
+--- a/drivers/dma/ae4dma/ae4dma-dmaengine.c
++++ b/drivers/dma/ae4dma/ae4dma-dmaengine.c
+@@ -35,12 +35,27 @@ static void pt_synchronize(struct dma_chan *dma_chan)
+ 	vchan_synchronize(&chan->vc);
+ }
+ 
++static inline void pt_get_desc(struct pt_dma_desc *desc)
++{
++	atomic_inc(&desc->refcount);
++}
++
++static inline bool pt_put_desc(struct pt_dma_desc *desc)
++{
++	struct pt_device *pt = desc->pt;
++
++	if (atomic_dec_and_test(&desc->refcount)) {
++		kmem_cache_free(pt->dma_desc_cache, desc);
++		return true;
++	}
++	return false;
++}
++
+ static void pt_do_cleanup(struct virt_dma_desc *vd)
+ {
+ 	struct pt_dma_desc *desc = to_pt_desc(vd);
+-	struct pt_device *pt = desc->pt;
+ 
+-	kmem_cache_free(pt->dma_desc_cache, desc);
++	pt_put_desc(desc);
+ }
+ 
+ static int pt_dma_start_desc(struct pt_dma_desc *desc, struct pt_dma_chan *chan)
+@@ -178,11 +193,15 @@ static void pt_cmd_callback(void *data, int err)
+ 		if (!desc)
+ 			break;
+ 
++		pt_get_desc(desc);
+ 		ret = pt_dma_start_desc(desc, chan);
+-		if (!ret)
++		if (!ret) {
++			pt_put_desc(desc);
+ 			break;
++		}
+ 
+ 		desc->status = DMA_ERROR;
++		pt_put_desc(desc);
+ 	}
+ }
+ 
+@@ -202,6 +221,7 @@ static struct pt_dma_desc *pt_alloc_dma_desc(struct pt_dma_chan *chan,
+ 	cmd_q->int_en = !!(flags & DMA_PREP_INTERRUPT);
+ 	desc->issued_to_hw = 0;
+ 	desc->status = DMA_IN_PROGRESS;
++	atomic_set(&desc->refcount, 1);
+ 
+ 	return desc;
+ }
+diff --git a/drivers/dma/ae4dma/ae4dma.h b/drivers/dma/ae4dma/ae4dma.h
+index 40af224f2272..51a242ae6087 100644
+--- a/drivers/dma/ae4dma/ae4dma.h
++++ b/drivers/dma/ae4dma/ae4dma.h
+@@ -177,6 +177,7 @@ struct pt_dma_desc {
+ 	size_t len;
+ 	bool issued_to_hw;
+ 	struct pt_cmd pt_cmd;
++	atomic_t refcount;
+ };
+ 
+ struct pt_dma_chan {
+-- 
+2.39.2
+

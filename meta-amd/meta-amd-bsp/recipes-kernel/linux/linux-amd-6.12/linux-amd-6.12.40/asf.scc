@@ -1,0 +1,11 @@
+patch 0055-i2c-amd-asf-Add-ACPI-support-for-AMD-ASF-Controller.patch
+patch 0056-i2c-piix4-Move-i2c_piix4-macros-and-structures-to-co.patch
+patch 0057-i2c-piix4-Change-the-parameter-list-of-piix4_transac.patch
+patch 0058-i2c-piix4-Export-i2c_piix4-driver-functions-as-libra.patch
+patch 0059-i2c-amd-asf-Add-i2c_algorithm-operations-to-support-.patch
+patch 0060-i2c-amd-asf-Add-routine-to-handle-the-ASF-slave-proc.patch
+patch 0061-i2c-amd-asf-Fix-EOI-register-write-to-enable-success.patch
+patch 0062-i2c-amd-asf-Clear-remote-IRR-bit-to-get-successive-i.patch
+patch 0063-i2c-amd-asf-Modify-callbacks-of-i2c_algorithm-to-ali.patch
+patch 0064-i2c-amd-asf-Fix-uninitialized-variables-issue-in-amd.patch
+patch 0065-i2c-amd-asf-Set-cmd-variable-when-encountering-an-er.patch
