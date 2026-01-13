@@ -1,0 +1,122 @@
+From 5bf9631827036187c4c1cd5d77f24ae7fe989d13 Mon Sep 17 00:00:00 2001
+From: Sanath S <Sanath.S@amd.com>
+Date: Wed, 22 May 2024 20:45:39 +0530
+Subject: [PATCH 08/16] ntb_perf: Synchronise db_events incase of peer
+ reboot/unload.
+
+Introduce new command PERF_PEER_LINK_RESET to notify peer
+about reset. Handle the PERF_PEER_LINK_RESET command to resend
+the SSIZE information when the peer comes back again.
+
+Signed-off-by: Sanath S <Sanath.S@amd.com>
+---
+ drivers/ntb/test/ntb_perf.c | 39 +++++++++++++++++++++++++++++++++++--
+ 1 file changed, 37 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/ntb/test/ntb_perf.c b/drivers/ntb/test/ntb_perf.c
+index 5ccc170890ab..ce5ff226c878 100644
+--- a/drivers/ntb/test/ntb_perf.c
++++ b/drivers/ntb/test/ntb_perf.c
+@@ -146,6 +146,7 @@ enum perf_cmd {
+ 	PERF_CMD_CLEAR = 4, /* clear allocated memory */
+ 	PERF_STS_DONE  = 5, /* init is done */
+ 	PERF_STS_LNKUP = 6, /* link up state flag */
++	PERF_PEER_LINK_RESET = 7, /* ntb_perf is unloaded on peer */
+ };
+ 
+ struct perf_ctx;
+@@ -306,6 +307,8 @@ static int perf_spad_cmd_send(struct perf_peer *peer, enum perf_cmd cmd,
+ 		sts = ntb_peer_spad_read(perf->ntb, peer->pidx,
+ 					 PERF_SPAD_CMD(perf->gidx));
+ 		if (sts != PERF_CMD_INVAL) {
++			if (cmd == PERF_PEER_LINK_RESET)
++				return -ENOLINK;
+ 			usleep_range(MSG_UDELAY_LOW, MSG_UDELAY_HIGH);
+ 			continue;
+ 		}
+@@ -327,6 +330,12 @@ static int perf_spad_cmd_send(struct perf_peer *peer, enum perf_cmd cmd,
+ 		break;
+ 	}
+ 
++	if ((try == MSG_TRIES) && (cmd == PERF_CMD_SSIZE))
++		set_bit(PERF_PEER_LINK_RESET, &peer->sts);
++
++	if (try == MSG_TRIES)
++		dev_dbg(&perf->ntb->dev, "TIME OUT");
++
+ 	return try < MSG_TRIES ? 0 : -EAGAIN;
+ }
+ 
+@@ -451,7 +460,8 @@ static int perf_cmd_send(struct perf_peer *peer, enum perf_cmd cmd, u64 data)
+ {
+ 	struct perf_ctx *perf = peer->perf;
+ 
+-	if (cmd == PERF_CMD_SSIZE || cmd == PERF_CMD_SXLAT)
++	if (cmd == PERF_CMD_SSIZE || cmd == PERF_CMD_SXLAT ||
++			PERF_PEER_LINK_RESET)
+ 		return perf->cmd_send(peer, cmd, data);
+ 
+ 	dev_err(&perf->ntb->dev, "Send invalid command\n");
+@@ -494,10 +504,15 @@ static int perf_cmd_recv(struct perf_ctx *perf)
+ 		switch (cmd) {
+ 		case PERF_CMD_SSIZE:
+ 			peer->inbuf_size = data;
++			if (test_and_clear_bit(PERF_PEER_LINK_RESET, &peer->sts))
++				perf_cmd_exec(peer, PERF_CMD_SSIZE);
+ 			return perf_cmd_exec(peer, PERF_CMD_RSIZE);
+ 		case PERF_CMD_SXLAT:
+ 			peer->outbuf_xlat = data;
+ 			return perf_cmd_exec(peer, PERF_CMD_RXLAT);
++		case PERF_PEER_LINK_RESET:
++			set_bit(PERF_PEER_LINK_RESET, &peer->sts);
++			return 0;
+ 		default:
+ 			dev_err(&perf->ntb->dev, "Recv invalid command\n");
+ 			return -EINVAL;
+@@ -508,6 +523,22 @@ static int perf_cmd_recv(struct perf_ctx *perf)
+ 	return ret == -ENODATA ? 0 : ret;
+ }
+ 
++static int enable_db_services(struct perf_ctx *perf)
++{
++	u64 incmd_bit;
++	int ret, sidx, scnt;
++
++	scnt = ntb_spad_count(perf->ntb);
++	for (sidx = 0; sidx < scnt; sidx++)
++		ntb_spad_write(perf->ntb, sidx, PERF_CMD_INVAL);
++	incmd_bit = PERF_SPAD_NOTIFY(perf->gidx);
++	ret = ntb_db_clear_mask(perf->ntb, incmd_bit);
++
++	dev_dbg(&perf->ntb->dev, "DB bits unmasked %#llx\n", incmd_bit);
++
++	return ret;
++}
++
+ static void perf_link_event(void *ctx)
+ {
+ 	struct perf_ctx *perf = ctx;
+@@ -522,6 +553,8 @@ static void perf_link_event(void *ctx)
+ 
+ 		if (lnk_up &&
+ 		    !test_and_set_bit(PERF_STS_LNKUP, &peer->sts)) {
++			enable_db_services(perf);
++			set_bit(PERF_PEER_LINK_RESET, &peer->sts);
+ 			perf_cmd_exec(peer, PERF_CMD_SSIZE);
+ 		} else if (!lnk_up &&
+ 			   test_and_clear_bit(PERF_STS_LNKUP, &peer->sts)) {
+@@ -782,8 +815,10 @@ static void perf_disable_service(struct perf_ctx *perf)
+ 
+ 	ntb_clear_ctx(perf->ntb);
+ 
+-	for (pidx = 0; pidx < perf->pcnt; pidx++)
++	for (pidx = 0; pidx < perf->pcnt; pidx++) {
++		perf_cmd_send(&perf->peers[pidx], PERF_PEER_LINK_RESET, 0);
+ 		perf_cmd_exec(&perf->peers[pidx], PERF_CMD_CLEAR);
++	}
+ 
+ 	for (pidx = 0; pidx < perf->pcnt; pidx++)
+ 		flush_work(&perf->peers[pidx].service);
+-- 
+2.39.2
+

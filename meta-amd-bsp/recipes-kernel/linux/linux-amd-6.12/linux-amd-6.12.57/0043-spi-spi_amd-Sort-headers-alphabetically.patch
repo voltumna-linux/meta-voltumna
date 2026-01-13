@@ -1,0 +1,41 @@
+From 4860e8b112eeb84de0de1bd59e68c28362d7026b Mon Sep 17 00:00:00 2001
+From: Raju Rangoju <Raju.Rangoju@amd.com>
+Date: Wed, 25 Sep 2024 19:06:37 +0530
+Subject: [PATCH] spi: spi_amd: Sort headers alphabetically
+
+Sorting headers alphabetically helps locating duplicates, and makes it
+easier to figure out where to insert new headers.
+
+Co-developed-by: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Signed-off-by: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Signed-off-by: Raju Rangoju <Raju.Rangoju@amd.com>
+Link: https://patch.msgid.link/20240925133644.2922359-2-Raju.Rangoju@amd.com
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Change-Id: I87d384610c2d1cc67aa6065a80d48a1f632c0d08
+Signed-off-by: amlakshm <AmmuThivya.LakshmiS@amd.com>
+---
+ drivers/spi/spi-amd.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/spi/spi-amd.c b/drivers/spi/spi-amd.c
+index 2245ad54b03a..c52066360dfe 100644
+--- a/drivers/spi/spi-amd.c
++++ b/drivers/spi/spi-amd.c
+@@ -7,12 +7,12 @@
+ // Author: Sanjay R Mehta <sanju.mehta@amd.com>
+ 
+ #include <linux/acpi.h>
++#include <linux/delay.h>
+ #include <linux/init.h>
++#include <linux/iopoll.h>
+ #include <linux/module.h>
+ #include <linux/platform_device.h>
+-#include <linux/delay.h>
+ #include <linux/spi/spi.h>
+-#include <linux/iopoll.h>
+ #include <linux/spi/spi-mem.h>
+ 
+ #define AMD_SPI_CTRL0_REG	0x00
+-- 
+2.43.0
+

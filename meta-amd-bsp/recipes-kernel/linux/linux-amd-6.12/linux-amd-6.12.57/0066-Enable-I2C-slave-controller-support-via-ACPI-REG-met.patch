@@ -1,0 +1,89 @@
+From 120e05653fd550e36f6d47d354cb647d80175c96 Mon Sep 17 00:00:00 2001
+From: svelnati <SivaPrasad.Velnati@amd.com>
+Date: Thu, 25 Sep 2025 12:09:35 +0000
+Subject: [PATCH 126/127] Enable I2C slave controller support via ACPI REG
+ method in BIOS and driver
+
+Change-Id: I62e9f74b2c44af82d5d034c32f4eb292273d3081
+Signed-off-by: svelnati <sivaprasad.velnati@amd.com>
+---
+ drivers/i2c/busses/i2c-designware-common.c | 35 ++++++++++++++++++++++
+ drivers/i2c/i2c-core-slave.c               |  5 +++-
+ drivers/i2c/i2c-core.h                     |  2 ++
+ 3 files changed, 41 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-designware-common.c b/drivers/i2c/busses/i2c-designware-common.c
+index 282898aa25fa..6540b4868155 100644
+--- a/drivers/i2c/busses/i2c-designware-common.c
++++ b/drivers/i2c/busses/i2c-designware-common.c
+@@ -275,6 +275,41 @@ static const struct dmi_system_id i2c_dw_no_acpi_params[] = {
+ 	},
+ 	{}
+ };
++/*
++ * i2c reg property read 
++ * 
++ */
++int i2c_dw_acpi_reg_method(struct device *dev)
++{
++	u32 reg=0;
++	acpi_status status;
++	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
++	acpi_handle handle = ACPI_HANDLE(dev);
++		if (!handle) {
++			dev_dbg(handle, "No ACPI handle found for device\n");
++			return -ENODEV;
++		}
++		status = acpi_evaluate_object(handle, "REG", NULL, &output);
++		if (ACPI_FAILURE(status)) {
++			dev_dbg(dev, "Fail to evaluate ACPI object REG\n");
++			return status;
++		}
++
++		union acpi_object *obj = (union acpi_object *)output.pointer;
++		if (obj->type == ACPI_TYPE_INTEGER) {
++			reg = (u32)obj->integer.value;
++			if(reg){
++
++			kfree(output.pointer);
++				return reg;
++			}
++		} else {
++			dev_dbg(dev,"REG is not an integer\n");
++			kfree(output.pointer);
++			return -EINVAL;
++		}
++ 	 	return reg;
++}
+ 
+ static void i2c_dw_acpi_params(struct device *device, char method[],
+ 			       u16 *hcnt, u16 *lcnt, u32 *sda_hold)
+diff --git a/drivers/i2c/i2c-core-slave.c b/drivers/i2c/i2c-core-slave.c
+index faefe1dfa8e5..be33ca6cb58d 100644
+--- a/drivers/i2c/i2c-core-slave.c
++++ b/drivers/i2c/i2c-core-slave.c
+@@ -117,7 +117,10 @@ bool i2c_detect_slave_mode(struct device *dev)
+ 				return true;
+ 		}
+ 	} else if (IS_BUILTIN(CONFIG_ACPI) && ACPI_HANDLE(dev)) {
+-		dev_dbg(dev, "ACPI slave is not supported yet\n");
++		if(i2c_dw_acpi_reg_method(dev))
++			return true;
++		else 
++			return false;
+ 	}
+ 	return false;
+ }
+diff --git a/drivers/i2c/i2c-core.h b/drivers/i2c/i2c-core.h
+index 36587f38dff3..8928e9bea2aa 100644
+--- a/drivers/i2c/i2c-core.h
++++ b/drivers/i2c/i2c-core.h
+@@ -97,3 +97,5 @@ static inline int i2c_setup_smbus_alert(struct i2c_adapter *adap)
+ 	return 0;
+ }
+ #endif
++
++extern int i2c_dw_acpi_reg_method(struct device *dev);
+-- 
+2.43.0
+

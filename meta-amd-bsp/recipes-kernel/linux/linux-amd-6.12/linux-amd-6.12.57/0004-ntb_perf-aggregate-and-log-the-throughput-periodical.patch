@@ -1,0 +1,316 @@
+From 4adb3c95f70ae229180775a8ab14846d0730395e Mon Sep 17 00:00:00 2001
+From: amlakshm <AmmuThivya.LakshmiS@amd.com>
+Date: Thu, 29 May 2025 05:43:03 +0000
+Subject: [PATCH] ntb_perf: aggregate and log the throughput periodically
+
+Add necessary support to consolidate the total aggregated throughput.
+And, provide a module param to log the performance every 500ms.
+
+Signed-off-by: Raju Rangoju <Raju.Rangoju@amd.com>
+---
+ drivers/ntb/test/ntb_perf.c | 129 +++++++++++++++++++++++++++---------
+ 1 file changed, 99 insertions(+), 30 deletions(-)
+
+diff --git a/drivers/ntb/test/ntb_perf.c b/drivers/ntb/test/ntb_perf.c
+index 5fb345c5f58f..3aa721cb53db 100644
+--- a/drivers/ntb/test/ntb_perf.c
++++ b/drivers/ntb/test/ntb_perf.c
+@@ -127,6 +127,10 @@ static bool use_dma_2p; /* default to 0 */
+ module_param(use_dma_2p, bool, 0644);
+ MODULE_PARM_DESC(use_dma_2p, "Use DMA engine also from other node to measure performance");
+ 
++static bool use_500ms_log; /* default to 0 */
++module_param(use_500ms_log, bool, 0644);
++MODULE_PARM_DESC(use_500ms_log, "Logs dmachannel performance every 500ms");
++
+ 
+ /*==============================================================================
+  *                         Perf driver data definition
+@@ -145,6 +149,7 @@ enum perf_cmd {
+ };
+ 
+ struct perf_ctx;
++struct perf_dma_callback_data;
+ 
+ struct perf_peer {
+ 	struct perf_ctx	*perf;
+@@ -170,6 +175,11 @@ struct perf_peer {
+ #define to_peer_service(__work) \
+ 	container_of(__work, struct perf_peer, service)
+ 
++struct perf_dma_callback_data {
++	struct perf_thread *pthr;
++	int didx;
++};
++
+ struct perf_thread {
+ 	struct perf_ctx *perf;
+ 	int tidx;
+@@ -187,6 +197,8 @@ struct perf_thread {
+ 	int status;
+ 	struct work_struct work;
+ 	dma_addr_t dma_dst_addr[MAX_DMACH_CNT];
++	u64 dma_desc_complete_count[MAX_DMACH_CNT];
++	struct perf_dma_callback_data perf_dma_data;
+ };
+ #define to_thread_work(__work) \
+ 	container_of(__work, struct perf_thread, work)
+@@ -214,6 +226,11 @@ struct perf_ctx {
+ 			u64 *data);
+ 
+ 	struct dentry *dbgfs_dir;
++
++	/* Overall Statistics */
++	ktime_t duration, kstart;
++	u64 perf_speed;
++	u64 total_data;
+ };
+ 
+ /*
+@@ -247,6 +264,10 @@ static struct dentry *perf_dbgfs_topdir;
+ 
+ static struct workqueue_struct *perf_wq __read_mostly;
+ 
++static struct workqueue_struct *my_workqueue;
++static struct delayed_work my_work;
++struct perf_peer *timer_peer;
++u64 tmr_chunk_size = 0;
+ /*==============================================================================
+  *                  NTB cross-link commands execution service
+  *==============================================================================
+@@ -784,8 +805,11 @@ static void perf_disable_service(struct perf_ctx *perf)
+ 
+ static void perf_dma_copy_callback(void *data)
+ {
+-	struct perf_thread *pthr = data;
++	struct perf_dma_callback_data *perf_dma_data = data;
++	struct perf_thread *pthr = perf_dma_data->pthr;
++	int didx = perf_dma_data->didx;
+ 
++	pthr->dma_desc_complete_count[didx] += tmr_chunk_size;
+ 	atomic_dec(&pthr->dma_sync);
+ 	wake_up(&pthr->dma_wait);
+ }
+@@ -802,15 +826,16 @@ static int perf_copy_chunk(struct perf_thread *pthr,
+ 	void __iomem *dst_vaddr, dma_src_addr;;
+ 	dma_addr_t dst_dma_addr;
+   int tidx;
+-
++  struct perf_dma_callback_data *perf_dma_data = &pthr->perf_dma_data;
+ 	if (!use_dma) {
+ 		memcpy_toio(dst, src, len);
+ 		goto ret_check_tsync;
+ 	}
++	perf_dma_data->pthr = pthr;
+ 
+ 	for (tidx = 0; tidx < perf->dch_cnt; tidx++) {
+ 		dma_dev = pthr->dma_chan[tidx]->device->dev;
+-
++		perf_dma_data->didx = tidx;
+ 		if (!is_dma_copy_aligned(pthr->dma_chan[tidx]->device, offset_in_page(src),
+ 					 offset_in_page(dst), len))
+ 			return -EIO;
+@@ -820,6 +845,7 @@ static int perf_copy_chunk(struct perf_thread *pthr,
+   dma_dst_addr = pthr->dma_dst_addr[tidx] + (dst_vaddr - vbase);
+   dma_src_addr = pthr->dma_src_addr[tidx] + (dst_vaddr - vbase);
+   
++  
+   do {
+ 			tx = dmaengine_prep_dma_memcpy(pthr->dma_chan[tidx], dma_dst_addr,
+ 						       dma_src_addr, len, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+@@ -833,7 +859,7 @@ static int perf_copy_chunk(struct perf_thread *pthr,
+   }
+    
+ 	tx->callback = perf_dma_copy_callback;
+-	tx->callback_param = pthr;
++  tx->callback_param = perf_dma_data;
+ 
+ 	ret = dma_submit_error(dmaengine_submit(tx));
+ 		if (ret)
+@@ -878,8 +904,12 @@ static int perf_init_test(struct perf_thread *pthr)
+ 		pr_info("ntb_perf: outbuf size reduced to 0x%llx \n", chunk_size);
+ 	}
+ 
+-	if (!use_dma)
++	if (!use_dma) {
++		pthr->src[0] = dma_alloc_coherent(&perf->ntb->pdev->dev, perf->test_peer->outbuf_size,
++				&pthr->dma_src_addr[0], GFP_KERNEL);
++		get_random_bytes(pthr->src[0], perf->test_peer->outbuf_size);
+ 		return 0;
++	}
+ 
+ 	dma_cap_zero(dma_mask);
+ 	dma_cap_set(DMA_MEMCPY, dma_mask);
+@@ -1003,16 +1033,6 @@ static int perf_sync_test(struct perf_thread *pthr)
+ 
+ no_dma_ret:
+ 	pthr->duration = ktime_sub(ktime_get(), pthr->duration);
+-
+-	dev_dbg(&perf->ntb->dev, "%d: copied %llu bytes\n",
+-		pthr->tidx, pthr->copied);
+-
+-	dev_dbg(&perf->ntb->dev, "%d: lasted %llu usecs\n",
+-		pthr->tidx, ktime_to_us(pthr->duration));
+-
+-	dev_dbg(&perf->ntb->dev, "%d: %llu MBytes/s\n", pthr->tidx,
+-		div64_u64(pthr->copied, ktime_to_us(pthr->duration)));
+-
+ 	return 0;
+ }
+ 
+@@ -1045,6 +1065,7 @@ static void perf_clear_test(struct perf_thread *pthr)
+ static void perf_thread_work(struct work_struct *work)
+ {
+ 	struct perf_thread *pthr = to_thread_work(work);
++	struct perf_ctx *perf = pthr->perf;
+ 	int ret;
+ 
+ 	/*
+@@ -1054,22 +1075,14 @@ static void perf_thread_work(struct work_struct *work)
+ 	 * synchronization is performed only if test fininshed
+ 	 * without an error or interruption.
+ 	 */
+-	ret = perf_init_test(pthr);
+-	if (ret) {
+-		pthr->status = ret;
+-		return;
+-	}
+-
+ 	ret = perf_run_test(pthr);
+-	if (ret) {
++	if (ret)
+ 		pthr->status = ret;
+-		goto err_clear_test;
+-	}
+ 
+ 	pthr->status = perf_sync_test(pthr);
+ 
+-err_clear_test:
+-	perf_clear_test(pthr);
++	atomic_dec(&perf->tsync);
++	wake_up(&perf->twait);
+ }
+ 
+ static void perf_terminate_test(struct perf_ctx *perf)
+@@ -1085,6 +1098,7 @@ static void perf_terminate_test(struct perf_ctx *perf)
+ 	}
+ }
+ 
++
+ static int perf_set_dch_cnt(struct perf_ctx *perf, u8 dch_cnt)
+ {
+ 	if (dch_cnt == 0 || dch_cnt > MAX_THREADS_CNT)
+@@ -1115,11 +1129,29 @@ static int perf_set_tcnt(struct perf_ctx *perf, u8 tcnt)
+ 	return 0;
+ }
+ 
++static void perf_print_test_complete_cnt(struct work_struct *work)
++{
++	struct perf_ctx *perf = timer_peer->perf;
++	struct perf_thread *pthr;
++	int tidx, didx;
++
++	for (tidx = 0; tidx < perf->tcnt; tidx++) {
++		pthr = &perf->threads[tidx];
++		for (didx = 0; didx < perf->dch_cnt; didx++) {
++			pr_info("%d:%s: perf = %llu MB/s\n",tidx, dma_chan_name(pthr->dma_chan[didx]), div64_u64(pthr->dma_desc_complete_count[didx], 500000));
++			pthr->dma_desc_complete_count[didx] = 0;
++		}
++	}
++	pr_alert("\n");
++	queue_delayed_work(my_workqueue, &my_work, msecs_to_jiffies(500));
++}
++
+ static int perf_submit_test(struct perf_peer *peer)
+ {
+ 	struct perf_ctx *perf = peer->perf;
+ 	struct perf_thread *pthr;
+-	int tidx, ret;
++	int tidx, didx, ret;
++	my_workqueue = create_singlethread_workqueue("my_workqueue");
+ 
+ 	ret = wait_for_completion_interruptible(&peer->init_comp);
+ 	if (ret < 0)
+@@ -1130,6 +1162,16 @@ static int perf_submit_test(struct perf_peer *peer)
+ 
+ 	perf->test_peer = peer;
+ 	atomic_set(&perf->tsync, perf->tcnt);
++	timer_peer = peer;
++	if(use_500ms_log) {
++		INIT_DELAYED_WORK(&my_work, perf_print_test_complete_cnt);
++		queue_delayed_work(my_workqueue, &my_work, msecs_to_jiffies(500));
++	}
++	tmr_chunk_size = 1ULL << chunk_order;
++
++
++	perf->total_data = (1ULL << total_order);
++	perf->total_data *= (perf->tcnt * perf->dch_cnt);
+ 
+ 	for (tidx = 0; tidx < MAX_THREADS_CNT; tidx++) {
+ 		pthr = &perf->threads[tidx];
+@@ -1137,17 +1179,42 @@ static int perf_submit_test(struct perf_peer *peer)
+ 		pthr->status = -ENODATA;
+ 		pthr->copied = 0;
+ 		pthr->duration = ktime_set(0, 0);
++		for (didx = 0; didx < perf->dch_cnt; didx++)
++			pthr->dma_desc_complete_count[didx] = 0;
++		if (tidx < perf->tcnt) {
++			ret = perf_init_test(pthr);
++			if (ret) {
++				pthr->status = ret;
++				return ret;
++			}
++		}
++	}
++
++	perf->kstart = ktime_get();
++	for (tidx = 0; tidx < MAX_THREADS_CNT; tidx++) {
++		pthr = &perf->threads[tidx];
+ 		if (tidx < perf->tcnt)
+ 			(void)queue_work(perf_wq, &pthr->work);
+ 	}
+-
+ 	ret = wait_event_interruptible(perf->twait,
+ 				       atomic_read(&perf->tsync) <= 0);
++	perf->duration = ktime_sub(ktime_get(), perf->kstart);
++	perf->perf_speed = div64_u64(perf->total_data, ktime_to_us(perf->duration));
++
++	for (tidx = 0; tidx < MAX_THREADS_CNT; tidx++) {
++		pthr = &perf->threads[tidx];
++		if (tidx < perf->tcnt)
++			perf_clear_test(pthr);
++	}
++
+ 	if (ret == -ERESTARTSYS) {
+ 		perf_terminate_test(perf);
+ 		ret = -EINTR;
+ 	}
+-
++	if(use_500ms_log) {
++		cancel_delayed_work_sync(&my_work);
++		destroy_workqueue(my_workqueue);
++	}
+ 	clear_bit_unlock(0, &perf->busy_flag);
+ 
+ 	return ret;
+@@ -1192,6 +1259,8 @@ static int perf_read_stats(struct perf_ctx *perf, char *buf,
+ 	     }
+ 	}
+ 
++	(*pos) += scnprintf(buf + *pos, size - *pos, "\n Total throughput : %llu MBytes/s\n", perf->perf_speed);
++
+ 	clear_bit_unlock(0, &perf->busy_flag);
+ 
+ 	return 0;
+@@ -1406,7 +1475,7 @@ static ssize_t perf_dbgfs_read_dch_cnt(struct file *filep, char __user *ubuf,
+ 	char buf[8];
+ 	ssize_t pos;
+ 
+-	pos = scnprintf(buf, sizeof(buf), "%hhu\n", perf->tcnt);
++	pos = scnprintf(buf, sizeof(buf), "%hhu\n", perf->dch_cnt);
+ 
+ 	return simple_read_from_buffer(ubuf, size, offp, buf, pos);
+ }
+-- 
+2.34.1
+

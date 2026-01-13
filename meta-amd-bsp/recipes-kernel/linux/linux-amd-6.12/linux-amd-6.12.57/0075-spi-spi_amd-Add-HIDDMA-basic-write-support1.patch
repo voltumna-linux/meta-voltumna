@@ -1,0 +1,53 @@
+From eefc19ff6356a3d1a3e90e325050e9f9fdf53299 Mon Sep 17 00:00:00 2001
+From: rgaridap <ramesh.garidapuri@amd.com>
+Date: Thu, 21 Aug 2025 10:20:19 +0000
+Subject: [PATCH] spi: spi_amd: Add HIDDMA basic write support1
+
+SPI index mode has hardware limitation of transferring only 64 bytes per
+transaction due to fixed number of FIFO registers. This constraint leads to
+performance issues when reading/writing data to/from NAND/NOR flash
+devices, as the controller must issue multiple requests to read/write
+64-byte chunks, even if the slave can transfer up to 2 or 4 KB in a single
+transaction.
+
+The AMD HID2 SPI controller supports DMA mode, allowing for reading/writing
+up to 4 KB of data in a single transaction. The existing spi_amd driver
+already supports HID2 DMA read operations.
+
+This patch introduces changes to implement HID2 DMA single mode basic write
+support for the HID2 SPI controller.
+
+Co-developed-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Signed-off-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Co-developed-by: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Signed-off-by: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Signed-off-by: Raju Rangoju <Raju.Rangoju@amd.com>
+Link: https://patch.msgid.link/20250516100658.585654-3-Raju.Rangoju@amd.com
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Change-Id: I840c456424fce2c335a85cc3a883adc3106636dc
+
+Change-Id: I110c5d983c6007be64b21f050bf49d727368b359
+---
+ drivers/spi/spi-amd.c | 6 ------
+ 1 file changed, 6 deletions(-)
+
+diff --git a/drivers/spi/spi-amd.c b/drivers/spi/spi-amd.c
+index 9e2942788832..0e168c136143 100644
+--- a/drivers/spi/spi-amd.c
++++ b/drivers/spi/spi-amd.c
+@@ -86,12 +86,6 @@
+ #define AMD_SPI_OP_READ_1_1_4_4B	0x6c    /* Read data bytes (Quad Output SPI) */
+ #define AMD_SPI_OP_READ_1_4_4_4B	0xec    /* Read data bytes (Quad I/O SPI) */
+ 
+-enum amd_spi_versions {
+-	AMD_SPI_V1 = 1,
+-	AMD_SPI_V2,
+-	AMD_HID2_SPI,
+-};
+-
+ /* SPINAND write command opcodes */
+ #define AMD_SPI_OP_PP			0x02	/* Page program */
+ #define AMD_SPI_OP_PP_RANDOM		0x84	/* Page program */
+-- 
+2.17.1
+

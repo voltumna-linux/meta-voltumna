@@ -1,0 +1,66 @@
+From 35fe8e4136da0e2eea20d3238054752b0a513216 Mon Sep 17 00:00:00 2001
+From: Raju Rangoju <Raju.Rangoju@amd.com>
+Date: Wed, 25 Sep 2024 19:06:43 +0530
+Subject: [PATCH 06/12] spi: spi_amd: Set controller address mode
+
+Add changes to set the controller address mode before initiating commands.
+The AMD SPI0 controller(AMDI0062) supports both 24-bit and 32-bit address
+modes, while the HID2 SPI controller(AMDI0063) supports only the 24-bit
+address mode. So this change is applicable only for SPI0 controller.
+
+Co-developed-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Signed-off-by: Krishnamoorthi M <krishnamoorthi.m@amd.com>
+Co-developed-by: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Signed-off-by: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Signed-off-by: Raju Rangoju <Raju.Rangoju@amd.com>
+Link: https://patch.msgid.link/20240925133644.2922359-8-Raju.Rangoju@amd.com
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Change-Id: Icacc3e7df9cd886e12b7e232155d9914256b6787
+Signed-off-by: amlakshm <AmmuThivya.LakshmiS@amd.com>
+---
+ drivers/spi/spi-amd.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/drivers/spi/spi-amd.c b/drivers/spi/spi-amd.c
+index 58f3bf173508..55b638ceecdd 100644
+--- a/drivers/spi/spi-amd.c
++++ b/drivers/spi/spi-amd.c
+@@ -34,6 +34,7 @@
+ #define AMD_SPI_TX_COUNT_REG	0x48
+ #define AMD_SPI_RX_COUNT_REG	0x4B
+ #define AMD_SPI_STATUS_REG	0x4C
++#define AMD_SPI_ADDR32CTRL_REG	0x50
+ 
+ #define AMD_SPI_FIFO_SIZE	70
+ #define AMD_SPI_MEM_SIZE	200
+@@ -548,6 +549,17 @@ static void amd_spi_mem_data_in(struct amd_spi *amd_spi,
+ 					  nbytes + i - left_data);
+ }
+ 
++static void amd_set_spi_addr_mode(struct amd_spi *amd_spi,
++				  const struct spi_mem_op *op)
++{
++	u32 val = amd_spi_readreg32(amd_spi, AMD_SPI_ADDR32CTRL_REG);
++
++	if (amd_is_spi_read_cmd_4b(op->cmd.opcode))
++		amd_spi_writereg32(amd_spi, AMD_SPI_ADDR32CTRL_REG, val | BIT(0));
++	else
++		amd_spi_writereg32(amd_spi, AMD_SPI_ADDR32CTRL_REG, val & ~BIT(0));
++}
++
+ static int amd_spi_exec_mem_op(struct spi_mem *mem,
+ 			       const struct spi_mem_op *op)
+ {
+@@ -560,6 +572,9 @@ static int amd_spi_exec_mem_op(struct spi_mem *mem,
+ 	if (ret)
+ 		return ret;
+ 
++	if (amd_spi->version == AMD_SPI_V2)
++		amd_set_spi_addr_mode(amd_spi, op);
++
+ 	switch (op->data.dir) {
+ 	case SPI_MEM_DATA_IN:
+ 		amd_spi_mem_data_in(amd_spi, op);
+-- 
+2.43.0
+

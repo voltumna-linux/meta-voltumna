@@ -1,0 +1,186 @@
+From 985670040611645d10066926f49759aca5c8b583 Mon Sep 17 00:00:00 2001
+From: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Date: Fri, 13 Sep 2024 17:38:03 +0530
+Subject: [PATCH 09/12] spi: mtd nor changes - WA
+
+Add changes to probe MTD spinor driver
+
+Signed-off-by: Akshata MukundShetty <akshata.mukundshetty@amd.com>
+Signed-off-by: Kalyan Rankireddy <Kalyan.Rankireddy@amd.com>
+Change-Id: Ibbeaf5f76612b9fec88ce2f484901537523c069e
+Signed-off-by: amlakshm <AmmuThivya.LakshmiS@amd.com>
+---
+ drivers/mtd/spi-nor/core.c | 142 ++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 141 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mtd/spi-nor/core.c b/drivers/mtd/spi-nor/core.c
+index 9d6e85bf227b..ff661a6a4465 100644
+--- a/drivers/mtd/spi-nor/core.c
++++ b/drivers/mtd/spi-nor/core.c
+@@ -3591,6 +3591,8 @@ static int spi_nor_probe(struct spi_mem *spimem)
+ 	nor->dev = &spi->dev;
+ 	spi_nor_set_flash_node(nor, spi->dev.of_node);
+ 
++	/* Set required frequency supported by both master and slave */
++	spimem->spi->max_speed_hz = 50000000;
+ 	spi_mem_set_drvdata(spimem, nor);
+ 
+ 	if (data && data->name)
+@@ -3748,15 +3750,153 @@ static struct spi_mem_driver spi_nor_driver = {
+ 	.shutdown = spi_nor_shutdown,
+ };
+ 
++#define MAX_CMD_SIZE                    6
++static struct class *spimem_dev_class;
++
++struct spimem_drv {
++	struct spi_mem *spimem;
++	u8 command[MAX_CMD_SIZE];
++	dev_t                   devt;
++	spinlock_t              spi_lock; /* Protects memory device access*/
++	struct spi_device       *spi;
++	struct list_head        device_entry;
++	struct completion       done;
++	unsigned int            users;
++};
++
++static LIST_HEAD(device_list);
++static DEFINE_MUTEX(device_list_lock);
++
++#define SPINOR_DRV_VERSION              "0.1"
++#define SPINAND_DEV_MAJOR               154
++#define N_SPI_MINORS                    32
++
++#define SPI_BUS         0
++#define SPI_BUS_CS1     3
++
++static int spimem_dev_open(struct inode *inode, struct file *filp)
++{
++	struct spimem_drv *flash;
++	int status = -ENXIO;
++
++	mutex_lock(&device_list_lock);
++	list_for_each_entry(flash, &device_list, device_entry) {
++		if (flash->devt == inode->i_rdev) {
++			status = 0;
++			break;
++		}
++	}
++	if (status == 0) {
++		if (status == 0) {
++			flash->users++;
++			filp->private_data = flash;
++			nonseekable_open(inode, filp);
++		}
++	} else {
++		pr_debug("nothing for minor %d\n", iminor(inode));
++	}
++
++	mutex_unlock(&device_list_lock);
++
++	return status;
++}
++
++static int spimem_dev_release(struct inode *inode, struct file *filp)
++{
++	struct spimem_drv *flash;
++	int status = 0;
++
++	mutex_lock(&device_list_lock);
++	flash = filp->private_data;
++	filp->private_data = NULL;
++
++	/* last close? */
++	flash->users--;
++	if (!flash->users) {
++		int dofree;
++
++		/* ... after we unbound from the underlying device? */
++		spin_lock_irq(&flash->spi_lock);
++		dofree = !flash->spi;
++		spin_unlock_irq(&flash->spi_lock);
++
++		if (dofree)
++			kfree(flash);
++	}
++	mutex_unlock(&device_list_lock);
++
++	return status;
++}
++
++static const struct file_operations spinor_dev_fops = {
++	.owner = THIS_MODULE,
++	.open = spimem_dev_open,
++	.release = spimem_dev_release,
++};
++
++static int __init add_spi_device_to_bus(void)
++{
++	struct spi_controller *spi_master;
++	struct spi_device *spi_device;
++	struct spi_board_info spi_info;
++
++	spi_master = spi_busnum_to_master(SPI_BUS);
++	if (!spi_master) {
++		pr_info("Please make sure to modprobe spi_amd driver first\n");
++		return -1;
++	}
++	memset(&spi_info, 0, sizeof(struct spi_board_info));
++	strscpy(spi_info.modalias, "spi-nor", SPI_NAME_SIZE);
++	spi_info.bus_num = SPI_BUS; //Bus number of SPI master
++	spi_info.chip_select = SPI_BUS_CS1; //CS on which SPI device is connected
++	spi_info.mode = SPI_TX_QUAD | SPI_RX_QUAD;
++	spi_device = spi_new_device(spi_master, &spi_info);
++	if (!spi_device)
++		return -ENODEV;
++	return 0;
++}
++
++
+ static int __init spi_nor_module_init(void)
+ {
+-	return spi_mem_driver_register(&spi_nor_driver);
++	int status;
++
++	pr_info("AMD SPINOR Driver version %s\n", SPINOR_DRV_VERSION);
++	BUILD_BUG_ON(N_SPI_MINORS > 256);
++	status = register_chrdev(SPINAND_DEV_MAJOR, "mtd", &spinor_dev_fops);
++	if (status < 0)
++		return status;
++
++	spimem_dev_class = class_create("spi-nor");
++	if (IS_ERR(spimem_dev_class)) {
++		pr_info("class_create failed\n");
++		unregister_chrdev(SPINAND_DEV_MAJOR, spi_nor_driver.spidrv.driver.name);
++		return PTR_ERR(spimem_dev_class);
++	}
++
++	status = spi_mem_driver_register(&spi_nor_driver);
++	if (status < 0) {
++		pr_info("spi_register_driver failed\n");
++		class_destroy(spimem_dev_class);
++		unregister_chrdev(SPINAND_DEV_MAJOR, spi_nor_driver.spidrv.driver.name);
++	}
++	status = add_spi_device_to_bus();
++	if (status < 0) {
++		pr_info("add_spi_device_to_bus failed\n");
++		spi_mem_driver_unregister(&spi_nor_driver);
++		class_destroy(spimem_dev_class);
++		unregister_chrdev(SPINAND_DEV_MAJOR, spi_nor_driver.spidrv.driver.name);
++	}
++	return status;
++
+ }
+ module_init(spi_nor_module_init);
+ 
+ static void __exit spi_nor_module_exit(void)
+ {
+ 	spi_mem_driver_unregister(&spi_nor_driver);
++	class_destroy(spimem_dev_class);
++	unregister_chrdev(SPINAND_DEV_MAJOR, spi_nor_driver.spidrv.driver.name);
+ 	spi_nor_debugfs_shutdown();
+ }
+ module_exit(spi_nor_module_exit);
+-- 
+2.43.0
+

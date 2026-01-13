@@ -1,0 +1,15 @@
+# out-of-tree
+patch 0001-ae4dma-Initial-ae4dma-controller-driver-with-multi-c.patch 
+patch 0002-ae4dma-Add-debugfs-entries-for-AE4DMA.patch 
+patch 0003-ntb_perf-add-support-for-higher-resources.patch 
+patch 0004-ntb_perf-aggregate-and-log-the-throughput-periodical.patch 
+patch 0005-REVERT-commit-a89c82249c3763780522f763dd2e615e2ea114.patch 
+patch 0006-ntb-set-the-dma-mask-to-48-bit-addressing-capability.patch 
+patch 0007-ntb_perf-Add-prints-to-display-physical-and-virtual-.patch 
+patch 0008-ntb_perf-Synchronise-db_events-incase-of-peer-reboot.patch 
+patch 0009-ntb_perf-File-transfer-support.patch
+patch 0010-ntb_perf-Fixes-for-memleak-and-2GB-filetransfers.patch
+patch 0011-ae4dma-Remove-PCI-devices-0x14C8-and-0x14DC.patch
+patch 0012-ntb_perf-Fix-consistent-data-size-with-multiple-iter.patch
+patch 0013-iommu-dma-use-vcalloc-__vcalloc-for-very-large-alloc.patch
+patch 0014-ae4dma-avoid-race-during-descriptors-cleanup.patch.txt
