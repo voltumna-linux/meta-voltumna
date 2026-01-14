@@ -31,4 +31,5 @@ SRC_URI:append:kvm = " \
 	file://virtualization.cfg \
 	"
 
+KERNEL_FEATURES:append = " features/perf/perf.scc"
 KERNEL_FEATURES:remove = " features/security/security.scc"
