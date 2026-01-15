@@ -29,6 +29,7 @@ PTESTS_FAST_META_PYTHON = "\
     python3-execnet \
     python3-fastjsonschema \
     python3-fastnumbers \
+    python3-filelock \
     python3-flask \
     python3-flexcache \
     python3-flexparser \
@@ -94,6 +95,7 @@ PTESTS_FAST_META_PYTHON = "\
     python3-rich-toolkit \
     python3-schedule \
     python3-semver \
+    python3-send2trash \
     python3-serpent \
     python3-service-identity \
     python3-setproctitle \
@@ -115,6 +117,7 @@ PTESTS_FAST_META_PYTHON = "\
     python3-unidiff \
     python3-uritemplate \
     python3-validators \
+    python3-waitress \
     python3-wrapt \
     python3-wsproto \
     python3-xlrd \
@@ -143,4 +146,11 @@ PTESTS_SLOW_META_PYTHON = "\
 "
 
 PTESTS_PROBLEMS_META_PYTHON = "\
+"
+
+PTESTS_FAST_META_PYTHON:remove:libc-musl = "\
+    python3-waitress \
+"
+PTESTS_PROBLEMS_META_PYTHON:append:libc-musl = "\
+    python3-waitress \
 "
