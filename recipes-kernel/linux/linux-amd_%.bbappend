@@ -13,7 +13,7 @@ SRC_URI:append = " \
 	file://enable_ebpf_xpd.cfg \
 	file://disable_lttng.cfg \
 	file://disable_ipv6.cfg \
-	\
+        \
 	file://numa.cfg \
 	file://dpdk.cfg \
 	file://vfio.cfg \
