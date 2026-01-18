@@ -10,9 +10,23 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=2f9de66264141265b203cde9902819ea \
 DEPENDS = "lcms bzip2 jpeg libpng tiff zlib fftw freetype libtool"
 
 BASE_PV := "${PV}"
-PV .= "-26"
-SRC_URI = "git://github.com/ImageMagick/ImageMagick.git;branch=main;protocol=https"
-SRCREV = "570a9a048bb0e3a5c221ca87be9408ae35f711e2"
+PV .= "-47"
+SRC_URI = "git://github.com/ImageMagick/ImageMagick.git;branch=main;protocol=https \
+           file://CVE-2025-53014.patch \
+           file://CVE-2025-53015.patch \
+           file://CVE-2025-53019.patch \
+           file://CVE-2025-53101.patch \
+           file://CVE-2025-55004.patch \
+           file://CVE-2025-55005.patch \
+           file://CVE-2025-55154.patch \
+           file://CVE-2025-55160.patch \
+           file://CVE-2025-55212.patch \
+           file://CVE-2025-57803.patch \
+           file://CVE-2025-57807.patch \
+           file://CVE-2025-62171.patch \
+           file://CVE-2025-65955.patch \
+           "
+SRCREV = "82572afc879b439cbf8c9c6f3a9ac7626adf98fb"
 
 S = "${WORKDIR}/git"
 
@@ -180,3 +194,4 @@ CVE_STATUS[CVE-2017-5506] = "cpe-incorrect: The current version (7.1.1) is not a
 CVE_STATUS[CVE-2017-5509] = "cpe-incorrect: The current version (7.1.1) is not affected by the CVE which affects versions at least earlier than 7.0.4-4"
 CVE_STATUS[CVE-2017-5510] = "cpe-incorrect: The current version (7.1.1) is not affected by the CVE which affects versions at least earlier than 7.0.4-4"
 CVE_STATUS[CVE-2017-5511] = "cpe-incorrect: The current version (7.1.1) is not affected by the CVE which affects versions at least earlier than 7.0.4-3"
+CVE_STATUS[CVE-2023-5341] = "fixed-version: Fix is included since 7.1.1-19"
