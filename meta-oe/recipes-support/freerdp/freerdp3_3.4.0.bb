@@ -20,7 +20,6 @@ SRC_URI = "git://github.com/FreeRDP/FreeRDP.git;branch=master;protocol=https \
            file://CVE-2024-32661.patch \
            file://CVE-2024-32662.patch \
            file://CVE-2025-4478.patch \
-           file://CVE-2025-68118.patch \
            "
 
 S = "${WORKDIR}/git"
@@ -74,3 +73,5 @@ do_configure:append() {
 }
 
 FILES:${PN} += "${datadir}"
+
+CVE_STATUS[CVE-2025-68118] = "not-applicable-platform: only affects Windows"
