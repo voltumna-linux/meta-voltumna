@@ -29,6 +29,10 @@ DEPENDS = "curl \
            ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'gtk+3 wxwidgets libnotify xcb-util libxscrnsaver', '', d)} \
            nettle \
 "
+
+CVE_PRODUCT = "boinc_client"
+CVE_STATUS[CVE-2013-2018] = "fixed-version: fixed in version 7.0.45 and later"
+
 SRCREV = "4774e1cbe0ad13cb9a6f7fffbb626a417316f61d"
 BRANCH = "client_release/7/7.20"
 SRC_URI = "git://github.com/BOINC/boinc;protocol=https;branch=${BRANCH} \
@@ -78,7 +82,10 @@ do_install:prepend() {
 }
 
 do_install:append() {
-	sed -i -e 's#${S}##g' ${D}${includedir}/boinc/svn_version.h
+	# By default, the SVN_VERSION definition looks like:
+	#define SVN_VERSION "$SHA1 [https://github.com/BOINC/boinc] ($HOSTNAME:$S [client_release/7/7.20]) [Server-Release: server_release/1.1/1.1.0]"
+	# ... remove HOSTNAME and S to make it reproducible.
+	sed -i -e '/^#define SVN_VERSION /s#(\S*:\S* \[#([#g' ${D}${includedir}/boinc/svn_version.h
 }
 
 SYSTEMD_SERVICE:${PN} = "boinc-client.service"
