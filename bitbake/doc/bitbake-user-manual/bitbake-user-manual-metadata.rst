@@ -753,10 +753,15 @@ share the task.
 
 This section presents the mechanisms BitBake provides to allow you to
 share functionality between recipes. Specifically, the mechanisms
-include ``include``, ``inherit``, :term:`INHERIT`, and ``require``
+include :ref:`inherit<ref-bitbake-user-manual-metadata-inherit>`,
+:ref:`inherit_defer<ref-bitbake-user-manual-metadata-inherit-defer>`,
+:ref:`include<ref-include-directive>`,
+:ref:`include_all<ref-include-all-directive>`,
+:ref:`require<require-inclusion>` and
+:ref:`INHERIT<bitbake-user-manual/bitbake-user-manual-metadata:\`\`INHERIT\`\` configuration directive>`
 directives. There is also a higher-level abstraction called
-``configuration fragments`` that is enabled with ``addfragments``
-directive.
+`configuration fragments` that is enabled with the
+:ref:`bitbake-user-manual/bitbake-user-manual-metadata:\`\`addfragments\`\` directive`.
 
 .. _ref-bitbake-user-manual-metadata-inherit:
 
@@ -904,6 +909,10 @@ The ``include_all`` directive works like the :ref:`include
 <bitbake-user-manual/bitbake-user-manual-metadata:\`\`include\`\` directive>`
 directive but will include *all* of the files that match the specified path in
 the enabled layers (layers part of :term:`BBLAYERS`).
+
+Note that only :term:`BBPATH` will be searched, the parent directory of the file
+with the ``include_all`` directive will not be searched (unlike for the
+``include`` directive).
 
 .. note::
 
@@ -1061,21 +1070,16 @@ BitBake also uses the :term:`BBPATH` variable.
 
 .. note::
 
-   The BBPATH variable is analogous to the environment variable PATH.
+   The :term:`BBPATH` variable is analogous to the environment variable ``PATH``.
 
 For these two directives, BitBake includes the first file it finds.
 
-.. note::
-
-   It is also possible to include *all* occurences of a file with the same name
-   with the :ref:`include_all <ref-include-all-directive>` directive.
-
 Let's consider the following statement called from a recipe file located in
-``/layers/meta-custom2/recipes-example/example_0.1.bb``::
+``/layers/meta-custom2/recipes-example/example/example_0.1.bb``::
 
    require myfile.inc
 
-Where ``myfile.inc`` is located in ``/layers/meta-custom2/recipes-example/``.
+Where ``myfile.inc`` is located in ``/layers/meta-custom2/recipes-example/example``.
 
 And let's assume that the value of :term:`BBPATH` is
 ``/layers/meta-custom1:/layers/meta-custom2``. Then BitBake will try to find
@@ -1103,10 +1107,49 @@ In this case, the following paths would be searched::
 
 This time, the second item of this list would be matched.
 
+Note that the first path is based on the location of the file with the
+``require`` (or ``include``) directive. Imagine there's a
+``/layers/meta-custom2/recipes-bbappend/example/example_0.1.bbappend`` with::
+
+   require myappend.inc
+
+In this case, the following paths would be searched::
+
+   /layers/meta-custom2/recipes-bbappend/example/myappend.inc
+   /layers/meta-custom1/myappend.inc
+   /layers/meta-custom2/myappend.inc
+
 .. note::
 
    In the above examples, the exact same search order applies for the
    :ref:`include <ref-include-directive>` directive.
+
+It is also possible to include *all* occurences of a file with the same name
+with the :ref:`include_all <ref-include-all-directive>` directive.
+
+Let's consider the following statement called from a recipe file located in
+``/layers/meta-custom2/recipes-example/example/exampleall_0.1.bb``::
+
+   include_all all.inc
+
+Where multiple ``all.inc`` are in located in ``/layers/meta-custom2`` and
+``/layers/meta-custom1``.
+
+And let's assume that the value of :term:`BBPATH` is
+``/layers/meta-custom1:/layers/meta-custom2``. Then BitBake will try to include
+all ``all.inc`` in this order::
+
+   /layers/meta-custom1/all.inc
+   /layers/meta-custom2/all.inc
+
+In this case the first ``/layers/meta-custom1/all.inc`` would be included, and
+then ``/layers/meta-custom2/all.inc`` if both are found.
+
+.. note::
+
+   The same logic as for the :ref:`ref-include-directive` applies, except that
+   the path relative to the file where the directive is specified is not
+   searched when using the ``include_all`` directive.
 
 Locating Class Files
 --------------------
