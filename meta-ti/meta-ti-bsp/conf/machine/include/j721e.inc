@@ -17,8 +17,10 @@ OPTEEMACHINE = "k3-j721e"
 
 TI_VXE_VXD_DRIVER = "ti-vxe-vxd-driver"
 TI_VXE_VXD_DRIVER:bsp-ti-6_6 = ""
+TI_VXE_VXD_DRIVER:bsp-ti-6_18 = ""
 
 MACHINE_ESSENTIAL_EXTRA_RRECOMMENDS += "cadence-mhdp-fw vxd-dec-fw ti-eth-fw-j721e ${TI_VXE_VXD_DRIVER}"
 
+TI_INITRAMFS_KERNEL_MODULES:append:bsp-ti-6_18 = " kernel-module-cdns-pltfrm kernel-module-ti-j721e-ufs"
 TI_INITRAMFS_KERNEL_MODULES:append:bsp-mainline = " kernel-module-cdns-pltfrm kernel-module-ti-j721e-ufs"
 TI_INITRAMFS_KERNEL_MODULES:append:bsp-next = " kernel-module-cdns-pltfrm kernel-module-ti-j721e-ufs"
