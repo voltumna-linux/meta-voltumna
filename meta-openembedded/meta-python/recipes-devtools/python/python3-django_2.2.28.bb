@@ -32,7 +32,20 @@ SRC_URI += "file://CVE-2023-31047.patch \
             file://CVE-2024-39330.patch \
             file://CVE-2025-32873.patch \
             file://CVE-2025-64459.patch \
-           "
+            file://Fix-undefined-_lazy_re_compile.patch \
+            file://Fix-missing-JSONField-in-django.db.mo.patch \
+            file://0001-Fixed-35172-Fixed-intcomma-for-string-floats.patch \
+            file://0001-implement-group-method-for-FakeMatch.patch \
+            file://0001-fix-ipv6-test.patch \
+            file://0001-Fixed-32298-Fixed-URLValidator-hostname-length-valid.patch \
+            file://0001-Fixed-33367-Fixed-URLValidator-crash-in-some-edge-ca.patch \
+            file://0001-Fix-tag_strip-tests.patch \
+            file://0001-Fixed-inspectdb.tests.InspectDBTestCase.test_custom_.patch \
+            file://0001-Fixed-test_utils.tests.HTMLEqualTests.test_parsing_e.patch \
+            file://0001-Made-RemoteTestResultTest.test_pickle_errors_detecti.patch \
+            file://0001-fix-quote-type-in-expected-error-message.patch \
+            file://0001-Fix-patch-for-CVE-2023-36053.patch \
+            "
 
 SRC_URI[sha256sum] = "0200b657afbf1bc08003845ddda053c7641b9b24951e52acd51f6abda33a7413"
 
