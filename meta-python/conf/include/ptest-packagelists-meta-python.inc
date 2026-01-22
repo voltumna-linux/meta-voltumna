@@ -12,7 +12,6 @@ PTESTS_FAST_META_PYTHON = "\
     python3-ansicolors \
     python3-asgiref \
     python3-aspectlib \
-    python3-backports-zstd \
     python3-betamax \
     python3-bleak \
     python3-blinker \
@@ -104,6 +103,7 @@ PTESTS_FAST_META_PYTHON = "\
     python3-soupsieve \
     python3-sqlparse \
     python3-starlette \
+    python3-tblib \
     python3-tenacity \
     python3-tomli-w \
     python3-tomlkit \
@@ -128,6 +128,7 @@ PTESTS_FAST_META_PYTHON = "\
 
 PTESTS_SLOW_META_PYTHON = "\
     python3-arrow \
+    python3-django \
     python3-ecdsa \
     python3-fastapi \
     python3-google-auth \
