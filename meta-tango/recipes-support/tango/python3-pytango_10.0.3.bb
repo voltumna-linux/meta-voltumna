@@ -14,7 +14,7 @@ DEPENDS += "\
 
 SRCREV = "b67da87d65ca256736864524c90c9bf4516990c8"
 SRC_URI = "\
-	gitsm://gitlab.com/tango-controls/pytango.git;protocol=https;branch=stable \
+	gitsm://gitlab.com/tango-controls/pytango.git;protocol=https;branch=stable;nobranch=1 \
 	file://python3.8-support.patch \
 	"
 
