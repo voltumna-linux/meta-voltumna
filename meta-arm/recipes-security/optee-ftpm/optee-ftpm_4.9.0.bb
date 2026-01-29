@@ -23,18 +23,18 @@ SRC_URI_ms-tpm   ?= "gitsm://github.com/Microsoft/ms-tpm-20-ref;protocol=https"
 SRC_URI_optee-ta ?= "gitsm://github.com/OP-TEE/optee_ftpm.git;protocol=https"
 
 SRCBRANCH_ms-tpm    = "main"
-SRCBRANCH_optee-ta  = "master"
+OPTEE_TA_GIT_TAG ?= "tag=${PV};nobranch=1"
 
 SRC_URI = "\
     ${SRC_URI_ms-tpm};branch=${SRCBRANCH_ms-tpm};name=ms-tpm;destsuffix=ms-tpm \
-    ${SRC_URI_optee-ta};branch=${SRCBRANCH_optee-ta};name=optee-ta;destsuffix=ms-tpm/optee-ta \
+    ${SRC_URI_optee-ta};${OPTEE_TA_GIT_TAG};name=optee-ta;destsuffix=ms-tpm/optee-ta \
 "
 
 # As per optee-ftpm TA documentation, we have to use this SHA of MS TPM reference
 SRCREV_ms-tpm   ?= "98b60a44aba79b15fcce1c0d1e46cf5918400f6a"
 
-# v4.7.0
-SRCREV_optee-ta ?= "ce33372ab772e879826361a1ca91126260bd9be1"
+# v4.9.0
+SRCREV_optee-ta ?= "a09269b15de635e1816fe832e26adfbfb44c5455"
 
 SRCREV_FORMAT    = "ms-tpm_optee-ta"
 
