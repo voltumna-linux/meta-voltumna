@@ -21,8 +21,6 @@ import signal
 import functools
 import string
 
-default_registry = os.path.normpath(os.path.dirname(__file__) + "/../default-registry")
-
 bindir = os.path.abspath(os.path.dirname(__file__))
 sys.path[0:0] = [os.path.join(os.path.dirname(bindir), 'lib')]
 
@@ -37,12 +35,24 @@ GLOBAL_ONLY_SETTINGS = (
     "top-dir-name",
 )
 
+# If bitbake is from a release tarball or somewhere like pypi where
+# updates may not be straightforward, prefer to use the git repo as the
+# default registry
+def get_default_registry():
+    internal_registry = os.path.normpath(os.path.dirname(__file__) + "/../default-registry")
+    git_registry = "git://git.openembedded.org/bitbake;protocol=https;branch=master;rev=master"
+    if os.path.exists(os.path.dirname(__file__) + "/../.git"):
+        return internal_registry
+    else:
+        return git_registry
+
 def cache_dir(top_dir):
     return os.path.join(top_dir, '.bitbake-setup-cache')
 
 def init_bb_cache(top_dir, settings, args):
     dldir = settings["default"]["dl-dir"]
     bb_cachedir = os.path.join(cache_dir(top_dir), 'bitbake-cache')
+    os.makedirs(bb_cachedir, exist_ok=True)
 
     d = bb.data.init()
     d.setVar("DL_DIR", dldir)
@@ -146,6 +156,14 @@ def checkout_layers(layers, confdir, layerdir, d):
 
     def _has_local_modifications(r_name, r_path):
         fixed_revisions = json.load(open(os.path.join(confdir, "sources-fixed-revisions.json")))
+
+        if not r_name in fixed_revisions['sources']:
+            logger.warning("""Source {} is added with path {}.
+This path already exists, but it has no entry in a fixed revisions
+record. To ensure possible local modifications are not lost, it will
+be preserved in a backup directory.""".format(r_name, r_path))
+            return True
+
         rev = fixed_revisions['sources'][r_name]['git-remote']['rev']
         status = bb.process.run('git -C {} status --porcelain'.format(r_path))[0]
         if status:
@@ -315,7 +333,6 @@ def setup_bitbake_build(bitbake_config, layerdir, setupdir, thisdir, update_bb_c
 
     if os.path.exists(bitbake_confdir):
         os.rename(bitbake_confdir, backup_bitbake_confdir)
-        logger.info("Existing bitbake configuration directory renamed to {}".format(backup_bitbake_confdir))
 
     if layers:
         filerelative_layers = bitbake_config.get("bb-layers-file-relative") or []
@@ -481,7 +498,7 @@ def choose_bitbake_config(configs, parameters, non_interactive):
     return flattened_configs[config_n]
 
 def choose_config(configs, non_interactive):
-    not_expired_configs = [k for k in configs.keys() if not has_expired(configs[k].get("expires", None))]
+    not_expired_configs = [k for k in sorted(configs.keys()) if not has_expired(configs[k].get("expires", None))]
     config_list = list(enumerate(not_expired_configs, 1))
     if len(config_list) == 1:
         only_config = config_list[0][1]
@@ -491,7 +508,7 @@ def choose_config(configs, non_interactive):
     if non_interactive:
         raise Exception("Unable to choose from configurations in non-interactive mode: {}".format(not_expired_configs))
 
-    logger.plain("\nAvailable configurations:")
+    logger.plain("\nAvailable Configuration Templates:")
     for n, config_name in config_list:
         config_data = configs[config_name]
         expiry_date = config_data.get("expires", None)
@@ -501,7 +518,7 @@ def choose_config(configs, non_interactive):
         else:
            logger.plain("{}. {}\t{}".format(n, config_name, config_desc))
     config_n = int_input([i[0] for i in config_list],
-                         "\nPlease select one of the above configurations by its number: ") - 1
+                         "\nPlease select one of the above Configuration Templates by its number: ") - 1
     return config_list[config_n][1]
 
 def choose_fragments(possibilities, parameters, non_interactive, skip_selection):
@@ -510,26 +527,37 @@ def choose_fragments(possibilities, parameters, non_interactive, skip_selection)
         if skip_selection and k in skip_selection:
             logger.info("Skipping a selection of {}, as requested on command line. The resulting bitbake configuration may require further manual adjustments.".format(k))
             continue
-        choice = [o for o in v["options"] if o in parameters]
+
+        # options can be a list of strings or a list of dicts
+        options = v["options"]
+        if len(options) > 0 and isinstance(v["options"][0], str):
+            options = [{"name": o, "description": ""} for o in v["options"]]
+
+        choice = [o["name"] for o in options if o["name"] in parameters]
         if len(choice) > 1:
-            raise Exception("Options specified on command line do not allow a single selection from possibilities {}, please remove one or more from {}".format(v["options"], parameters))
+            raise Exception("Options specified on command line do not allow a single selection "
+                            f"from possibilities {[o['name'] for o in options]}, please "
+                            f"remove one or more from {parameters}")
         if len(choice) == 1:
             choices[k] = choice[0]
             continue
 
         if non_interactive:
-            raise Exception("Unable to choose from options in non-interactive mode: {}".format(v["options"]))
+            raise Exception(f"Unable to choose from options in non-interactive mode: {[o['name'] for o in options]}")
 
         logger.plain("\n" + v["description"] + ":")
-        options_enumerated = list(enumerate(v["options"], 1))
+        options_enumerated = list(enumerate(options, 1))
         for n,o in options_enumerated:
-            logger.plain("{}. {}".format(n, o))
+            opt_str = f"{n}. {o['name']}"
+            if o["description"]:
+                opt_str += f"\t{o['description']}"
+            logger.plain(opt_str)
         option_n = int_input([i[0] for i in options_enumerated],
                              "\nPlease select one of the above options by its number: ") - 1
-        choices[k] = options_enumerated[option_n][1]
+        choices[k] = options_enumerated[option_n][1]["name"]
     return choices
 
-def obtain_config(top_dir, settings, args, source_overrides, d):
+def obtain_config(top_dir, registry, args, source_overrides, d):
     if args.config:
         config_id = args.config[0]
         config_parameters = args.config[1:]
@@ -543,24 +571,28 @@ def obtain_config(top_dir, settings, args, source_overrides, d):
         elif config_id.startswith("http://") or config_id.startswith("https://"):
             logger.info("Reading configuration from network URI\n    {}".format(config_id))
             import urllib.request
-            with urllib.request.urlopen(config_id) as f:
-              upstream_config = {'type':'network','uri':config_id,'name':get_config_name(config_id),'data':json.load(f)}
+            try:
+                with urllib.request.urlopen(config_id) as f:
+                    json_data = json.load(f)
+                upstream_config = {'type':'network','uri':config_id,'name':get_config_name(config_id),'data':json_data}
+            except json.JSONDecodeError as e:
+                raise Exception ("Invalid JSON from {}. Are you pointing to an HTML page? {}".format(config_id, e))
         else:
             logger.info("Looking up config {} in configuration registry".format(config_id))
-            registry_path = update_registry(settings["default"]["registry"], cache_dir(top_dir), d)
+            registry_path = update_registry(registry, cache_dir(top_dir), d)
             registry_configs = list_registry(registry_path, with_expired=True)
             if config_id not in registry_configs:
                 raise Exception("Config {} not found in configuration registry, re-run 'init' without parameters to choose from available configurations.".format(config_id))
-            upstream_config = {'type':'registry','registry':settings["default"]["registry"],'name':config_id,'data':json.load(open(get_registry_config(registry_path,config_id)))}
+            upstream_config = {'type':'registry','registry':registry,'name':config_id,'data':json.load(open(get_registry_config(registry_path,config_id)))}
         expiry_date = upstream_config['data'].get("expires", None)
         if has_expired(expiry_date):
             logger.warning("This configuration is no longer supported after {}. Please consider changing to a supported configuration.".format(expiry_date))
     else:
-        registry_path = update_registry(settings["default"]["registry"], cache_dir(top_dir), d)
+        registry_path = update_registry(registry, cache_dir(top_dir), d)
         registry_configs = list_registry(registry_path, with_expired=True)
         config_id = choose_config(registry_configs, args.non_interactive)
         config_parameters = []
-        upstream_config = {'type':'registry','registry':settings["default"]["registry"],'name':config_id,'data':json.load(open(get_registry_config(registry_path,config_id)))}
+        upstream_config = {'type':'registry','registry':registry,'name':config_id,'data':json.load(open(get_registry_config(registry_path,config_id)))}
 
     upstream_config['bitbake-config'] = choose_bitbake_config(upstream_config['data']['bitbake-setup']['configurations'], config_parameters, args.non_interactive)
     upstream_config['bitbake-config']['oe-fragment-choices'] = choose_fragments(upstream_config['bitbake-config'].get('oe-fragments-one-of',{}), config_parameters[1:], args.non_interactive, args.skip_selection)
@@ -600,7 +632,7 @@ def init_config(top_dir, settings, args):
         logger.handlers[0].terminator = '\n'
 
     source_overrides = obtain_overrides(args)
-    upstream_config = obtain_config(top_dir, settings, args, source_overrides, d)
+    upstream_config = obtain_config(top_dir, settings["default"]["registry"], args, source_overrides, d)
     logger.info("Run 'bitbake-setup init --non-interactive {}' to select this configuration non-interactively.\n".format(" ".join(upstream_config['non-interactive-cmdline-options'])))
 
     if args.setup_dir_name:
@@ -715,7 +747,8 @@ def build_status(top_dir, settings, args, d, update=False):
     args.non_interactive = True
     args.skip_selection = current_upstream_config['skip-selection']
     source_overrides = current_upstream_config["source-overrides"]
-    new_upstream_config = obtain_config(top_dir, settings, args, source_overrides, d)
+    registry = current_upstream_config.get("registry")
+    new_upstream_config = obtain_config(top_dir, registry, args, source_overrides, d)
 
     write_upstream_config(confdir, new_upstream_config)
     config_diff = bb.process.run('git -C {} diff'.format(confdir))[0]
@@ -792,13 +825,14 @@ def list_registry(registry_path, with_expired):
 def list_configs(settings, args):
     import tempfile
     top_dir = tempfile.mkdtemp(prefix="bitbake-setup-list-")
+    settings['default']['dl-dir'] = os.path.join(top_dir, '.bitbake-setup-downloads')
     d = init_bb_cache(top_dir, settings, args)
     registry_path = update_registry(settings["default"]["registry"], cache_dir(top_dir), d)
     json_data = list_registry(registry_path, args.with_expired)
     shutil.rmtree(top_dir)
 
     logger.plain("Available configurations:")
-    for config_name, config_data in json_data.items():
+    for config_name, config_data in sorted(json_data.items()):
         expiry_date = config_data.get("expires", None)
         config_desc = config_data["description"]
         if expiry_date:
@@ -937,7 +971,7 @@ def get_top_dir(args, settings):
     setup_dir_via_bbpath = get_setup_dir_via_bbpath()
     if setup_dir_via_bbpath:
         top_dir = os.path.dirname(setup_dir_via_bbpath)
-        if os.path.exists(topdir_settings_path(top_dir)):
+        if os.path.exists(cache_dir(top_dir)):
             return top_dir
 
     if hasattr(args, 'setup_dir'):
@@ -1075,7 +1109,7 @@ def main():
         builtin_settings['default'] = {
                          'top-dir-prefix':os.getcwd(),
                          'top-dir-name':'bitbake-builds',
-                         'registry':default_registry,
+                         'registry':get_default_registry(),
                          'use-full-setup-dir-name':'no',
                          }
 
