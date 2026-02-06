@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=1ebbd3e34237af26da5dc08a4e440464"
 
 DEPENDS += "cpptango mariadb"
 
-SRCREV = "347a9ca747c4e72f40caa2de9f8813dfe0bb85b5"
+SRCREV = "8fdebf233943250a0823452f14d3e32815b42d76"
 SRC_URI = "\
 	gitsm://gitlab.com/tango-controls/${BPN}.git;protocol=https;branch=main \
 	"
