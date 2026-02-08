@@ -60,6 +60,7 @@ PTESTS_FAST_META_PYTHON = "\
     python3-parse \
     python3-parse-type \
     python3-parsimonious \
+    python3-pendulum \
     python3-platformdirs \
     python3-polyline \
     python3-portalocker \
@@ -105,6 +106,8 @@ PTESTS_FAST_META_PYTHON = "\
     python3-starlette \
     python3-tblib \
     python3-tenacity \
+    python3-time-machine \
+    python3-tokenize-rt \
     python3-tomli-w \
     python3-tomlkit \
     python3-trustme \
@@ -130,10 +133,12 @@ PTESTS_SLOW_META_PYTHON = "\
     python3-arrow \
     python3-django \
     python3-ecdsa \
+    python3-faker \
     python3-fastapi \
     python3-google-auth \
     python3-lz4 \
     python3-marshmallow \
+    python3-orjson \
     python3-pillow \
     python3-pint \
     python3-pykickstart \
