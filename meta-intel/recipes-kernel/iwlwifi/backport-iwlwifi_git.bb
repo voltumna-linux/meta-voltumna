@@ -23,6 +23,7 @@ SRCREV = "186af96a0bccf10ef82af84a4803362508765d57"
 SRC_URI = " \
            git://git.kernel.org/pub/scm/linux/kernel/git/iwlwifi/backport-iwlwifi;branch=release/core${PV} \
            file://0001-Makefile.real-skip-host-install-scripts.patch \
+           file://0002-backport-include-net-netlink-fix-redefinition.patch \
            file://iwlwifi.conf \
           "
 
