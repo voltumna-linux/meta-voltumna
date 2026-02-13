@@ -9,13 +9,18 @@ LICENSE = "MIT"
 
 INITRAMFS_FSTYPES = "cpio cpio.xz"
 
-INITRAMFS_MAXSIZE = "65536"
+INITRAMFS_MAXSIZE = "131072"
 
 IMAGE_NAME = "ti-core-initramfs"
 
 export IMAGE_BASENAME = "${IMAGE_NAME}"
 
-PACKAGE_INSTALL = "packagegroup-ti-core-initramfs"
+TI_CORE_INITRAMFS_EXTRA_INSTALL ?= ""
+
+PACKAGE_INSTALL = "\
+    packagegroup-ti-core-initramfs \
+    ${TI_CORE_INITRAMFS_EXTRA_INSTALL} \
+"
 
 # Ensure the initramfs only contains the bare minimum
 IMAGE_FEATURES = ""
