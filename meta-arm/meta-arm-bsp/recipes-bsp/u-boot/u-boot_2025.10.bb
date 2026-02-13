@@ -3,5 +3,5 @@ require recipes-bsp/u-boot/u-boot.inc
 
 DEPENDS += "bc-native dtc-native gnutls-native python3-pyelftools-native"
 
-SRCREV = "34820924edbc4ec7803eb89d9852f4b870fa760a"
+SRCREV = "e50b1e8715011def8aff1588081a2649a2c6cd47"
 SRC_URI = "git://source.denx.de/u-boot/u-boot.git;protocol=https;branch=master"

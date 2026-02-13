@@ -58,20 +58,19 @@ SRC_URI:append = " \
 # Purging device tree nodes
 SRC_URI:append = " \
     file://0034-dt-Provide-a-way-to-remove-non-compliant-nodes-and-p.patch \
-    file://0035-bootefi-Call-the-EVT_FT_FIXUP-event-handler.patch          \
-    file://0036-corstone1000-Purge-U-Boot-specific-DT-nodes.patch          \
+    file://0035-corstone1000-Purge-U-Boot-specific-DT-nodes.patch          \
     ${@bb.utils.contains('MACHINE_FEATURES', 'corstone1000-extsys', \
-                         '', 'file://0037-corstone1000-purge-remoteproc-DTS-node.patch' , d)} \
+                         '', 'file://0036-corstone1000-purge-remoteproc-DTS-node.patch' , d)} \
     "
 
 # Add OF_UPSTREAM support
 SRC_URI:append = " \
-    file://0038-corstone1000-enable-OF_UPSTREAM-device-tree-support.patch \
+    file://0037-corstone1000-enable-OF_UPSTREAM-device-tree-support.patch \
 "
 
 # Use 32 bit cells for reserved-memory node in dts
 SRC_URI:append = " \
-    file://0040-corstone1000-dts-use-32-bit-cells-for-reserved-memor.patch \
+    file://0038-corstone1000-dts-use-32-bit-cells-for-reserved-memor.patch \
 "
 
 # Add Cortex-a320 support
@@ -85,12 +84,12 @@ SRC_URI:append:cortexa320 = " \
 "
 
 uboot_configure_config:append() {
-   openssl req -x509 -sha256 -newkey rsa:2048 -subj /CN=CRT/ -keyout ${B}/CRT.key -out $builddir/CRT.crt -nodes -days 365
+   openssl req -x509 -sha256 -newkey rsa:2048 -subj /CN=CRT/ -keyout ${B}/CRT.key -out ${S}/CRT.crt -nodes -days 365
 }
 
 FILES:${PN} += "/corstone1000_capsule_*"
 uboot_install_config:append() {
-   install -D -p -m 0644 $builddir/CRT.crt ${D}/corstone1000_capsule_cert.crt
+   install -D -p -m 0644 ${S}/CRT.crt ${D}/corstone1000_capsule_cert.crt
    install -D -p -m 0644 ${B}/CRT.key ${D}/corstone1000_capsule_key.key
 }
 
