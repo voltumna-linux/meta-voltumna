@@ -14,12 +14,21 @@ Upstream-Status: Pending
 
 --- a/common.gypi
 +++ b/common.gypi
-@@ -417,7 +417,7 @@
-             'ldflags': [ '-m32' ],
-           }],
-           [ 'target_arch=="ppc64" and OS!="aix"', {
--            'cflags': [ '-m64', '-mminimal-toc' ],
-+            'cflags': [ '-m64' ],
-             'ldflags': [ '-m64' ],
-           }],
-           [ 'target_arch=="s390x"', {
+@@ -498,7 +498,7 @@
+                 'ldflags': [ '-m32' ],
+               }],
+               [ 'host_arch=="ppc64" and OS not in "aix os400"', {
+-                'cflags': [ '-m64', '-mminimal-toc' ],
++                'cflags': [ '-m64' ],
+                 'ldflags': [ '-m64' ],
+               }],
+               [ 'host_arch=="s390x" and OS=="linux"', {
+@@ -522,7 +522,7 @@
+                 'ldflags': [ '-m32' ],
+               }],
+               [ 'target_arch=="ppc64" and OS not in "aix os400"', {
+-                'cflags': [ '-m64', '-mminimal-toc' ],
++                'cflags': [ '-m64' ],
+                 'ldflags': [ '-m64' ],
+               }],
+               [ 'target_arch=="s390x" and OS=="linux"', {

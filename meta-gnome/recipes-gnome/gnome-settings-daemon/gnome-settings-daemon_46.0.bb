@@ -48,3 +48,5 @@ FILES:${PN} += " \
     ${systemd_user_unitdir} \
     ${libdir}/gnome-settings-daemon-${@gnome_verdir("${PV}")}/libgsd.so \
 "
+
+CVE_STATUS[CVE-2024-38394] = "disputed: mitigation would be a new feature, not a CVE"

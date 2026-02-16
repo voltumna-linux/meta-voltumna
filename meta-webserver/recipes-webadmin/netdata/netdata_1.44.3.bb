@@ -15,6 +15,8 @@ SRC_URI = "\
 
 SRC_URI[sha256sum] = "50df30a9aaf60d550eb8e607230d982827e04194f7df3eba0e83ff7919270ad2"
 
+CVE_STATUS[CVE-2024-32019] = "cpe-incorrect: versions <1.45.0 are not vulnerable yet"
+
 UPSTREAM_CHECK_URI = "https://github.com/${BPN}/${BPN}/tags"
 UPSTREAM_CHECK_REGEX = "${BPN}/releases/tag/v(?P<pver>\d+(?:\.\d+)*)"
 

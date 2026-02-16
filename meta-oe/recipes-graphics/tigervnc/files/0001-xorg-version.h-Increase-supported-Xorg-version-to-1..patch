@@ -1,0 +1,29 @@
+From 59f302c28cc15f2d7749840a311c2085c75d5833 Mon Sep 17 00:00:00 2001
+From: Gyorgy Sarvari <skandigraun@gmail.com>
+Date: Wed, 24 Nov 2021 21:09:36 +0100
+Subject: [PATCH] xorg-version.h: Increase supported Xorg version to 1.21
+
+From: Joakim Tjernlund <joakim.tjernlund@infinera.com>
+
+Upstream-Status: Backport [https://github.com/TigerVNC/tigervnc/commit/736b50d04e1ba965696cd15d456dc2b7fc123150]
+Signed-off-by: Gyorgy Sarvari <skandigraun@gmail.com>
+---
+ unix/xserver/hw/vnc/xorg-version.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/unix/xserver/hw/vnc/xorg-version.h b/unix/xserver/hw/vnc/xorg-version.h
+index 5effe7e9..2449980d 100644
+--- a/unix/xserver/hw/vnc/xorg-version.h
++++ b/unix/xserver/hw/vnc/xorg-version.h
+@@ -36,8 +36,10 @@
+ #define XORG 119
+ #elif XORG_VERSION_CURRENT < ((1 * 10000000) + (20 * 100000) + (99 * 1000))
+ #define XORG 120
++#elif XORG_VERSION_CURRENT < ((1 * 10000000) + (21 * 100000) + (99 * 1000))
++#define XORG 121
+ #else
+-#error "X.Org newer than 1.20 is not supported"
++#error "X.Org newer than 1.21 is not supported"
+ #endif
+ 
+ #endif
