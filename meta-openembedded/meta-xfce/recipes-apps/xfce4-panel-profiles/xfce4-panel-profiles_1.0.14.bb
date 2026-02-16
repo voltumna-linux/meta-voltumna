@@ -9,7 +9,7 @@ REQUIRED_DISTRO_FEATURES = "x11 gobject-introspection-data"
 
 DEPENDS += "intltool-native"
 
-SRC_URI = "http://archive.xfce.org/src/apps/${BPN}/1.0/${BP}.tar.bz2"
+SRC_URI = "https://archive.xfce.org/src/apps/${BPN}/1.0/${BP}.tar.bz2"
 SRC_URI[sha256sum] = "6d08354e8c44d4b0370150809c1ed601d09c8b488b68986477260609a78be3f9"
 
 do_configure() {

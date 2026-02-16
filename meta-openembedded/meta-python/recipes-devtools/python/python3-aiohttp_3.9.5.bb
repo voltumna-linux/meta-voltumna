@@ -7,8 +7,11 @@ LIC_FILES_CHKSUM = "file://LICENSE.txt;md5=748073912af33aa59430d3702aa32d41"
 SRC_URI[sha256sum] = "edea7d15772ceeb29db4aff55e482d4bcfb6ae160ce144f2682de02f6d693551"
 
 SRC_URI += "file://CVE-2024-52304.patch \
-            file://CVE-2025-53643.patch \
-"
+           file://CVE-2025-53643.patch \
+           file://CVE-2025-69225.patch \
+           file://CVE-2025-69226.patch \
+           file://CVE-2025-69228.patch \
+           "
 
 PYPI_PACKAGE = "aiohttp"
 inherit python_setuptools_build_meta pypi

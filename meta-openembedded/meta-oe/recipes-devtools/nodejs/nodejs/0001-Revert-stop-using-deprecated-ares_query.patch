@@ -1,0 +1,164 @@
+From f421a0f1f962acff2c71cba06c9ae2af85bd09ee Mon Sep 17 00:00:00 2001
+From: Gyorgy Sarvari <skandigraun@gmail.com>
+Date: Fri, 6 Feb 2026 21:42:56 +0100
+Subject: [PATCH] Revert "stop using deprecated ares_query"
+
+Nodejs has removed the usage of some deprecated c-ares calls[1],
+however as a result the c-ares requirements have increased beyond
+the c-ares version than what is available in Scarthgap.
+
+Due to this it failed to compile:
+../src/cares_wrap.h:264:22: error: 'ares_query_dnsrec' was not declared in this scope
+
+To be able to still compile nodejs, keep using the original, deprectaed
+calls. This patch reverts the below linked commit.
+
+[1]: https://github.com/nodejs/node/commit/22e0d17097fa419cde5fcd5d648fe70aa9fb80e2
+
+Signed-off-by: Gyorgy Sarvari <skandigraun@gmail.com>
+---
+ src/cares_wrap.cc | 24 ++++++++++++------------
+ src/cares_wrap.h  | 35 ++++++++++++++++-------------------
+ 2 files changed, 28 insertions(+), 31 deletions(-)
+
+diff --git a/src/cares_wrap.cc b/src/cares_wrap.cc
+index 2388c604..5a8e11c7 100644
+--- a/src/cares_wrap.cc
++++ b/src/cares_wrap.cc
+@@ -825,62 +825,62 @@ void ChannelWrap::EnsureServers() {
+ }
+ 
+ int AnyTraits::Send(QueryWrap<AnyTraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_ANY);
++  wrap->AresQuery(name, ns_c_in, ns_t_any);
+   return ARES_SUCCESS;
+ }
+ 
+ int ATraits::Send(QueryWrap<ATraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_A);
++  wrap->AresQuery(name, ns_c_in, ns_t_a);
+   return ARES_SUCCESS;
+ }
+ 
+ int AaaaTraits::Send(QueryWrap<AaaaTraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_AAAA);
++  wrap->AresQuery(name, ns_c_in, ns_t_aaaa);
+   return ARES_SUCCESS;
+ }
+ 
+ int CaaTraits::Send(QueryWrap<CaaTraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_CAA);
++  wrap->AresQuery(name, ns_c_in, T_CAA);
+   return ARES_SUCCESS;
+ }
+ 
+ int CnameTraits::Send(QueryWrap<CnameTraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_CNAME);
++  wrap->AresQuery(name, ns_c_in, ns_t_cname);
+   return ARES_SUCCESS;
+ }
+ 
+ int MxTraits::Send(QueryWrap<MxTraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_MX);
++  wrap->AresQuery(name, ns_c_in, ns_t_mx);
+   return ARES_SUCCESS;
+ }
+ 
+ int NsTraits::Send(QueryWrap<NsTraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_NS);
++  wrap->AresQuery(name, ns_c_in, ns_t_ns);
+   return ARES_SUCCESS;
+ }
+ 
+ int TxtTraits::Send(QueryWrap<TxtTraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_TXT);
++  wrap->AresQuery(name, ns_c_in, ns_t_txt);
+   return ARES_SUCCESS;
+ }
+ 
+ int SrvTraits::Send(QueryWrap<SrvTraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_SRV);
++  wrap->AresQuery(name, ns_c_in, ns_t_srv);
+   return ARES_SUCCESS;
+ }
+ 
+ int PtrTraits::Send(QueryWrap<PtrTraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_PTR);
++  wrap->AresQuery(name, ns_c_in, ns_t_ptr);
+   return ARES_SUCCESS;
+ }
+ 
+ int NaptrTraits::Send(QueryWrap<NaptrTraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_NAPTR);
++  wrap->AresQuery(name, ns_c_in, ns_t_naptr);
+   return ARES_SUCCESS;
+ }
+ 
+ int SoaTraits::Send(QueryWrap<SoaTraits>* wrap, const char* name) {
+-  wrap->AresQuery(name, ARES_CLASS_IN, ARES_REC_TYPE_SOA);
++  wrap->AresQuery(name, ns_c_in, ns_t_soa);
+   return ARES_SUCCESS;
+ }
+ 
+diff --git a/src/cares_wrap.h b/src/cares_wrap.h
+index a770d9e3..820c5d88 100644
+--- a/src/cares_wrap.h
++++ b/src/cares_wrap.h
+@@ -254,20 +254,18 @@ class QueryWrap final : public AsyncWrap {
+     return Traits::Send(this, name);
+   }
+ 
+-  void AresQuery(const char* name,
+-                 ares_dns_class_t dnsclass,
+-                 ares_dns_rec_type_t type) {
++  void AresQuery(const char* name, int dnsclass, int type) {
+     channel_->EnsureServers();
+     TRACE_EVENT_NESTABLE_ASYNC_BEGIN1(
+       TRACING_CATEGORY_NODE2(dns, native), trace_name_, this,
+       "name", TRACE_STR_COPY(name));
+-    ares_query_dnsrec(channel_->cares_channel(),
+-                      name,
+-                      dnsclass,
+-                      type,
+-                      Callback,
+-                      MakeCallbackPointer(),
+-                      nullptr);
++    ares_query(
++        channel_->cares_channel(),
++        name,
++        dnsclass,
++        type,
++        Callback,
++        MakeCallbackPointer());
+   }
+ 
+   void ParseError(int status) {
+@@ -314,20 +312,19 @@ class QueryWrap final : public AsyncWrap {
+     return wrap;
+   }
+ 
+-  static void Callback(void* arg,
+-                       ares_status_t status,
+-                       size_t timeouts,
+-                       const ares_dns_record_t* dnsrec) {
++  static void Callback(
++      void* arg,
++      int status,
++      int timeouts,
++      unsigned char* answer_buf,
++      int answer_len) {
+     QueryWrap<Traits>* wrap = FromCallbackPointer(arg);
+     if (wrap == nullptr) return;
+ 
+     unsigned char* buf_copy = nullptr;
+-    size_t answer_len = 0;
+     if (status == ARES_SUCCESS) {
+-      // No need to explicitly call ares_free_string here,
+-      // as it is a wrapper around free, which is already
+-      // invoked when MallocedBuffer is destructed.
+-      ares_dns_write(dnsrec, &buf_copy, &answer_len);
++      buf_copy = node::Malloc<unsigned char>(answer_len);
++      memcpy(buf_copy, answer_buf, answer_len);
+     }
+ 
+     wrap->response_data_ = std::make_unique<ResponseData>();

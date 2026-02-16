@@ -8,7 +8,9 @@ SRC_URI[sha256sum] = "d227fe76a63d9e6a6cef53beb8ad0b2dc40a5e7737c801f4b474cfae1d
 
 SRC_URI += "file://CVE-2025-58068.patch"
 
-inherit pypi setuptools3
+inherit pypi python_hatchling
+
+DEPENDS += "python3-hatch-vcs-native"
 
 RDEPENDS:${PN} += " \
 	python3-dnspython \

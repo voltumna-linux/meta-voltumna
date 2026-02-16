@@ -21,6 +21,8 @@ SRC_URI = "http://php.net/distributions/php-${PV}.tar.bz2 \
            file://0010-iconv-fix-detection.patch \
            file://0001-Change-whether-to-inline-XXH3_hashLong_withSecret-to.patch \
            file://CVE-2025-14177.patch \
+           file://CVE-2025-14178.patch \
+           file://CVE-2025-14180.patch \
           "
 
 SRC_URI:append:class-target = " \

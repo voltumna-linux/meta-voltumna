@@ -30,6 +30,16 @@ LIC_FILES_CHKSUM = "file://LICENSE.GPL;md5=751419260aa954499f7abaabaa882bbe \
 SRC_URI = "${SOURCEFORGE_MIRROR}/sox/sox-${PV}.tar.gz \
            file://0001-remove-the-error-line-and-live-without-file-type-det.patch \
            file://0001-Update-exported-symbol-list.patch \
+           file://CVE-2017-11332.patch \
+           file://CVE-2017-11358.patch \
+           file://CVE-2017-11359.patch \
+           file://CVE-2017-15370.patch \
+           file://CVE-2017-15371.patch \
+           file://CVE-2017-15372.patch \
+           file://CVE-2017-15642.patch \
+           file://CVE-2017-18189.patch \
+           file://CVE-2019-13590.patch \
+           file://CVE-2019-8354.patch \
            "
 SRC_URI[md5sum] = "d04fba2d9245e661f245de0577f48a33"
 SRC_URI[sha256sum] = "b45f598643ffbd8e363ff24d61166ccec4836fea6d3888881b8df53e3bb55f6c"
