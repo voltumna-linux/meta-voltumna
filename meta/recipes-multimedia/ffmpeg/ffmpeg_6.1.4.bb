@@ -29,15 +29,12 @@ SRC_URI = " \
     file://vulkan_fix_gcc14.patch \
     file://CVE-2024-28661.patch \
     file://CVE-2023-49528.patch \
-    file://CVE-2024-35365.patch \
-    file://CVE-2024-36618.patch \
     file://CVE-2024-35369.patch \
     file://CVE-2025-25473.patch \
     file://CVE-2025-22921.patch \
-    file://CVE-2025-1594.patch \
 "
 
-SRC_URI[sha256sum] = "bc5f1e4a4d283a6492354684ee1124129c52293bcfc6a9169193539fbece3487"
+SRC_URI[sha256sum] = "a231e3d5742c44b1cdaebfb98ad7b6200d12763e0b6db9e1e2c5891f2c083a18"
 
 # https://nvd.nist.gov/vuln/detail/CVE-2023-39018
 # https://github.com/bramp/ffmpeg-cli-wrapper/issues/291
@@ -53,6 +50,8 @@ CVE_STATUS[CVE-2025-1373]  = "fixed-version: Vulnerable code not present in any 
 CVE_STATUS_GROUPS += "CVE_STATUS_FIXED_61x"
 CVE_STATUS_FIXED_61x = "CVE-2023-49502 CVE-2023-50007 CVE-2023-50008 CVE-2023-50009 CVE-2023-50010 CVE-2024-31578 CVE-2024-31582 CVE-2024-31585"
 CVE_STATUS_FIXED_61x[status] = "cpe-incorrect:these CVEs are fixed in 6.1.x"
+
+CVE_STATUS[CVE-2025-25469] = "cpe-incorrect: Current version (6.1.4) is not impacted."
 
 # Build fails when thumb is enabled: https://bugzilla.yoctoproject.org/show_bug.cgi?id=7717
 ARM_INSTRUCTION_SET:armv4 = "arm"
