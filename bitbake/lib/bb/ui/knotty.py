@@ -131,7 +131,7 @@ class TerminalFilter(object):
     def getTerminalColumns(self):
         def ioctl_GWINSZ(fd):
             try:
-                cr = struct.unpack('hh', fcntl.ioctl(fd, self.termios.TIOCGWINSZ, '1234'))
+                cr = struct.unpack('hhhh', fcntl.ioctl(fd, self.termios.TIOCGWINSZ, b'12345678'))[0:2]
             except:
                 return None
             return cr
@@ -145,7 +145,7 @@ class TerminalFilter(object):
                 pass
         if not cr:
             try:
-                cr = (os.environ['LINES'], os.environ['COLUMNS'])
+                cr = (int(os.environ['LINES']), int(os.environ['COLUMNS']))
             except:
                 cr = (25, 80)
         return cr
