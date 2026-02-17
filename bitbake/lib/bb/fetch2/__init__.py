@@ -2100,7 +2100,6 @@ class FetchConnectionCache(object):
             self.cache[cn].close()
             del self.cache[cn]
 
-from . import cvs
 from . import git
 from . import gitsm
 from . import gitannex
@@ -2111,9 +2110,7 @@ from . import ssh
 from . import sftp
 from . import s3
 from . import perforce
-from . import bzr
 from . import hg
-from . import osc
 from . import repo
 from . import clearcase
 from . import npm
@@ -2129,14 +2126,11 @@ methods.append(svn.Svn())
 methods.append(git.Git())
 methods.append(gitsm.GitSM())
 methods.append(gitannex.GitANNEX())
-methods.append(cvs.Cvs())
 methods.append(ssh.SSH())
 methods.append(sftp.SFTP())
 methods.append(s3.S3())
 methods.append(perforce.Perforce())
-methods.append(bzr.Bzr())
 methods.append(hg.Hg())
-methods.append(osc.Osc())
 methods.append(repo.Repo())
 methods.append(clearcase.ClearCase())
 methods.append(npm.Npm())
