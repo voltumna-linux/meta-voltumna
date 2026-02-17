@@ -122,7 +122,7 @@ index b29ac74217e..7f75eae48cc 100644
  &{/soc} {
  	extsys0: remoteproc@1a010310 {
  		compatible = "arm,corstone1000-extsys";
-@@ -37,3 +46,70 @@
+@@ -37,3 +46,72 @@
  		firmware-name = "es_flashfw.elf";
  	};
  };
@@ -144,6 +144,8 @@ index b29ac74217e..7f75eae48cc 100644
 +/ {
 +	ethosu: ethosu@1A050000 {
 +		compatible = "arm,ethosu-direct";
++		#address-cells = <1>;
++		#size-cells = <1>;
 +
 +		// Base address and size of NPU registers
 +		reg = <0x1A050000 0x4000>;
