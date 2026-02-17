@@ -28,10 +28,14 @@ PTESTS_FAST = "\
     icu \
     json-c \
     json-glib \
+    libarchive \
+    libassuan \
     libcheck \
+    libconfig \
     libconvert-asn1-perl \
     libexif \
     libgpg-error\
+    libksba \
     libmd \
     libnl \
     libpcre \
