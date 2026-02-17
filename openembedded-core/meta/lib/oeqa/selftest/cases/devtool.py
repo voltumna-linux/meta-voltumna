@@ -1156,6 +1156,31 @@ class DevtoolModifyTests(DevtoolBase):
         result = bitbake(testrecipe)
         self.assertEqual(result.status, 0, "Bitbake failed, exit code %s, output %s" % (result.status, result.output))
 
+    def test_devtool_modify_nested_gitsm(self):
+        """Checks that a recipe with multiple sources including a git repo with a nested git repo with
+        submodules can be used with devtool modify
+        """
+        testrecipe = 'devtool-test-git-gitsm'
+        src_uri = get_bb_var('SRC_URI', testrecipe)
+        self.assertIn('git://', src_uri, 'This test expects the %s recipe to fetch a git source' % testrecipe)
+        self.assertIn('gitsm://', src_uri, 'This test expects the %s recipe to fetch a gitsm source' % testrecipe)
+        # Try modifying a recipe
+        tempdir = tempfile.mkdtemp(prefix='devtoolqa')
+        self.track_for_cleanup(tempdir)
+        self.track_for_cleanup(self.workspacedir)
+        self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
+        result = runCmd('devtool modify %s -x %s' % (testrecipe, tempdir))
+        self.assertEqual(result.status, 0, "Could not modify recipe %s. Output: %s" % (testrecipe, result.output))
+        # Test devtool status
+        result = runCmd('devtool status')
+        self.assertIn(testrecipe, result.output)
+        self.assertIn(tempdir, result.output)
+        # Submodules in repo-gitsm should be extracted
+        source_repo_gitsm_gitmodules = os.path.join(tempdir, 'nested/repo-gitsm')
+        self.assertExists(source_repo_gitsm_gitmodules, 'Nested repo repo-gitsm not found')
+        self.assertExists(os.path.join(source_repo_gitsm_gitmodules, 'bitbake'), 'Submodule not found')
+        self.assertExists(os.path.join(source_repo_gitsm_gitmodules, 'bitbake-gitsm-test1'), 'Submodule not found')
+
 class DevtoolUpdateTests(DevtoolBase):
 
     def test_devtool_update_recipe(self):
@@ -2724,6 +2749,12 @@ class DevtoolIdeSdkTests(DevtoolBase):
         gdb_batch_cmd += " -ex 'print CppExample::test_string.compare(\"cpp-example-lib %s\")'" % magic_string
         gdb_batch_cmd += " -ex 'print CppExample::test_string.compare(\"cpp-example-lib %saaa\")'" % magic_string
         gdb_batch_cmd += " -ex 'list cpp-example-lib.hpp:14,14'"
+
+        # check if resolving std::vector works with python scripts
+        gdb_batch_cmd += " -ex 'list cpp-example.cpp:55,55'"
+        gdb_batch_cmd += " -ex 'break cpp-example.cpp:55'"
+        gdb_batch_cmd += " -ex 'continue'"
+        gdb_batch_cmd += " -ex 'print numbers'"
         gdb_batch_cmd += " -ex 'continue'"
         return gdb_batch_cmd
 
@@ -2733,6 +2764,11 @@ class DevtoolIdeSdkTests(DevtoolBase):
         self.assertIn("$2 = -3", gdb_output)  # test.string.compare longer
         self.assertIn(
             'inline static const std::string test_string = "cpp-example-lib %s";' % magic_string, gdb_output)
+
+        # check if resolving std::vector works with python scripts
+        self.assertRegex(gdb_output, r"55\s+std::vector<int> numbers = \{1, 2, 3\};")
+        self.assertIn("$3 = std::vector of length 3, capacity 3 = {1, 2, 3}", gdb_output)
+
         self.assertIn("exited normally", gdb_output)
 
     def _gdb_cross_debugging_multi(self, qemu, recipe_name, example_exe, magic_string):
