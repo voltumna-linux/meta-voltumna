@@ -13,6 +13,8 @@ PYPI_PACKAGE = "python-ldap"
 
 inherit pypi setuptools3
 
+SRC_URI += "file://CVE-2025-61911.patch \
+            file://CVE-2025-61912.patch"
 SRC_URI[sha256sum] = "60464c8fc25e71e0fd40449a24eae482dcd0fb7fcf823e7de627a6525b3e0d12"
 
 do_configure:prepend() {

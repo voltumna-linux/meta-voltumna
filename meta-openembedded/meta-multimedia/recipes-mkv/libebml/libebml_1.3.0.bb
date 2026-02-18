@@ -2,11 +2,11 @@ SUMMARY = "libebml is a C++ libary to parse EBML files"
 LICENSE = "LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://LICENSE.LGPL;md5=7fbc338309ac38fefcd64b04bb903e34"
 
-SRC_URI = "\
-    http://dl.matroska.org/downloads/libebml/libebml-${PV}.tar.bz2 \
-    file://ldflags.patch \
-    file://override-uname.patch \
-"
+SRC_URI = "http://dl.matroska.org/downloads/libebml/libebml-${PV}.tar.bz2 \
+           file://ldflags.patch \
+           file://override-uname.patch \
+           file://CVE-2015-8791.patch \
+           "
 SRC_URI[md5sum] = "efec729bf5a51e649e1d9d1f61c0ae7a"
 SRC_URI[sha256sum] = "83b074d6b62715aa0080406ea84d33df2e44b5d874096640233a4db49b8096de"
 

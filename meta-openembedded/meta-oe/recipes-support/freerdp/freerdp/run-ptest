@@ -1,0 +1,66 @@
+#!/bin/sh
+#These test cases were determined by running the actual test binary
+#which lists all available test cases. Couldn't find a way to just simply
+#run all. Also, BusyBox seems to have no associative array support, so
+#plain variables are used with eval.
+TestAsn="TestAsn1Module TestAsn1Encoder TestAsn1Decoder TestAsn1Encode TestAsn1Decode TestAsn1String TestAsn1Integer TestAsn1Compare TestAsn1BerEnc TestAsn1BerDec TestAsn1DerEnc TestAsn1DerDec"
+TestClient="TestClientRdpFile TestClientChannels TestClientCmdLine"
+TestClipboard="TestClipboardFormats"
+TestCommon="TestCommonAssistance"
+TestCore="TestVersion TestSettings"
+TestCredUI="TestCredUIParseUserName TestCredUIConfirmCredentials TestCredUIPromptForCredentials TestCredUICmdLinePromptForCredentials"
+TestCrt="TestTypes TestFormatSpecifiers TestAlignment TestString TestUnicodeConversion"
+TestCrypto="TestCryptoHash TestCryptoRand TestCryptoCipher TestCryptoProtectData TestCryptoProtectMemory TestCryptoCertEnumCertificatesInStore"
+TestDsParse="TestDsMakeSpn TestDsCrackNames"
+TestEnvironment="TestEnvironmentGetEnvironmentStrings TestEnvironmentSetEnvironmentVariable TestEnvironmentMergeEnvironmentStrings TestEnvironmentGetSetEB"
+TestError="TestErrorSetLastError"
+TestFile="TestFileCreateFile TestFileDeleteFile TestFileReadFile TestSetFileAttributes TestFileWriteFile TestFilePatternMatch TestFileFindFirstFile TestFileFindFirstFileEx TestFileFindNextFile TestFileGetStdHandle"
+TestFreeRDPCodec="TestFreeRDPRegion TestFreeRDPCodecMppc TestFreeRDPCodecNCrush TestFreeRDPCodecXCrush TestFreeRDPCodecZGfx TestFreeRDPCodecPlanar TestFreeRDPCodecClear TestFreeRDPCodecInterleaved TestFreeRDPCodecProgressive TestFreeRDPCodecRemoteFX"
+TestFreeRDPCrypto="TestKnownHosts TestBase64 Test_x509_cert_info"
+TestFreeRDPUtils="TestRingBuffer"
+TestGdi="TestGdiRop3 TestGdiLine TestGdiRegion TestGdiRect TestGdiBitBlt TestGdiCreate TestGdiEllipse TestGdiClip"
+TestInterlocked="TestInterlockedAccess TestInterlockedSList TestInterlockedDList"
+TestIo="TestIoDevice TestIoGetOverlappedResult"
+TestLibrary="TestLibraryLoadLibrary TestLibraryGetProcAddress TestLibraryGetModuleFileName"
+TestLocale="TestLocaleFormatMessage"
+TestMemory="TestMemoryCreateFileMapping"
+TestNt="TestNtCreateFile TestNtCurrentTeb"
+TestPath="TestPathCchAddBackslash TestPathCchRemoveBackslash TestPathCchAddBackslashEx TestPathCchRemoveBackslashEx TestPathCchAddExtension TestPathCchAppend TestPathCchAppendEx TestPathCchCanonicalize TestPathCchCanonicalizeEx TestPathAllocCanonicalize TestPathCchCombine TestPathCchCombineEx TestPathAllocCombine TestPathCchFindExtension TestPathCchRenameExtension TestPathCchRemoveExtension TestPathCchIsRoot TestPathIsUNCEx TestPathCchSkipRoot TestPathCchStripToRoot TestPathCchStripPrefix TestPathCchRemoveFileSpec TestPathShell TestPathMakePath"
+TestPipe="TestPipeCreatePipe TestPipeCreateNamedPipe TestPipeCreateNamedPipeOverlapped"
+TestPool="TestPoolIO TestPoolSynch TestPoolThread TestPoolTimer TestPoolWork"
+TestPrimitives="TestPrimitivesAdd TestPrimitivesAlphaComp TestPrimitivesAndOr TestPrimitivesColors TestPrimitivesCopy TestPrimitivesSet TestPrimitivesShift TestPrimitivesSign TestPrimitivesYUV TestPrimitivesYCbCr TestPrimitivesYCoCg"
+TestRdTk="TestRdTkNinePatch"
+TestSecurity="TestSecurityToken"
+TestSmartCard="TestSmartCardListReaders"
+TestSspi="TestQuerySecurityPackageInfo TestEnumerateSecurityPackages TestInitializeSecurityContext TestAcquireCredentialsHandle TestCredSSP TestNTLM"
+TestSynch="TestSynchInit TestSynchEvent TestSynchMutex TestSynchBarrier TestSynchCritical TestSynchSemaphore TestSynchThread TestSynchMultipleThreads TestSynchTimerQueue TestSynchWaitableTimer TestSynchWaitableTimerAPC TestSynchAPC"
+TestSysInfo="TestGetNativeSystemInfo TestCPUFeatures TestGetComputerName TestSystemTime TestLocalTime"
+TestThread="TestThreadCommandLineToArgv TestThreadCreateProcess TestThreadExitThread"
+TestWinPR="TestIntrinsics TestTypes"
+TestWinPRUtils="TestIni TestVersion TestImage TestBipBuffer TestBacktrace TestQueue TestPrint TestPubSub TestStream TestBitStream TestArrayList TestLinkedList TestListDictionary TestCmdLine TestWLog TestWLogCallback TestHashTable TestBufferPool TestStreamPool TestMessageQueue TestMessagePipe"
+TestWnd="TestWndCreateWindowEx TestWndWmCopyData"
+TestWtsApi="TestWtsApiEnumerateProcesses TestWtsApiEnumerateSessions TestWtsApiQuerySessionInformation TestWtsApiSessionNotification TestWtsApiShutdownSystem TestWtsApiWaitSystemEvent"
+
+run_test(){
+  tc=$(eval "echo \$${1}")
+  if [ -z "$tc" -o "$tc" = ".so" ]; then
+     return
+  fi
+  
+  EXTRA_ARG=""
+  if [ "$1" = "TestFile" ]; then
+    # this testcase needs an extra argument
+    EXTRA_ARG="TestFileArea"
+  fi
+  
+  for t in $tc; do
+    ./$1 $t $EXTRA_ARG > ../${1}_${t}.out && echo PASS: $1 $t || echo FAIL: $1 $t
+  done
+}
+
+
+cd Testing
+
+for testbin in *; do
+  run_test $testbin
+done

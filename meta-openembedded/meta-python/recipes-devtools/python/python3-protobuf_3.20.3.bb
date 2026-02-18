@@ -8,6 +8,7 @@ LIC_FILES_CHKSUM = "file://PKG-INFO;beginline=8;endline=8;md5=53dbfa56f61b90215a
 inherit pypi setuptools3
 
 SRC_URI += "file://CVE-2025-4565.patch"
+SRC_URI += "file://CVE-2026-0994.patch"
 
 SRC_URI[sha256sum] = "2e3427429c9cffebf259491be0af70189607f365c2f41c7c3764af6f337105f2"
 

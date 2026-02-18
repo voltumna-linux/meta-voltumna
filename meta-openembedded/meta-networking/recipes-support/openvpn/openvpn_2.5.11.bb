@@ -21,8 +21,8 @@ SRC_URI[sha256sum] = "7e2672119bd4639819d560f332a8b9b7e28f562425c77899f36d419fe4
 # CVE-2020-7224 and CVE-2020-27569 are for Aviatrix OpenVPN client, not for openvpn.
 CVE_CHECK_IGNORE += "CVE-2020-7224 CVE-2020-27569"
 
-# CVE-2023-7235 is specific to Windows platform
-CVE_CHECK_IGNORE += "CVE-2023-7235"
+# CVE-2023-7235 and CVE-2024-4877, CVE-2025-13751 are specific to Windows platform
+CVE_CHECK_IGNORE += "CVE-2023-7235 CVE-2024-4877 CVE-2025-13751"
 
 SYSTEMD_SERVICE:${PN} += "openvpn@loopback-server.service openvpn@loopback-client.service"
 SYSTEMD_AUTO_ENABLE = "disable"

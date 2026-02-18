@@ -35,3 +35,5 @@ FILES:${PN} += "${PYTHON_SITEPACKAGES_DIR}"
 
 FILES:${PN}-python = "${nonarch_libdir}/${PYTHON_DIR}"
 
+# The CVE is for Jenkins plugin, not the SCM
+CVE_CHECK_IGNORE = "CVE-2022-43410"

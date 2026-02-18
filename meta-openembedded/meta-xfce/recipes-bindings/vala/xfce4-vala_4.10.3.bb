@@ -8,7 +8,7 @@ inherit xfce pkgconfig features_check
 REQUIRED_DISTRO_FEATURES = "x11"
 
 SRC_URI = " \
-    http://archive.xfce.org/src/bindings/${BPN}/${@xfce_verdir("${PV}")}/${BPN}-${PV}.tar.bz2 \
+    https://archive.xfce.org/src/bindings/${BPN}/${@xfce_verdir("${PV}")}/${BPN}-${PV}.tar.bz2 \
     file://0001-configure.ac-Detect-vapidir-if-not-set-explicitly.patch \
 "
 SRC_URI[md5sum] = "0bbb1d6e473e0fe9b335b7b1b49d8a71"
