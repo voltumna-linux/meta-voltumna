@@ -13,3 +13,6 @@ inherit pypi setuptools3 python3native
 RDEPENDS:${PN} += "python3-six python3-gmpy2 python3-pbr"
 
 BBCLASSEXTEND = "native nativesdk"
+
+# won't fix: https://github.com/tlsfuzzer/python-ecdsa/issues/330
+CVE_CHECK_IGNORE = "CVE-2024-23342"

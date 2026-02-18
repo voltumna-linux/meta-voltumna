@@ -42,6 +42,15 @@ SRCREV = "79188bf710e92acf42fb5b9b0a2e9593a5ee9b05"
 
 CVE_PRODUCT = "frrouting"
 
+# the vulnerability was introduced in v8.4.0
+CVE_CHECK_IGNORE += "CVE-2023-3748 CVE-2023-41360"
+
+# the vulnerability did not exist until 8.5
+CVE_CHECK_IGNORE += "CVE-2023-41359"
+
+# the vulnerability was introduced in 9.0
+CVE_CHECK_IGNORE += "CVE-2023-41361"
+
 S = "${WORKDIR}/git"
 
 # Due to libyang not supported on these arches:

@@ -31,6 +31,10 @@ DEPENDS = "curl \
 "
 SRCREV = "b49adfb118211e11c719766c0d71e7bdfe7f3363"
 BRANCH = "client_release/7/7.18"
+
+# fixed-version: fixed in version 7.0.45 and later"
+CVE_CHECK_IGNORE += "CVE-2013-2018"
+
 SRC_URI = "git://github.com/BOINC/boinc;protocol=https;branch=${BRANCH} \
            file://boinc-AM_CONDITIONAL.patch \
            file://gtk-configure.patch \

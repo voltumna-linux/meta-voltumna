@@ -16,3 +16,6 @@ RDEPENDS:${PN} += "\
     ${PYTHON_PN}-requests \
     ${PYTHON_PN}-six \
 "
+
+# fixed-version: The vulnerability has been fixed since v3.1.0
+CVE_CHECK_IGNORE += "CVE-2012-5825"

@@ -28,6 +28,9 @@ inherit autotools-brokensep useradd update-rc.d systemd multilib_script
 # fixed-version: version 1.2.0rc3 removed affected module
 CVE_CHECK_IGNORE += "CVE-2001-0027"
 
+# the issue is not a vulnerability, works as expected
+CVE_CHECK_IGNORE += "CVE-2021-47865"
+
 PACKAGECONFIG ??= "shadow \
                    ${@bb.utils.filter('DISTRO_FEATURES', 'ipv6 pam', d)} \
                    static \

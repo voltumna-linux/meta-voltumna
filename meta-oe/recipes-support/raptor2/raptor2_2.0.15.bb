@@ -9,10 +9,13 @@ LIC_FILES_CHKSUM = " \
 
 DEPENDS = "libxml2 libxslt curl yajl"
 
-SRC_URI = " \
-    http://download.librdf.org/source/${BPN}-${PV}.tar.gz \
-    file://0001-configure.ac-do-additional-checks-on-libxml2-also-wh.patch \
-"
+SRC_URI = "http://download.librdf.org/source/${BPN}-${PV}.tar.gz \
+           file://0001-configure.ac-do-additional-checks-on-libxml2-also-wh.patch \
+           file://CVE-2017-18926.patch \
+           file://CVE-2020-25713.patch \
+           file://CVE-2024-57822.patch \
+           file://CVE-2024-57823.patch \
+           "
 SRC_URI[md5sum] = "a39f6c07ddb20d7dd2ff1f95fa21e2cd"
 SRC_URI[sha256sum] = "ada7f0ba54787b33485d090d3d2680533520cd4426d2f7fb4782dd4a6a1480ed"
 

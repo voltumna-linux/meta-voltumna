@@ -21,15 +21,18 @@ SRC_URI = "git://github.com/TigerVNC/tigervnc.git;branch=1.11-branch;protocol=ht
            file://0002-do-not-build-tests-sub-directory.patch \
            file://0003-add-missing-dynamic-library-to-FLTK_LIBRARIES.patch \
            file://0004-tigervnc-add-fPIC-option-to-COMPILE_FLAGS.patch \
+           file://0001-xserver21.1.1.patch-Add-Xorg-21-patch.patch \
+           file://0001-xorg-version.h-Increase-supported-Xorg-version-to-1..patch \
+           file://0001-xvnc-adapt-for-1.21.patch \
 "
 
 # Keep sync with xorg-server in oe-core
 XORG_PN ?= "xorg-server"
-XORG_PV ?= "1.20.6"
-SRC_URI += "${XORG_MIRROR}/individual/xserver/${XORG_PN}-${XORG_PV}.tar.bz2;name=xorg"
+XORG_PV ?= "21.1.18"
+SRC_URI += "${XORG_MIRROR}/individual/xserver/${XORG_PN}-${XORG_PV}.tar.xz;name=xorg"
 XORG_S = "${WORKDIR}/${XORG_PN}-${XORG_PV}"
-SRC_URI[xorg.md5sum] = "a98170084f2c8fed480d2ff601f8a14b"
-SRC_URI[xorg.sha256sum] = "6316146304e6e8a36d5904987ae2917b5d5b195dc9fc63d67f7aca137e5a51d1"
+SRC_URI[xorg.md5sum] = "43225ddc1fd8d7ae7671c25ab6d1f927"
+SRC_URI[xorg.sha256sum] = "c878d1930d87725d4a5bf498c24f4be8130d5b2646a9fd0f2994deff90116352"
 
 # It is the directory containing the Xorg source for the
 # machine on which you are building TigerVNC.
@@ -37,27 +40,11 @@ XSERVER_SOURCE_DIR="${S}/unix/xserver"
 
 do_patch[postfuncs] += "do_patch_xserver"
 do_patch_xserver () {
-    for subdir in Xext xkb GL hw/xquartz/bundle hw/xfree86/common; do
-        install -d ${XSERVER_SOURCE_DIR}/$subdir
-    done
-
-    for subdir in hw/dmx/doc man doc hw/dmx/doxygen; do
-        install -d ${XSERVER_SOURCE_DIR}/$subdir
-    done
-
-    sources="hw/xquartz/bundle/cpprules.in man/Xserver.man doc/smartsched \
-             hw/dmx/doxygen/doxygen.conf.in xserver.ent.in xkb/README.compiled \
-             hw/xfree86/xorgconf.cpp hw/xfree86/Xorg.sh.in"
-    for i in ${sources}; do
-        install -m 0644 ${XORG_S}/$i ${XSERVER_SOURCE_DIR}/$i;
-    done
-
-    cd ${XORG_S}
-    find . -type f | egrep '.*\.(c|h|am|ac|inc|m4|h.in|pc.in|man.pre|pl|txt)$' | \
-    xargs tar cf - | (cd ${XSERVER_SOURCE_DIR} && tar xf -)
+    # Put the xserver source in the right place in the tigervnc source tree
+    cp -rfl ${XORG_S}/* ${XSERVER_SOURCE_DIR}
 
     cd ${XSERVER_SOURCE_DIR}
-    xserverpatch="${S}/unix/xserver120.patch"
+    xserverpatch="${S}/unix/xserver21.patch"
     echo "Apply $xserverpatch"
     patch -p1 -b --suffix .vnc < $xserverpatch
 }
@@ -134,3 +121,8 @@ FILES:${PN}-dbg += "${libdir}/xorg/modules/extensions/.debug"
 
 # fixed-version: The vulnerable code is not present in the used version (1.11.0)
 CVE_CHECK_IGNORE += "CVE-2014-8241"
+
+# fixed-version: The vulnerable code is not present in the used xserver version (21.1.18)
+CVE_CHECK_IGNORE += "CVE-2023-6377 CVE-2023-6478 CVE-2025-26594 CVE-2025-26595 \
+CVE-2025-26596 CVE-2025-26597 CVE-2025-26598 CVE-2025-26599 CVE-2025-26600 \
+CVE-2025-26601 CVE-2024-0408 CVE-2024-0409"

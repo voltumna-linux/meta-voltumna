@@ -71,3 +71,5 @@ SYSTEMD_SERVICE:${PN} = "influxdb.service"
 
 #cpe-incorrect: Version does not match and only the Jenkins plugin is affected.
 CVE_CHECK_IGNORE += "CVE-2019-10329"
+#not-applicable-config: vulnerability only exists in version 2.x
+CVE_CHECK_IGNORE += "CVE-2024-30896"

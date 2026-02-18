@@ -44,7 +44,9 @@ FILES:libvncclient = "${libdir}/libvncclient.*"
 
 inherit cmake
 
-SRC_URI = "git://github.com/LibVNC/libvncserver;branch=master;protocol=https"
+SRC_URI = "git://github.com/LibVNC/libvncserver;branch=master;protocol=https \
+           file://CVE-2020-29260.patch \
+           "
 SRCREV = "2aa20dad4c23c18948d3f63b33f9dfec1f837729"
 
 S = "${WORKDIR}/git"

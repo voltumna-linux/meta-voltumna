@@ -12,6 +12,8 @@ SRC_URI = "${SOURCEFORGE_MIRROR}/faac/faad2-src/faad2-2.8.0/${BP}.tar.gz \
            file://0001-mp4read.c-fix-stack-buffer-overflow-in-stringin-ftyp.patch \
            file://0001-Restrict-SBR-frame-length-to-960-and-1024-samples.patch \
            file://0001-Check-return-value-of-ltp_data.patch \
+           file://CVE-2021-32276-1.patch \
+           file://CVE-2021-32276-2.patch \
            "
 SRC_URI[md5sum] = "28f6116efdbe9378269f8a6221767d1f"
 SRC_URI[sha256sum] = "985c3fadb9789d2815e50f4ff714511c79c2710ac27a4aaaf5c0c2662141426d"
