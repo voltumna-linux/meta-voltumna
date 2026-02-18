@@ -1,0 +1,11 @@
+diff -ruNp scikit_build_core-0.11.6.orig/pyproject.toml scikit_build_core-0.11.6/pyproject.toml
+--- scikit_build_core-0.11.6.orig/pyproject.toml	2025-08-22 21:56:39.000000000 +0000
++++ scikit_build_core-0.11.6/pyproject.toml	2026-02-17 09:23:12.398958691 +0000
+@@ -26,7 +26,6 @@ classifiers = [
+     "Programming Language :: Python :: 3.11",
+     "Programming Language :: Python :: 3.12",
+     "Programming Language :: Python :: 3.13",
+-    "Programming Language :: Python :: 3.14",
+     "Development Status :: 4 - Beta",
+     "Typing :: Typed",
+ ]
