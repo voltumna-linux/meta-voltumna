@@ -20,7 +20,7 @@ DEPENDS = "\
 "
 
 SRC_URI = "git://github.com/kmscon/kmscon;protocol=https;branch=main;tag=v${PV}"
-SRCREV = "e44ff728e51c5a38b56392abe9bc3e8306db86cc"
+SRCREV = "9ce1dc0dc639e54e243a21d93e13f502a746f0a8"
 
 inherit meson pkgconfig systemd
 

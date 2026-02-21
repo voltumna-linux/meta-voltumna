@@ -50,7 +50,13 @@ EXTRA_OECMAKE:append:class-target = ' -DEGREP="/bin/grep -E"'
 PACKAGECONFIG ?= "${@bb.utils.contains_any('DISTRO_FEATURES', 'x11 wayland', 'gtk', 'no_gui', d)} \
     ${@bb.utils.contains('DISTRO_FEATURES', 'x11 opengl', 'opengl', '', d)} \
 "
-PACKAGECONFIG:append:class-target = " mediactrl ${@bb.utils.contains_any('DISTRO_FEATURES', 'x11 wayland', 'webkit', '', d)}"
+PACKAGECONFIG:append:class-target = " mediactrl"
+
+# (x11 OR wayland) AND opengl -> webkit
+PACKAGECONFIG:append:class-target = "\
+    ${@bb.utils.contains_any('DISTRO_FEATURES', 'x11 wayland', \
+    bb.utils.contains('DISTRO_FEATURES', 'opengl', 'webkit', '', d),\
+   '', d)}"
 
 PACKAGECONFIG:class-native ?= "${@bb.utils.contains_any('DISTRO_FEATURES', 'x11 wayland', 'gtk', 'no_gui', d)}"
 

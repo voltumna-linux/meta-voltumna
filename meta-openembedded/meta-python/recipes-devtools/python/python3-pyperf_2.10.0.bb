@@ -13,7 +13,7 @@ Features: \
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://COPYING;md5=78bc2e6e87c8c61272937b879e6dc2f8"
 
-SRC_URI[sha256sum] = "dbe0feef8ec1a465df191bba2576149762d15a8c9985c9fea93ab625d875c362"
+SRC_URI[sha256sum] = "dd93ccfda79214725293e95f1fa6e00cb4a64adcf1326039486d4e1f91caaa62"
 
 DEPENDS += "python3-six-native"
 
