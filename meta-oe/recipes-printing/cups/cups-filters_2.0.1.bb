@@ -1,5 +1,5 @@
 DESCRIPTION = "CUPS backends, filters, and other software"
-HOMEPAGE = "http://www.linuxfoundation.org/collaborate/workgroups/openprinting/cups-filters"
+HOMEPAGE = "https://wiki.linuxfoundation.org/openprinting/cups-filters"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://COPYING;md5=6d5b952b53dbe7752199903d082e5f07"
 
