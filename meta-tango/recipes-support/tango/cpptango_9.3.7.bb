@@ -4,7 +4,8 @@ HOMEPAGE = "http://www.tango-controls.org"
 LICENSE = "LGPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=6c9432eab6a070a936cf9da6191d6db6"
 
-DEPENDS += "omniorb-native omniorb tango-idl cppzmq libjpeg-turbo doxygen-native graphviz-native"
+#DEPENDS += "omniorb-native omniorb tango-idl cppzmq libjpeg-turbo doxygen-native graphviz-native"
+DEPENDS += "omniorb-native omniorb tango-idl cppzmq libjpeg-turbo"
 RDEPENDS_${PN} += "omniorb"
 
 SRCREV = "29df0972ac8fbaf0158bda727100dba0916a190c"
@@ -19,12 +20,12 @@ EXTRA_OECMAKE += " -DIDL_BASE=${STAGING_EXECPREFIXDIR} \
 	-DOMNIIDL=${STAGING_DIR_NATIVE}/usr/bin/omniidl \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DBUILD_TESTING=OFF -DOMNIIDL_TEST_RUN=0"
-EXTRA_OECMAKE_BUILD = "doc"
-
-do_install_append() {
-	install -d ${D}${docdir}/${BPN}
-	cp -R ${B}/doc_html ${D}${docdir}/${BPN}/
-}
+#EXTRA_OECMAKE_BUILD = "doc"
+#
+#do_install_append() {
+#	install -d ${D}${docdir}/${BPN}
+#	cp -R ${B}/doc_html ${D}${docdir}/${BPN}/
+#}
 
 inherit cmake python3native pkgconfig
 
