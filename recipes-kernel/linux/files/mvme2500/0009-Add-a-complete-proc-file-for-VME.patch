@@ -1,25 +1,48 @@
-From 213a75185be19df6e66d075aeacce9a46ee65187 Mon Sep 17 00:00:00 2001
-From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
-Date: Thu, 16 Jun 2022 17:24:30 +0200
+From c2dbc3ceaace4697bb46f70e7b69f930c3ed0364 Mon Sep 17 00:00:00 2001
+From: OpenEmbedded <oe.patch@oe>
+Date: Fri, 20 Feb 2026 18:38:04 +0000
 Subject: [PATCH 9/9] Add a complete proc file for VME
 
 ---
- drivers/vme/vme.c | 117 +++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 116 insertions(+), 1 deletion(-)
+ drivers/vme/vme.c | 127 +++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 126 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/vme/vme.c b/drivers/vme/vme.c
-index b398293980b6..4ce0008e1d0d 100644
+index b398293980b6..b718e79e94b6 100644
 --- a/drivers/vme/vme.c
 +++ b/drivers/vme/vme.c
-@@ -26,6 +26,7 @@
+@@ -19,21 +19,23 @@
+ #include <linux/poll.h>
+ #include <linux/highmem.h>
+ #include <linux/interrupt.h>
+ #include <linux/pagemap.h>
+ #include <linux/device.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/syscalls.h>
  #include <linux/mutex.h>
  #include <linux/spinlock.h>
  #include <linux/slab.h>
 +#include <linux/proc_fs.h>
  #include <linux/vme.h>
++#include <linux/version.h>
  
  #include "vme_bridge.h"
-@@ -2019,8 +2020,122 @@ struct bus_type vme_bus_type = {
+ 
+ /* Bitmask and list of registered buses both protected by common mutex */
+ static unsigned int vme_bus_numbers;
+ static LIST_HEAD(vme_bus_list);
+ static DEFINE_MUTEX(vme_buses_lock);
+ 
+ static int __init vme_init(void);
+ 
+@@ -2012,15 +2014,138 @@ static int vme_bus_remove(struct device *dev)
+ }
+ 
+ struct bus_type vme_bus_type = {
+ 	.name = "vme",
+ 	.match = vme_bus_match,
+ 	.probe = vme_bus_probe,
+ 	.remove = vme_bus_remove,
  };
  EXPORT_SYMBOL(vme_bus_type);
  
@@ -112,6 +135,14 @@ index b398293980b6..4ce0008e1d0d 100644
 +	return single_open(file, vme_proc_show, NULL);
 +}
 +
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
++static const struct proc_ops vme_proc_fops = {
++	.proc_open    = vme_proc_open,
++	.proc_read    = seq_read,
++	.proc_lseek   = seq_lseek,
++	.proc_release = single_release,
++};
++#else
 +static const struct file_operations vme_proc_fops = {
 +	.owner = THIS_MODULE,
 +	.open = vme_proc_open,
@@ -119,6 +150,7 @@ index b398293980b6..4ce0008e1d0d 100644
 +	.llseek = seq_lseek,
 +	.release = single_release,
 +};
++#endif
 +
  static int __init vme_init(void)
  {
@@ -144,5 +176,5 @@ index b398293980b6..4ce0008e1d0d 100644
 +}
 +module_exit(vme_exit);
 -- 
-2.24.4
+2.43.0
 

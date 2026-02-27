@@ -42,7 +42,6 @@ SRC_URI:append:mvme2500 = " \
 	file://enable-pci-realloc.cfg \
 	file://0001-Force-the-right-mcpu.patch \
 	file://0002-Fix-an-LBC-window-length.patch \
-	file://0003-Add-interrupt-for-temperature-sensor.patch \
 	file://0004-Workaround-for-let-VME-grab-the-right-IRQ-0.patch \
 	file://0005-Remove-add-empty-lines.patch \
 	file://0006-Add-commented-code-of-the-interrupt-handlers-for-IRQ.patch \
