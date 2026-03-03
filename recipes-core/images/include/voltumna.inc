@@ -74,47 +74,64 @@ IMAGE_PREPROCESS_COMMAND_append += " use_initramfs_bundled_kernel; copy_etc_into
 BAD_RECOMMENDATIONS += "busybox-syslog grub-common"
 inherit core-image
 
-IMAGE_CMD_tar() {
+IMAGE_CMD_tar_append() {
+        true
 	${IMAGE_CMD_TAR} --numeric-owner --exclude='.osdir*' -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar --transform "s;^rootfs;nfsroot;" -C ${IMAGE_ROOTFS}/.. rootfs || [ $? -eq 1 ]
 	${IMAGE_CMD_TAR} --numeric-owner -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.os.tar -C ${IMAGE_ROOTFS}/.osdir ${IMAGE_NAME} || [ $? -eq 1 ]
 }
 
 IMAGE_CMD_tar_append_arm() {
-	TEMPORARYDIR=$(mktemp -d)
-	mkdir -p ${TEMPORARYDIR}/tftpboot
-	install -m 644 ${DEPLOY_DIR_IMAGE}/boot.scr.uimg ${TEMPORARYDIR}/tftpboot
-	install -m 644 ${DEPLOY_DIR_IMAGE}/uEnv.txt ${TEMPORARYDIR}/tftpboot/uEnv.txt
-	sed -i -e "s,\.osdir,voltumna,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/uEnv.txt
-	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${TEMPORARYDIR}/ tftpboot || [ $? -eq 1 ]
-	rm -fr ${TEMPORARYDIR}
+	rm -fr ${WORKDIR}/tftpboot
+	mkdir -p ${WORKDIR}/tftpboot
+	install -m 644 ${DEPLOY_DIR_IMAGE}/boot.scr.uimg ${WORKDIR}/tftpboot
+	install -m 644 ${DEPLOY_DIR_IMAGE}/uEnv.txt ${WORKDIR}/tftpboot/uEnv.txt
+	sed -i -e "s,\.osdir,voltumna,g" ${WORKDIR}/tftpboot/uEnv.txt
+	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
+	rm -fr ${WORKDIR}/tftpboot
 }
 
 IMAGE_CMD_tar_append_ppce500v2() {
-	TEMPORARYDIR=$(mktemp -d)
-	mkdir -p ${TEMPORARYDIR}/tftpboot
-	install -m 644 ${DEPLOY_DIR_IMAGE}/boot.scr.uimg ${TEMPORARYDIR}/tftpboot
-	install -m 644 ${DEPLOY_DIR_IMAGE}/uEnv.txt ${TEMPORARYDIR}/tftpboot/uEnv.txt
-	sed -i -e "s,\.osdir,voltumna,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/uEnv.txt
-	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${TEMPORARYDIR}/ tftpboot || [ $? -eq 1 ]
-	rm -fr ${TEMPORARYDIR}
+	rm -fr ${WORKDIR}/tftpboot
+	mkdir -p ${WORKDIR}/tftpboot
+	install -m 644 ${DEPLOY_DIR_IMAGE}/boot.scr.uimg ${WORKDIR}/tftpboot
+	install -m 644 ${DEPLOY_DIR_IMAGE}/uEnv.txt ${WORKDIR}/tftpboot/uEnv.txt
+	sed -i -e "s,\.osdir,voltumna,g" ${WORKDIR}/tftpboot/uEnv.txt
+	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
+	rm -fr ${WORKDIR}/tftpboot
 }
 
 IMAGE_CMD_tar_append_x86() {
-	TEMPORARYDIR=$(mktemp -d)
-	mkdir -p ${TEMPORARYDIR}/tftpboot/EFI/BOOT
-	install -m 644 ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ${TEMPORARYDIR}/tftpboot/EFI/BOOT/bootx64.efi
-	install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
-	sed -i -e "s,default=localboot,default=netboot,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
-	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${TEMPORARYDIR}/ tftpboot || [ $? -eq 1 ]
-	rm -fr ${TEMPORARYDIR}
+	rm -fr ${WORKDIR}/tftpboot
+	if [ -f ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ]; then
+		mkdir -p ${WORKDIR}/tftpboot/EFI/BOOT
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ${WORKDIR}/tftpboot/EFI/BOOT/bootx64.efi
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${WORKDIR}/tftpboot/EFI/BOOT/grub.cfg
+		sed -i -e "s,default=localboot,default=netboot,g" ${WORKDIR}/tftpboot/FI/BOOT/grub.cfg
+	fi
+	if [ -f ${DEPLOY_DIR_IMAGE}/grub-bootx86.pxe ]; then
+		mkdir -p ${WORKDIR}/tftpboot/BOOT
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub-bootx86.pxe ${WORKDIR}/tftpboot/BOOT/bootx86.pxe
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${WORKDIR}/tftpboot/BOOT/grub.cfg
+		sed -i -e "s,default=localboot,default=netboot,g" ${WORKDIR}/tftpboot/BOOT/grub.cfg
+	fi
+	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
+	rm -fr ${WORKDIR}/tftpboot
 }
 
 IMAGE_CMD_tar_append_x86-64() {
-	TEMPORARYDIR=$(mktemp -d)
-	mkdir -p ${TEMPORARYDIR}/tftpboot/EFI/BOOT
-	install -m 644 ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ${TEMPORARYDIR}/tftpboot/EFI/BOOT/bootx64.efi
-	install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
-	sed -i -e "s,default=localboot,default=netboot,g" -e "s,image=default,image=${IMAGE_NAME},g" ${TEMPORARYDIR}/tftpboot/EFI/BOOT/grub.cfg
-	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${TEMPORARYDIR}/ tftpboot || [ $? -eq 1 ]
-	rm -fr ${TEMPORARYDIR}
+	rm -fr ${WORKDIR}/tftpboot
+	if [ -f ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ]; then
+		mkdir -p ${WORKDIR}/tftpboot/EFI/BOOT
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub-efi-bootx64.efi ${WORKDIR}/tftpboot/EFI/BOOT/bootx64.efi
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${WORKDIR}/tftpboot/EFI/BOOT/grub.cfg
+		sed -i -e "s,default=localboot,default=netboot,g" ${WORKDIR}/tftpboot/EFI/BOOT/grub.cfg
+	fi
+	if [ -f ${DEPLOY_DIR_IMAGE}/grub-bootx86.pxe ]; then
+		mkdir -p ${WORKDIR}/tftpboot/BOOT
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub-bootx86.pxe ${WORKDIR}/tftpboot/BOOT/bootx86.pxe
+		install -m 644 ${DEPLOY_DIR_IMAGE}/grub.cfg ${WORKDIR}/tftpboot/BOOT/grub.cfg
+		sed -i -e "s,default=localboot,default=netboot,g" ${WORKDIR}/tftpboot/BOOT/grub.cfg
+	fi
+	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
+	rm -fr ${WORKDIR}/tftpboot
 }
