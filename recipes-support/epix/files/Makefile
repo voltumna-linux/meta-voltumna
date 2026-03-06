@@ -31,7 +31,7 @@ ifneq "" "$(filter $(MAJVERSION), 2.6 3.x 4.x 5.x 6.x )"
 	 mv pixcilnx_5.13.o pixcilnx.o_shipped
 	 touch .pixcilnx.o.cmd
 ifneq "" "$(filter $(MAJVERSION),  5.x 6.x )"
-	 $(MAKE) -C /home/alessio.bogani/build-images/ccd-2.y/build/tmp/work-shared/d-6244-x11dph-t-rnm/kernel-source M=$(shell pwd) modules
+	 $(MAKE) -C $(KERNEL_SRC) M=$(shell pwd) modules
 else
 	 $(MAKE) -C /lib/modules/$(shell uname -r)/build SUBDIRS=$(shell pwd) modules
 endif
