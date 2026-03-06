@@ -1,7 +1,8 @@
 From 7356c7cac151c14435945feff3457d0a793bc8f3 Mon Sep 17 00:00:00 2001
 From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
 Date: Fri, 20 Feb 2026 21:23:04 +0100
-Subject: [PATCH] Revert "Delete powerpcspe" to reintegrate SPE architecture
+Subject: [PATCH 1/3] Revert "Delete powerpcspe" to reintegrate SPE
+ architecture
 
 This reverts commit 23d3e2d5a78, restoring the PowerPC SPE (Signal
 Processing Engine) backend as a buildable architecture target.
@@ -15671,7 +15672,7 @@ index 00000000000..f0e3f09eea5
 +#undef	LINK_OS_DEFAULT_SPEC
 +#define LINK_OS_DEFAULT_SPEC "%(link_os_linux)"
 +
-+#define GLIBC_DYNAMIC_LINKER32 "%(dynamic_linker_prefix)/usr/lib/ld.so.1"
++#define GLIBC_DYNAMIC_LINKER32 "%(dynamic_linker_prefix)/lib/ld.so.1"
 +
 +#ifdef LINUX64_DEFAULT_ABI_ELFv2
 +#define GLIBC_DYNAMIC_LINKER64 \
@@ -105910,7 +105911,7 @@ index 00000000000..756e9e5649b
 +
 +#define MUSL_DYNAMIC_LINKER_E ENDIAN_SELECT("","le","")
 +
-+#define GLIBC_DYNAMIC_LINKER "/usr/lib/ld.so.1"
++#define GLIBC_DYNAMIC_LINKER "/lib/ld.so.1"
 +#define UCLIBC_DYNAMIC_LINKER "/lib/ld-uClibc.so.0"
 +#define MUSL_DYNAMIC_LINKER \
 +  "/lib/ld-musl-powerpc" MUSL_DYNAMIC_LINKER_E "%{msoft-float:-sf}.so.1"
