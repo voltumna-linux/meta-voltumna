@@ -24,6 +24,8 @@ SRC_URI = "${GNU_MIRROR}/inetutils/inetutils-${PV}.tar.xz \
            file://CVE-2022-39028.patch \
            file://0001-CVE-2023-40303-ftpd-rcp-rlogin-rsh-rshd-uucpd-fix-ch.patch \
            file://0002-CVE-2023-40303-Indent-changes-in-previous-commit.patch \
+           file://CVE-2026-24061-01.patch \
+           file://CVE-2026-24061-02.patch \
 "
 
 inherit autotools gettext update-alternatives texinfo
