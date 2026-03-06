@@ -50,3 +50,6 @@ FILES:${PN}-icu-dev = "${libdir}/libharfbuzz-icu.la \
 FILES:${PN}-subset = "${libdir}/libharfbuzz-subset.so.*"
 
 BBCLASSEXTEND = "native nativesdk"
+
+# fixed-version: vulnerability was introduced in v6.0.0
+CVE_CHECK_IGNORE += "CVE-2026-22693"

@@ -58,3 +58,5 @@ BBCLASSEXTEND = "native nativesdk"
 
 # this CVE is for cloudflare zlib
 CVE_CHECK_IGNORE += "CVE-2023-6992"
+# vulnerable file is not compiled
+CVE_CHECK_IGNORE += "CVE-2026-22184"

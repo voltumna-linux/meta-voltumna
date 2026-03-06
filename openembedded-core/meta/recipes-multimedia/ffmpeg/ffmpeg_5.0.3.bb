@@ -105,6 +105,11 @@ CVE_CHECK_IGNORE += "CVE-2022-3341"
 # bugfix: https://github.com/FFmpeg/FFmpeg/commit/28c83584e8f3cd747c1476a74cc2841d3d1fa7f3
 CVE_CHECK_IGNORE += "CVE-2023-6603"
 
+# These vulnerabilities were introduced in v8.0
+# introduced: https://git.ffmpeg.org/gitweb/ffmpeg.git/commit/d38fc25519cf12a9212dadcba1258fc176ffbade
+# bugfix: https://git.ffmpeg.org/gitweb/ffmpeg.git/commit/d5873be583ada9e1fb887e2fe8dcfd4b12e0efcd
+CVE_CHECK_IGNORE += "CVE-2025-25468 CVE-2025-25469"
+
 # Build fails when thumb is enabled: https://bugzilla.yoctoproject.org/show_bug.cgi?id=7717
 ARM_INSTRUCTION_SET:armv4 = "arm"
 ARM_INSTRUCTION_SET:armv5 = "arm"
