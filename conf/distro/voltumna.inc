@@ -1,14 +1,14 @@
-DISTRO = "voltumna"
+DISTRO ??= "voltumna"
 DISTRO_NAME ??= "Voltumna"
 DISTRO_CODENAME = "XXXXXXXXXXXXXXXXXXX"
 DISTRO_VERSION = "master${IMAGE_VERSION}"
-SDK_VENDOR = "-voltumnasdk"
+SDK_VENDOR ??= "-voltumnasdk"
 SDK_VERSION = "${DISTRO_VERSION}"
 SDK_VERSION[vardepvalue] = "${SDK_VERSION}"
 
 MAINTAINER = "Alessio Igor Bogani <alessio.bogani@elettra.eu>"
 
-TARGET_VENDOR = "-voltumna"
+TARGET_VENDOR ??= "-voltumna"
 
 DISTRO_FEATURES = "acl xattr largefile keyboard ldconfig pci pam systemd \
 	usbgadget usbhost wifi usrmerge polkit \
