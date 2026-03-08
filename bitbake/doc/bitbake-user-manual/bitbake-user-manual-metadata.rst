@@ -813,7 +813,7 @@ evaluated at the end of parsing.
 .. _ref-bitbake-user-manual-metadata-inherit-defer:
 
 ``inherit_defer`` Directive
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
 
 The :ref:`inherit_defer <ref-bitbake-user-manual-metadata-inherit-defer>`
 directive works like the :ref:`inherit
@@ -1158,7 +1158,7 @@ Like include files, class files are located using the :term:`BBPATH` variable.
 The classes can be included in the ``classes-recipe``, ``classes-global`` and
 ``classes`` directories, as explained in the
 :ref:`bitbake-user-manual/bitbake-user-manual-intro:Class types` section of the
-Bitbake User Manual. Like for the :ref:`include <ref-include-directive>` and
+BitBake User Manual. Like for the :ref:`include <ref-include-directive>` and
 :ref:`require <require-inclusion>` directives, BitBake stops and inherits the
 first class that it finds.
 
@@ -1231,7 +1231,9 @@ When you create these types of functions in
 your recipe or class files, you need to follow the shell programming
 rules. The scripts are executed by ``/bin/sh``, which may not be a bash
 shell but might be something such as ``dash``. You should not use
-Bash-specific script (bashisms).
+Bash-specific script (bashisms), such as ``[[`` (use ``[`` instead). The BitBake
+shell parser also has further
+:ref:`limitations <bitbake-user-manual/bitbake-user-manual-metadata:limitations>`.
 
 Overrides and override-style operators like ``:append`` and ``:prepend``
 can also be applied to shell functions. Most commonly, this application
@@ -1271,6 +1273,20 @@ Running ``do_foo`` prints the following::
 
 You can use the ``bitbake -e recipename`` command to view the final
 assembled function after all overrides have been applied.
+
+Limitations
+^^^^^^^^^^^
+
+Shell functions must be parsable by BitBake, which cannot handle all
+syntax supported by POSIX shells. In particular:
+
+#. Arithmetic expansion is not supported. This means you cannot do:
+
+    .. code-block:: shell
+
+       VAR=$(( i + 1 ))
+
+    See https://bugzilla.yoctoproject.org/show_bug.cgi?id=11314.
 
 BitBake-Style Python Functions
 ------------------------------
