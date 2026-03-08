@@ -26,6 +26,9 @@ SRC_URI = "git://github.com/FreeRDP/FreeRDP.git;branch=stable-2.0;protocol=https
            file://CVE-2024-32661.patch \
            file://CVE-2026-22854.patch \
            file://CVE-2026-22855.patch \
+           file://CVE-2026-22852.patch \
+           file://CVE-2026-23530.patch \
+           file://CVE-2026-23532.patch \
            "
 
 
@@ -118,6 +121,7 @@ python populate_packages:prepend () {
 
 CVE_STATUS[CVE-2024-32662] = "fixed-version: 2.x is not affected, bug was introduced in 3.0.0"
 CVE_STATUS[CVE-2025-68118] = "not-applicable-platform: Windows-only vulnerability"
+CVE_STATUS[CVE-2026-22853] = "cpe-incorrect: the vulnerability was introduced in 3.9.0"
 
 # avoid http://errors.yoctoproject.org/Errors/Details/852862/
 # fixed in freerdp3 with https://github.com/FreeRDP/FreeRDP/pull/10553

@@ -29,3 +29,5 @@ python libcdio_split_packages() {
 }
 
 PACKAGESPLITFUNCS =+ "libcdio_split_packages"
+
+CVE_STATUS[CVE-2024-36600] = "fixed-version: fixed in v2.3.0"
