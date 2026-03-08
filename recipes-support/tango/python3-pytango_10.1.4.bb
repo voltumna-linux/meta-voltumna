@@ -12,15 +12,15 @@ DEPENDS += "\
 	${PYTHON_PN}-numpy-native \
 	"
 
-SRCREV = "a67979230efe69685ca66d354db94865a25ef4f1"
+SRCREV = "0d6211922f0ac27133d79a860ca8faec0a6268c7"
 SRC_URI = "\
 	gitsm://gitlab.com/tango-controls/pytango.git;protocol=https;branch=maintenance/10.1.x \
 	"
-INSANE_SKIP:${PN} += "buildpaths"
+INSANE_SKIP:${PN} += "buildpaths already-stripped"
 
 FILES:${PN} += " ${PYTHON_SITEPACKAGES_DIR}"
 
-EXTRA_OECMAKE += "-DCMAKE_BUILD_TYPE=Debug"
+EXTRA_OECMAKE += "-DCMAKE_BUILD_TYPE=Release"
 
 do_install:append() {
         rm -fr ${D}/*
