@@ -2,7 +2,7 @@ require cmake.inc
 
 inherit cmake bash-completion
 
-DEPENDS += "curl expat zlib libarchive xz ncurses bzip2"
+DEPENDS += "curl expat zlib libarchive xz ncurses bzip2 libuv"
 
 SRC_URI:append:class-nativesdk = " \
     file://OEToolchainConfig.cmake \
@@ -15,7 +15,6 @@ LICENSE:append = " & BSD-1-Clause & MIT"
 LIC_FILES_CHKSUM:append = " \
     file://Utilities/cmjsoncpp/LICENSE;md5=5d73c165a0f9e86a1342f32d19ec5926 \
     file://Utilities/cmlibrhash/COPYING;md5=a8c2a557a5c53b1c12cddbee98c099af \
-    file://Utilities/cmlibuv/LICENSE;md5=ad93ca1fffe931537fcf64f6fcce084d \
 "
 
 # Strip ${prefix} from ${docdir}, set result into docdir_stripped
@@ -33,16 +32,12 @@ python () {
     d.setVar("docdir_stripped", docdir_stripped)
 }
 
-EXTRA_OECMAKE = " \
+EXTRA_OECMAKE += " \
     -DCMAKE_DOC_DIR=${docdir_stripped}/cmake-${CMAKE_MAJOR_VERSION} \
-    -DCMAKE_USE_SYSTEM_LIBRARIES=1 \
     -DCMAKE_USE_SYSTEM_LIBRARY_JSONCPP=0 \
     -DCMAKE_USE_SYSTEM_LIBRARY_CPPDAP=0 \
-    -DCMAKE_USE_SYSTEM_LIBRARY_LIBUV=0 \
     -DCMAKE_USE_SYSTEM_LIBRARY_LIBRHASH=0 \
-    -DKWSYS_CHAR_IS_SIGNED=1 \
     -DBUILD_CursesDialog=0 \
-    -DKWSYS_LFS_WORKS=1 \
 "
 
 PACKAGECONFIG ??= ""

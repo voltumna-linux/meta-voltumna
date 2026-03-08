@@ -17,4 +17,4 @@ do_configure() {
     oe_runconf
 }
 
-BBCLASSEXTEND = "native"
+BBCLASSEXTEND = "native nativesdk"
