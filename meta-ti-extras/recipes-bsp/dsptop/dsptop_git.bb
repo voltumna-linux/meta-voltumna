@@ -22,3 +22,5 @@ RDEPENDS:${PN} = "debugss-module-drv bash"
 include dsptop.inc
 
 PARALLEL_MAKE = ""
+
+SECURITY_STRINGFORMAT:remove = "-Werror=format-security"

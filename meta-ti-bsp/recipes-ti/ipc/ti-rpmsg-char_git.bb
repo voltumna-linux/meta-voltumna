@@ -5,3 +5,5 @@ require ti-rpmsg-char.inc
 inherit autotools pkgconfig
 
 PR = "r0"
+
+DISABLE_STATIC = ""
