@@ -51,3 +51,5 @@ PARALLEL_MAKE = ""
 # Disable the "buildpaths" check while we figure out how we are
 # going to address this issue.
 INSANE_SKIP:${PN} += "buildpaths"
+
+lcl_maybe_fortify = "${@oe.utils.conditional('OPTLEVEL','-O0','','${OPTLEVEL}',d)}"

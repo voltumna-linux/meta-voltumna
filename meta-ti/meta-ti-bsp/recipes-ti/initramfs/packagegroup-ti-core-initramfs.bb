@@ -21,4 +21,5 @@ RDEPENDS:${PN} += "\
     initramfs-framework-base \
     initramfs-module-udev \
     initramfs-module-nfsrootfs \
+    nfs-utils-mount \
 "

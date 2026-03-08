@@ -34,6 +34,8 @@ SYSTEMD_SERVICE:${PN} = "tiipclad-daemon.service"
 
 EXTRA_OECONF += "PLATFORM=${PLATFORM} KERNEL_INSTALL_DIR=${STAGING_KERNEL_DIR} KERNEL_BUILD_DIR=${STAGING_KERNEL_BUILDDIR}"
 
+DISABLE_STATIC = ""
+
 do_compile[depends] += "virtual/kernel:do_shared_workdir"
 
 do_configure() {

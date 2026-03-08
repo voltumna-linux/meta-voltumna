@@ -17,7 +17,7 @@ BRANCH = "linuxws/scarthgap/k6.18/${PV}"
 
 SRC_URI = "git://git.ti.com/git/graphics/ti-img-rogue-driver.git;protocol=https;branch=${BRANCH}"
 
-SRCREV = "4fa6d8f63363e4926a0a7e7ef4a317c3d9c0f5b7"
+SRCREV = "d241b0d5df404c60b80233bb5116b596039062e6"
 
 
 TARGET_PRODUCT:j721e = "j721e_linux"
