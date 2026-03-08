@@ -47,6 +47,8 @@ RDEPENDS:${PN} = "\
     python3-packaging \
 "
 
+TARGET_LDFLAGS:append = " ${DEBUG_PREFIX_MAP}"
+
 CVE_PRODUCT = "matplotlib"
 
 BBCLASSEXTEND = "native"

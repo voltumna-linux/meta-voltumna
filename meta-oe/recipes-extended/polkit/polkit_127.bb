@@ -65,3 +65,5 @@ FILES:${PN} += " \
 	${systemd_unitdir}/system/polkit-agent-helper.socket \
 	${systemd_unitdir}/system/polkit-agent-helper@.service \
 "
+
+CVE_STATUS[CVE-2016-2568] = "unpatched: the fix is a kernel compiled without CONFIG_LEGACY_TIOCSTI"
