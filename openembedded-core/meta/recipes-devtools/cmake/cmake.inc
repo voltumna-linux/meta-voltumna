@@ -24,3 +24,5 @@ SRC_URI[sha256sum] = "7efaccde8c5a6b2968bad6ce0fe60e19b6e10701a12fce948c2bf79bac
 UPSTREAM_CHECK_REGEX = "cmake-(?P<pver>\d+(\.\d+)+)\.tar"
 
 CVE_STATUS[CVE-2016-10642] = "cpe-incorrect: This is specific to the npm package that installs cmake, so isn't relevant to OpenEmbedded"
+
+EXTRA_OECMAKE += "-DCMAKE_USE_SYSTEM_LIBRARIES=1"

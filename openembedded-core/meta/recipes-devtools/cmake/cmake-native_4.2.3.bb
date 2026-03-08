@@ -5,11 +5,9 @@ DEPENDS += "bzip2-replacement-native xz-native zlib-native ncurses-native zstd-n
 
 SRC_URI += "file://OEToolchainConfig.cmake \
             file://environment.d-cmake.sh \
-            file://0001-Disable-use-of-ext2fs-ext2_fs.h-by-cmake-s-internal.patch \
-            file://0002-CMakeLists.txt-disable-USE_NGHTTP2.patch \
             "
 
-LICENSE:append = " & BSD-1-Clause & MIT & BSD-2-Clause & curl"
+LICENSE:append = " & BSD-1-Clause & MIT & BSD-2-Clause & curl & Apache-2.0"
 LIC_FILES_CHKSUM:append = " \
     file://Utilities/cmjsoncpp/LICENSE;md5=5d73c165a0f9e86a1342f32d19ec5926 \
     file://Utilities/cmlibarchive/COPYING;md5=7ce08437ff7f5e24d72e666313ae4084 \
@@ -17,15 +15,15 @@ LIC_FILES_CHKSUM:append = " \
     file://Utilities/cmlibrhash/COPYING;md5=a8c2a557a5c53b1c12cddbee98c099af \
     file://Utilities/cmlibuv/LICENSE;md5=ad93ca1fffe931537fcf64f6fcce084d \
     file://Utilities/cmcurl/COPYING;md5=72f4e9890e99e68d77b7e40703d789b8 \
+    file://Utilities/cmcppdap/LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57 \
 "
 
 B = "${WORKDIR}/build"
 do_configure[cleandirs] = "${B}"
 
-CMAKE_EXTRACONF = "\
+EXTRA_OECMAKE += "\
     -DCMAKE_LIBRARY_PATH=${STAGING_LIBDIR_NATIVE} \
     -DBUILD_CursesDialog=1 \
-    -DCMAKE_USE_SYSTEM_LIBRARIES=1 \
     -DCMAKE_USE_SYSTEM_LIBRARY_JSONCPP=0 \
     -DCMAKE_USE_SYSTEM_LIBRARY_CPPDAP=0 \
     -DCMAKE_USE_SYSTEM_LIBRARY_LIBARCHIVE=0 \
@@ -37,11 +35,14 @@ CMAKE_EXTRACONF = "\
     -DHAVE_SYS_ACL_H=0 \
 "
 
+# Ensure e2fsprogs isn't found on the host to remove a build dependency and reproducible builds.
+EXTRA_OECMAKE += "-DHAVE_EXT2FS_EXT2_FS_H=0 -DHAVE_WORKING_EXT2_IOC_GETFLAGS=0"
+
 do_configure () {
 	${S}/bootstrap --verbose --prefix=${prefix} \
 		${@oe.utils.parallel_make_argument(d, '--parallel=%d')} \
 		${@bb.utils.contains('CCACHE', 'ccache ', '--enable-ccache', '', d)} \
-		-- ${CMAKE_EXTRACONF}
+		-- ${EXTRA_OECMAKE}
 }
 
 do_compile() {
