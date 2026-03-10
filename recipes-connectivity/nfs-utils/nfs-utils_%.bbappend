@@ -2,7 +2,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SYSTEMD_SERVICE:${PN} = ""
 
-PACKAGECONFIG:append = "nfsv4 nfsv41"
+PACKAGECONFIG:append = "nfsv4"
 
 SRC_URI:append = " \
        file://nfs-statd.service \
