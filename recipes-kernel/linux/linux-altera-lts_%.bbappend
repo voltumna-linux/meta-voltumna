@@ -12,6 +12,7 @@ SRC_URI_append += " \
 	file://remove_martian_source_warning.cfg \
 	file://enable_ebpf_xpd.cfg \
         file://disable_ipv6.cfg  \
+        file://vlan.cfg  \
 	\
 	file://uio.cfg \
 	file://fpgamgr-debug.cfg \
