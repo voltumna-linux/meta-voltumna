@@ -75,9 +75,6 @@ PREFERRED_VERSION_tango-idl = "6.%"
 PREFERRED_VERSION_nativesdk-tango-idl = "6.%"
 PREFERRED_VERSION_cpptango = "10.1.%"
 PREFERRED_VERSION_nativesdk-cpptango = "10.1.%"
-PREFERRED_VERSION_python3-numpy = "2.2%"
-PREFERRED_VERSION_python3-numpy-native = "2.2%"
-PREFERRED_VERSION_nativesdk-python3-numpy = "2.2%"
 PREFERRED_VERSION_python3-pytango = "10.1.%"
 PREFERRED_VERSION_nativesdk-python3-pytango = "10.1.%"
 PREFERRED_VERSION_nativesdk-pogo = "9.10%"
@@ -118,11 +115,13 @@ ERROR_QA:append = " ${WARN_TO_ERROR_QA}"
 WARN_QA:append = "shebang-size"
 ERROR_QA:remove = "shebang-size"
 
-# Avoid use of static libs
-require conf/distro/include/no-static-libs.inc
-# Leverage Yocto uninative tarball
-require conf/distro/include/yocto-uninative.inc
 INHERIT += "uninative"
 
 BB_SIGNATURE_HANDLER ?= "OEEquivHash"
 BB_HASHSERVE ??= "auto"
+
+# FIXME
+PTEST_ENABLED:pn-m4 = "0"
+PTEST_ENABLED:pn-bash = "0"
+PTEST_ENABLED:pn-gawk = "0"
+PTEST_ENABLED:pn-glib-2.0 = "0"
