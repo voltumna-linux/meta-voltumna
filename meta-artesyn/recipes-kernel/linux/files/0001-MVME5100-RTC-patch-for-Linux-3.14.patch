@@ -1,0 +1,422 @@
+diff --git a/arch/powerpc/configs/mvme5100_defconfig b/arch/powerpc/configs/mvme5100_defconfig
+index d1c7fd5bf34b..80a28d2e66cf 100644
+--- a/arch/powerpc/configs/mvme5100_defconfig
++++ b/arch/powerpc/configs/mvme5100_defconfig
+@@ -11,21 +11,20 @@ CONFIG_LOG_BUF_SHIFT=14
+ # CONFIG_NET_NS is not set
+ CONFIG_CC_OPTIMIZE_FOR_SIZE=y
+ # CONFIG_COMPAT_BRK is not set
+ CONFIG_MODULES=y
+ CONFIG_MODULE_UNLOAD=y
+ # CONFIG_BLK_DEV_BSG is not set
+ # CONFIG_PPC_CHRP is not set
+ # CONFIG_PPC_PMAC is not set
+ CONFIG_EMBEDDED6xx=y
+ CONFIG_MVME5100=y
+-CONFIG_KVM_GUEST=y
+ CONFIG_HZ_100=y
+ CONFIG_CMDLINE="console=ttyS0,9600 ip=dhcp root=/dev/nfs"
+ # CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS is not set
+ # CONFIG_COMPACTION is not set
+ CONFIG_NET=y
+ CONFIG_PACKET=y
+ CONFIG_UNIX=y
+ CONFIG_INET=y
+ CONFIG_IP_MULTICAST=y
+ CONFIG_IP_PNP=y
+@@ -77,20 +76,22 @@ CONFIG_SERIAL_8250_MANY_PORTS=y
+ CONFIG_SERIAL_8250_SHARE_IRQ=y
+ CONFIG_SERIAL_OF_PLATFORM=y
+ CONFIG_HW_RANDOM=y
+ CONFIG_I2C=y
+ CONFIG_I2C_CHARDEV=y
+ CONFIG_I2C_MPC=y
+ # CONFIG_HWMON is not set
+ # CONFIG_VGA_CONSOLE is not set
+ # CONFIG_HID is not set
+ # CONFIG_USB_SUPPORT is not set
++CONFIG_RTC_CLASS=y
++CONFIG_RTC_DRV_M48T59=y
+ # CONFIG_IOMMU_SUPPORT is not set
+ CONFIG_EXT2_FS=m
+ CONFIG_EXT4_FS=m
+ CONFIG_XFS_FS=m
+ CONFIG_ISO9660_FS=m
+ CONFIG_JOLIET=y
+ CONFIG_ZISOFS=y
+ CONFIG_UDF_FS=m
+ CONFIG_MSDOS_FS=m
+ CONFIG_VFAT_FS=m
+diff --git a/arch/powerpc/platforms/embedded6xx/mvme5100.c b/arch/powerpc/platforms/embedded6xx/mvme5100.c
+index 00bec0f051be..5cd57327bc41 100644
+--- a/arch/powerpc/platforms/embedded6xx/mvme5100.c
++++ b/arch/powerpc/platforms/embedded6xx/mvme5100.c
+@@ -7,40 +7,49 @@
+  * Based on earlier code by:
+  *
+  *    Matt Porter, MontaVista Software Inc.
+  *    Copyright 2001 MontaVista Software Inc.
+  *
+  * Author: Stephen Chivers <schivers@csc.com>
+  */
+ 
+ #include <linux/of_irq.h>
+ #include <linux/of_platform.h>
++#include <linux/rtc/m48t59.h>
+ 
+ #include <asm/i8259.h>
+ #include <asm/pci-bridge.h>
+ #include <asm/mpic.h>
+ #include <mm/mmu_decl.h>
+ #include <asm/udbg.h>
+ 
+ #define HAWK_MPIC_SIZE		0x00040000U
+ #define MVME5100_PCI_MEM_OFFSET 0x00000000
+ 
+ /* Board register addresses. */
+ #define BOARD_STATUS_REG	0xfef88080
+ #define BOARD_MODFAIL_REG	0xfef88090
+ #define BOARD_MODRST_REG	0xfef880a0
+ #define BOARD_TBEN_REG		0xfef880c0
+ #define BOARD_SW_READ_REG	0xfef880e0
+ #define BOARD_GEO_ADDR_REG	0xfef880e8
+ #define BOARD_EXT_FEATURE1_REG	0xfef880f0
+ #define BOARD_EXT_FEATURE2_REG	0xfef88100
+ 
++/*
++ * Define the M48T37 NVRAM/RTC address strobe & data registers relative
++ * to the base address of the device.
++ */
++#define NVRAM_AS0		0x0
++#define NVRAM_AS1		0x08
++#define NVRAM_DATA		0x10
++
+ static phys_addr_t pci_membase;
+ static u_char *restart;
+ 
+ static void mvme5100_8259_cascade(struct irq_desc *desc)
+ {
+ 	struct irq_chip *chip = irq_desc_get_chip(desc);
+ 	unsigned int cascade_irq = i8259_irq();
+ 
+ 	if (cascade_irq)
+ 		generic_handle_irq(cascade_irq);
+@@ -179,20 +188,105 @@ static void __noreturn mvme5100_restart(char *cmd)
+ 
+ 	local_irq_disable();
+ 	mtmsr(mfmsr() | MSR_IP);
+ 
+ 	out_8((u_char *) restart, 0x01);
+ 
+ 	while (1)
+ 		;
+ }
+ 
++#if CONFIG_RTC_DRV_M48T59
++
++static unsigned char nvrtc_read_byte(struct device *dev, u32 ofs)
++{
++	struct platform_device *pdev = to_platform_device(dev);
++	struct m48t59_plat_data *pdata = pdev->dev.platform_data;
++	u8 __iomem *addr = pdata->ioaddr;
++	u8 b;
++
++	writeb(ofs, addr + NVRAM_AS0);
++	writeb(ofs >> 8, addr + NVRAM_AS1);
++	b = readb(addr + NVRAM_DATA);
++
++	return b;
++}
++
++static void nvrtc_write_byte(struct device *dev, u32 ofs, u8 val)
++{
++	struct platform_device *pdev = to_platform_device(dev);
++	struct m48t59_plat_data *pdata = pdev->dev.platform_data;
++	u8 __iomem *addr = pdata->ioaddr;
++
++	writeb(ofs, addr + NVRAM_AS0);
++	writeb(ofs >> 8, addr + NVRAM_AS1);
++	writeb(val, addr + NVRAM_DATA);
++}
++
++static struct resource m48t37_resource[2];
++
++static struct  m48t59_plat_data m48t37_data = {
++	.read_byte = nvrtc_read_byte,
++	.write_byte = nvrtc_write_byte,
++	.type = M48T59RTC_TYPE_M48T37,
++};
++
++static struct platform_device m48t37_rtc = {
++	.name		= "rtc-m48t59",
++	.id		= 0,
++	.num_resources	= 2,
++	.resource	= m48t37_resource,
++	.dev    = {
++		.platform_data = &m48t37_data,
++	},
++};
++
++static int __init mvme5100_rtc_init(void)
++{
++	int result = 0;
++	int irq;
++	struct device_node *np;
++	struct resource *res = m48t37_rtc.resource;
++
++	np = of_find_compatible_node(NULL, NULL, "m48t59");
++	if (np == NULL) {
++		pr_info("mvme5100_rtc_init: no RTC found.\n");
++		return 0;
++	}
++
++	of_address_to_resource(np, 0, res);
++	m48t37_data.ioaddr = ioremap(res->start, 1 + res->end - res->start);
++
++	irq = irq_of_parse_and_map(np, 0);
++	if (irq != NO_IRQ)
++	{
++		res[1].start = irq;
++		res[1].end = irq;
++		res[1].flags = IORESOURCE_IRQ;
++	}
++	else
++		pr_warn("mvme5100_rtc_init: no IRQ for RTC\n");
++
++	of_node_put(np);
++
++	pr_info("Found RTC (m48t37) at i/o 0x%x irq %d\n", res->start, irq);
++
++	result = platform_device_register(&m48t37_rtc);
++	if (result < 0)
++		pr_err("Failed to register RTC. Result: %d\n", result);
++
++	return result;
++}
++
++arch_initcall(mvme5100_rtc_init);
++#endif
++
+ static int __init probe_of_platform_devices(void)
+ {
+ 
+ 	of_platform_bus_probe(NULL, mvme5100_of_bus_ids, NULL);
+ 	return 0;
+ }
+ 
+ machine_device_initcall(mvme5100, probe_of_platform_devices);
+ 
+ define_machine(mvme5100) {
+diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
+index 92f46a6312c2..f82ed62ba98d 100644
+--- a/drivers/rtc/Kconfig
++++ b/drivers/rtc/Kconfig
+@@ -1164,28 +1164,29 @@ config RTC_DRV_M48T35
+ 	tristate "ST M48T35"
+ 	depends on HAS_IOMEM
+ 	help
+ 	  If you say Y here you will get support for the
+ 	  ST M48T35 RTC chip.
+ 
+ 	  This driver can also be built as a module, if so, the module
+ 	  will be called "rtc-m48t35".
+ 
+ config RTC_DRV_M48T59
+-	tristate "ST M48T59/M48T08/M48T02"
++	tristate "ST M48T59/M48T37/M48T08/M48T02"
+ 	depends on HAS_IOMEM
+ 	help
+ 	  If you say Y here you will get support for the
+-	  ST M48T59 RTC chip and compatible ST M48T08 and M48T02.
++	  ST M48T59 RTC chip and compatible ST M48T37, M48T08 and M48T02.
+ 
+ 	  These chips are usually found in Sun SPARC and UltraSPARC
+-	  workstations.
++	  workstations and in some single board computers such as
++	  Motorola MVME-167 and MVME-5100.
+ 
+ 	  This driver can also be built as a module, if so, the module
+ 	  will be called "rtc-m48t59".
+ 
+ config RTC_DRV_MSM6242
+ 	tristate "Oki MSM6242"
+ 	depends on HAS_IOMEM
+ 	help
+ 	  If you say yes here you get support for the Oki MSM6242
+ 	  timekeeping chip. It is used in some Amiga models (e.g. A2000).
+diff --git a/drivers/rtc/rtc-m48t59.c b/drivers/rtc/rtc-m48t59.c
+index f0f6b9b6daec..7d2745bdf275 100644
+--- a/drivers/rtc/rtc-m48t59.c
++++ b/drivers/rtc/rtc-m48t59.c
+@@ -59,36 +59,43 @@ m48t59_mem_readb(struct device *dev, u32 ofs)
+ 
+ /*
+  * NOTE: M48T59 only uses BCD mode
+  */
+ static int m48t59_rtc_read_time(struct device *dev, struct rtc_time *tm)
+ {
+ 	struct m48t59_plat_data *pdata = dev_get_platdata(dev);
+ 	struct m48t59_private *m48t59 = dev_get_drvdata(dev);
+ 	unsigned long flags;
+ 	u8 val;
++	int century;
+ 
+ 	spin_lock_irqsave(&m48t59->lock, flags);
+ 	/* Issue the READ command */
+ 	M48T59_SET_BITS(M48T59_CNTL_READ, M48T59_CNTL);
+ 
+ 	tm->tm_year	= bcd2bin(M48T59_READ(M48T59_YEAR));
+ 	/* tm_mon is 0-11 */
+ 	tm->tm_mon	= bcd2bin(M48T59_READ(M48T59_MONTH)) - 1;
+ 	tm->tm_mday	= bcd2bin(M48T59_READ(M48T59_MDAY));
+ 
+ 	val = M48T59_READ(M48T59_WDAY);
+ 	if ((pdata->type == M48T59RTC_TYPE_M48T59) &&
+ 	    (val & M48T59_WDAY_CEB) && (val & M48T59_WDAY_CB)) {
+ 		dev_dbg(dev, "Century bit is enabled\n");
+ 		tm->tm_year += 100;	/* one century */
+ 	}
++
++	if (pdata->type == M48T59RTC_TYPE_M48T37) {
++		century = bcd2bin(M48T59_READ(M48T37_CENTURY)) * 100;
++		tm->tm_year = tm->tm_year + century - 1900;
++	}
++
+ #ifdef CONFIG_SPARC
+ 	/* Sun SPARC machines count years since 1968 */
+ 	tm->tm_year += 68;
+ #endif
+ 
+ 	tm->tm_wday	= bcd2bin(val & 0x07);
+ 	tm->tm_hour	= bcd2bin(M48T59_READ(M48T59_HOUR) & 0x3F);
+ 	tm->tm_min	= bcd2bin(M48T59_READ(M48T59_MIN) & 0x7F);
+ 	tm->tm_sec	= bcd2bin(M48T59_READ(M48T59_SEC) & 0x7F);
+ 
+@@ -130,20 +137,25 @@ static int m48t59_rtc_set_time(struct device *dev, struct rtc_time *tm)
+ 	M48T59_WRITE((bin2bcd(tm->tm_mday) & 0x3F), M48T59_MDAY);
+ 	/* tm_mon is 0-11 */
+ 	M48T59_WRITE((bin2bcd(tm->tm_mon + 1) & 0x1F), M48T59_MONTH);
+ 	M48T59_WRITE(bin2bcd(year % 100), M48T59_YEAR);
+ 
+ 	if (pdata->type == M48T59RTC_TYPE_M48T59 && (year / 100))
+ 		val = (M48T59_WDAY_CEB | M48T59_WDAY_CB);
+ 	val |= (bin2bcd(tm->tm_wday) & 0x07);
+ 	M48T59_WRITE(val, M48T59_WDAY);
+ 
++	if (pdata->type == M48T59RTC_TYPE_M48T37) {
++		val = bin2bcd((tm->tm_year + 1900) / 100);
++		M48T59_WRITE(val, M48T37_CENTURY);
++	}
++
+ 	/* Clear the WRITE bit */
+ 	M48T59_CLEAR_BITS(M48T59_CNTL_WRITE, M48T59_CNTL);
+ 	spin_unlock_irqrestore(&m48t59->lock, flags);
+ 	return 0;
+ }
+ 
+ /*
+  * Read alarm time and date in RTC
+  */
+ static int m48t59_rtc_readalarm(struct device *dev, struct rtc_wkalrm *alrm)
+@@ -354,20 +366,21 @@ static int m48t59_nvram_write(void *priv, unsigned int offset, void *val,
+ 
+ 	return 0;
+ }
+ 
+ static int m48t59_rtc_probe(struct platform_device *pdev)
+ {
+ 	struct m48t59_plat_data *pdata = dev_get_platdata(&pdev->dev);
+ 	struct m48t59_private *m48t59 = NULL;
+ 	struct resource *res;
+ 	int ret = -ENOMEM;
++	int uie_unsupported = 0;
+ 	struct nvmem_config nvmem_cfg = {
+ 		.name = "m48t59-",
+ 		.word_size = 1,
+ 		.stride = 1,
+ 		.reg_read = m48t59_nvram_read,
+ 		.reg_write = m48t59_nvram_write,
+ 		.priv = pdev,
+ 	};
+ 
+ 	/* This chip could be memory-mapped or I/O-mapped */
+@@ -442,28 +455,34 @@ static int m48t59_rtc_probe(struct platform_device *pdev)
+ 		pdata->offset = 0x1ff0;
+ 		break;
+ 	case M48T59RTC_TYPE_M48T02:
+ 		clear_bit(RTC_FEATURE_ALARM, m48t59->rtc->features);
+ 		pdata->offset = 0x7f0;
+ 		break;
+ 	case M48T59RTC_TYPE_M48T08:
+ 		clear_bit(RTC_FEATURE_ALARM, m48t59->rtc->features);
+ 		pdata->offset = 0x1ff0;
+ 		break;
++	case M48T59RTC_TYPE_M48T37:
++		ops = &m48t59_rtc_ops;
++		pdata->offset = 0x7ff0;
++		uie_unsupported = 1;
++		break;
+ 	default:
+ 		dev_err(&pdev->dev, "Unknown RTC type\n");
+ 		return -ENODEV;
+ 	}
+ 
+ 	spin_lock_init(&m48t59->lock);
+ 	platform_set_drvdata(pdev, m48t59);
+ 
++	m48t59->rtc->uie_unsupported = uie_unsupported;
+ 	m48t59->rtc->ops = &m48t59_rtc_ops;
+ 
+ 	nvmem_cfg.size = pdata->offset;
+ 	ret = devm_rtc_nvmem_register(m48t59->rtc, &nvmem_cfg);
+ 	if (ret)
+ 		return ret;
+ 
+ 	ret = devm_rtc_register_device(m48t59->rtc);
+ 	if (ret)
+ 		return ret;
+@@ -477,12 +496,12 @@ MODULE_ALIAS("platform:rtc-m48t59");
+ static struct platform_driver m48t59_rtc_driver = {
+ 	.driver		= {
+ 		.name	= "rtc-m48t59",
+ 	},
+ 	.probe		= m48t59_rtc_probe,
+ };
+ 
+ module_platform_driver(m48t59_rtc_driver);
+ 
+ MODULE_AUTHOR("Mark Zhan <rongkai.zhan@windriver.com>");
+-MODULE_DESCRIPTION("M48T59/M48T02/M48T08 RTC driver");
++MODULE_DESCRIPTION("M48T59/M48T37/M48T02/M48T08 RTC driver");
+ MODULE_LICENSE("GPL");
+diff --git a/include/linux/rtc/m48t59.h b/include/linux/rtc/m48t59.h
+index 9465d5405fe2..385ae9f73ea1 100644
+--- a/include/linux/rtc/m48t59.h
++++ b/include/linux/rtc/m48t59.h
+@@ -34,23 +34,26 @@
+ #define M48T59_ALARM_DATE	0x5
+ #define M48T59_ALARM_HOUR	0x4
+ #define M48T59_ALARM_MIN	0x3
+ #define M48T59_ALARM_SEC	0x2
+ #define M48T59_UNUSED		0x1
+ #define M48T59_FLAGS		0x0
+ #define M48T59_FLAGS_WDT		0x80	/* watchdog timer expired */
+ #define M48T59_FLAGS_AF			0x40	/* alarm */
+ #define M48T59_FLAGS_BF			0x10	/* low battery */
+ 
++#define M48T37_CENTURY		0x1
++
+ #define M48T59RTC_TYPE_M48T59	0 /* to keep compatibility */
+ #define M48T59RTC_TYPE_M48T02	1
+ #define M48T59RTC_TYPE_M48T08	2
++#define M48T59RTC_TYPE_M48T37	3
+ 
+ struct m48t59_plat_data {
+ 	/* The method to access M48T59 registers */
+ 	void (*write_byte)(struct device *dev, u32 ofs, u8 val);
+ 	unsigned char (*read_byte)(struct device *dev, u32 ofs);
+ 
+ 	int type; /* RTC model */
+ 
+ 	/* ioaddr mapped externally */
+ 	void __iomem *ioaddr;

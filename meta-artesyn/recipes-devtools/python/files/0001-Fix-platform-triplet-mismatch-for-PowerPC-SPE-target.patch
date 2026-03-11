@@ -1,7 +1,33 @@
-diff -ruNp Python-3.10.19.orig/configure.ac Python-3.10.19/configure.ac
---- Python-3.10.19.orig/configure.ac	2026-02-20 09:43:14.220768148 +0000
-+++ Python-3.10.19/configure.ac	2026-02-20 09:45:00.548324143 +0000
-@@ -746,6 +746,10 @@ AS_CASE([$ac_sys_system],
+From 32702db732cdcb62c5cc0c0cb75596481907b336 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Sun, 8 Mar 2026 21:17:13 +0100
+Subject: [PATCH] Fix platform triplet mismatch for PowerPC SPE targets
+
+Upstream-Status: Inappropriate
+
+GCC may report powerpc-linux-gnuspev1 as the multiarch value (the v1
+suffix indicates SPE ABI version 1), while the platform triplet is
+computed as powerpc-linux-gnuspe. Normalize MULTIARCH before the
+comparison to avoid the "internal configure error for the platform
+triplet" failure.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ configure.ac | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/configure.ac b/configure.ac
+index 1a02d19f1b2..bf692dd058e 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1118,20 +1118,24 @@ else
+   AC_MSG_RESULT([none])
+ fi
+ rm -f conftest.c conftest.out
+ 
+ AC_MSG_CHECKING([for multiarch])
+ AS_CASE([$ac_sys_system],
+   [Darwin*], [MULTIARCH=""],
    [FreeBSD*], [MULTIARCH=""],
    [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
  )
@@ -12,3 +38,13 @@ diff -ruNp Python-3.10.19.orig/configure.ac Python-3.10.19/configure.ac
  AC_SUBST([MULTIARCH])
  AC_MSG_RESULT([$MULTIARCH])
  
+ if test x$PLATFORM_TRIPLET != x && test x$MULTIARCH != x; then
+   if test x$PLATFORM_TRIPLET != x$MULTIARCH; then
+     AC_MSG_ERROR([internal configure error for the platform triplet, please file a bug report])
+   fi
+ elif test x$PLATFORM_TRIPLET != x && test x$MULTIARCH = x; then
+   MULTIARCH=$PLATFORM_TRIPLET
+ fi
+-- 
+2.43.0
+
