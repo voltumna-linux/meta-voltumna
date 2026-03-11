@@ -17,3 +17,6 @@ do_install:append() {
 	# Add additional rules files
         install -m 0644 ${WORKDIR}/00-log-access.rules ${D}${datadir}/polkit-1/rules.d
 }
+
+PACKAGECONFIG:remove = "mozjs"
+PACKAGECONFIG:append = "duktape"

@@ -20,6 +20,14 @@ PACKAGECONFIG:remove = " \
 	sysvinit \
 "
 
+PACKAGECONFIG:remove:ppce500v2 = " \
+        efi \
+"
+
+PACKAGECONFIG:remove:ppc7400 = " \
+        efi \
+"
+
 PACKAGECONFIG:append = " \
 	coredump \
 	elfutils \
