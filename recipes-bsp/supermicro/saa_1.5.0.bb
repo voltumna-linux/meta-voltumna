@@ -7,11 +7,11 @@ LICENSE = "CLOSED"
 
 COMPATIBLE_HOST = "x86_64.*-linux"
 
-DIR = "1007"
+DIR = "1072"
 SUFFIX = "Linux_x86_64"
-DATE = "20251022"
+DATE = "20260210"
 SRC_URI = "https://www.supermicro.com/Bios/sw_download/${DIR}/saa_${PV}_${SUFFIX}_${DATE}.tar.gz"
-SRC_URI[sha256sum] = "fb047601c4d92c9046dd9db9ba3715d10d8fa8ec8ee73d97722dffefa459757c"
+SRC_URI[sha256sum] = "d56ba3a09887a1eaceb21c2ef7842adf2f874f4b055ea4d535d1bd7bbce33878"
 
 S = "${WORKDIR}/${BPN}_${PV}_${SUFFIX}"
 PACKAGES = "${BPN}"
