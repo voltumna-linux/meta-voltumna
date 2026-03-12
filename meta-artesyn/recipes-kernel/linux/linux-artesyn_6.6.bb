@@ -27,6 +27,7 @@ SRC_URI:append = " \
 	file://enable_compat_time.cfg \
 	file://altivec.cfg \
 	file://devtmpfs.cfg \
+	file://vme.cfg \
 	file://0002-Add-device-tree-entry-for-rtc.patch \
 	file://0003-powerpc-embedded6xx-Make-reboot-works-on-MVME5100.patch \
 	file://0001-Enable-L2-cache-on-all-cores.patch \
