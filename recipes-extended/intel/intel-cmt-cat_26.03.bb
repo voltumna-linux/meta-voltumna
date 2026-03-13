@@ -3,13 +3,13 @@ DESCRIPTION = "Software package which provides basic support for Intel(R) \
 Resource Director Technology (Intel(R) RDT)"
 HOMEPAGE = "https://github.com/intel/intel-cmt-cat"
 
-LICENSE = "BSD-3-Clause"
-LIC_FILES_CHKSUM = "file://LICENSE;md5=4b63c65942e1c16fd897f8cd20abebf8"
+LICENSE = "BSD-1-Clause"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=bd50e7e2ac1189caa30191dabbf7ecfb"
 
 SRC_URI = " \
 	git://github.com/intel/intel-cmt-cat;protocol=https;branch=master \
 	"
-SRCREV = "17629d0b726875836af6c7d9cb38b8ed23f32089"
+SRCREV = "ad30dda2ed86dc82e78818f73c4d0b5027ec4834"
 
 S = "${WORKDIR}/git"
 
