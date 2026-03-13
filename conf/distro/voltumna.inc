@@ -73,13 +73,13 @@ PREFERRED_VERSION_linux-amd = "6.6.53"
 
 PREFERRED_VERSION_nativesdk-libgfortran = "${GCCVERSION}"
 
-PREFERRED_VERSION_tango-idl = "5.1%"
-PREFERRED_VERSION_nativesdk-tango-idl = "5.1%"
-PREFERRED_VERSION_cpptango = "9.3%"
-PREFERRED_VERSION_nativesdk-cpptango = "9.3%"
-PREFERRED_VERSION_python3-pytango = "9.3%"
-PREFERRED_VERSION_nativesdk-python3-pytango = "9.3%"
-PREFERRED_VERSION_nativesdk-pogo = "9.7%"
+PREFERRED_VERSION_tango-idl = "6.%"
+PREFERRED_VERSION_nativesdk-tango-idl = "6.%"
+PREFERRED_VERSION_cpptango = "10.1.%"
+PREFERRED_VERSION_nativesdk-cpptango = "10.1.%"
+PREFERRED_VERSION_python3-pytango = "10.1.%"
+PREFERRED_VERSION_nativesdk-python3-pytango = "10.1.%"
+PREFERRED_VERSION_nativesdk-pogo = "9.10%"
 
 # Use specific GCC version
 GCCVERSION = "13.%"
