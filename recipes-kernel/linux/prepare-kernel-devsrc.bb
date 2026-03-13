@@ -10,6 +10,8 @@ SYSTEMD_SERVICE:${PN} = "prepare-kernel-devsrc.service"
 
 FILES:${PN} += "${systemd_unitdir}/system"
 
+S = "${UNPACKDIR}"
+
 do_install() {
 	install -d ${D}${systemd_system_unitdir}
 	install -m 0644 ${UNPACKDIR}/prepare-kernel-devsrc.service \
