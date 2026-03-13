@@ -16,7 +16,7 @@ SRCREV = "222cc88e46488ef98d7b7151c168a27db03030af"
 SRC_URI = "\
 	gitsm://gitlab.com/tango-controls/pytango.git;protocol=https;branch=stable;mobranch=1 \
 	"
-
+INSANE_SKIP:${PN} += "buildpaths"
 S = "${WORKDIR}/git"
 
 FILES:${PN} += " ${PYTHON_SITEPACKAGES_DIR}"
