@@ -2,7 +2,7 @@ DESCRIPTION = "Intel QuickAssist Technology Library (QATlib)"
 HOMEPAGE = "https://github.com/intel/qatlib"
 
 LICENSE = "BSD-3-Clause"
-LIC_FILES_CHKSUM = "file://LICENSE;md5=64dc5eee9d532c8a1633bb63ed0d1aac"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=92d2169808b08940f5e4812d97a4ea88"
 
 PROVIDES += "virtual/qat"
 RPROVIDES:${PN} += "qat"
@@ -12,13 +12,11 @@ COMPATIBLE_HOST:x86-x32 = 'null'
 COMPATIBLE_HOST:libc-musl:class-target = 'null'
 
 SRC_URI = "git://github.com/intel/qatlib.git;protocol=https;branch=main"
-SRCREV = "a9e5fcf212fcb9241b38a3a105c95b1f5b3593db"
-
-S = "${WORKDIR}/git"
+SRCREV = "9e22a2a83336a5210d8aa4df7f054815c15bead1"
 
 inherit autotools-brokensep systemd useradd
 
-DEPENDS = "openssl zlib nasm-native numactl"
+DEPENDS = "openssl zlib nasm-native numactl autoconf-archive-native"
 
 USERADD_PACKAGES = "${PN}"
 GROUPADD_PARAM:${PN} = "qat"
