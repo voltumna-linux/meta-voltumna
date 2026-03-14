@@ -1,6 +1,6 @@
 #!/bin/sh
 git subtree pull --prefix=bitbake https://git.openembedded.org/bitbake.git 2.0 --squash
-git subtree pull --prefix=meta-artesyn https://github.com/voltumna-linux/meta-artesyn.git master --squash
+git subtree pull --prefix=meta-artesyn https://github.com/voltumna-linux/meta-artesyn.git kirkstone --squash
 git subtree pull --prefix=meta-intel https://git.yoctoproject.org/meta-intel kirkstone --squash
 git subtree pull --prefix=meta-mingw https://git.yoctoproject.org/meta-mingw kirkstone --squash
 git subtree pull --prefix=meta-openembedded https://git.openembedded.org/meta-openembedded kirkstone --squash
