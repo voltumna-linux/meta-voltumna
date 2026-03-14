@@ -600,9 +600,10 @@ def obtain_config(top_dir, registry, args, source_overrides, d):
         config_id = args.config[0]
         config_parameters = args.config[1:]
         if os.path.exists(config_id):
+            config_id = os.path.abspath(config_id)
             logger.info("Reading configuration from local file\n    {}".format(config_id))
             upstream_config = {'type':'local',
-                               'path':os.path.abspath(config_id),
+                               'path':config_id,
                                'name':get_config_name(config_id),
                                'data':json.load(open(config_id))
                                }
@@ -741,12 +742,21 @@ def get_diff(file1, file2):
 
 def are_layers_changed(layers, layerdir, d):
     def _is_git_remote_changed(r_remote, repodir):
-        changed = False
+        from bb.fetch2.git import sha1_re
+
         rev = r_remote['rev']
         branch = r_remote.get('branch', None)
 
-        remotes = _get_remotes(r_remote)
+        rev_parse_result = bb.process.run('git -C {} rev-parse HEAD'.format(os.path.join(layerdir, repodir)))
+        local_revision = rev_parse_result[0].strip()
+        if sha1_re.match(rev):
+            if rev != local_revision:
+                logger.info('Layer repository checked out into {} is at revision {} but should be at {}'.format(os.path.join(layerdir, repodir),local_revision, rev))
+                return True
+            return False
 
+        remotes = _get_remotes(r_remote)
+        changed = False
         for remote in remotes:
             type,host,path,user,pswd,params = bb.fetch.decodeurl(remote)
             fetchuri = bb.fetch.encodeurl(('git',host,path,user,pswd,params))
@@ -755,8 +765,6 @@ def are_layers_changed(layers, layerdir, d):
             else:
                 fetcher = bb.fetch.FetchData("{};protocol={};rev={};nobranch=1;destsuffix={}".format(fetchuri,type,rev,repodir), d)
             upstream_revision = fetcher.method.latest_revision(fetcher, d, 'default')
-            rev_parse_result = bb.process.run('git -C {} rev-parse HEAD'.format(os.path.join(layerdir, repodir)))
-            local_revision = rev_parse_result[0].strip()
             if upstream_revision != local_revision:
                 changed = True
                 logger.info('Layer repository {} checked out into {} updated revision {} from {} to {}'.format(remote, os.path.join(layerdir, repodir), rev, local_revision, upstream_revision))
