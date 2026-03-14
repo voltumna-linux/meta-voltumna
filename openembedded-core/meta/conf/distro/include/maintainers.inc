@@ -25,7 +25,8 @@
 #
 #	RECIPE_MAINTAINER:pn-<recipe name> = "Full Name <address@domain>"
 #
-# Please keep this list in alphabetical order.
+# Please keep this list in alphabetical order using the C locale.
+# (e.g. use 'LC_ALL=C sort' to sort the list).
 #
 RECIPE_MAINTAINER:pn-acl = "Chen Qi <Qi.Chen@windriver.com>"
 RECIPE_MAINTAINER:pn-acpica = "Ross Burton <ross.burton@arm.com>"
@@ -347,6 +348,7 @@ RECIPE_MAINTAINER:pn-libffi = "Unassigned <unassigned@yoctoproject.org>"
 RECIPE_MAINTAINER:pn-libfm = "Unassigned <unassigned@yoctoproject.org>"
 RECIPE_MAINTAINER:pn-libfm-extra = "Unassigned <unassigned@yoctoproject.org>"
 RECIPE_MAINTAINER:pn-libfontenc = "Unassigned <unassigned@yoctoproject.org>"
+RECIPE_MAINTAINER:pn-libfyaml = "Changqing Li <changqing.li@windriver.com>"
 RECIPE_MAINTAINER:pn-libgcc = "Khem Raj <raj.khem@gmail.com>"
 RECIPE_MAINTAINER:pn-libgcc-initial = "Khem Raj <raj.khem@gmail.com>"
 RECIPE_MAINTAINER:pn-libgcrypt = "Hongxu Jia <hongxu.jia@windriver.com>"
