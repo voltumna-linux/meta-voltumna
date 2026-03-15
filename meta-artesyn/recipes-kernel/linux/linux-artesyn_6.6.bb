@@ -43,6 +43,7 @@ SRC_URI:append = " \
         file://0001-vme-restore-VME-subsystem-and-ca91cx42-driver-with-D.patch \
 	file://0009-Add-a-complete-proc-file-for-VME.patch \
         file://0002-ptp-ptp_qoriq-fix-NULL-pointer-dereference-on-probe-.patch \
+        file://0001-powerpc-embedded6xx-mvme5100-fix-NULL-dereference-on.patch \
 	"
 
 # FIXME

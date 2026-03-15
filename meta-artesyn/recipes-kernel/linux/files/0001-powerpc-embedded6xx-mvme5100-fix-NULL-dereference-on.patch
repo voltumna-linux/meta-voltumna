@@ -1,0 +1,91 @@
+From edd7e5a5419785d9e3bd2a4dca87c898d2faec10 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Sun, 15 Mar 2026 14:47:36 +0100
+Subject: [PATCH] powerpc/embedded6xx: mvme5100: fix NULL dereference on MPIC
+ allocation failure
+
+The MPIC node in the MVME5100 device tree is a child of the hawk bridge
+node, but its reg address (0xf3f80000) falls outside the parent's
+ranges property (<0x0 0xfef80000 0x10000>). This causes
+of_address_to_resource() to fail during address translation, so
+mpic_alloc() cannot determine the MPIC physical address and returns
+NULL, hitting the BUG_ON.
+
+Fix the device tree by extending the hawk node's ranges to include the
+MPIC address space. Then align mvme5100_pic_init() with other
+embedded6xx platforms (linkstation, storcenter) by passing 0 as the
+physical address to mpic_alloc() and using mpic->paddr for the ISU
+assignment, letting mpic_alloc() obtain the address from the device
+tree rather than depending on pci_membase.
+
+Fixes: d20a864f434b ("powerpc/embedded6xx/mve5100: Move PHB discovery")
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ arch/powerpc/boot/dts/mvme5100.dts            | 3 ++-
+ arch/powerpc/platforms/embedded6xx/mvme5100.c | 4 ++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/arch/powerpc/boot/dts/mvme5100.dts b/arch/powerpc/boot/dts/mvme5100.dts
+index a7eb6d25903d..fdf06f228e04 100644
+--- a/arch/powerpc/boot/dts/mvme5100.dts
++++ b/arch/powerpc/boot/dts/mvme5100.dts
+@@ -41,21 +41,22 @@ PowerPC,7410 {
+ 
+ 	memory {
+ 		device_type = "memory";
+ 		reg = <0x0 0x20000000>;
+ 	};
+ 
+ 	hawk@fef80000 {
+ 		#address-cells = <1>;
+ 		#size-cells = <1>;
+ 		compatible = "hawk-bridge", "simple-bus";
+-		ranges = <0x0 0xfef80000 0x10000>;
++		ranges = <0x0 0xfef80000 0x10000
++			  0xf3f80000 0xf3f80000 0x40000>;
+ 		reg = <0xfef80000 0x10000>;
+ 
+ 		serial0: serial@8000 {
+ 			device_type = "serial";
+ 			compatible = "ns16550";
+ 			reg = <0x8000 0x80>;
+ 			reg-shift = <4>;
+ 			clock-frequency = <1843200>;
+ 			current-speed = <9600>;
+ 			interrupts = <1 1>; // IRQ1 Level Active Low.
+diff --git a/arch/powerpc/platforms/embedded6xx/mvme5100.c b/arch/powerpc/platforms/embedded6xx/mvme5100.c
+index 00bec0f051be..3e44c0b2bd62 100644
+--- a/arch/powerpc/platforms/embedded6xx/mvme5100.c
++++ b/arch/powerpc/platforms/embedded6xx/mvme5100.c
+@@ -56,26 +56,26 @@ static void __init mvme5100_pic_init(void)
+ 	unsigned int cirq;
+ 	unsigned long intack = 0;
+ 	const u32 *prop = NULL;
+ 
+ 	np = of_find_node_by_type(NULL, "open-pic");
+ 	if (!np) {
+ 		pr_err("Could not find open-pic node\n");
+ 		return;
+ 	}
+ 
+-	mpic = mpic_alloc(np, pci_membase, 0, 16, 256, " OpenPIC  ");
++	mpic = mpic_alloc(np, 0, 0, 16, 256, " OpenPIC  ");
+ 
+ 	BUG_ON(mpic == NULL);
+ 	of_node_put(np);
+ 
+-	mpic_assign_isu(mpic, 0, pci_membase + 0x10000);
++	mpic_assign_isu(mpic, 0, mpic->paddr + 0x10000);
+ 
+ 	mpic_init(mpic);
+ 
+ 	cp = of_find_compatible_node(NULL, NULL, "chrp,iic");
+ 	if (cp == NULL) {
+ 		pr_warn("mvme5100_pic_init: couldn't find i8259\n");
+ 		return;
+ 	}
+ 
+ 	cirq = irq_of_parse_and_map(cp, 0);
+-- 
+2.43.0
+
