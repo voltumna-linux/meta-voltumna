@@ -8,6 +8,7 @@ DEPENDS = "openblas lapack fftw"
 SRC_URI = " \
     https://downloads.sourceforge.net/project/itpp/itpp/4.3.1/itpp-4.3.1.tar.gz \
     file://remove-register-keyword.patch \
+    file://increase_cmake_minimum.patch \
     "
 
 SRC_URI[md5sum] = "99c00a331276dae7b733067dd540e093"

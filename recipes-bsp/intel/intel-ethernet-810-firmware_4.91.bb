@@ -16,7 +16,7 @@ INSANE_SKIP:${PN} = "already-stripped"
 
 do_extract_data() {
 	install -d ${S}
-	tar zxf ${WORKDIR}/E810_NVMUpdatePackage_v${PV_MAJOR}_${PV_MINOR}_Linux.tar.gz -C "${S}"
+	tar zxf ${UNPACKDIR}/E810_NVMUpdatePackage_v${PV_MAJOR}_${PV_MINOR}_Linux.tar.gz -C "${S}"
 }
 
 python do_unpack:append() {
