@@ -44,11 +44,7 @@ SRC_URI:append = " \
 	file://0009-Add-a-complete-proc-file-for-VME.patch \
         file://0002-ptp-ptp_qoriq-fix-NULL-pointer-dereference-on-probe-.patch \
         file://0001-powerpc-embedded6xx-mvme5100-fix-NULL-dereference-on.patch \
+        file://let-smp-buildable-on-MVME5100.patch \
 	"
-
-# FIXME
-# Le configurazioni di default devono essere cambiare confrontarle tra ec-2 e ec-3
-
-# EXTRA_OEMAKE:append:mvme2500 = " HAS_BIARCH=n"
 
 require recipes-kernel/linux/linux-yocto.inc
