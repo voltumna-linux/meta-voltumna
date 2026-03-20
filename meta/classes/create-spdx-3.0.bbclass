@@ -142,6 +142,10 @@ SPDX_PACKAGE_URLS[doc] = "A space separated list of Package URLs (purls) for \
     Override this variable to replace the default, otherwise append or prepend \
     to add additional purls."
 
+SPDX_RECIPE_SBOM_NAME ?= "${PN}-recipe-sbom"
+SPDX_RECIPE_SBOM_NAME[doc] = "The name of output recipe SBoM when using \
+    create_recipe_sbom"
+
 IMAGE_CLASSES:append = " create-spdx-image-3.0"
 SDK_CLASSES += "create-spdx-sdk-3.0"
 
@@ -155,15 +159,11 @@ oe.spdx30_tasks.collect_dep_objsets[vardepsexclude] = "SPDX_MULTILIB_SSTATE_ARCH
 # classes are explicitly added as file checksum dependencies.
 SPDX3_DEP_FILES = "\
     ${COREBASE}/meta/lib/oe/sbom30.py:True \
-    ${COREBASE}/meta/lib/oe/spdx30.py:True \
+    ${COREBASE}/meta/lib/oe/spdx30/model.py:True \
     ${SPDX_LICENSES}:True \
     "
 
-python do_create_spdx() {
-    import oe.spdx30_tasks
-    oe.spdx30_tasks.create_spdx(d)
-}
-do_create_spdx[vardeps] += "\
+SPDX3_VAR_DEPS = "\
     SPDX_INCLUDE_BITBAKE_PARENT_BUILD \
     SPDX_PACKAGE_ADDITIONAL_PURPOSE \
     SPDX_PROFILES \
@@ -171,8 +171,33 @@ do_create_spdx[vardeps] += "\
     SPDX_UUID_NAMESPACE \
     "
 
+python do_create_recipe_spdx() {
+    import oe.spdx30_tasks
+    oe.spdx30_tasks.create_recipe_spdx(d)
+}
+addtask do_create_recipe_spdx
+
+SSTATETASKS += "do_create_recipe_spdx"
+do_create_recipe_spdx[sstate-inputdirs] = "${SPDXRECIPEDEPLOY}"
+do_create_recipe_spdx[sstate-outputdirs] = "${DEPLOY_DIR_SPDX}"
+do_create_recipe_spdx[file-checksums] += "${SPDX3_DEP_FILES}"
+do_create_recipe_spdx[cleandirs] = "${SPDXRECIPEDEPLOY}"
+do_create_recipe_spdx[deptask] += "do_create_recipe_spdx"
+do_create_recipe_spdx[vardeps] += "${SPDX3_VAR_DEPS}"
+
+python do_create_recipe_spdx_setscene () {
+    sstate_setscene(d)
+}
+addtask do_create_recipe_spdx_setscene
+
+python do_create_spdx() {
+    import oe.spdx30_tasks
+    oe.spdx30_tasks.create_spdx(d)
+}
 addtask do_create_spdx after \
-    do_collect_spdx_deps \
+    do_unpack \
+    do_patch \
+    do_create_recipe_spdx \
     do_deploy_source_date_epoch \
     do_populate_sysroot do_package do_packagedata \
     before do_populate_sdk do_populate_sdk_ext do_build do_rm_work
@@ -181,18 +206,19 @@ SSTATETASKS += "do_create_spdx"
 do_create_spdx[sstate-inputdirs] = "${SPDXDEPLOY}"
 do_create_spdx[sstate-outputdirs] = "${DEPLOY_DIR_SPDX}"
 do_create_spdx[file-checksums] += "${SPDX3_DEP_FILES}"
-
-python do_create_spdx_setscene () {
-    sstate_setscene(d)
-}
-addtask do_create_spdx_setscene
-
+do_create_spdx[deptask] += "do_create_spdx"
 do_create_spdx[dirs] = "${SPDXWORK}"
 do_create_spdx[cleandirs] = "${SPDXDEPLOY} ${SPDXWORK}"
 do_create_spdx[depends] += " \
     ${PATCHDEPENDENCY} \
     ${@create_spdx_source_deps(d)} \
 "
+do_create_spdx[vardeps] += "${SPDX3_VAR_DEPS}"
+
+python do_create_spdx_setscene () {
+    sstate_setscene(d)
+}
+addtask do_create_spdx_setscene
 
 python do_create_package_spdx() {
     import oe.spdx30_tasks
@@ -205,15 +231,38 @@ SSTATETASKS += "do_create_package_spdx"
 do_create_package_spdx[sstate-inputdirs] = "${SPDXRUNTIMEDEPLOY}"
 do_create_package_spdx[sstate-outputdirs] = "${DEPLOY_DIR_SPDX}"
 do_create_package_spdx[file-checksums] += "${SPDX3_DEP_FILES}"
+do_create_package_spdx[dirs] = "${SPDXRUNTIMEDEPLOY}"
+do_create_package_spdx[cleandirs] = "${SPDXRUNTIMEDEPLOY}"
+do_create_package_spdx[deptask] = "do_create_spdx"
+do_create_package_spdx[rdeptask] = "do_create_spdx"
+do_create_package_spdx[vardeps] += "${SPDX3_VAR_DEPS}"
 
 python do_create_package_spdx_setscene () {
     sstate_setscene(d)
 }
 addtask do_create_package_spdx_setscene
 
-do_create_package_spdx[dirs] = "${SPDXRUNTIMEDEPLOY}"
-do_create_package_spdx[cleandirs] = "${SPDXRUNTIMEDEPLOY}"
-do_create_package_spdx[rdeptask] = "do_create_spdx"
+addtask do_create_recipe_sbom after create_recipe_spdx
+python do_create_recipe_sbom() {
+    import oe.spdx30_tasks
+    from pathlib import Path
+    deploydir = Path(d.getVar("SPDXRECIPESBOMDEPLOY"))
+    oe.spdx30_tasks.create_recipe_sbom(d, deploydir)
+}
+
+SSTATETASKS += "do_create_recipe_sbom"
+do_create_recipe_sbom[recrdeptask] = "do_create_recipe_spdx"
+do_create_recipe_sbom[nostamp] = "1"
+do_create_recipe_sbom[sstate-inputdirs] = "${SPDXRECIPESBOMDEPLOY}"
+do_create_recipe_sbom[sstate-outputdirs] = "${DEPLOY_DIR_IMAGE}"
+do_create_recipe_sbom[file-checksums] += "${SPDX3_DEP_FILES}"
+do_create_recipe_sbom[cleandirs] = "${SPDXRECIPESBOMDEPLOY}"
+do_create_recipe_sbom[vardeps] += "${SPDX3_VAR_DEPS}"
+
+python do_create_recipe_sbom_setscene () {
+    sstate_setscene(d)
+}
+addtask do_create_recipe_sbom_setscene
 
 python spdx30_build_started_handler () {
     import oe.spdx30_tasks
