@@ -25,11 +25,9 @@ SRCREV:beagleplay-k3r5 = "f036fbdc25941d7585182d2552c767edb9b04114"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-PROVIDES = "${BPN}"
-#PKG:${PN} = "${BPN}"
-#PKG:${PN}-dev = "${BPN}-dev"
-#PKG:${PN}-dbg = "${BPN}-dbg"
-RDEPENDS:${PN}:remove = " ${PN}-env"
+PN = "u-boot-bb.org-mmc1"
+PROVIDES = "u-boot-bb.org-mmc1"
+RDEPENDS:${PN}:remove = " u-boot-bb.org-mmc1-env"
 
 #UBOOT_IMAGE = "u-boot-mmc1-${MACHINE}-${PV}-${PR}.${UBOOT_SUFFIX}"
 #UBOOT_SYMLINK = "u-boot-mmc1-${MACHINE}.${UBOOT_SUFFIX}"
@@ -48,12 +46,15 @@ SRC_URI:append = " \
 SRC_URI:append:beagleboneai = " \
 	file://disable_bootargs.cfg \
 	"
-
-do_install:append () {
-	install -d ${D}${datadir}/${BPN}
-	install -m 0755 ${WORKDIR}/u-boot-install ${D}${datadir}/${BPN}
-	cp ${D}/boot/MLO ${D}/boot/u-boot.img ${D}${datadir}/${BPN}
-	rm -fr ${D}${sysconfdir} ${D}/boot
+do_install() {
+    true
 }
+
+#do_install:append () {
+#	install -d ${D}${datadir}/${BPN}
+#	install -m 0755 ${WORKDIR}/u-boot-install ${D}${datadir}/${BPN}
+#	cp ${D}/boot/MLO ${D}/boot/u-boot.img ${D}${datadir}/${BPN}
+#	rm -fr ${D}${sysconfdir} ${D}/boot
+#}
 
 deltask do_deploy
