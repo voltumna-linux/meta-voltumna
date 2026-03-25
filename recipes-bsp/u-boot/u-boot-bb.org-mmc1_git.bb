@@ -46,15 +46,12 @@ SRC_URI:append = " \
 SRC_URI:append:beagleboneai = " \
 	file://disable_bootargs.cfg \
 	"
-do_install() {
-    true
-}
 
-#do_install:append () {
-#	install -d ${D}${datadir}/${BPN}
-#	install -m 0755 ${WORKDIR}/u-boot-install ${D}${datadir}/${BPN}
-#	cp ${D}/boot/MLO ${D}/boot/u-boot.img ${D}${datadir}/${BPN}
-#	rm -fr ${D}${sysconfdir} ${D}/boot
-#}
+do_install:append () {
+	install -d ${D}${datadir}/${BPN}
+	install -m 0755 ${WORKDIR}/u-boot-install ${D}${datadir}/${BPN}
+	cp ${D}/boot/MLO ${D}/boot/u-boot.img ${D}${datadir}/${BPN}
+	rm -fr ${D}${sysconfdir} ${D}/boot
+}
 
 deltask do_deploy
