@@ -25,11 +25,11 @@ SRCREV:beagleplay-k3r5 = "f036fbdc25941d7585182d2552c767edb9b04114"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-PROVIDES = "${BPN}"
+PROVIDES = "u-boot-bb.org-mmc1"
+RDEPENDS:${PN}:remove = " u-boot-bb.org-mmc1-env u-boot-bb.org-mmc1-extlinux"
 PKG:${PN} = "${BPN}"
 PKG:${PN}-dev = "${BPN}-dev"
 PKG:${PN}-dbg = "${BPN}-dbg"
-RDEPENDS:${PN}:remove = " ${PN}-env"
 
 #UBOOT_IMAGE = "u-boot-mmc1-${MACHINE}-${PV}-${PR}.${UBOOT_SUFFIX}"
 #UBOOT_SYMLINK = "u-boot-mmc1-${MACHINE}.${UBOOT_SUFFIX}"

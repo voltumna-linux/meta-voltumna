@@ -24,10 +24,8 @@ do_deploy:prepend() {
 	touch ${DEPLOYDIR}/${PN}-initial-env-${MACHINE}
 	touch ${DEPLOYDIR}/u-boot-initial-env-${MACHINE}-${PV}-${PR}
 	touch ${DEPLOYDIR}/${PN}-initial-env-${MACHINE}-${PV}-${PR}
-}
-
-do_install:append() {
-	sed -i -e "s,@USR@,mount.usr=/.osdir/\$image,g" \
+	
+        sed -i -e "s,@USR@,mount.usr=/.osdir/\$image,g" \
 		${WORKDIR}/uEnv.txt
 }
 
