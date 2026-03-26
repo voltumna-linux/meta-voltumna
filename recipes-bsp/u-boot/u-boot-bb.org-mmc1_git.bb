@@ -27,7 +27,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 PN = "u-boot-bb.org-mmc1"
 PROVIDES = "u-boot-bb.org-mmc1"
-RDEPENDS:${PN}:remove = " u-boot-bb.org-mmc1-env"
+RDEPENDS:${PN}:remove = " u-boot-bb.org-mmc1-env u-boot-bb.org-mmc1-extlinux"
 
 #UBOOT_IMAGE = "u-boot-mmc1-${MACHINE}-${PV}-${PR}.${UBOOT_SUFFIX}"
 #UBOOT_SYMLINK = "u-boot-mmc1-${MACHINE}.${UBOOT_SUFFIX}"
