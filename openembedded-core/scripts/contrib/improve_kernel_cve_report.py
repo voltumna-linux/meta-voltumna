@@ -236,6 +236,26 @@ def read_spdx3(spdx):
             cfiles.add(filename)
     return cfiles
 
+def read_debugsources(file_path):
+    '''
+    Read zstd file from pkgdata to extract sources
+    '''
+    import zstandard as zstd
+    import itertools
+    # Decompress the .zst file
+    cfiles = set()
+    with open(file_path, 'rb') as fh:
+        dctx = zstd.ZstdDecompressor()
+        with dctx.stream_reader(fh) as reader:
+            decompressed_bytes = reader.read()
+            json_data = json.loads(decompressed_bytes)
+            # We need to remove one level from the debug sources
+            for source_list in json_data.values():
+                for source in source_list:
+                    src = source.split("/",1)[1]
+                    cfiles.add(src)
+    return cfiles
+
 def check_kernel_compiled_files(compiled_files, cve_info):
     """
     Return if a CVE affected us depending on compiled files
@@ -340,6 +360,10 @@ def cve_update(cve_data, cve, entry):
     if cve_data[cve]['status'] == entry['status']:
         return
     if entry['status'] == "Unpatched" and cve_data[cve]['status'] == "Patched":
+        # Backported-patch (e.g. vendor kernel repo with cherry-picked CVE patch)
+        # has priority over unpatch from CNA
+        if cve_data[cve]['detail'] == "backported-patch":
+            return
         logging.warning("CVE entry %s update from Patched to Unpatched from the scan result", cve)
         cve_data[cve] = copy_data(cve_data[cve], entry)
         return
@@ -367,6 +391,10 @@ def main():
         "-s",
         "--spdx",
         help="SPDX2/3 for the kernel. Needs to include compiled sources",
+    )
+    parser.add_argument(
+        "--debug-sources-file",
+        help="Debug sources zstd file generated from Yocto",
     )
     parser.add_argument(
         "--datadir",
@@ -411,6 +439,9 @@ def main():
     if args.spdx:
         compiled_files = read_spdx(args.spdx)
         logging.info("Total compiled files %d", len(compiled_files))
+    if args.debug_sources_file:
+        compiled_files = read_debugsources(args.debug_sources_file)
+        logging.info("Total compiled files %d", len(compiled_files))
 
     if args.old_cve_report:
         with open(args.old_cve_report, encoding='ISO-8859-1') as f:
@@ -441,10 +472,12 @@ def main():
                 is_kernel=True
         if not is_kernel:
             continue
-
+        # We remove custom versions after -
+        upstream_version = Version(pkg["version"].split("-")[0])
+        logging.info("Checking kernel %s", upstream_version)
         kernel_cves = get_kernel_cves(args.datadir,
                                       compiled_files,
-                                      Version(pkg["version"]))
+                                      upstream_version)
         logging.info("Total kernel cves from kernel CNA: %s", len(kernel_cves))
         cves = {issue["id"]: issue for issue in pkg["issue"]}
         logging.info("Total kernel before processing cves: %s", len(cves))
