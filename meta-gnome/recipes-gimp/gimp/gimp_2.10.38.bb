@@ -50,7 +50,16 @@ SRC_URI = "https://download.gimp.org/pub/${BPN}/v${SHPV}/${BP}.tar.bz2 \
            file://CVE-2025-14422.patch \
            file://CVE-2025-14425.patch \
            file://CVE-2025-5473.patch \
-"
+           file://CVE-2025-15059.patch \
+           file://CVE-2025-2760-1.patch \
+           file://CVE-2025-2760-2.patch \
+           file://CVE-2025-2761.patch \
+           file://CVE-2026-0797-1.patch \
+           file://CVE-2026-0797-2.patch \
+           file://CVE-2026-2044.patch \
+           file://CVE-2026-2045.patch \
+           file://CVE-2026-2048.patch \
+           "
 SRC_URI[sha256sum] = "50a845eec11c8831fe8661707950f5b8446e35f30edfb9acf98f85c1133f856e"
 
 EXTRA_OECONF = "--disable-python \
@@ -78,3 +87,5 @@ RDEPENDS:${PN} += "mypaint-brushes-1.0"
 CVE_STATUS[CVE-2007-3741] = "not-applicable-platform: This only applies for Mandriva Linux"
 CVE_STATUS[CVE-2025-48796] = "cpe-incorrect: The current version (2.10.38) is not affected."
 CVE_STATUS[CVE-2025-14423] = "cpe-incorrect: The vulnerability was introduced in v3.0"
+CVE_STATUS[CVE-2025-14424] = "cpe-incorrect: The vulnerability was introduced in v3.0"
+CVE_STATUS[CVE-2026-2047] = "cpe-incorrect: The vulnerability was introduced in v3.0"
