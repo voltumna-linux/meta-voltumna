@@ -8,11 +8,8 @@ inherit cmake pkgconfig mime
 
 DEPENDS = "highway brotli"
 
-SRC_URI = "gitsm://github.com/libjxl/libjxl.git;protocol=https;nobranch=1 \
-           file://CVE-2024-11403.patch \
-           file://CVE-2024-11498.patch \
-          "
-SRCREV = "e1489592a770b989303b0edc5cc1dc447bbe0515"
+SRC_URI = "gitsm://github.com/libjxl/libjxl.git;protocol=https;nobranch=1"
+SRCREV = "6aa76f3134684f86e239263384230751b56938a7"
 S = "${WORKDIR}/git"
 
 EXTRA_OECMAKE = " \
@@ -39,3 +36,6 @@ PACKAGECONFIG[gimp] = "-DJPEGXL_ENABLE_PLUGIN_GIMP210=ON,-DJPEGXL_ENABLE_PLUGIN_
 PACKAGECONFIG[mime] = "-DJPEGXL_ENABLE_PLUGIN_MIME=ON,-DJPEGXL_ENABLE_PLUGIN_MIME=OFF"
 
 FILES:${PN} += "${libdir}/gdk-pixbuf-2.0 ${datadir}"
+
+CVE_STATUS[CVE-2025-12474] = "fixed-version: fixed in 0.10.5"
+CVE_STATUS[CVE-2026-1837] = "fixed-version: fixed in 0.10.5"
