@@ -78,6 +78,15 @@ do_install(){
     # The controllers memcg_stree test seems to cause us hangs and takes 900s
     # (maybe we expect more regular output?), anyhow, skip it
     sed -e '/^memcg_stress/d' -i ${D}${prefix}/runtest/controllers
+
+    # min_free_kbytes can be disruptive on constrained targets
+    sed -e '/^min_free_kbytes/d' -i ${D}${prefix}/runtest/mm
+
+    # cve-2018-13405 triggers memory deadlock kernel panic on constrained targets
+    sed -e '/^cve-2018-13405/d' -i ${D}${prefix}/runtest/cve
+
+    # cve-2020-36557 triggers memory deadlock kernel panic on constrained targets
+    sed -e '/^cve-2020-36557/d' -i ${D}${prefix}/runtest/cve
 }
 
 RDEPENDS:${PN} = "\

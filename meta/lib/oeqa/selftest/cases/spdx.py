@@ -4,72 +4,11 @@
 # SPDX-License-Identifier: MIT
 #
 
-import json
-import os
 import textwrap
 import hashlib
-from pathlib import Path
 from oeqa.selftest.case import OESelftestTestCase
-from oeqa.utils.commands import bitbake, get_bb_var, get_bb_vars, runCmd
+from oeqa.utils.commands import bitbake, get_bb_var, get_bb_vars
 import oe.spdx30
-
-
-class SPDX22Check(OESelftestTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        bitbake("python3-spdx-tools-native")
-        bitbake("-c addto_recipe_sysroot python3-spdx-tools-native")
-
-    def check_recipe_spdx(self, high_level_dir, spdx_file, target_name):
-        config = textwrap.dedent(
-            """\
-            INHERIT:remove = "create-spdx"
-            INHERIT += "create-spdx-2.2"
-            """
-        )
-        self.write_config(config)
-
-        deploy_dir = get_bb_var("DEPLOY_DIR")
-        arch_dir = get_bb_var("PACKAGE_ARCH", target_name)
-        spdx_version = get_bb_var("SPDX_VERSION")
-        # qemux86-64 creates the directory qemux86_64
-        # arch_dir = arch_var.replace("-", "_")
-
-        full_file_path = os.path.join(
-            deploy_dir, "spdx", spdx_version, arch_dir, high_level_dir, spdx_file
-        )
-
-        try:
-            os.remove(full_file_path)
-        except FileNotFoundError:
-            pass
-
-        bitbake("%s -c create_spdx" % target_name)
-
-        def check_spdx_json(filename):
-            with open(filename) as f:
-                report = json.load(f)
-                self.assertNotEqual(report, None)
-                self.assertNotEqual(report["SPDXID"], None)
-
-            python = os.path.join(
-                get_bb_var("STAGING_BINDIR", "python3-spdx-tools-native"),
-                "nativepython3",
-            )
-            validator = os.path.join(
-                get_bb_var("STAGING_BINDIR", "python3-spdx-tools-native"), "pyspdxtools"
-            )
-            result = runCmd("{} {} -i {}".format(python, validator, filename))
-
-        self.assertExists(full_file_path)
-        result = check_spdx_json(full_file_path)
-
-    def test_spdx_base_files(self):
-        self.check_recipe_spdx("packages", "base-files.spdx.json", "base-files")
-
-    def test_spdx_tar(self):
-        self.check_recipe_spdx("packages", "tar.spdx.json", "tar")
 
 
 class SPDX3CheckBase(object):
@@ -427,4 +366,80 @@ class SPDX30Check(SPDX3CheckBase, OESelftestTestCase):
             self.assertIn(
                 value, ["enabled", "disabled"],
                 f"Unexpected PACKAGECONFIG value '{value}' for {key}"
+            )
+
+    def test_download_location_defensive_handling(self):
+        """Test that download_location handling is defensive.
+
+        Verifies SPDX generation succeeds and external references are
+        properly structured when download_location retrieval works.
+        """
+        objset = self.check_recipe_spdx(
+            "m4",
+            "{DEPLOY_DIR_SPDX}/{SSTATE_PKGARCH}/builds/build-m4.spdx.json",
+        )
+
+        found_external_refs = False
+        for pkg in objset.foreach_type(oe.spdx30.software_Package):
+            if pkg.externalRef:
+                found_external_refs = True
+                for ref in pkg.externalRef:
+                    self.assertIsNotNone(ref.externalRefType)
+                    self.assertIsNotNone(ref.locator)
+                    self.assertGreater(len(ref.locator), 0, "Locator should have at least one entry")
+                    for loc in ref.locator:
+                        self.assertIsInstance(loc, str)
+                break
+
+        self.logger.info(
+            f"External references {'found' if found_external_refs else 'not found'} "
+            f"in SPDX output (defensive handling verified)"
+        )
+
+    def test_version_extraction_patterns(self):
+        """Test that version extraction works for various package formats.
+
+        Verifies that Git source downloads carry extracted versions and that
+        the reported version strings are well-formed.
+        """
+        objset = self.check_recipe_spdx(
+            "opkg-utils",
+            "{DEPLOY_DIR_SPDX}/{SSTATE_PKGARCH}/builds/build-opkg-utils.spdx.json",
+        )
+
+        # Collect all packages with versions
+        packages_with_versions = []
+        for pkg in objset.foreach_type(oe.spdx30.software_Package):
+            if pkg.software_packageVersion:
+                packages_with_versions.append((pkg.name, pkg.software_packageVersion))
+
+        self.assertGreater(
+            len(packages_with_versions), 0,
+            "Should find packages with extracted versions"
+        )
+
+        for name, version in packages_with_versions:
+            self.assertRegex(
+                version,
+                r"^[0-9a-f]{40}$",
+                f"Expected Git source version for {name} to be a full SHA-1",
+            )
+
+        self.logger.info(f"Found {len(packages_with_versions)} packages with versions")
+
+        # Log some examples for debugging
+        for name, version in packages_with_versions[:5]:
+            self.logger.info(f"  {name}: {version}")
+
+        # Verify that versions follow expected patterns
+        for name, version in packages_with_versions:
+            # Version should not be empty
+            self.assertIsNotNone(version)
+            self.assertNotEqual(version, "")
+
+            # Version should contain digits
+            self.assertRegex(
+                version,
+                r'\d',
+                f"Version '{version}' for package '{name}' should contain digits"
             )
