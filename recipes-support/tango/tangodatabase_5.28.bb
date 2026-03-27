@@ -10,6 +10,8 @@ SRC_URI = "\
 	gitsm://gitlab.com/tango-controls/${BPN}.git;protocol=https;branch=main \
 	"
 
+S = "${WORKDIR}/git"
+
 FILES:${PN} += "${bindir} ${datadir}"
 
 #SYSTEMD_SERVICE:${PN} = "starter.service"
