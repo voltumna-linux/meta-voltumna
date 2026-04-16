@@ -10,7 +10,7 @@
       ],
       "execution": {
         "1": {
-          "action": "Set up yocto project and toaster test environment. \ncd ${installdir} \ngit clone git://git.yoctoproject.org/poky  \n\n",
+          "action": "Set up yocto project and toaster test environment. \ncd ${installdir} \ngit clone https://git.yoctoproject.org/poky  \n\n",
           "expected_results": "NA \n\n"
         },
         "2": {

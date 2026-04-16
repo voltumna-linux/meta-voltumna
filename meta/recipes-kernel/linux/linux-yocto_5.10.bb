@@ -26,8 +26,8 @@ SRCREV_machine:qemumips64 ?= "4bae0f4714f4afc50c02ea884ec8ba6026d2ec16"
 SRCREV_machine ?= "0ef80b08429534f460a78de68ee5c6a05f722eb0"
 SRCREV_meta ?= "876ae2ac4c2844426ff953a696e455b44d953527"
 
-SRC_URI = "git://git.yoctoproject.org/linux-yocto.git;name=machine;branch=${KBRANCH}; \
-           git://git.yoctoproject.org/yocto-kernel-cache;type=kmeta;name=meta;branch=yocto-5.10;destsuffix=${KMETA}"
+SRC_URI = "git://git.yoctoproject.org/linux-yocto.git;protocol=https;name=machine;branch=${KBRANCH}; \
+           git://git.yoctoproject.org/yocto-kernel-cache;protocol=https;type=kmeta;name=meta;branch=yocto-5.10;destsuffix=${KMETA}"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 LINUX_VERSION ?= "5.10.234"
