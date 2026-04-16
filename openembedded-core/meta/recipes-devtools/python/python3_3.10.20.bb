@@ -37,10 +37,6 @@ SRC_URI = "http://www.python.org/ftp/python/${PV}/Python-${PV}.tar.xz \
            file://0001-Avoid-shebang-overflow-on-python-config.py.patch \
            file://0001-test_storlines-skip-due-to-load-variability.patch \
            file://0001-gh-107811-tarfile-treat-overflow-in-UID-GID-as-failu.patch \
-           file://CVE-2025-6075.patch \
-           file://CVE-2025-13836.patch \
-           file://CVE-2025-13837.patch \
-           file://CVE-2025-12084.patch \
            "
 
 SRC_URI:append:class-native = " \
@@ -49,7 +45,7 @@ SRC_URI:append:class-native = " \
            file://12-distutils-prefix-is-inside-staging-area.patch \
            file://0001-Don-t-search-system-for-headers-libraries.patch \
            "
-SRC_URI[sha256sum] = "c8f4a596572201d81dd7df91f70e177e19a70f1d489968b54b5fbbf29a97c076"
+SRC_URI[sha256sum] = "de6517421601e39a9a3bc3e1bc4c7b2f239297423ee05e282598c83ec0647505"
 
 # exclude pre-releases for both python 2.x and 3.x
 UPSTREAM_CHECK_REGEX = "[Pp]ython-(?P<pver>\d+(\.\d+)+).tar"

@@ -1,6 +1,6 @@
 require pseudo.inc
 
-SRC_URI = "git://git.yoctoproject.org/pseudo;branch=master \
+SRC_URI = "git://git.yoctoproject.org/pseudo;protocol=https;branch=master \
            file://fallback-passwd \
            file://fallback-group \
            "

@@ -276,7 +276,7 @@
                     "expected_results": "this should output the directory of the devtool script and it should be within the sdk workdir you are working in.  \n\n"
                 },
                 "5": {
-                    "action": " 4a) git clone git://git.openembedded.org/meta-openembedded in  layers/build  directory   \n \n4b) Add meta-openembedded/meta-oe in bblayer.conf as mentioned below: ${SDKBASEMETAPATH}/layers/build/meta-openembedded/meta-oe \\   \n\n4c) devtool add \"npm://registry.npmjs.org;name=npm;version=2.2.0\"   \n\n",
+                    "action": " 4a) git clone https://git.openembedded.org/meta-openembedded in  layers/build  directory   \n \n4b) Add meta-openembedded/meta-oe in bblayer.conf as mentioned below: ${SDKBASEMETAPATH}/layers/build/meta-openembedded/meta-oe \\   \n\n4c) devtool add \"npm://registry.npmjs.org;name=npm;version=2.2.0\"   \n\n",
                     "expected_results": " This should automatically create the recipe npm.bb under /recipes/npm/npm.bb  \n\n"
                 },
                 "6": {

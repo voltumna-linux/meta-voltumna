@@ -246,7 +246,7 @@
             ],
             "execution": {
                 "1": {
-                    "action": "Clone eclipse-poky source.   \n    \n    - git clone git://git.yoctoproject.org/eclipse-poky  \n\n",
+                    "action": "Clone eclipse-poky source.   \n    \n    - git clone https://git.yoctoproject.org/eclipse-poky  \n\n",
                     "expected_results": "Eclipse plugin is successfully installed  \n\nDocumentation is there. For example if you have release yocto-2.0.1 you will found on   https://downloads.yoctoproject.org/releases/yocto/yocto-2.0.1/eclipse-plugin/mars/  archive with documentation like org.yocto.doc-development-$date.zip  \n  \n"
                 },
                 "2": {
