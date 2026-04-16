@@ -5,11 +5,11 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 LINUX_VERSION ?= "5.10"
 LINUX_VERSION_EXTENSION ?= "-artesyn"
 
-SRCREV ?= "dfb0fd813aaec29750f08f2a622ba4a225fa10ad"
+SRCREV ?= "1bc794de78433edcb5d004d4fd2c14b2be79597d"
 KBRANCH ?= "artesyn-${LINUX_VERSION}"
 SRC_URI = "git://github.com/voltumna-linux/linux-artesyn.git;protocol=https;branch=${KBRANCH}"
 
-PV = "${LINUX_VERSION}.165+git${SRCPV}"
+PV = "${LINUX_VERSION}.252+git${SRCPV}"
 
 COMPATIBLE_MACHINE = "(mvme2500|mvme5100|mvme6100|mvme7100)"
 
