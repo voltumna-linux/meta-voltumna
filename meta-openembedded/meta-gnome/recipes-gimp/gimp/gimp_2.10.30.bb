@@ -48,6 +48,10 @@ SRC_URI = "https://download.gimp.org/pub/${BPN}/v${SHPV}/${BP}.tar.bz2 \
            file://CVE-2022-32990-1.patch \
            file://CVE-2022-32990-2.patch \
            file://CVE-2022-32990-3.patch \
+           file://CVE-2023-44441.patch \
+           file://CVE-2023-44442.patch \
+           file://CVE-2023-44443_CVE-2023-44444.patch \
+           file://CVE-2025-14422.patch \
            "
 SRC_URI[sha256sum] = "88815daa76ed7d4277eeb353358bafa116cd2fcd2c861d95b95135c1d52b67dc"
 
@@ -75,3 +79,6 @@ RDEPENDS:${PN} += "mypaint-brushes-1.0"
 
 # It has been fixed in version 2.2.16
 CVE_CHECK_IGNORE += "CVE-2007-3741"
+
+# These vulnerabilities were introduced in v3.0
+CVE_CHECK_IGNORE += "CVE-2025-14423 CVE-2025-14224 CVE-2026-2047"
