@@ -13,6 +13,7 @@ SRC_URI = "http://dovecot.org/releases/2.3/dovecot-${PV}.tar.gz \
            file://0001-m4-Check-for-libunwind-instead-of-libunwind-generic.patch \
            file://0001-auth-Fix-handling-passdbs-with-identical-driver-args.patch \
            file://0001-lib-smtp-smtp-server-connection-Fix-STARTTLS-command.patch \
+           file://CVE-2021-29157.patch \
            "
 
 SRC_URI[md5sum] = "2f03532cec3280ae45a101a7a55ccef5"
@@ -78,3 +79,6 @@ FILES:${PN}-dbg += "${libdir}/dovecot/*/.debug"
 
 # CVE-2016-4983 affects only postinstall script on specific distribution
 CVE_CHECK_IGNORE += "CVE-2016-4983"
+
+# cpe-incorrect: The current version (2.3.14) is not affected.
+CVE_CHECK_IGNORE += "CVE-2025-30189"

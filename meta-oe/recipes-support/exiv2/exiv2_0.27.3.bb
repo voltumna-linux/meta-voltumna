@@ -22,6 +22,19 @@ SRC_URI = "https://github.com/Exiv2/${BPN}/releases/download/v${PV}/${BP}-Source
            file://CVE-2021-34334-4.patch \
            file://CVE-2021-34335-1.patch \
            file://CVE-2021-34335-2.patch \
+           file://CVE-2021-37615-1.patch \
+           file://CVE-2021-37615-2.patch \
+           file://CVE-2021-37618.patch \
+           file://CVE-2021-37619.patch \
+           file://CVE-2021-37620-1.patch \
+           file://CVE-2021-37620-2.patch \
+           file://CVE-2021-37621-1.patch \
+           file://CVE-2021-37621-2.patch \
+           file://CVE-2021-37622-1.patch \
+           file://CVE-2021-37622-2.patch \
+           file://CVE-2026-25884.patch \
+           file://CVE-2026-27596-1.patch \
+           file://CVE-2026-27596-2.patch \
            "
 SRC_URI[sha256sum] = "a79f5613812aa21755d578a297874fb59a85101e793edc64ec2c6bd994e3e778"
 
