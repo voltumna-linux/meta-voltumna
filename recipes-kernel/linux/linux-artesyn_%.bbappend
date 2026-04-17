@@ -21,6 +21,10 @@ SRC_URI_append_mvme5100 += " \
 	file://cmdline.cfg \
 	"
 
+SRC_URI_append_mvme6100 += " \
+	file://cmdline.cfg \
+	"
+
 SRC_URI_append_mvme7100 += " \
 	file://cmdline.cfg \
 	"
