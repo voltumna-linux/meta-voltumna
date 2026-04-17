@@ -36,11 +36,13 @@ disable_upload() {
 }
 
 use_initramfs_bundled_kernel() {
-	rm -f ${IMAGE_ROOTFS}/usr/boot/${KERNEL_IMAGETYPE}-*
+	rm -f ${IMAGE_ROOTFS}/usr/boot/${KERNEL_IMAGETYPE}* 
+
+	install -d ${IMAGE_ROOTFS}/usr/boot/
 	cp -r ${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE}-initramfs-${MACHINE}-* \
-		${IMAGE_ROOTFS}/usr/boot
+		${IMAGE_ROOTFS}/usr/boot/
 	rm -f ${IMAGE_ROOTFS}/usr/boot/${KERNEL_IMAGETYPE} 
-	lnr ${IMAGE_ROOTFS}/usr/boot/${KERNEL_IMAGETYPE}-initramfs-${MACHINE}-* \
+	ln -sr ${IMAGE_ROOTFS}/usr/boot/${KERNEL_IMAGETYPE}-initramfs-${MACHINE}-* \
 		${IMAGE_ROOTFS}/usr/boot/${KERNEL_IMAGETYPE} 
 }
 
