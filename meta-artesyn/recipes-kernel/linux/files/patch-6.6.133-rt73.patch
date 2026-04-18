@@ -1639,7 +1639,7 @@ index c536028e92dc..efb6f1c1926a 100644
  
  	uart_remove_one_port(&serial8250_reg, &uart->port);
 diff --git a/drivers/tty/serial/8250/8250_dma.c b/drivers/tty/serial/8250/8250_dma.c
-index 62492cf10bc9..fb85ef075ad6 100644
+index 745a7399c959..cc47fb426d98 100644
 --- a/drivers/tty/serial/8250/8250_dma.c
 +++ b/drivers/tty/serial/8250/8250_dma.c
 @@ -22,7 +22,7 @@ static void __dma_tx_complete(void *param)
@@ -2021,7 +2021,7 @@ index a3b25779d921..53e238c8cc89 100644
  	mutex_unlock(&tport->mutex);
  }
 diff --git a/drivers/tty/serial/8250/8250_port.c b/drivers/tty/serial/8250/8250_port.c
-index 23aed9e89e30..f741f788bdf0 100644
+index c246503c9f80..9c3568b5059a 100644
 --- a/drivers/tty/serial/8250/8250_port.c
 +++ b/drivers/tty/serial/8250/8250_port.c
 @@ -557,6 +557,11 @@ static int serial8250_em485_init(struct uart_8250_port *p)
@@ -2351,7 +2351,7 @@ index 23aed9e89e30..f741f788bdf0 100644
  
  	/*
  	 * Disable break condition and FIFOs
-@@ -2756,14 +2773,14 @@ void serial8250_update_uartclk(struct uart_port *port, unsigned int uartclk)
+@@ -2762,14 +2779,14 @@ void serial8250_update_uartclk(struct uart_port *port, unsigned int uartclk)
  	quot = serial8250_get_divisor(port, baud, &frac);
  
  	serial8250_rpm_get(up);
@@ -2368,7 +2368,7 @@ index 23aed9e89e30..f741f788bdf0 100644
  	serial8250_rpm_put(up);
  
  out_unlock:
-@@ -2800,7 +2817,7 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
+@@ -2806,7 +2823,7 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
  	 * Synchronize UART_IER access against the console.
  	 */
  	serial8250_rpm_get(up);
@@ -2377,7 +2377,7 @@ index 23aed9e89e30..f741f788bdf0 100644
  
  	up->lcr = cval;					/* Save computed LCR */
  
-@@ -2903,7 +2920,7 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
+@@ -2909,7 +2926,7 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
  		serial_port_out(port, UART_FCR, up->fcr);	/* set fcr */
  	}
  	serial8250_set_mctrl(port, port->mctrl);
@@ -2386,7 +2386,7 @@ index 23aed9e89e30..f741f788bdf0 100644
  	serial8250_rpm_put(up);
  
  	/* Don't rewrite B0 */
-@@ -2926,15 +2943,15 @@ void serial8250_do_set_ldisc(struct uart_port *port, struct ktermios *termios)
+@@ -2932,15 +2949,15 @@ void serial8250_do_set_ldisc(struct uart_port *port, struct ktermios *termios)
  {
  	if (termios->c_line == N_PPS) {
  		port->flags |= UPF_HARDPPS_CD;
@@ -2406,7 +2406,7 @@ index 23aed9e89e30..f741f788bdf0 100644
  		}
  	}
  }
-@@ -3331,6 +3348,11 @@ static void serial8250_console_putchar(struct uart_port *port, unsigned char ch)
+@@ -3337,6 +3354,11 @@ static void serial8250_console_putchar(struct uart_port *port, unsigned char ch)
  
  	wait_for_xmitr(up, UART_LSR_THRE);
  	serial_port_out(port, UART_TX, ch);
@@ -2418,7 +2418,7 @@ index 23aed9e89e30..f741f788bdf0 100644
  }
  
  /*
-@@ -3359,6 +3381,7 @@ static void serial8250_console_restore(struct uart_8250_port *up)
+@@ -3365,6 +3387,7 @@ static void serial8250_console_restore(struct uart_8250_port *up)
  	serial8250_out_MCR(up, up->mcr | UART_MCR_DTR | UART_MCR_RTS);
  }
  
@@ -2426,7 +2426,7 @@ index 23aed9e89e30..f741f788bdf0 100644
  static void fifo_wait_for_lsr(struct uart_8250_port *up, unsigned int count)
  {
  	unsigned int i;
-@@ -3428,15 +3451,15 @@ void serial8250_console_write(struct uart_8250_port *up, const char *s,
+@@ -3434,15 +3457,15 @@ void serial8250_console_write(struct uart_8250_port *up, const char *s,
  	touch_nmi_watchdog();
  
  	if (oops_in_progress)
@@ -2445,7 +2445,7 @@ index 23aed9e89e30..f741f788bdf0 100644
  
  	/* check scratch reg to see if port powered off during system sleep */
  	if (up->canary && (up->canary != serial_port_in(port, UART_SCR))) {
-@@ -3500,8 +3523,137 @@ void serial8250_console_write(struct uart_8250_port *up, const char *s,
+@@ -3506,8 +3529,137 @@ void serial8250_console_write(struct uart_8250_port *up, const char *s,
  		serial8250_modem_status(up);
  
  	if (locked)
@@ -2584,7 +2584,7 @@ index 23aed9e89e30..f741f788bdf0 100644
  
  static unsigned int probe_baud(struct uart_port *port)
  {
-@@ -3520,6 +3672,7 @@ static unsigned int probe_baud(struct uart_port *port)
+@@ -3526,6 +3678,7 @@ static unsigned int probe_baud(struct uart_port *port)
  
  int serial8250_console_setup(struct uart_port *port, char *options, bool probe)
  {
@@ -2592,7 +2592,7 @@ index 23aed9e89e30..f741f788bdf0 100644
  	int baud = 9600;
  	int bits = 8;
  	int parity = 'n';
-@@ -3529,6 +3682,8 @@ int serial8250_console_setup(struct uart_port *port, char *options, bool probe)
+@@ -3535,6 +3688,8 @@ int serial8250_console_setup(struct uart_port *port, char *options, bool probe)
  	if (!port->iobase && !port->membase)
  		return -ENODEV;
  
@@ -8905,7 +8905,7 @@ index 0859394a78cd..0cc6524f5e8b 100644
  
  static const char *timbuart_type(struct uart_port *port)
 diff --git a/drivers/tty/serial/uartlite.c b/drivers/tty/serial/uartlite.c
-index 9f39bafa7fa9..9ffe82235af7 100644
+index c5a85db7a8f1..cb3ab40c2709 100644
 --- a/drivers/tty/serial/uartlite.c
 +++ b/drivers/tty/serial/uartlite.c
 @@ -216,11 +216,11 @@ static irqreturn_t ulite_isr(int irq, void *dev_id)
@@ -10130,7 +10130,7 @@ index 2e0f75bcb7fd..5253d3d2d013 100644
  
  		if (ti_work & _TIF_NOTIFY_RESUME)
 diff --git a/kernel/futex/pi.c b/kernel/futex/pi.c
-index ce2889f12375..d636a1bbd7d0 100644
+index 9496084b6dcd..9c80b92defc2 100644
 --- a/kernel/futex/pi.c
 +++ b/kernel/futex/pi.c
 @@ -1,6 +1,7 @@
@@ -10174,7 +10174,7 @@ index ce2889f12375..d636a1bbd7d0 100644
  	new_owner = top_waiter->task;
  
  	/*
-@@ -1002,6 +990,12 @@ int futex_lock_pi(u32 __user *uaddr, unsigned int flags, ktime_t *time, int tryl
+@@ -1003,6 +991,12 @@ int futex_lock_pi(u32 __user *uaddr, unsigned int flags, ktime_t *time, int tryl
  		goto no_block;
  	}
  
@@ -10187,7 +10187,7 @@ index ce2889f12375..d636a1bbd7d0 100644
  	rt_mutex_init_waiter(&rt_waiter);
  
  	/*
-@@ -1039,19 +1033,37 @@ int futex_lock_pi(u32 __user *uaddr, unsigned int flags, ktime_t *time, int tryl
+@@ -1040,19 +1034,37 @@ int futex_lock_pi(u32 __user *uaddr, unsigned int flags, ktime_t *time, int tryl
  	ret = rt_mutex_wait_proxy_lock(&q.pi_state->pi_mutex, to, &rt_waiter);
  
  cleanup:
@@ -10231,7 +10231,7 @@ index ce2889f12375..d636a1bbd7d0 100644
  no_block:
  	/*
  	 * Fixup the pi_state owner and possibly acquire the lock if we
-@@ -1132,6 +1144,7 @@ int futex_unlock_pi(u32 __user *uaddr, unsigned int flags)
+@@ -1133,6 +1145,7 @@ int futex_unlock_pi(u32 __user *uaddr, unsigned int flags)
  	top_waiter = futex_top_waiter(hb, &key);
  	if (top_waiter) {
  		struct futex_pi_state *pi_state = top_waiter->pi_state;
@@ -10239,7 +10239,7 @@ index ce2889f12375..d636a1bbd7d0 100644
  
  		ret = -EINVAL;
  		if (!pi_state)
-@@ -1144,22 +1157,39 @@ int futex_unlock_pi(u32 __user *uaddr, unsigned int flags)
+@@ -1145,22 +1158,39 @@ int futex_unlock_pi(u32 __user *uaddr, unsigned int flags)
  		if (pi_state->owner != current)
  			goto out_unlock;
  
@@ -10285,7 +10285,7 @@ index ce2889f12375..d636a1bbd7d0 100644
  
  		put_pi_state(pi_state);
  
-@@ -1187,6 +1217,7 @@ int futex_unlock_pi(u32 __user *uaddr, unsigned int flags)
+@@ -1188,6 +1218,7 @@ int futex_unlock_pi(u32 __user *uaddr, unsigned int flags)
  		return ret;
  	}
  
@@ -14590,7 +14590,7 @@ index 115e266db76b..90028c5ba31a 100644
  }
  late_initcall(sched_init_debug);
 diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
-index de205ecc1474..f26f4fcd281a 100644
+index cdf49a04fd58..b8eda56ba6d8 100644
 --- a/kernel/sched/fair.c
 +++ b/kernel/sched/fair.c
 @@ -1022,8 +1022,10 @@ static void clear_buddies(struct cfs_rq *cfs_rq, struct sched_entity *se);
@@ -14721,7 +14721,7 @@ index de205ecc1474..f26f4fcd281a 100644
  }
  
  #ifdef CONFIG_SMP
-@@ -12590,7 +12606,7 @@ static inline void task_tick_core(struct rq *rq, struct task_struct *curr)
+@@ -12584,7 +12600,7 @@ static inline void task_tick_core(struct rq *rq, struct task_struct *curr)
  	 */
  	if (rq->core->core_forceidle_count && rq->cfs.nr_running == 1 &&
  	    __entity_slice_used(&curr->se, MIN_NR_TASKS_DURING_FORCEIDLE))
@@ -14730,7 +14730,7 @@ index de205ecc1474..f26f4fcd281a 100644
  }
  
  /*
-@@ -12755,7 +12771,7 @@ prio_changed_fair(struct rq *rq, struct task_struct *p, int oldprio)
+@@ -12749,7 +12765,7 @@ prio_changed_fair(struct rq *rq, struct task_struct *p, int oldprio)
  	 */
  	if (task_current(rq, p)) {
  		if (p->prio > oldprio)
@@ -14750,7 +14750,7 @@ index 48b104ab579c..7c5ad17bede3 100644
 +
 +SCHED_FEAT(FORCE_NEED_RESCHED, false)
 diff --git a/kernel/sched/idle.c b/kernel/sched/idle.c
-index 565f8374ddbb..22d70000ab59 100644
+index 20a8f0f972e6..e2781c336317 100644
 --- a/kernel/sched/idle.c
 +++ b/kernel/sched/idle.c
 @@ -57,8 +57,7 @@ static noinline int __cpuidle cpu_idle_poll(void)
@@ -15036,7 +15036,7 @@ index 4a2aeaa85af3..ad3cad537541 100644
  
  /*
 diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
-index 29720531ac81..b0ff1a4e352b 100644
+index 6b35666a4e0b..7ff555a51a0b 100644
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
 @@ -2709,6 +2709,8 @@ unsigned int tracing_gen_ctx_irq_test(unsigned int irqs_status)
@@ -15086,11 +15086,11 @@ index 448ee37ae245..6816eca297d7 100644
  		break;
 diff --git a/localversion-rt b/localversion-rt
 new file mode 100644
-index 000000000000..f36b5d418dd8
+index 000000000000..e8ada8cdb471
 --- /dev/null
 +++ b/localversion-rt
 @@ -0,0 +1 @@
-+-rt70
++-rt73
 diff --git a/net/core/dev.c b/net/core/dev.c
 index 56b6797589f5..7c78d074cb70 100644
 --- a/net/core/dev.c
@@ -15176,10 +15176,10 @@ index 4c28954f915f..ca1b26966767 100644
  
  static void skb_splice_csum_page(struct sk_buff *skb, struct page *page,
 diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-index ad452a04d729..2dfafa932209 100644
+index c5b71baf95e7..abb41bd726ed 100644
 --- a/net/ipv6/route.c
 +++ b/net/ipv6/route.c
-@@ -1471,7 +1471,18 @@ static struct rt6_info *rt6_make_pcpu_route(struct net *net,
+@@ -1472,7 +1472,18 @@ static struct rt6_info *rt6_make_pcpu_route(struct net *net,
  
  	p = this_cpu_ptr(res->nh->rt6i_pcpu);
  	prev = cmpxchg(p, NULL, pcpu_rt);
