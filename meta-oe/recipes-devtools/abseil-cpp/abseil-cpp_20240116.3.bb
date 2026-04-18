@@ -53,3 +53,5 @@ python split_dynamic_packages() {
 ALLOW_EMPTY:${PN} = "1"
 
 BBCLASSEXTEND = "native nativesdk"
+
+CVE_STATUS[CVE-2025-0838] = "cpe-incorrect: The current version (20240116.3) is not affected."

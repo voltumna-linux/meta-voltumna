@@ -25,3 +25,4 @@ RDEPENDS:${PN} += " \
 
 CVE_STATUS[CVE-2025-66221] = "not-applicable-platform: The vulnerability is Windows specific"
 CVE_STATUS[CVE-2026-21860] = "not-applicable-platform: The vulnerability is Windows specific"
+CVE_STATUS[CVE-2026-27199] = "not-applicable-platform: The vulnerability is Windows specific"

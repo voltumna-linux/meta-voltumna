@@ -1,7 +1,7 @@
 DESCRIPTION = "nodeJS Evented I/O for V8 JavaScript"
 HOMEPAGE = "http://nodejs.org"
 LICENSE = "MIT & ISC & BSD-2-Clause & BSD-3-Clause & Artistic-2.0 & Apache-2.0"
-LIC_FILES_CHKSUM = "file://LICENSE;md5=ac91fab5dbaf757274d2b29888f943ef"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=b8b1791ae7a2ae99e12e2caf6218c890"
 
 CVE_PRODUCT = "nodejs node.js"
 
@@ -33,7 +33,7 @@ SRC_URI:append:class-target = " \
 SRC_URI:append:toolchain-clang:powerpc64le = " \
            file://0001-ppc64-Do-not-use-mminimal-toc-with-clang.patch \
            "
-SRC_URI[sha256sum] = "5294d9d2915620e819e6892fd7e545b98d650bad36dae54e6527eaac482add98"
+SRC_URI[sha256sum] = "7aeeacdb858299e09a3e0510d4bb8b266923894a9e3ac0058ba89d4ecf4a4cca"
 
 S = "${WORKDIR}/node-v${PV}"
 

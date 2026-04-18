@@ -12,7 +12,8 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=5308494bc0590c0cb036afd781d78f06"
 SRC_URI = "git://github.com/NLnetLabs/unbound.git;protocol=https;nobranch=1 \
            file://CVE-2024-8508.patch \
            file://CVE-2024-33655.patch \
-           file://CVE-2025-11411.patch \
+           file://0001-CVE-2025-11411-1.patch \
+           file://0002-CVE-2025-11411-2.patch \
            file://CVE-2024-43167.patch \
            file://CVE-2024-43168_1.patch \
            file://CVE-2024-43168_2.patch \

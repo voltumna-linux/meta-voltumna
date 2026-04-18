@@ -1,0 +1,81 @@
+From 4b0a7a2ca9fb9019327f61da1e0ca5e72aec89e4 Mon Sep 17 00:00:00 2001
+From: Jinfeng Wang <jinfeng.wang.cn@windriver.com>
+Date: Fri, 10 Apr 2026 11:08:48 +0800
+Subject: [PATCH] nmap: fix PCAP_SOCKET enum conflict with libpcap >= 1.10.5
+
+The enum PCAP_SOCKET conflicts with the PCAP_SOCKET macro introduced in
+libpcap 1.10.5 and fails to compile:
+
+In file included from /path_to/tmp-glibc/work/corei7-64-wrs-linux/nmap/7.80/recipe-sysroot/usr/include/pcap/pcap.h:130,
+                 from /path_to/tmp-glibc/work/corei7-64-wrs-linux/nmap/7.80/recipe-sysroot/usr/include/pcap.h:43,
+                 from tcpip.h:140,
+                 from nse_nsock.cc:4:
+nse_nsock.cc:36:3: error: expected identifier before 'int'
+   36 |   PCAP_SOCKET = lua_upvalueindex(3), /* pcap socket metatable */
+      |   ^~~~~~~~~~~
+
+The enum PCAP_SOCKET is removed in nmap later version. But the removal commit
+involves extra logic change, so just rename the enum PCAP_SOCKET to
+NM_PCAP_SOCKET to make it work with libpcap >= 1.10.5.
+
+Upstream-Status: Inappropriate [fix to work with libpcap >= 1.10.5]
+
+Signed-off-by: Jinfeng Wang <jinfeng.wang.cn@windriver.com>
+---
+ nse_nsock.cc | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/nse_nsock.cc b/nse_nsock.cc
+index df98666..db942e1 100644
+--- a/nse_nsock.cc
++++ b/nse_nsock.cc
+@@ -33,7 +33,11 @@
+ enum {
+   NSOCK_POOL = lua_upvalueindex(1),
+   NSOCK_SOCKET = lua_upvalueindex(2), /* nsock socket metatable */
++#ifdef PCAP_SOCKET
++  NM_PCAP_SOCKET = lua_upvalueindex(3), /* pcap socket metatable */
++#else
+   PCAP_SOCKET = lua_upvalueindex(3), /* pcap socket metatable */
++#endif
+   THREAD_SOCKETS = lua_upvalueindex(4), /* <Thread, Table of Sockets (keys)> */
+   CONNECT_WAITING = lua_upvalueindex(5), /* Threads waiting to lock */
+   KEY_PCAP = lua_upvalueindex(6) /* Keys to pcap sockets */
+@@ -1026,7 +1030,11 @@ static int l_pcap_open (lua_State *L)
+       nsock_iod_delete(*nsiod, NSOCK_PENDING_ERROR);
+       luaL_error(L, "can't open pcap reader on %s", device);
+     }
++#ifdef PCAP_SOCKET
++    lua_pushvalue(L, NM_PCAP_SOCKET);
++#else
+     lua_pushvalue(L, PCAP_SOCKET);
++#endif
+     lua_setmetatable(L, -2);
+     lua_pushvalue(L, 7); /* the pcap socket key */
+     lua_pushvalue(L, -2); /* the pcap socket nsiod */
+@@ -1134,7 +1142,7 @@ LUALIB_API int luaopen_nsock (lua_State *L)
+   /* library upvalues */
+   nsock_pool nsp = new_pool(L); /* NSOCK_POOL */
+   lua_newtable(L); /* NSOCK_SOCKET */
+-  lua_newtable(L); /* PCAP_SOCKET */
++  lua_newtable(L); /* NM_PCAP_SOCKET or PCAP_SOCKET depending on libpcap version */
+   nseU_weaktable(L, 0, MAX_PARALLELISM, "k"); /* THREAD_SOCKETS */
+   nseU_weaktable(L, 0, 1000, "k"); /* CONNECT_WAITING */
+   nseU_weaktable(L, 0, 0, "v"); /* KEY_PCAP */
+@@ -1154,11 +1162,11 @@ LUALIB_API int luaopen_nsock (lua_State *L)
+   lua_pop(L, 1); /* NSOCK_SOCKET */
+ 
+   /* Create the nsock pcap metatable */
+-  lua_pushvalue(L, top+3); /* PCAP_SOCKET */
++  lua_pushvalue(L, top+3); /* NM_PCAP_SOCKET or PCAP_SOCKET depending on libpcap version */
+   for (i = top+1; i <= top+nupvals; i++) lua_pushvalue(L, i);
+   lua_pushcclosure(L, pcap_gc, nupvals);
+   lua_setfield(L, top+3, "__gc");
+-  lua_pop(L, 1); /* PCAP_SOCKET */
++  lua_pop(L, 1); /* NM_PCAP_SOCKET or PCAP_SOCKET depending on libpcap version */
+ 
+ #if HAVE_OPENSSL
+   /* Set up the SSL certificate userdata code in nse_ssl_cert.cc. */
+-- 
+2.34.1
+

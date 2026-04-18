@@ -10,6 +10,7 @@ inherit pypi setuptools3 python3native ptest
 
 SRC_URI += " \
 	file://run-ptest \
+	file://CVE-2026-33936.patch \
 "
 
 RDEPENDS:${PN}-ptest += " \
