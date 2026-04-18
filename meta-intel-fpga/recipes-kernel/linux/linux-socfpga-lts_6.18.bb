@@ -1,8 +1,10 @@
-LINUX_VERSION = "6.6.51"
+LINUX_VERSION = "6.18.2"
 LINUX_VERSION_SUFFIX = "-lts"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 
-SRCREV = "7dddbad0a3a725b140b8fc4621159cd4628374a8"
+SRCREV = "b2496f2fcb06db4d598d0073ad0e9e9be99b9288"
+
+do_kernel_configcheck[noexec] = "1"
 
 include linux-socfpga.inc

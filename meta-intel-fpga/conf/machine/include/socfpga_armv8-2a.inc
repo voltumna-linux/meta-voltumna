@@ -1,6 +1,6 @@
 require conf/machine/include/arm/arch-armv8-2a.inc
 
-KERNEL_PROVIDER ?= "linux-socfpga"
+KERNEL_PROVIDER ?= "linux-socfpga-lts"
 PREFERRED_PROVIDER_virtual/kernel ?= "${KERNEL_PROVIDER}"
 KERNEL_IMAGETYPE ?= "Image"
 MACHINE_EXTRA_RRECOMMENDS:append = " kernel-modules"
