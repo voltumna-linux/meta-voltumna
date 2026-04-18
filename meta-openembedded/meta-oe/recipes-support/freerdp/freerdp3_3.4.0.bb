@@ -20,6 +20,23 @@ SRC_URI = "git://github.com/FreeRDP/FreeRDP.git;branch=master;protocol=https \
            file://CVE-2024-32661.patch \
            file://CVE-2024-32662.patch \
            file://CVE-2025-4478.patch \
+           file://CVE-2026-25941.patch \
+           file://CVE-2026-33952.patch \
+           file://CVE-2026-23948.patch \
+           file://CVE-2026-24491.patch \
+           file://CVE-2026-24675.patch \
+           file://CVE-2026-24676.patch \
+           file://CVE-2026-24679.patch \
+           file://CVE-2026-24680_CVE-2026-27950.patch \
+           file://CVE-2026-24681.patch \
+           file://CVE-2026-24682.patch \
+           file://CVE-2026-24683.patch \
+           file://CVE-2026-29774.patch \
+           file://CVE-2026-29775.patch \
+           file://CVE-2026-29776.patch \
+           file://CVE-2026-31806.patch \
+           file://CVE-2026-31897.patch \
+           file://CVE-2026-33984.patch \
            "
 
 S = "${WORKDIR}/git"
@@ -75,3 +92,5 @@ do_configure:append() {
 FILES:${PN} += "${datadir}"
 
 CVE_STATUS[CVE-2025-68118] = "not-applicable-platform: only affects Windows"
+CVE_STATUS[CVE-2026-24677] = "cpe-incorrect: The current version (3.4.0) is not affected."
+CVE_STATUS[CVE-2026-24678] = "cpe-incorrect: The current version (3.4.0) is not affected."

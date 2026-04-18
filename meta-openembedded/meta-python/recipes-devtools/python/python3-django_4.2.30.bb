@@ -2,7 +2,7 @@ require python-django.inc
 inherit python_setuptools_build_meta
 
 SRC_URI += "file://0001-lower-setuptools-requirements.patch"
-SRC_URI[sha256sum] = "86d91bc8086569c8d08f9c55888b583a921ac1f95ed3bdc7d5659d4709542014"
+SRC_URI[sha256sum] = "4ebc7a434e3819db6cf4b399fb5b3f536310a30e8486f08b66886840be84b37c"
 
 RDEPENDS:${PN} += "\
     python3-sqlparse \

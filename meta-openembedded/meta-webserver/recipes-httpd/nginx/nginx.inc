@@ -28,6 +28,7 @@ SRC_URI = " \
     file://CVE-2025-53859.patch \
     file://CVE-2025-23419.patch \
     file://CVE-2026-1642.patch \
+    file://CVE-2026-27784.patch \
 "
 
 inherit siteinfo update-rc.d useradd systemd

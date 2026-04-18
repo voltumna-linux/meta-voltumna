@@ -14,3 +14,5 @@ S = "${WORKDIR}/git"
 inherit autotools pkgconfig
 
 DEPENDS = "jpeg jasper lcms"
+
+CVE_STATUS[CVE-2026-5318] = "cpe-incorrect: The current version (0.21.2) is not affected."
