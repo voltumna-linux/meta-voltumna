@@ -13,6 +13,5 @@ patch 0054-spi-spi_amd-Add-HIDDMA-basic-write-support.patch
 patch 0066-espi-amd-eSPI-driver-for-v3000.patch
 patch 0067-spi-amd-espi-Make-in-band-reset-optional-via-kernel-1.patch
 patch 0068-espi-driver-update-for-v6.12-kernel.patch
-patch 0069-powerprofiler-driver-update-for-v6.12-kernel.patch
 patch 0074-spi-spi_amd-Add-PCI-based-driver-for-AMD-HID2-SPI-co.patch
 patch 0075-spi-spi_amd-Add-HIDDMA-basic-write-support1.patch
