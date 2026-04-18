@@ -5,13 +5,13 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
 LINUX_VERSION ?= "6.6"
 LINUX_VERSION_EXTENSION ?= "-artesyn"
 
-SRCREV ?= "4fc00fe35d46b4fc8dac2eb543a0e3d44bb15f47"
-KBRANCH ?= "linux-6.6.y"
-SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git;protocol=https;branch=${KBRANCH}"
+SRCREV ?= "751be61323326c4df376906d3b7dea94ec6fee72"
+KBRANCH ?= "artesyn-${LINUX_VERSION}"
+SRC_URI = "git://github.com/voltumna-linux/linux-artesyn.git;protocol=https;branch=${KBRANCH}"
 
 PV = "${LINUX_VERSION}.129+git${SRCPV}"
 
-COMPATIBLE_MACHINE = "(mvme5100|mvme2500|mvme7100)"
+COMPATIBLE_MACHINE = "(mvme2500|mvme5100|mvme6100|mvme7100)"
 
 DEPENDS:append:mvme2500 = " u-boot-mkimage-native"
 
@@ -20,31 +20,13 @@ DEPENDS:append:mvme2500 = " u-boot-mkimage-native"
 # KBUILD_DEFCONFIG_mvme2500 ?= "mpc85xx_defconfig"
 # KCONFIG_MODE ?= "--alldefconfig"
 
-# FIXME
-#	file://0001-MVME5100-RTC-patch-for-Linux-3.14.patch
 SRC_URI:append = " \
 	file://defconfig \
 	file://enable_compat_time.cfg \
 	file://altivec.cfg \
 	file://devtmpfs.cfg \
 	file://vme.cfg \
-	file://0002-Add-device-tree-entry-for-rtc.patch \
-	file://0003-powerpc-embedded6xx-Make-reboot-works-on-MVME5100.patch \
-	file://0001-Enable-L2-cache-on-all-cores.patch \
-	file://0002-Enable-RTC-and-PCI.patch \
-	file://0003-Try-to-add-PCI-interrupt-definition.patch \
 	file://enable-pci-realloc.cfg \
-	file://0002-Fix-an-LBC-window-length.patch \
-	file://0004-Workaround-for-let-VME-grab-the-right-IRQ-0.patch \
-	file://0005-Remove-add-empty-lines.patch \
-	file://0006-Add-commented-code-of-the-interrupt-handlers-for-IRQ.patch \
-	file://0007-The-phy-s-compatible-isn-t-necessary-anymore.patch \
-	file://0008-Add-SMP-support.patch \
-        file://0001-vme-restore-VME-subsystem-and-ca91cx42-driver-with-D.patch \
-	file://0009-Add-a-complete-proc-file-for-VME.patch \
-        file://0002-ptp-ptp_qoriq-fix-NULL-pointer-dereference-on-probe-.patch \
-        file://0001-powerpc-embedded6xx-mvme5100-fix-NULL-dereference-on.patch \
-        file://let-smp-buildable-on-MVME5100.patch \
 	"
 
 require recipes-kernel/linux/linux-yocto.inc
