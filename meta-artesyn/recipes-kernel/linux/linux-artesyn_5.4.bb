@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=bbea815ee2795b2f4230826c0c6b8814"
 LINUX_VERSION ?= "5.4"
 LINUX_VERSION_EXTENSION ?= "-artesyn"
 
-SRCREV ?= "e2d8438e2c6c56ae7c68d75bd98df9d72bf25324"
+SRCREV ?= "8714ee1344dcd1c0495b16bd15da2bb61540e914"
 KBRANCH ?= "artesyn-${LINUX_VERSION}"
 SRC_URI = "git://github.com/voltumna-linux/linux-artesyn.git;protocol=https;branch=${KBRANCH}"
 
