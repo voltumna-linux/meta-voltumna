@@ -1,2 +1,3 @@
 patch 0066-Enable-I2C-slave-controller-support-via-ACPI-REG-met.patch
+patch 0078-i2c-designware-change-i2c_dw_acpi_reg_method-return-.patch
 
