@@ -42,41 +42,45 @@ INSANE_SKIP:${PN} += "file-rdeps buildpaths"
 INSANE_SKIP:${PN}-dbg += "buildpaths"
 
 # Only need native tools for building, LLVM 20.1 is bundled
-# ncurses needed for libedit (LLVM dependency)
-DEPENDS = "bison-native flex-native ninja-native ncurses"
+# ARCHITECTURAL NOTE: This recipe uses a superbuild approach that builds LLVM internally.
+# CMake isolation flags prevent the superbuild from finding libraries in recipe-sysroot-native.
+# 
+# DEPENDS: Only native build tools, NO native libraries
+DEPENDS = "bison-native flex-native ninja-native"
 RDEPENDS:${PN}-ptest += "bash python3-multiprocessing"
 
 PACKAGECONFIG ??= ""
 # Default to Threads tasking model; override with TBB if enabled
 PACKAGECONFIG[tbb] = "-DISPCRT_BUILD_TASK_MODEL=TBB, , tbb"
 
-do_compile:prepend() {
-    # Clean OE-specific flags from toolchain files for bundled LLVM build
-    for toolchain in stage1-toolchain.cmake stage2-toolchain.cmake; do
-        [ -f ${B}/${toolchain} ] || continue
-        sed -i -e 's|set(CMAKE_C\(XX\)\?_FLAGS.*|set(CMAKE_C\1_FLAGS "")|g' \
-               -e 's|set(CMAKE_\(EXE\|SHARED\|MODULE\)_LINKER_FLAGS.*|set(CMAKE_\1_LINKER_FLAGS "")|g' \
-               ${B}/${toolchain}
-    done
-    
-    # Use native compilers for stage1
-    [ -f ${B}/stage1-toolchain.cmake ] && sed -i \
-        -e "s|set(CMAKE_C_COMPILER   cc)|set(CMAKE_C_COMPILER   ${BUILD_CC})|" \
-        -e "s|set(CMAKE_CXX_COMPILER c++)|set(CMAKE_CXX_COMPILER ${BUILD_CXX})|" \
-        ${B}/stage1-toolchain.cmake && \
-        echo "set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)" >> ${B}/stage1-toolchain.cmake
-}
-
-
-
 # Use superbuild with bundled LLVM 20.1
 OECMAKE_SOURCEPATH = "${S}/superbuild"
 
+# Minimal patching of generated toolchain files to use full compiler paths
+do_configure:append() {
+    for toolchain in stage1-toolchain.cmake stage2-toolchain.cmake; do
+        if [ -f ${B}/${toolchain} ]; then
+            # Replace symbolic compiler names with full paths for Yocto build environment
+            sed -i -e "s|set(CMAKE_C_COMPILER   cc)|set(CMAKE_C_COMPILER   ${BUILD_CC})|" \
+                   -e "s|set(CMAKE_CXX_COMPILER c++)|set(CMAKE_CXX_COMPILER ${BUILD_CXX})|" \
+                   ${B}/${toolchain}
+            
+            # Clear Yocto cross-compilation flags incompatible with host superbuild
+            sed -i -e 's|set(CMAKE_C\(XX\)\?_FLAGS .*|set(CMAKE_C\1_FLAGS "" CACHE STRING "CFLAGS")|' \
+                   -e 's|set(CMAKE_\(EXE\|SHARED\|MODULE\)_LINKER_FLAGS .*|set(CMAKE_\1_LINKER_FLAGS "" CACHE STRING "LDFLAGS")|' \
+                   ${B}/${toolchain}
+        fi
+    done
+}
+
 EXTRA_OECMAKE += " \
                   --preset os \
-                  -G Ninja \
                   -DLLVM_VERSION=20.1 \
                   -DLLVM_DISABLE_ASSERTIONS=ON \
+                  -DLLVM_ENABLE_LIBEDIT=OFF \
+                  -DLLVM_ENABLE_TERMINFO=OFF \
+                  -DLLVM_ENABLE_ZLIB=OFF \
+                  -DLLVM_ENABLE_ZSTD=OFF \
                   -DLLVM_URL=${UNPACKDIR}/git/llvm-project \
                   -DVC_INTRINSICS_URL=${UNPACKDIR}/git/vc-intrinsics \
                   -DVC_INTRINSICS_SHA=${SRCREV_vc} \
@@ -98,16 +102,25 @@ EXTRA_OECMAKE += " \
                   -DISPC_IOS_TARGET=OFF \
                   -DISPC_PS_TARGET=OFF \
                   -DXE_DEPS=OFF \
+                  -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=NEVER \
+                  -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=NEVER \
+                  -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=NEVER \
                   "
 
 do_compile() {
-    # Unset OE-specific flags for stage1 LLVM build
-    export CFLAGS_FOR_BUILD=""
-    export CXXFLAGS_FOR_BUILD=""
-    export LDFLAGS_FOR_BUILD=""
-    
     bbnote "Building ispc with bundled LLVM 20.1"
-    cmake --build "${B}" --target all -- ${EXTRA_OECMAKEBUILD}
+    
+    # Scope environment clearing to just the cmake build command
+    # This prevents Yocto cross-compilation flags from contaminating the host superbuild
+    env \
+        CFLAGS= \
+        CXXFLAGS= \
+        CPPFLAGS= \
+        LDFLAGS= \
+        CMAKE_PREFIX_PATH= \
+        CMAKE_LIBRARY_PATH= \
+        CMAKE_INCLUDE_PATH= \
+        cmake --build "${B}" --target all -- ${EXTRA_OECMAKEBUILD}
 }
 
 # Superbuild installs ispc to build/ispc-stage2 instead of ${D}
@@ -123,9 +136,9 @@ do_install:append:class-target() {
     install -m 0755 ${S}/scripts/run_tests.py ${D}${libdir}/ispc/gio/
     install -m 0644 ${S}/scripts/common.py ${D}${libdir}/ispc/gio/
     cp -r ${S}/tests ${D}${libdir}/ispc/gio/
-    cp ${S}/test_static.isph ${D}${libdir}/ispc/gio/ || true
-    cp ${S}/fail_db.txt ${D}${libdir}/ispc/gio/ || true
-    cp ${S}/test_static.cpp ${D}${libdir}/ispc/gio/ || true
+    cp ${S}/tests/test_static.isph ${D}${libdir}/ispc/gio/ || true
+    cp ${S}/tests/fail_db.txt ${D}${libdir}/ispc/gio/ || true
+    cp ${S}/tests/test_static.cpp ${D}${libdir}/ispc/gio/ || true
 }
 
 do_install_ptest:class-target() {
@@ -133,14 +146,10 @@ do_install_ptest:class-target() {
     install -m 0755 ${S}/scripts/run_tests.py ${D}${PTEST_PATH}/
     install -m 0644 ${S}/scripts/common.py ${D}${PTEST_PATH}/
     cp -r ${S}/tests ${D}${PTEST_PATH}/
-    cp ${S}/test_static.isph ${D}${PTEST_PATH}/ || true
-    cp ${S}/fail_db.txt ${D}${PTEST_PATH}/ || true
-    cp ${S}/test_static.cpp ${D}${PTEST_PATH}/ || true
+    cp ${S}/tests/test_static.isph ${D}${PTEST_PATH}/ || true
+    cp ${S}/tests/fail_db.txt ${D}${PTEST_PATH}/ || true
+    cp ${S}/tests/test_static.cpp ${D}${PTEST_PATH}/ || true
 }
-
-PACKAGES:prepend:class-target = "${PN}-test "
-FILES:${PN}-test:class-target = "${libdir}/ispc/gio/*"
-RDEPENDS:${PN}-test:class-target += "bash python3-multiprocessing ${PN}"
 
 pkg_postinst:${PN}() {
     #!/bin/sh
