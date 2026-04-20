@@ -17,7 +17,6 @@ def get_cpu_instruction_set(bb, d):
 
 EXTRA_OEMESON = " -Dexamples=all -Dcpu_instruction_set=${@get_cpu_instruction_set(bb, d)} "
 
-COMPATIBLE_MACHINE = "null"
 COMPATIBLE_HOST:libc-musl:class-target = "null"
 COMPATIBLE_HOST:linux-gnux32 = "null"
 

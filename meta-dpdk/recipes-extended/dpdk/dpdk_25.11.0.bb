@@ -16,8 +16,8 @@ def get_cpu_instruction_set(bb, d):
         return "core2"
 
 EXTRA_OEMESON = " -Dexamples=all -Dcpu_instruction_set=${@get_cpu_instruction_set(bb, d)} "
+EXTRA_OEMESON:append:class-target = " --cross-file ${WORKDIR}/dpdk.cross"
 
-COMPATIBLE_MACHINE = "null"
 COMPATIBLE_HOST:libc-musl:class-target = "null"
 COMPATIBLE_HOST:linux-gnux32 = "null"
 
@@ -32,6 +32,15 @@ DEPENDS = "numactl python3-pyelftools-native"
 inherit meson pkgconfig
 
 INSTALL_PATH = "${prefix}/share/dpdk"
+
+RTE_PLATFORM ?= "generic"
+
+do_write_config:append() {
+    cat >${WORKDIR}/dpdk.cross <<EOF
+[properties]
+platform = '${RTE_PLATFORM}'
+EOF
+}
 
 do_install:append(){
     # remove  source files
