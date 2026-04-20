@@ -2,10 +2,10 @@ DEFAULTTUNE ?= "zen4"
 
 require conf/machine/include/tune-zen3.inc
 
-TUNEVALID[zen4] = "Enable AMD x86 (64 bit) Zen 3 Core Architecture specific optimizations"
+TUNEVALID[zen4] = "Enable AMD x86 (64 bit) Zen 4 Core Architecture specific optimizations"
 TUNECONFLICTS[zen4] = "m32 mx32"
 
-TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'zen4', ' -march=znver3', '', d)}"
+TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'zen4', ' -march=znver4', '', d)}"
 MACHINEOVERRIDES =. "${@bb.utils.contains('TUNE_FEATURES', 'zen4', 'zen4:', '', d)}"
 
 AVAILTUNES += "zen4"

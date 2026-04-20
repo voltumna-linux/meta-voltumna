@@ -1,0 +1,90 @@
+From dfc5e2d2d9be6c05c1c6056138e2a77de1c3ed25 Mon Sep 17 00:00:00 2001
+From: rgaridap <ramesh.garidapuri@amd.com>
+Date: Tue, 23 Dec 2025 17:19:30 +0000
+Subject: [PATCH] i2c: designware: change i2c_dw_acpi_reg_method() return type
+ to bool
+
+---
+ drivers/i2c/busses/i2c-designware-common.c | 54 ++++++++++------------
+ drivers/i2c/i2c-core.h                     |  2 +-
+ 2 files changed, 26 insertions(+), 30 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-designware-common.c b/drivers/i2c/busses/i2c-designware-common.c
+index 6540b4868155..ca775a1a84cc 100644
+--- a/drivers/i2c/busses/i2c-designware-common.c
++++ b/drivers/i2c/busses/i2c-designware-common.c
+@@ -279,36 +279,32 @@ static const struct dmi_system_id i2c_dw_no_acpi_params[] = {
+  * i2c reg property read 
+  * 
+  */
+-int i2c_dw_acpi_reg_method(struct device *dev)
+-{
+-	u32 reg=0;
+-	acpi_status status;
+-	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
+-	acpi_handle handle = ACPI_HANDLE(dev);
+-		if (!handle) {
+-			dev_dbg(handle, "No ACPI handle found for device\n");
+-			return -ENODEV;
+-		}
+-		status = acpi_evaluate_object(handle, "REG", NULL, &output);
+-		if (ACPI_FAILURE(status)) {
+-			dev_dbg(dev, "Fail to evaluate ACPI object REG\n");
+-			return status;
+-		}
++bool i2c_dw_acpi_reg_method(struct device *dev)
++{
++    u32 reg = 0;
++    acpi_status status;
++    struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
++    acpi_handle handle = ACPI_HANDLE(dev);
+ 
+-		union acpi_object *obj = (union acpi_object *)output.pointer;
+-		if (obj->type == ACPI_TYPE_INTEGER) {
+-			reg = (u32)obj->integer.value;
+-			if(reg){
+-
+-			kfree(output.pointer);
+-				return reg;
+-			}
+-		} else {
+-			dev_dbg(dev,"REG is not an integer\n");
+-			kfree(output.pointer);
+-			return -EINVAL;
+-		}
+- 	 	return reg;
++    if (!handle)
++        return false;
++
++    status = acpi_evaluate_object(handle, "REG", NULL, &output);
++    if (ACPI_FAILURE(status))
++        return false;
++
++    union acpi_object *obj = (union acpi_object *)output.pointer;
++    if (!obj)
++        return false;
++
++    if (obj->type == ACPI_TYPE_INTEGER) {
++        reg = (u32)obj->integer.value;
++        kfree(output.pointer);
++        return reg != 0;  /* true if non-zero, false otherwise */
++    }
++
++    kfree(output.pointer);
++    return false;
+ }
+ 
+ static void i2c_dw_acpi_params(struct device *device, char method[],
+diff --git a/drivers/i2c/i2c-core.h b/drivers/i2c/i2c-core.h
+index 8928e9bea2aa..c44285adbe91 100644
+--- a/drivers/i2c/i2c-core.h
++++ b/drivers/i2c/i2c-core.h
+@@ -98,4 +98,4 @@ static inline int i2c_setup_smbus_alert(struct i2c_adapter *adap)
+ }
+ #endif
+ 
+-extern int i2c_dw_acpi_reg_method(struct device *dev);
++extern bool i2c_dw_acpi_reg_method(struct device *dev);
+-- 
+2.25.1
+
