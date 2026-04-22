@@ -37,6 +37,7 @@ DEPENDS = " \
     poppler \
     poppler-data \
     python3-pygobject-native \
+    python3-pycairo-native \
     tiff \
     xz \
     zlib \
@@ -62,8 +63,10 @@ SRC_URI = "https://download.gimp.org/gimp/v3.2/${BP}.tar.xz \
            file://0001-meson.build-dont-check-for-lgi.patch \
            file://0002-meson.build-use-relative-path-for-ISO_CODES_LOCATION.patch \
            file://0003-meson.build-reproducibility-fix.patch \
+           file://0004-meson.build-dont-check-for-python3-pygobject-gexiv2-.patch \
+           file://0005-docs-meson.build-disable-gimprc-man-build.patch \
 "
-SRC_URI[sha256sum] = "2618391416e51be3c693df9ef90e3860ed72ab3d36363ea1f196e30b75b2e083"
+SRC_URI[sha256sum] = "7312bc53e9c6d2d0056ca7b93f1c6b98707946dd934f714c21b8746ecb601588"
 
 PACKAGECONFIG[aa] = "-Daa=enabled,-Daa=disabled,aalib"
 PACKAGECONFIG[alsa] = "-Dalsa=enabled,-Dalsa=disabled,alsa-lib"
@@ -132,7 +135,7 @@ do_install:prepend() {
 
 FILES:${PN} += "${datadir}/metainfo"
 
-RDEPENDS:${PN} = "mypaint-brushes glib-networking python3-pygobject"
+RDEPENDS:${PN} = "mypaint-brushes glib-networking python3-pygobject python3-pycairo"
 
 CVE_STATUS[CVE-2007-3741] = "not-applicable-platform: This only applies for Mandriva Linux"
 CVE_STATUS[CVE-2025-8672] = "not-applicable-config: the vulnerability only affects MacOS"
