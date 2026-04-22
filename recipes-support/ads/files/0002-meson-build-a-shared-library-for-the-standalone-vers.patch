@@ -1,0 +1,52 @@
+From ebffb3ad4e2a4fe3646e324b4108096c842d963b Mon Sep 17 00:00:00 2001
+From: Patrick Bruenn <p.bruenn@beckhoff.com>
+Date: Thu, 2 Apr 2026 08:32:34 +0000
+Subject: [PATCH 2/2] meson: build a shared library for the standalone version
+
+More and more users want a shared library of the standalone version.
+Here we go and finally add it to our build.
+
+Suggested-by: Stefan Lehmann <stlm@posteo.de>
+Signed-off-by: Patrick Bruenn <p.bruenn@beckhoff.com>
+---
+ meson.build | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/meson.build b/meson.build
+index d3677d8..f543736 100644
+--- a/meson.build
++++ b/meson.build
+@@ -88,21 +88,29 @@ libs = [
+   meson.get_compiler('cpp').find_library('ws2_32', required: false),
+   dependency('threads'),
+ ]
+ 
+ adslib = static_library('AdsLib',
+   [common_files, router_files],
+   include_directories: inc,
+   install: true,
+ )
+ 
+-install_libs = [ adslib ]
++adslib_so = shared_library('adslib',
++  [common_files, router_files],
++  cpp_args: '-DBHF_ADS_EXPORT_C',
++  include_directories: inc,
++  install: true,
++  dependencies: libs,
++)
++
++install_libs = [ adslib, adslib_so ]
+ 
+ adslib_dep = declare_dependency(
+   include_directories : inc,
+   link_with: adslib,
+ )
+ 
+ adslibtest = executable('AdsLibTest',
+   'AdsLibTest/main.cpp',
+   include_directories: inc,
+   dependencies: libs,
+-- 
+2.43.0
+

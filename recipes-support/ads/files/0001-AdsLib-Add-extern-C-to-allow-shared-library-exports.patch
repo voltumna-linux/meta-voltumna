@@ -1,0 +1,146 @@
+From 8d137b82c80ea98770a301d0dc7881d392cdc7da Mon Sep 17 00:00:00 2001
+From: Patrick Bruenn <p.bruenn@beckhoff.com>
+Date: Thu, 2 Apr 2026 08:32:28 +0000
+Subject: [PATCH 1/2] AdsLib: Add extern "C" to allow shared library exports
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+We’re seeing increasing demand for a shared library version of the
+standalone AdsLib. Here we go and mark the external C functions, so we
+can build a shared library in the next step.
+
+Suggested-by: Stefan Lehmann <stlm@posteo.de>
+Signed-off-by: Patrick Bruenn <p.bruenn@beckhoff.com>
+---
+ AdsLib/AdsLib.h              | 7 +++++++
+ AdsLib/standalone/AdsLib.cpp | 6 ++++++
+ AdsLib/standalone/AdsLib.h   | 6 ++++++
+ 3 files changed, 19 insertions(+)
+
+diff --git a/AdsLib/AdsLib.h b/AdsLib/AdsLib.h
+index a9ecb73..225c24b 100644
+--- a/AdsLib/AdsLib.h
++++ b/AdsLib/AdsLib.h
+@@ -6,20 +6,23 @@
+ #pragma once
+ 
+ #if defined(USE_TWINCAT_ROUTER)
+ #include "TwinCAT/AdsLib.h"
+ #else
+ #include "standalone/AdsLib.h"
+ #endif
+ 
+ #include "Sockets.h"
+ 
++#ifdef BHF_ADS_EXPORT_C
++extern "C" {
++#endif
+ /**
+  * Reads data synchronously from an ADS server.
+  * @param[in] port port number of an Ads port that had previously been opened with AdsPortOpenEx().
+  * @param[in] pAddr Structure with NetId and port number of the ADS server.
+  * @param[in] indexGroup Index Group.
+  * @param[in] indexOffset Index Offset.
+  * @param[in] bufferLength Length of the data in bytes.
+  * @param[out] buffer Pointer to a data buffer that will receive the data.
+  * @param[out] bytesRead pointer to a variable. If successful, this variable will return the number of actually read data bytes.
+  * @return [ADS Return Code](https://infosys.beckhoff.com/content/1031/tcadscommon/html/ads_returncodes.htm?id=1666172286265530469)
+@@ -181,10 +184,14 @@ long AddRemoteRoute(const std::string &remote, AmsNetId destNetId,
+  * @param[out] netId on success the AmsNetId of the remote TwinCAT system is written here
+  * @return [ADS Return Code](https://infosys.beckhoff.com/content/1031/tcadscommon/html/ads_returncodes.htm?id=1666172286265530469)
+  */
+ long GetRemoteAddress(const std::string &remote, AmsNetId &netId);
+ }
+ }
+ 
+ #define AdsAddRoute bhf::ads::AddLocalRoute
+ #define AdsDelRoute bhf::ads::DelLocalRoute
+ #define AdsSetLocalAddress bhf::ads::SetLocalAddress
++
++#ifdef BHF_ADS_EXPORT_C
++}
++#endif
+diff --git a/AdsLib/standalone/AdsLib.cpp b/AdsLib/standalone/AdsLib.cpp
+index 6f80f4c..61ce931 100644
+--- a/AdsLib/standalone/AdsLib.cpp
++++ b/AdsLib/standalone/AdsLib.cpp
+@@ -1,18 +1,21 @@
+ // SPDX-License-Identifier: MIT
+ /**
+    Copyright (c) 2015 - 2022 Beckhoff Automation GmbH & Co. KG
+  */
+ 
+ #include "AdsLib.h"
+ #include "AmsRouter.h"
+ 
++#ifdef BHF_ADS_EXPORT_C
++extern "C" {
++#endif
+ static AmsRouter &GetRouter()
+ {
+ 	static AmsRouter router;
+ 	return router;
+ }
+ 
+ #define ASSERT_PORT(port)                                 \
+ 	do {                                              \
+ 		if ((port) <= 0 || (port) > UINT16_MAX) { \
+ 			return ADSERR_CLIENT_PORTNOTOPEN; \
+@@ -279,10 +282,13 @@ long AdsSyncGetTimeoutEx(long port, uint32_t *timeout)
+ 		return ADSERR_CLIENT_INVALIDPARM;
+ 	}
+ 	return GetRouter().GetTimeout((uint16_t)port, *timeout);
+ }
+ 
+ long AdsSyncSetTimeoutEx(long port, uint32_t timeout)
+ {
+ 	ASSERT_PORT(port);
+ 	return GetRouter().SetTimeout((uint16_t)port, timeout);
+ }
++#ifdef BHF_ADS_EXPORT_C
++}
++#endif
+diff --git a/AdsLib/standalone/AdsLib.h b/AdsLib/standalone/AdsLib.h
+index 76e8aa4..1f05af9 100644
+--- a/AdsLib/standalone/AdsLib.h
++++ b/AdsLib/standalone/AdsLib.h
+@@ -1,18 +1,21 @@
+ // SPDX-License-Identifier: MIT
+ /** @file
+    Copyright (c) 2015 - 2022 Beckhoff Automation GmbH & Co. KG
+  */
+ #pragma once
+ 
+ #include "AdsDef.h"
+ 
++#ifdef BHF_ADS_EXPORT_C
++extern "C" {
++#endif
+ /**
+  * The connection (communication port) to the message router is
+  * closed. The port to be closed must previously have been opened via
+  * an AdsPortOpenEx() call.
+  * @param[in] port port number of an Ads port that had previously been opened with AdsPortOpenEx().
+  * @return [ADS Return Code](https://infosys.beckhoff.com/content/1031/tcadscommon/html/ads_returncodes.htm?id=1666172286265530469)
+  */
+ long AdsPortCloseEx(long port);
+ 
+ /**
+@@ -31,10 +34,13 @@ long AdsPortOpenEx();
+  */
+ long AdsGetLocalAddressEx(long port, AmsAddr *pAddr);
+ 
+ /**
+  * Alters the timeout for the ADS functions. The standard value is 5000 ms.
+  * @param[in] port port number of an Ads port that had previously been opened with AdsPortOpenEx().
+  * @param[in] timeout Timeout in ms.
+  * @return [ADS Return Code](https://infosys.beckhoff.com/content/1031/tcadscommon/html/ads_returncodes.htm?id=1666172286265530469)
+  */
+ long AdsSyncSetTimeoutEx(long port, uint32_t timeout);
++#ifdef BHF_ADS_EXPORT_C
++}
++#endif
+-- 
+2.43.0
+
