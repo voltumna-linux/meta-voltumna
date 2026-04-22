@@ -1,0 +1,12 @@
+diff --git a/meson.build b/meson.build
+index e44f189..2755556 100644
+--- a/meson.build
++++ b/meson.build
+@@ -104,6 +104,7 @@ adslib_so = shared_library('adslib',
+   include_directories: inc,
+   install: true,
+   dependencies: libs,
++  version: '113.0.32'
+ )
+ 
+ install_libs = [ adslib, adslib_so ]
