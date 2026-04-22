@@ -17,7 +17,7 @@ SRC_URI = "https://github.com/neutrinolabs/${BPN}/releases/download/v${PV}/${BPN
            file://0001-arch-Define-NO_NEED_ALIGN-on-ppc64.patch \
            file://0001-mark-count-with-unused-attribute.patch \
            "
-SRC_URI[sha256sum] = "9abc96d164de4b1c40e2f3f537d0593d052a640cf3388978c133715ea69fb123"
+SRC_URI[sha256sum] = "dfc21d5d603b642cf583987b36706b685bf05fd3aaaaacefb8f57c5f4a448677"
 
 UPSTREAM_CHECK_URI = "https://github.com/neutrinolabs/xrdp/releases"
 UPSTREAM_CHECK_REGEX = "releases/tag/v(?P<pver>\d+(\.\d+)+)"
@@ -127,3 +127,12 @@ pkg_postinst:${PN}() {
 		fi
         fi
 }
+
+CVE_STATUS[CVE-2026-32105] = "fixed-version: fixed in 0.10.6"
+CVE_STATUS[CVE-2026-32107] = "fixed-version: fixed in 0.10.6"
+CVE_STATUS[CVE-2026-32623] = "fixed-version: fixed in 0.10.6"
+CVE_STATUS[CVE-2026-32624] = "fixed-version: fixed in 0.10.6"
+CVE_STATUS[CVE-2026-33145] = "fixed-version: fixed in 0.10.6"
+CVE_STATUS[CVE-2026-33516] = "fixed-version: fixed in 0.10.6"
+CVE_STATUS[CVE-2026-33689] = "fixed-version: fixed in 0.10.6"
+CVE_STATUS[CVE-2026-35512] = "fixed-version: fixed in 0.10.6"

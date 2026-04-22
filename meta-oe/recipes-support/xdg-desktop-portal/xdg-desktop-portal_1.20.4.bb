@@ -27,11 +27,17 @@ RDEPENDS:${PN} = "bubblewrap rtkit ${PORTAL_BACKENDS} fuse3-utils"
 inherit meson pkgconfig python3native features_check
 
 SRC_URI = " \
-	git://github.com/flatpak/xdg-desktop-portal.git;protocol=https;branch=xdg-desktop-portal-1.20 \
+	git://github.com/flatpak/xdg-desktop-portal.git;protocol=https;branch=xdg-desktop-portal-1.20;name=main;tag=${PV} \
+	git://gitlab.gnome.org/GNOME/libglnx.git;protocol=https;branch=master;name=libglnx;destsuffix=${BB_GIT_DEFAULT_DESTSUFFIX}/subprojects/libglnx \
 	file://0001-meson.build-add-a-hack-for-crosscompile.patch \
 "
 
-SRCREV = "23a76c392170dbbd26230f85ef56c3a57e52b857"
+SRCREV_main = "f5aec228c9eb0c9a70eadd6424d92c0ca8a78247"
+
+# this revision comes from subprojects/libglnx.wrap file of the main source repo
+SRCREV_libglnx = "ccea836b799256420788c463a638ded0636b1632"
+
+SRCREV_FORMAT = "main"
 
 FILES:${PN} += "${libdir}/systemd ${datadir}/dbus-1"
 
@@ -47,3 +53,5 @@ do_write_config:append() {
 bwrap = '${bindir}/bwrap'
 EOF
 }
+
+CVE_STATUS[CVE-2026-40354] = "fixed-version: fixed in 1.20.4"

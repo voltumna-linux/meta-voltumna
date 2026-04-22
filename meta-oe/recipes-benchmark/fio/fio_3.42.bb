@@ -24,14 +24,10 @@ PACKAGECONFIG[numa] = ",--disable-numa,numactl"
 
 SRC_URI = " \
     git://git.kernel.dk/fio.git;branch=master;tag=${BP} \
-    file://0001-fix-musl-builds.patch \
 "
-SRCREV = "ed675d3477a70a42d2e757b713f6c7125a27cdca"
-
-SRC_URI += "file://CVE-2025-10823.patch"
+SRCREV = "ab77643023f5d7e3c1b71a7576a564f368bf577a"
 
 UPSTREAM_CHECK_GITTAGREGEX = "fio-(?P<pver>\d+(\.\d+)+)"
-
 
 # avoids build breaks when using no-static-libs.inc
 DISABLE_STATIC = ""
@@ -50,3 +46,4 @@ do_install() {
 }
 
 CVE_STATUS[CVE-2025-10824] = "disputed: Maintainer could not reproduce the issue, issue is closed without change."
+CVE_STATUS[CVE-2026-30656] = "fixed-version: fixed in 3.42"

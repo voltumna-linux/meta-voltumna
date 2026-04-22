@@ -12,10 +12,9 @@ LIC_FILES_CHKSUM = " \
 
 DEPENDS = "dbus ncurses"
 
-SRCREV = "95da54a482b68475958bbc3fa572a9c20df0df74"
+SRCREV = "cc3d0d1191266b263f6d0fa03fce1d1ef57151cc"
 BRANCH = "${@oe.utils.trim_version('${PV}', 2)}"
 SRC_URI = "git://gitlab.freedesktop.org/pipewire/pipewire.git;branch=${BRANCH};protocol=https;tag=${PV}"
-SRC_URI += "file://0001-spa-plugins-alsa-acp-compat.h-Fix-missed-Wdiscarded-.patch"
 SRC_URI += "file://0002-spa-plugins-alsa-acp-compat.h-p-is-already-const-do-.patch"
 
 inherit meson pkgconfig systemd gettext useradd

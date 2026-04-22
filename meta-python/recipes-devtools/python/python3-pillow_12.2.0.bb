@@ -3,12 +3,12 @@ Clark and Contributors. PIL is the Python Imaging Library by Fredrik Lundh and \
 Contributors."
 HOMEPAGE = "https://pillow.readthedocs.io"
 LICENSE = "MIT-CMU"
-LIC_FILES_CHKSUM = "file://LICENSE;md5=a1b708da743e3fc0e5c35e92daac0bf8"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=a6f0ac3777cfc96ded1b825e32ae7c99"
 
-SRC_URI = "git://github.com/python-pillow/Pillow.git;branch=12.1.x;protocol=https;tag=${PV} \
+SRC_URI = "git://github.com/python-pillow/Pillow.git;branch=main;protocol=https;tag=${PV} \
            file://0001-support-cross-compiling.patch \
            "
-SRCREV = "5158d98c807e719c5938aa3886913ef0ea6814e9"
+SRCREV = "3c41c095064200a02672d89cc5ff629eaf4b0d4f"
 
 inherit python_setuptools_build_meta ptest-python-pytest
 

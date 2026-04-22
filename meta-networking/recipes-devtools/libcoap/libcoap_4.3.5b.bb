@@ -10,7 +10,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=05d17535846895e23ea4c79b16a9e904"
 SRC_URI = "git://github.com/obgm/libcoap.git;branch=release-4.3.5-patches;protocol=https;tag=v${PV} \
            file://run-ptest \
            "
-SRCREV = "e3fdcdcfbd1588754fe9dd4b754ac9397260f0f9"
+SRCREV = "851533c3cf63d16984d370ce39d586ecb3694971"
 
 # patch releases often use alphabetical suffixes
 CVE_VERSION_SUFFIX = "alphabetical"
