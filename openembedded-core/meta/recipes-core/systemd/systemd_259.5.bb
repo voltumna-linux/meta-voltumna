@@ -66,6 +66,7 @@ PACKAGECONFIG ??= " \
     nss \
     nss-mymachines \
     nss-resolve \
+    osc-context \
     quotacheck \
     randomseed \
     resolved \
@@ -160,6 +161,7 @@ PACKAGECONFIG[no-ntp-fallback] = "-Dntp-servers="
 PACKAGECONFIG[nss] = "-Dnss-systemd=true,-Dnss-systemd=false,,libnss-systemd"
 PACKAGECONFIG[nss-mymachines] = "-Dnss-mymachines=enabled,-Dnss-mymachines=disabled"
 PACKAGECONFIG[nss-resolve] = "-Dnss-resolve=enabled,-Dnss-resolve=disabled,,libnss-resolve"
+PACKAGECONFIG[osc-context] = ",,,"
 PACKAGECONFIG[oomd] = "-Doomd=true,-Doomd=false"
 PACKAGECONFIG[openssl] = "-Dopenssl=enabled,-Dopenssl=disabled,openssl"
 PACKAGECONFIG[p11kit] = "-Dp11kit=enabled,-Dp11kit=disabled,p11-kit"
@@ -270,6 +272,13 @@ do_install() {
 		# Remove the serial-getty generator and instead use explicit services
 		# created by the systemd-serialgetty recipe
 		find ${D} -name \*getty-generator\* -delete
+	fi
+
+	if ! ${@bb.utils.contains('PACKAGECONFIG', 'osc-context', 'true', 'false', d)}; then
+		# Ensure there's no /etc/profile.d/80-systemd-osc-context.sh.
+		# Some programs such as minicom does not support this OSC 3008 standard.
+		rm -f ${D}${sysconfdir}/profile.d/80-systemd-osc-context.sh
+		rm -f ${D}${nonarch_libdir}/tmpfiles.d/20-systemd-osc-context.conf
 	fi
 
 	# Provide support for initramfs
