@@ -16,7 +16,7 @@ DISTRO_FEATURES = "acl xattr largefile keyboard ldconfig pci pam systemd \
 
 # Remove few distro features because we don't support bluetooth,
 # audio and traditional init system
-DISTRO_FEATURES_BACKFILL_CONSIDERED = " \
+DISTRO_FEATURES_OPTED_OUT = " \
 	pulseaudio sysvinit bluez5"
 
 MACHINE_FEATURES += " qemu-usermode"

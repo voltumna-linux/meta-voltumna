@@ -15,4 +15,4 @@ PACKAGE_EXTRA_ARCHS:tune-zen1   = "${PACKAGE_EXTRA_ARCHS:tune-x86-64} zen1"
 BASE_LIB:tune-zen1              = "lib64"
 
 # user mode qemu doesn't support zen1
-MACHINE_FEATURES_BACKFILL_CONSIDERED:append = " ${@bb.utils.contains('TUNE_FEATURES', 'zen1', 'qemu-usermode', '', d)}"
+MACHINE_FEATURES_OPTED_OUT:append = " ${@bb.utils.contains('TUNE_FEATURES', 'zen1', 'qemu-usermode', '', d)}"
