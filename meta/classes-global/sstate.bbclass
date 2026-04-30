@@ -333,9 +333,9 @@ def sstate_install(ss, d):
     for plain in ss['plaindirs']:
         workdir = d.getVar('WORKDIR')
         sharedworkdir = os.path.join(d.getVar('TMPDIR'), "work-shared")
-        src = sstateinst + "/" + plain.replace(workdir, '')
+        src = plain.replace(workdir, sstateinst)
         if sharedworkdir in plain:
-            src = sstateinst + "/" + plain.replace(sharedworkdir, '')
+            src = plain.replace(sharedworkdir, sstateinst)
         dest = plain
         bb.utils.mkdirhier(src)
         prepdir(dest)
@@ -639,7 +639,6 @@ def sstate_package(ss, d):
     for state in ss['dirs']:
         if not os.path.exists(state[1]):
             continue
-        srcbase = state[0].rstrip("/").rsplit('/', 1)[0]
         # Find and error for absolute symlinks. We could attempt to relocate but its not
         # clear where the symlink is relative to in this context. We could add that markup
         # to sstate tasks but there aren't many of these so better just avoid them entirely.

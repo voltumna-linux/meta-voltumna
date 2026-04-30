@@ -1,5 +1,5 @@
 SUMMARY = "U-Boot bootloader tools"
-DEPENDS += "gnutls openssl util-linux swig-native"
+DEPENDS += "gnutls openssl util-linux swig-native libyaml-native"
 
 inherit python3native
 export STAGING_INCDIR = "${STAGING_INCDIR_NATIVE}"
