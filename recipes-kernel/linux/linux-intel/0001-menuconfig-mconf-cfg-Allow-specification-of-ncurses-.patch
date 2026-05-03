@@ -1,0 +1,52 @@
+From 1811da09f42ca5e82282970e8ad014707bc94c82 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@windriver.com>
+Date: Mon, 2 Jul 2018 23:10:28 -0400
+Subject: [PATCH 1/2] menuconfig,mconf-cfg: Allow specification of ncurses
+ location
+
+In some cross build environments such as the Yocto Project build
+environment it provides an ncurses library that is compiled
+differently than the host's version.  This causes display corruption
+problems when the host's curses includes are used instead of the
+includes from the provided compiler are overridden.  There is a second
+case where there is no curses libraries at all on the host system and
+menuconfig will just fail entirely.
+
+The solution is simply to allow an override variable in
+check-lxdialog.sh for environments such as the Yocto Project.  Adding
+a CROSS_CURSES_LIB and CROSS_CURSES_INC solves the issue and allowing
+compiling and linking against the right headers and libraries.
+
+Upstream-Status: Submitted
+
+Signed-off-by: Jason Wessel <jason.wessel@windriver.com>
+cc: Michal Marek <mmarek@suse.cz>
+cc: linux-kbuild@vger.kernel.org
+Signed-off-by: Bruce Ashfield <bruce.ashfield@windriver.com>
+Signed-off-by: Naveen Saini <naveen.kumar.saini@intel.com>
+---
+ scripts/kconfig/mconf-cfg.sh | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/scripts/kconfig/mconf-cfg.sh b/scripts/kconfig/mconf-cfg.sh
+index 1e61f50a5905..38cf8304bb31 100755
+--- a/scripts/kconfig/mconf-cfg.sh
++++ b/scripts/kconfig/mconf-cfg.sh
+@@ -7,6 +7,14 @@ libs=$2
+ PKG="ncursesw"
+ PKG2="ncurses"
+ 
++if [ "$CROSS_CURSES_LIB" != "" ]; then
++    echo libs=\'$CROSS_CURSES_LIB\'
++    if [ x"$CROSS_CURSES_INC" != x ]; then
++	echo cflags=\'$CROSS_CURSES_INC\'
++    fi
++    exit 0
++fi
++
+ if [ -n "$(command -v ${HOSTPKG_CONFIG})" ]; then
+ 	if ${HOSTPKG_CONFIG} --exists $PKG; then
+ 		${HOSTPKG_CONFIG} --cflags ${PKG} > ${cflags}
+-- 
+2.34.1
+
