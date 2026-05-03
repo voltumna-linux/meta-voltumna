@@ -1,0 +1,51 @@
+From 66ce208c3cd00a1f5794c63801518cf795aefca3 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Sun, 8 Mar 2026 20:53:25 +0100
+Subject: [PATCH] Fix SPE vec_perm ICE with memory operands in vectorizer
+
+Upstream-Status: Inappropriate
+
+rs6000_expand_vec_perm_const_1 emits vec_select(vec_concat(op0, op1))
+RTL directly, but the SPE vec_perm*_v2si patterns in spe.md require
+gpc_reg_operand.  When the SLP vectorizer passes memory operands
+(grouped loads), the generated RTL has no matching insn pattern,
+causing an ICE in extract_insn during the vregs pass.
+
+Force operands into registers with force_reg before building the
+VEC_CONCAT RTL.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ gcc/config/powerpcspe/powerpcspe.cc | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/gcc/config/powerpcspe/powerpcspe.cc b/gcc/config/powerpcspe/powerpcspe.cc
+index cd59cc02316..94afa7ec401 100644
+--- a/gcc/config/powerpcspe/powerpcspe.cc
++++ b/gcc/config/powerpcspe/powerpcspe.cc
+@@ -38686,20 +38686,22 @@ rs6000_expand_vec_perm_const_1 (rtx target, rtx op0, rtx op1,
+ 
+   /* Success! */
+   if (target != NULL)
+     {
+       machine_mode vmode, dmode;
+       rtvec v;
+ 
+       vmode = GET_MODE (target);
+       gcc_assert (GET_MODE_NUNITS (vmode) == 2);
+       dmode = mode_for_vector (GET_MODE_INNER (vmode), 4).require ();
++      op0 = force_reg (vmode, op0);
++      op1 = force_reg (vmode, op1);
+       x = gen_rtx_VEC_CONCAT (dmode, op0, op1);
+       v = gen_rtvec (2, GEN_INT (perm0), GEN_INT (perm1));
+       x = gen_rtx_VEC_SELECT (vmode, x, gen_rtx_PARALLEL (VOIDmode, v));
+       emit_insn (gen_rtx_SET (target, x));
+     }
+   return true;
+ }
+ 
+ /* Implement TARGET_VECTORIZE_VEC_PERM_CONST.  */
+ 
+-- 
+2.43.0
+
