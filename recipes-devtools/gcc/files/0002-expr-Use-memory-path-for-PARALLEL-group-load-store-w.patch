@@ -1,0 +1,88 @@
+From c55f3def6c823311c619ffce6f442c452814b858 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Sat, 28 Feb 2026 12:52:06 +0100
+Subject: [PATCH 2/3] expr: Use memory path for PARALLEL group load/store when
+ mode change is forbidden
+
+In emit_group_load_1 and emit_group_store, when a non-integer mode
+(such as DFmode) needs to be split into integer pieces via a PARALLEL,
+the code first tries to convert to an integer mode of the same size
+(e.g. DFmode -> DImode) using gen_lowpart/subreg.  However, some
+targets forbid this mode change in registers via can_change_mode_class.
+
+On PowerPC SPE (E500), DFmode uses a single 64-bit extended GPR while
+DImode uses a pair of 32-bit GPRs.  The DF<->DI subreg is forbidden
+because these modes have fundamentally different register layouts.
+When the subreg path was taken anyway, the register allocator could
+not resolve it correctly, producing corrupted values.  This broke all
+variadic double argument passing (printf, sprintf, va_arg) and
+function return values going through PARALLELs.
+
+Fix by checking targetm.can_change_mode_class before attempting the
+integer mode conversion.  When the mode change is forbidden, fall
+through to the existing memory-based path which correctly handles the
+split by storing to a stack temporary (e.g. evstdd on SPE) and
+loading individual pieces (e.g. lwz) from the correct offsets.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ gcc/expr.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/gcc/expr.c b/gcc/expr.c
+index eae9c023cb7..5e83872415b 100644
+--- a/gcc/expr.c
++++ b/gcc/expr.c
+@@ -2182,21 +2182,23 @@ emit_group_load_1 (rtx *tmps, rtx dst, rtx orig_src, tree type,
+   machine_mode m = GET_MODE (orig_src);
+ 
+   gcc_assert (GET_CODE (dst) == PARALLEL);
+ 
+   if (m != VOIDmode
+       && !SCALAR_INT_MODE_P (m)
+       && !MEM_P (orig_src)
+       && GET_CODE (orig_src) != CONCAT)
+     {
+       scalar_int_mode imode;
+-      if (int_mode_for_mode (GET_MODE (orig_src)).exists (&imode))
++      if (int_mode_for_mode (GET_MODE (orig_src)).exists (&imode)
++	  && targetm.can_change_mode_class (GET_MODE (orig_src), imode,
++					    ALL_REGS))
+ 	{
+ 	  src = gen_reg_rtx (imode);
+ 	  emit_move_insn (gen_lowpart (GET_MODE (orig_src), src), orig_src);
+ 	}
+       else
+ 	{
+ 	  src = assign_stack_temp (GET_MODE (orig_src), ssize);
+ 	  emit_move_insn (src, orig_src);
+ 	}
+       emit_group_load_1 (tmps, dst, src, type, ssize);
+@@ -2460,21 +2462,23 @@ emit_group_store (rtx orig_dst, rtx src, tree type ATTRIBUTE_UNUSED,
+   rtx *tmps, dst;
+   int start, finish, i;
+   machine_mode m = GET_MODE (orig_dst);
+ 
+   gcc_assert (GET_CODE (src) == PARALLEL);
+ 
+   if (!SCALAR_INT_MODE_P (m)
+       && !MEM_P (orig_dst) && GET_CODE (orig_dst) != CONCAT)
+     {
+       scalar_int_mode imode;
+-      if (int_mode_for_mode (GET_MODE (orig_dst)).exists (&imode))
++      if (int_mode_for_mode (GET_MODE (orig_dst)).exists (&imode)
++	  && targetm.can_change_mode_class (GET_MODE (orig_dst), imode,
++					    ALL_REGS))
+ 	{
+ 	  dst = gen_reg_rtx (imode);
+ 	  emit_group_store (dst, src, type, ssize);
+ 	  dst = gen_lowpart (GET_MODE (orig_dst), dst);
+ 	}
+       else
+ 	{
+ 	  dst = assign_stack_temp (GET_MODE (orig_dst), ssize);
+ 	  emit_group_store (dst, src, type, ssize);
+ 	}
+-- 
+2.43.0
+

@@ -1,0 +1,41 @@
+From 0dba9fb12fe1eb5756567381871d1f8c11754610 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Wed, 29 Jun 2016 14:22:18 +0200
+Subject: [PATCH 5/9] Remove/add empty lines
+
+Signed-off-by: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+---
+ arch/powerpc/boot/dts/fsl/mvme2500.dts | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/arch/powerpc/boot/dts/fsl/mvme2500.dts b/arch/powerpc/boot/dts/fsl/mvme2500.dts
+index ac01979ec577..165a93e029e3 100644
+--- a/arch/powerpc/boot/dts/fsl/mvme2500.dts
++++ b/arch/powerpc/boot/dts/fsl/mvme2500.dts
+@@ -71,6 +71,7 @@
+ 				reg = <0>;
+ 				spi-max-frequency = <10000000>;
+ 			};
++
+ 			flash@1 {
+ 				compatible = "atmel,at25df641", "jedec,spi-nor";
+ 				reg = <1>;
+@@ -236,7 +237,6 @@
+ 				  0x1000000 0x0 0x0
+ 				  0x0 0x10000>;
+ 		};
+-
+ 	};
+ 
+ 	pci2: pcie@ffe0a000 {
+@@ -271,7 +271,5 @@
+ 			compatible = "fsl,p2020-esdhc", "fsl,esdhc";
+ 			non-removable;
+ 		};
+-
+ 	};
+-
+ };
+-- 
+2.24.4
+

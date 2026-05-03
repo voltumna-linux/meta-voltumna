@@ -1,0 +1,24 @@
+From 351cc1072ee411d4887a29b3abfca286f01e4d7c Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Mon, 13 Jun 2016 09:15:46 +0200
+Subject: [PATCH 3/9] Add interrupt for temperature sensor
+
+---
+ arch/powerpc/boot/dts/fsl/mvme2500.dts | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/powerpc/boot/dts/fsl/mvme2500.dts b/arch/powerpc/boot/dts/fsl/mvme2500.dts
+index f1d1b23e6f76..ac01979ec577 100644
+--- a/arch/powerpc/boot/dts/fsl/mvme2500.dts
++++ b/arch/powerpc/boot/dts/fsl/mvme2500.dts
+@@ -32,6 +32,7 @@
+ 			hwmon@4c {
+ 				compatible = "adi,adt7461";
+ 				reg = <0x4c>;
++				interrupts = <4 1 0 0>;
+ 			};
+ 
+ 			rtc@68 {
+-- 
+2.24.4
+

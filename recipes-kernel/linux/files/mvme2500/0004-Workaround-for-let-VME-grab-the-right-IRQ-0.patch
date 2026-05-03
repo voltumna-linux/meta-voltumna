@@ -1,0 +1,25 @@
+From 207db22094f8e238d5950b4cea02d5b9d0290b25 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Tue, 14 Jun 2016 15:45:25 +0200
+Subject: [PATCH 4/9] Workaround for let VME grab the right (IRQ 0)
+
+---
+ arch/powerpc/boot/dts/fsl/p2020si-post.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/powerpc/boot/dts/fsl/p2020si-post.dtsi b/arch/powerpc/boot/dts/fsl/p2020si-post.dtsi
+index 884e01bcb243..7196789799a9 100644
+--- a/arch/powerpc/boot/dts/fsl/p2020si-post.dtsi
++++ b/arch/powerpc/boot/dts/fsl/p2020si-post.dtsi
+@@ -118,7 +118,7 @@
+ 		interrupt-map = <
+ 			/* IDSEL 0x0 */
+ 			0000 0x0 0x0 0x1 &mpic 0x8 0x1 0x0 0x0
+-			0000 0x0 0x0 0x2 &mpic 0x9 0x1 0x0 0x0
++			0000 0x0 0x0 0x2 &mpic 0x0 0x1 0x0 0x0
+ 			0000 0x0 0x0 0x3 &mpic 0xa 0x1 0x0 0x0
+ 			0000 0x0 0x0 0x4 &mpic 0xb 0x1 0x0 0x0
+ 			>;
+-- 
+2.24.4
+

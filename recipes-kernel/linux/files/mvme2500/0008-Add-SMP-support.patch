@@ -1,0 +1,32 @@
+From 6cf8e87fa2d8850868f9771b3ddada75188129f5 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Thu, 16 Jun 2022 17:23:21 +0200
+Subject: [PATCH 8/9] Add SMP support
+
+---
+ arch/powerpc/platforms/85xx/mvme2500.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/powerpc/platforms/85xx/mvme2500.c b/arch/powerpc/platforms/85xx/mvme2500.c
+index b8cce6f528c9..2435a481d1a2 100644
+--- a/arch/powerpc/platforms/85xx/mvme2500.c
++++ b/arch/powerpc/platforms/85xx/mvme2500.c
+@@ -23,6 +23,7 @@
+ #include <sysdev/fsl_pci.h>
+ 
+ #include "mpc85xx.h"
++#include "smp.h"
+ 
+ #if 0
+ #define MVME2500_INTERRUPT_REG_GPIO02_OFFSET	0x95
+@@ -48,6 +49,7 @@ static void __init mvme2500_setup_arch(void)
+ {
+ 	if (ppc_md.progress)
+ 		ppc_md.progress("mvme2500_setup_arch()", 0);
++	mpc85xx_smp_init();
+ 	fsl_pci_assign_primary();
+ 	pr_info("MVME2500 board from Artesyn\n");
+ }
+-- 
+2.24.4
+

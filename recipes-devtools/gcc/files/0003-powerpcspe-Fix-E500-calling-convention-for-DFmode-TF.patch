@@ -1,0 +1,328 @@
+From 25eabcd1411391856e268b8e860fe46c50f32d32 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Sun, 1 Mar 2026 14:58:06 +0100
+Subject: [PATCH 3/3] powerpcspe: Fix E500 calling convention for
+ DFmode/TFmode/DCmode/TCmode
+
+On SPE (e500), GCC 9+ rs6000_can_change_mode_class() forbids
+DFmode<->DImode subreg conversions, breaking the original DImode-element
+PARALLELs that spe_build_register_parallel() used.  This corrupted all
+double parameter passing and return values, causing Duktape parse errors
+in polkit, broken seq/coreutils, and wrong long double arithmetic.
+
+Fix the calling convention to use SImode-element PARALLELs throughout,
+which work correctly with the memory fallback path added to expr.c in
+the preceding commit.
+
+DFmode (double) arguments:
+  Use 2-element SImode PARALLEL for all calls (no stdarg distinction).
+  emit_group_load uses evstdd + 2x lwz to split the 64-bit SPE
+  register into two 32-bit halves in an aligned register pair
+  (r3:r4, r5:r6, r7:r8, r9:r10).
+
+DFmode (double) returns:
+  Use single DFmode register (gen_rtx_REG).  On SPE the 64-bit
+  extended GPR holds the full double natively; caller and callee
+  use evstdd/evldd for 64-bit access.
+
+TFmode (long double) arguments and returns:
+  Use 4-element SImode PARALLEL (r3,r4,r5,r6) via
+  rs6000_spe_function_arg and rs6000_parallel_return.  This is
+  consistent with how __gcc_q* library functions decompose TFmode
+  into individual DFmode parameters passed as SImode halves.
+  TFmode is NOT included in pass-by-reference or return-in-memory
+  because __gcc_q* library calls pass type=NULL, bypassing the
+  rs6000_pass_by_reference hook.
+
+DCmode (complex double) and TCmode (complex long double):
+  Pass by reference and return in memory via hidden pointer,
+  as these types exceed the register budget.
+
+Mark spe_build_register_parallel ATTRIBUTE_UNUSED (no callers remain).
+Make rs6000_function_value and rs6000_libcall_value consistent.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ gcc/config/powerpcspe/powerpcspe.c | 120 +++++++++++++++++++++++++----
+ 1 file changed, 107 insertions(+), 13 deletions(-)
+
+diff --git a/gcc/config/powerpcspe/powerpcspe.c b/gcc/config/powerpcspe/powerpcspe.c
+index 25c99713f60..1d3492c9d93 100644
+--- a/gcc/config/powerpcspe/powerpcspe.c
++++ b/gcc/config/powerpcspe/powerpcspe.c
+@@ -11789,20 +11789,32 @@ rs6000_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
+ 		   "non-standard ABI extension with no compatibility guarantee");
+ 	  warned_for_return_big_vectors = true;
+ 	}
+       return true;
+     }
+ 
+   if (DEFAULT_ABI == ABI_V4 && TARGET_IEEEQUAD
+       && FLOAT128_IEEE_P (TYPE_MODE (type)))
+     return true;
+ 
++  /* E500 ABI: DCmode (complex double) and TCmode (complex long double)
++     are returned in memory via a hidden pointer passed in r3.
++     Note: TFmode (long double) is NOT included here because
++     aggregate_value_p in emit_library_call_value_1 would add a hidden
++     struct-return pointer for __gcc_q* library calls, shifting register
++     allocation and causing args to overflow to the stack.  TFmode
++     returns via SImode-element PARALLELs in rs6000_parallel_return.  */
++  if (TARGET_E500_DOUBLE && TARGET_HARD_FLOAT
++      && (TYPE_MODE (type) == DCmode
++	  || TYPE_MODE (type) == TCmode))
++    return true;
++
+   return false;
+ }
+ 
+ /* Specify whether values returned in registers should be at the most
+    significant end of a register.  We want aggregates returned by
+    value to match the way aggregates are passed to functions.  */
+ 
+ static bool
+ rs6000_return_in_msb (const_tree valtype)
+ {
+@@ -12580,79 +12592,111 @@ rs6000_function_arg_advance_1 (CUMULATIVE_ARGS *cum, machine_mode mode,
+ }
+ 
+ static void
+ rs6000_function_arg_advance (cumulative_args_t cum,
+ 			     const function_arg_info &arg)
+ {
+   rs6000_function_arg_advance_1 (get_cumulative_args (cum), arg.mode, arg.type,
+ 				 arg.named, 0);
+ }
+ 
+-static rtx
++/* Build a PARALLEL RTX for passing/returning multi-register values
++   on SPE using DFmode elements.  No longer used: all active code paths
++   now use SImode-element PARALLELs (via rs6000_spe_function_arg and
++   rs6000_parallel_return) for ABI-correct 32-bit halves convention.
++   Retained for reference.  */
++static rtx ATTRIBUTE_UNUSED
+ spe_build_register_parallel (machine_mode mode, int gregno)
+ {
+   rtx r1, r3, r5, r7;
+ 
+   switch (mode)
+     {
+     case E_DFmode:
+-      r1 = gen_rtx_REG (DImode, gregno);
++      r1 = gen_rtx_REG (DFmode, gregno);
+       r1 = gen_rtx_EXPR_LIST (VOIDmode, r1, const0_rtx);
+       return gen_rtx_PARALLEL (mode, gen_rtvec (1, r1));
+ 
+     case E_DCmode:
+     case E_TFmode:
+-      r1 = gen_rtx_REG (DImode, gregno);
++      r1 = gen_rtx_REG (DFmode, gregno);
+       r1 = gen_rtx_EXPR_LIST (VOIDmode, r1, const0_rtx);
+-      r3 = gen_rtx_REG (DImode, gregno + 2);
++      r3 = gen_rtx_REG (DFmode, gregno + 2);
+       r3 = gen_rtx_EXPR_LIST (VOIDmode, r3, GEN_INT (8));
+       return gen_rtx_PARALLEL (mode, gen_rtvec (2, r1, r3));
+ 
+     case E_TCmode:
+-      r1 = gen_rtx_REG (DImode, gregno);
++      r1 = gen_rtx_REG (DFmode, gregno);
+       r1 = gen_rtx_EXPR_LIST (VOIDmode, r1, const0_rtx);
+-      r3 = gen_rtx_REG (DImode, gregno + 2);
++      r3 = gen_rtx_REG (DFmode, gregno + 2);
+       r3 = gen_rtx_EXPR_LIST (VOIDmode, r3, GEN_INT (8));
+-      r5 = gen_rtx_REG (DImode, gregno + 4);
++      r5 = gen_rtx_REG (DFmode, gregno + 4);
+       r5 = gen_rtx_EXPR_LIST (VOIDmode, r5, GEN_INT (16));
+-      r7 = gen_rtx_REG (DImode, gregno + 6);
++      r7 = gen_rtx_REG (DFmode, gregno + 6);
+       r7 = gen_rtx_EXPR_LIST (VOIDmode, r7, GEN_INT (24));
+       return gen_rtx_PARALLEL (mode, gen_rtvec (4, r1, r3, r5, r7));
+ 
+     default:
+       gcc_unreachable ();
+     }
+ }
+ 
+ /* Determine where to put a SIMD argument on the SPE.  */
+ static rtx
+ rs6000_spe_function_arg (const CUMULATIVE_ARGS *cum, machine_mode mode,
+ 			 const_tree type)
+ {
+   int gregno = cum->sysv_gregno;
+ 
+-  /* On E500 v2, double arithmetic is done on the full 64-bit GPR, but
+-     are passed and returned in a pair of GPRs for ABI compatibility.  */
++  /* E500 ABI: double is passed as two 32-bit halves in an aligned
++     register pair (r3:r4, r5:r6, r7:r8, r9:r10).  The PARALLEL with
++     two SImode elements causes emit_group_load (expr.c) to use the
++     memory path: evstdd (store 64-bit double to stack) then two lwz
++     (load 32-bit halves) into the register pair.
++
++     TFmode (long double): reached via library calls (e.g. __gcc_qmul)
++     where pass-by-reference does not apply (type==NULL bypasses the
++     hook).  Use SImode-element PARALLELs (4 halves) so that the
++     register layout matches the function definition which receives
++     individual DFmode parameters as SImode halves.
++     DCmode/TCmode: pass-by-reference for user functions; reached here
++     only as fallback for library calls.  */
+   if (TARGET_E500_DOUBLE && (mode == DFmode || mode == TFmode
+ 			     || mode == DCmode || mode == TCmode))
+     {
+       int n_words = rs6000_arg_size (mode, type);
+ 
+       /* Doubles go in an odd/even register pair (r5/r6, etc).  */
+       if (mode == DFmode)
+ 	gregno += (1 - gregno) & 1;
+ 
+       /* Multi-reg args are not split between registers and stack.  */
+       if (gregno + n_words - 1 > GP_ARG_MAX_REG)
+ 	return NULL_RTX;
+ 
+-      return spe_build_register_parallel (mode, gregno);
++      /* Build SImode-element PARALLEL for all E500 float modes.
++	 Each 32-bit half gets its own element.  This is consistent
++	 with how individual DFmode parameters are passed (2 SImode
++	 halves each), so TFmode (= 2 doubles = 4 halves) maps
++	 directly to the register layout of __gcc_q* functions.  */
++      {
++	int i;
++	rtx elts[8]; /* TCmode needs up to 8 SImode elements.  */
++
++	for (i = 0; i < n_words; i++)
++	  {
++	    elts[i] = gen_rtx_REG (SImode, gregno + i);
++	    elts[i] = gen_rtx_EXPR_LIST (VOIDmode, elts[i],
++					 GEN_INT (i * 4));
++	  }
++	return gen_rtx_PARALLEL (mode, gen_rtvec_v (n_words, elts));
++      }
+     }
+   if (cum->stdarg)
+     {
+       int n_words = rs6000_arg_size (mode, type);
+ 
+       /* SPE vectors are put in odd registers.  */
+       if (n_words == 2 && (gregno & 1) == 0)
+ 	gregno += 1;
+ 
+       if (gregno + n_words - 1 <= GP_ARG_MAX_REG)
+@@ -13405,20 +13449,36 @@ rs6000_pass_by_reference (cumulative_args_t cum ATTRIBUTE_UNUSED,
+     return 0;
+ 
+   if (DEFAULT_ABI == ABI_V4 && TARGET_IEEEQUAD
+       && FLOAT128_IEEE_P (TYPE_MODE (type)))
+     {
+       if (TARGET_DEBUG_ARG)
+ 	fprintf (stderr, "function_arg_pass_by_reference: V4 IEEE 128-bit\n");
+       return 1;
+     }
+ 
++  /* E500 ABI: DCmode (complex double) and TCmode (complex long double)
++     are too large for register pairs.  Pass them by reference.
++     Note: TFmode (long double) is NOT included here because the
++     __gcc_q* library functions (TFmode arithmetic) are called via
++     emit_library_call_value_1 which passes type=NULL, bypassing this
++     hook.  TFmode must use register-based convention (SImode-element
++     PARALLELs via rs6000_spe_function_arg / rs6000_parallel_return)
++     so that library calls and function definitions agree.  */
++  if (TARGET_E500_DOUBLE && TARGET_HARD_FLOAT
++      && (mode == DCmode || mode == TCmode))
++    {
++      if (TARGET_DEBUG_ARG)
++	fprintf (stderr, "function_arg_pass_by_reference: E500 DCmode/TCmode\n");
++      return 1;
++    }
++
+   if (DEFAULT_ABI == ABI_V4 && AGGREGATE_TYPE_P (type))
+     {
+       if (TARGET_DEBUG_ARG)
+ 	fprintf (stderr, "function_arg_pass_by_reference: V4 aggregate\n");
+       return 1;
+     }
+ 
+   if (int_size_in_bytes (type) < 0)
+     {
+       if (TARGET_DEBUG_ARG)
+@@ -38930,21 +38990,38 @@ rs6000_function_value (const_tree valtype,
+   /* VSX is a superset of Altivec and adds V2DImode/V2DFmode.  Since the same
+      return register is used in both cases, and we won't see V2DImode/V2DFmode
+      for pure altivec, combine the two cases.  */
+   else if ((TREE_CODE (valtype) == VECTOR_TYPE || FLOAT128_VECTOR_P (mode))
+ 	   && TARGET_ALTIVEC && TARGET_ALTIVEC_ABI
+ 	   && ALTIVEC_OR_VSX_VECTOR_MODE (mode))
+     regno = ALTIVEC_ARG_RETURN;
+   else if (TARGET_E500_DOUBLE && TARGET_HARD_FLOAT
+ 	   && (mode == DFmode || mode == DCmode
+ 	       || FLOAT128_IBM_P (mode) || mode == TCmode))
+-    return spe_build_register_parallel (mode, GP_ARG_RETURN);
++    {
++      /* DFmode: return in a single 64-bit SPE register.  On SPE the
++	 64-bit extended GPR holds the full double natively.  Both
++	 caller and callee use evstdd/evldd for 64-bit access.  */
++      if (mode == DFmode)
++	return gen_rtx_REG (mode, GP_ARG_RETURN);
++
++      /* TFmode: return as 4 SImode halves (r3,r4,r5,r6).  This matches
++	 the convention for individual DFmode parameters (2 SImode halves
++	 each), so __gcc_q* library call returns are consistent with
++	 how the functions decompose TFmode into doubles.
++	 DCmode/TCmode: normally return-in-memory via
++	 rs6000_return_in_memory, but provide register fallback.  */
++      {
++	int count = GET_MODE_SIZE (mode) / 4;
++	return rs6000_parallel_return (mode, count, SImode, GP_ARG_RETURN, 1);
++      }
++    }
+   else
+     regno = GP_ARG_RETURN;
+ 
+   return gen_rtx_REG (mode, regno);
+ }
+ 
+ /* Define how to find the value returned by a library function
+    assuming the value has mode MODE.  */
+ rtx
+ rs6000_libcall_value (machine_mode mode)
+@@ -38966,21 +39043,38 @@ rs6000_libcall_value (machine_mode mode)
+      return register is used in both cases, and we won't see V2DImode/V2DFmode
+      for pure altivec, combine the two cases.  */
+   else if (ALTIVEC_OR_VSX_VECTOR_MODE (mode)
+ 	   && TARGET_ALTIVEC && TARGET_ALTIVEC_ABI)
+     regno = ALTIVEC_ARG_RETURN;
+   else if (COMPLEX_MODE_P (mode) && targetm.calls.split_complex_arg)
+     return rs6000_complex_function_value (mode);
+   else if (TARGET_E500_DOUBLE && TARGET_HARD_FLOAT
+ 	   && (mode == DFmode || mode == DCmode
+ 	       || FLOAT128_IBM_P (mode) || mode == TCmode))
+-    return spe_build_register_parallel (mode, GP_ARG_RETURN);
++    {
++      /* DFmode: return in a single 64-bit SPE register.  On SPE the
++	 64-bit extended GPR holds the full double natively.  Both
++	 caller and callee use evstdd/evldd for 64-bit access.  */
++      if (mode == DFmode)
++	return gen_rtx_REG (mode, GP_ARG_RETURN);
++
++      /* TFmode: return as 4 SImode halves (r3,r4,r5,r6).  This matches
++	 the convention for individual DFmode parameters (2 SImode halves
++	 each), so __gcc_q* library call returns are consistent with
++	 how the functions decompose TFmode into doubles.
++	 DCmode/TCmode: normally return-in-memory via
++	 rs6000_return_in_memory, but provide register fallback.  */
++      {
++	int count = GET_MODE_SIZE (mode) / 4;
++	return rs6000_parallel_return (mode, count, SImode, GP_ARG_RETURN, 1);
++      }
++    }
+   else
+     regno = GP_ARG_RETURN;
+ 
+   return gen_rtx_REG (mode, regno);
+ }
+ 
+ 
+ /* Return true if we use LRA instead of reload pass.  */
+ static bool
+ rs6000_lra_p (void)
+-- 
+2.43.0
+
