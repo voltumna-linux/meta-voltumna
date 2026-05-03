@@ -1,0 +1,72 @@
+From fdabe12ab3ea8f61e30fa3149fdd96e8579447e0 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Thu, 26 Feb 2026 14:42:23 +0100
+Subject: [PATCH] Disable packed tval (NaN-boxing) on PowerPC SPE targets
+
+PowerPC SPE (e.g. Freescale e500) replaces the standard FPU with the
+Signal Processing Engine, which may not preserve IEEE 754 NaN payloads.
+This breaks Duktape's packed duk_tval NaN-boxing, causing polkit 0.119
+to fail with "parse error (line 2)" and 100% CPU usage on boot.
+
+Detect SPE via the __SPE__ macro (defined by GCC for SPE targets) and
+fall back to the unpacked 12-byte tval representation. Standard PPC32
+(non-SPE) behavior is unchanged.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ config/architectures/architecture_powerpc32.h.in | 5 +++++
+ src/duk_config.h                                 | 8 ++++++++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/config/architectures/architecture_powerpc32.h.in b/config/architectures/architecture_powerpc32.h.in
+index 111bc03..aa6028b 100644
+--- a/config/architectures/architecture_powerpc32.h.in
++++ b/config/architectures/architecture_powerpc32.h.in
+@@ -1,5 +1,10 @@
+ #define DUK_USE_ARCH_STRING "ppc32"
+ #if !defined(DUK_USE_BYTEORDER)
+ #define DUK_USE_BYTEORDER 3
+ #endif
++#if defined(__SPE__)
++/* PowerPC SPE: NaN payload handling incompatible with packed tval */
++#undef DUK_USE_PACKED_TVAL
++#else
+ #define DUK_USE_PACKED_TVAL
++#endif
+diff --git a/src/duk_config.h b/src/duk_config.h
+index a4e997e..1aeb0a9 100644
+--- a/src/duk_config.h
++++ b/src/duk_config.h
+@@ -952,21 +952,29 @@
+ #define DUK_USE_ARCH_STRING "mips64"
+ /* MIPS byte order varies so rely on autodetection. */
+ #undef DUK_USE_PACKED_TVAL
+ #define DUK_F_PACKED_TVAL_PROVIDED
+ #elif defined(DUK_F_PPC32)
+ /* --- PowerPC 32-bit --- */
+ #define DUK_USE_ARCH_STRING "ppc32"
+ #if !defined(DUK_USE_BYTEORDER)
+ #define DUK_USE_BYTEORDER 3
+ #endif
++#if defined(__SPE__)
++/* PowerPC SPE (Signal Processing Engine), e.g. Freescale e500.
++ * SPE replaces the standard FPU and may not preserve IEEE 754
++ * NaN payloads, which breaks packed duk_tval NaN-boxing.
++ */
++#undef DUK_USE_PACKED_TVAL
++#else
+ #define DUK_USE_PACKED_TVAL
++#endif
+ #define DUK_F_PACKED_TVAL_PROVIDED
+ #elif defined(DUK_F_PPC64)
+ /* --- PowerPC 64-bit --- */
+ #define DUK_USE_ARCH_STRING "ppc64"
+ /* No forced byteorder (both little and big endian are possible). */
+ #undef DUK_USE_PACKED_TVAL
+ #define DUK_F_PACKED_TVAL_PROVIDED
+ #elif defined(DUK_F_SPARC32)
+ /* --- SPARC 32-bit --- */
+ #define DUK_USE_ARCH_STRING "sparc32"
+-- 
+2.43.0
+
