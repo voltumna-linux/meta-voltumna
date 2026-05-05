@@ -15,6 +15,9 @@ VEC_CONCAT RTL.
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 (cherry picked from commit 66ce208c3cd00a1f5794c63801518cf795aefca3)
 ---
+
+Upstream-Status: Inappropriate
+
  gcc/config/powerpcspe/powerpcspe.cc | 2 ++
  1 file changed, 2 insertions(+)
 

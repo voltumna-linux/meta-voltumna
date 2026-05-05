@@ -56,6 +56,9 @@ compile cleanly at -O0/-O2/-O3/-Os with the SPE cross compiler.
 
 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 ---
+
+Upstream-Status: Inappropriate
+
  gcc/config/powerpcspe/powerpcspe.cc | 34 ++++++++++++++++-------------
  1 file changed, 19 insertions(+), 15 deletions(-)
 
