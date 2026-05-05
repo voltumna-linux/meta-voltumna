@@ -1,24 +1,32 @@
-From 87a32b5c1db8673927f52c05b7dec7c2bc87531a Mon Sep 17 00:00:00 2001
+From d7a0e389c6d8e27e6678e6dbeb49e538557d3770 Mon Sep 17 00:00:00 2001
 From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
-Date: Sun, 8 Mar 2026 19:20:51 +0100
-Subject: [PATCH] Restore PowerPC SPE (e500) support for glibc 2.39
+Date: Sat, 25 Apr 2026 09:30:46 +0200
+Subject: [PATCH 1/2] Restore PowerPC SPE (e500) support for glibc 2.43
 
-Upstream-Status: Inappropriate
-
-Port the SPE support patch from glibc 2.35 (commit 1975c9363e) to
-glibc 2.39. The patch reverses the removal of SPE support (commit
+Port the SPE support patch from glibc 2.39 (commit 87a32b5c1d) to
+glibc 2.43.  The patch reverses the removal of SPE support (commit
 a053e87849) to allow building glibc for powerpc-*-linux-gnuspe
 targets with a patched GCC that retains SPE codegen.
 
-Restored 36 files (e500/nofpu fenv functions, context-e500.h,
-Implies), adapted to the glibc 2.39 codebase (pointer_guard.h
-refactoring), and re-added SPE conditionals to setjmp/longjmp,
-ucontext, and HTM elision paths. Set machine=powerpc/powerpc32/e500
-for gnuspe targets so the e500/nofpu sysdeps directory is in the
-search path.
+Differences from the 2.39 port:
+ * HTM/lock elision support was removed from glibc in 2.43 (commit
+   b9579342c6, "Remove support for lock elision.").  The SPE skip
+   hunks that the 2.39 port added to elision-lock.c, elision-trylock.c
+   and elision-unlock.c are therefore no longer needed and are dropped.
+ * The AC_MSG_ERROR block in sysdeps/powerpc/preconfigure.ac and the
+   matching exit in sysdeps/powerpc/preconfigure are replaced with
+   machine=powerpc/powerpc32/e500, same as the 2.39 port.  The
+   power11 archcpu entry added upstream in 2.43 is preserved.
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+All other files (36 new files under sysdeps/powerpc/powerpc32/e500/nofpu/,
+context-e500.h, the e500/nofpu Implies, and the setjmp/longjmp /
+{get,set,swap}context SPE hooks) apply unchanged from the 2.39 port.
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 ---
+
+Upstream-Status: Inappropriate
+
  sysdeps/powerpc/fpu_control.h                 |  33 +++-
  sysdeps/powerpc/powerpc32/__longjmp-common.S  |  42 ++---
  sysdeps/powerpc/powerpc32/e500/nofpu/Makefile |   9 ++
@@ -58,9 +66,6 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
  sysdeps/powerpc/powerpc32/setjmp-common.S     |  42 ++---
  sysdeps/powerpc/preconfigure                  |   3 +-
  sysdeps/powerpc/preconfigure.ac               |   3 +-
- .../unix/sysv/linux/powerpc/elision-lock.c    |   2 +
- .../unix/sysv/linux/powerpc/elision-trylock.c |   2 +
- .../unix/sysv/linux/powerpc/elision-unlock.c  |   4 +
  .../powerpc/powerpc32/e500/nofpu/Implies      |   2 +
  .../powerpc/powerpc32/getcontext-common.S     |   4 +
  .../powerpc/powerpc32/nofpu/context-e500.h    | 144 ++++++++++++++++++
@@ -69,7 +74,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
  .../powerpc/powerpc32/nofpu/swapcontext.S     |   2 +
  .../powerpc/powerpc32/setcontext-common.S     |   4 +
  .../powerpc/powerpc32/swapcontext-common.S    |   8 +
- 50 files changed, 1682 insertions(+), 44 deletions(-)
+ 47 files changed, 1674 insertions(+), 44 deletions(-)
  create mode 100644 sysdeps/powerpc/powerpc32/e500/nofpu/Makefile
  create mode 100644 sysdeps/powerpc/powerpc32/e500/nofpu/atomic-feclearexcept.c
  create mode 100644 sysdeps/powerpc/powerpc32/e500/nofpu/atomic-feholdexcept.c
@@ -108,7 +113,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
  create mode 100644 sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/context-e500.h
 
 diff --git a/sysdeps/powerpc/fpu_control.h b/sysdeps/powerpc/fpu_control.h
-index e53ffb46b2..5d0761e644 100644
+index 85be70f369..a486f3d237 100644
 --- a/sysdeps/powerpc/fpu_control.h
 +++ b/sysdeps/powerpc/fpu_control.h
 @@ -12,33 +12,58 @@
@@ -175,7 +180,7 @@ index e53ffb46b2..5d0761e644 100644
  # define _FPU_MASK_RC (_FPU_RC_NEAREST|_FPU_RC_DOWN|_FPU_RC_UP|_FPU_RC_ZERO)
  
 diff --git a/sysdeps/powerpc/powerpc32/__longjmp-common.S b/sysdeps/powerpc/powerpc32/__longjmp-common.S
-index 7da9dc0c97..88e5d01588 100644
+index eb228bf4fe..119f33f7d1 100644
 --- a/sysdeps/powerpc/powerpc32/__longjmp-common.S
 +++ b/sysdeps/powerpc/powerpc32/__longjmp-common.S
 @@ -19,59 +19,65 @@
@@ -1894,7 +1899,7 @@ index 0000000000..9abb34c776
 +  return 0;
 +}
 diff --git a/sysdeps/powerpc/powerpc32/setjmp-common.S b/sysdeps/powerpc/powerpc32/setjmp-common.S
-index ce2e70d718..51f3d1b5a4 100644
+index 7432e52756..73175551bd 100644
 --- a/sysdeps/powerpc/powerpc32/setjmp-common.S
 +++ b/sysdeps/powerpc/powerpc32/setjmp-common.S
 @@ -19,55 +19,61 @@
@@ -1978,7 +1983,7 @@ index ce2e70d718..51f3d1b5a4 100644
  #endif
  END (__sigsetjmp_symbol)
 diff --git a/sysdeps/powerpc/preconfigure b/sysdeps/powerpc/preconfigure
-index 4de94089a3..179f12a705 100644
+index 48b9c9b65a..e95e746bfe 100644
 --- a/sysdeps/powerpc/preconfigure
 +++ b/sysdeps/powerpc/preconfigure
 @@ -6,22 +6,21 @@ powerpc64le)
@@ -2006,7 +2011,7 @@ index 4de94089a3..179f12a705 100644
  #   .machine <machine>
  # or
 diff --git a/sysdeps/powerpc/preconfigure.ac b/sysdeps/powerpc/preconfigure.ac
-index 6c63bd8257..3a57b2c301 100644
+index 14b6dafd4a..9a411e53e6 100644
 --- a/sysdeps/powerpc/preconfigure.ac
 +++ b/sysdeps/powerpc/preconfigure.ac
 @@ -6,22 +6,21 @@ powerpc64le)
@@ -2033,126 +2038,6 @@ index 6c63bd8257..3a57b2c301 100644
  # and scrape the first
  #   .machine <machine>
  # or
-diff --git a/sysdeps/unix/sysv/linux/powerpc/elision-lock.c b/sysdeps/unix/sysv/linux/powerpc/elision-lock.c
-index 0715f69992..13bf4a59ba 100644
---- a/sysdeps/unix/sysv/linux/powerpc/elision-lock.c
-+++ b/sysdeps/unix/sysv/linux/powerpc/elision-lock.c
-@@ -32,20 +32,21 @@
- 
- #define aconf __elision_aconf
- 
- /* Adaptive lock using transactions.
-    By default the lock region is run as a transaction, and when it
-    aborts or the lock is busy the lock adapts itself.  */
- 
- int
- __lll_lock_elision (int *lock, short *adapt_count, EXTRAARG int pshared)
- {
-+#ifndef __SPE__
-   /* adapt_count is accessed concurrently but is just a hint.  Thus,
-      use atomic accesses but relaxed MO is sufficient.  */
-   if (atomic_load_relaxed (adapt_count) > 0)
-     {
-       goto use_lock;
-     }
- 
-   for (int i = aconf.try_tbegin; i > 0; i--)
-     {
-       if (__libc_tbegin (0))
-@@ -69,13 +70,14 @@ __lll_lock_elision (int *lock, short *adapt_count, EXTRAARG int pshared)
- 	    }
- 	}
-      }
- 
-   /* Fall back to locks for a bit if retries have been exhausted */
-   if (aconf.try_tbegin > 0 && aconf.skip_lock_out_of_tbegin_retries > 0)
-     atomic_store_relaxed (adapt_count,
- 			  aconf.skip_lock_out_of_tbegin_retries);
- 
- use_lock:
-+#endif
-   return LLL_LOCK ((*lock), pshared);
- }
- libc_hidden_def (__lll_lock_elision)
-diff --git a/sysdeps/unix/sysv/linux/powerpc/elision-trylock.c b/sysdeps/unix/sysv/linux/powerpc/elision-trylock.c
-index 2eaa413dc4..24ef1fbf91 100644
---- a/sysdeps/unix/sysv/linux/powerpc/elision-trylock.c
-+++ b/sysdeps/unix/sysv/linux/powerpc/elision-trylock.c
-@@ -23,20 +23,21 @@
- #include "htm.h"
- 
- #define aconf __elision_aconf
- 
- /* Try to elide a futex trylock.  FUTEX is the futex variable.  ADAPT_COUNT is
-    the adaptation counter in the mutex.  */
- 
- int
- __lll_trylock_elision (int *futex, short *adapt_count)
- {
-+#ifndef __SPE__
-   /* Implement POSIX semantics by forbiding nesting elided trylocks.  */
-   __libc_tabort (_ABORT_NESTED_TRYLOCK);
- 
-   /* Only try a transaction if it's worth it.  */
-   if (atomic_load_relaxed (adapt_count) > 0)
-     {
-       goto use_lock;
-     }
- 
-   if (__libc_tbegin (0))
-@@ -58,13 +59,14 @@ __lll_trylock_elision (int *futex, short *adapt_count)
- 	  /* A persistent failure indicates that a retry will probably
- 	     result in another failure.  Use normal locking now and
- 	     for the next couple of calls.  */
- 	  if (aconf.skip_trylock_internal_abort > 0)
- 	    atomic_store_relaxed (adapt_count,
- 				aconf.skip_trylock_internal_abort);
- 	}
-     }
- 
- use_lock:
-+#endif
-   return lll_trylock (*futex);
- }
- libc_hidden_def (__lll_trylock_elision)
-diff --git a/sysdeps/unix/sysv/linux/powerpc/elision-unlock.c b/sysdeps/unix/sysv/linux/powerpc/elision-unlock.c
-index 40322abf77..828e525965 100644
---- a/sysdeps/unix/sysv/linux/powerpc/elision-unlock.c
-+++ b/sysdeps/unix/sysv/linux/powerpc/elision-unlock.c
-@@ -16,29 +16,33 @@
-    License along with the GNU C Library; if not, see
-    <https://www.gnu.org/licenses/>.  */
- 
- #include "pthreadP.h"
- #include "lowlevellock.h"
- #include "htm.h"
- 
- int
- __lll_unlock_elision (int *lock, short *adapt_count, int pshared)
- {
-+#ifndef __SPE__
-   /* When the lock was free we're in a transaction.  */
-   if (*lock == 0)
-     __libc_tend (0);
-   else
-     {
-       /* Update adapt_count in the critical section to prevent a
- 	 write-after-destroy error as mentioned in BZ 20822.  The
- 	 following update of adapt_count has to be contained within
- 	 the critical region of the fall-back lock in order to not violate
- 	 the mutex destruction requirements.  */
-       short __tmp = atomic_load_relaxed (adapt_count);
-       if (__tmp > 0)
- 	atomic_store_relaxed (adapt_count, __tmp - 1);
- 
-       lll_unlock ((*lock), pshared);
-     }
-+#else
-+  lll_unlock ((*lock), pshared);
-+#endif
-   return 0;
- }
- libc_hidden_def (__lll_unlock_elision)
 diff --git a/sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nofpu/Implies b/sysdeps/unix/sysv/linux/powerpc/powerpc32/e500/nofpu/Implies
 new file mode 100644
 index 0000000000..aab22f212c
@@ -2162,7 +2047,7 @@ index 0000000000..aab22f212c
 +powerpc/powerpc32/e500/nofpu
 +powerpc/nofpu
 diff --git a/sysdeps/unix/sysv/linux/powerpc/powerpc32/getcontext-common.S b/sysdeps/unix/sysv/linux/powerpc/powerpc32/getcontext-common.S
-index 34e6d07280..0bf55becb3 100644
+index 68a8ac9eb0..cccb6e9235 100644
 --- a/sysdeps/unix/sysv/linux/powerpc/powerpc32/getcontext-common.S
 +++ b/sysdeps/unix/sysv/linux/powerpc/powerpc32/getcontext-common.S
 @@ -255,20 +255,24 @@ ENTRY(__CONTEXT_FUNC_NAME)
@@ -2341,7 +2226,7 @@ index 0000000000..2bb55cd471
 +
 +#endif /* context-e500.h */
 diff --git a/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/getcontext.S b/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/getcontext.S
-index 8ee39fef7a..b2662d359d 100644
+index dacd4412ca..b5eb8b0c98 100644
 --- a/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/getcontext.S
 +++ b/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/getcontext.S
 @@ -17,20 +17,22 @@
@@ -2368,7 +2253,7 @@ index 8ee39fef7a..b2662d359d 100644
  #if SHLIB_COMPAT (libc, GLIBC_2_3_3, GLIBC_2_3_4)
  
 diff --git a/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/setcontext.S b/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/setcontext.S
-index 09f3c65e62..4e0739ac93 100644
+index 45a6038820..7057818e68 100644
 --- a/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/setcontext.S
 +++ b/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/setcontext.S
 @@ -17,20 +17,22 @@
@@ -2395,7 +2280,7 @@ index 09f3c65e62..4e0739ac93 100644
  #if SHLIB_COMPAT (libc, GLIBC_2_3_3, GLIBC_2_3_4)
  
 diff --git a/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/swapcontext.S b/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/swapcontext.S
-index 53e4c4f534..61ec6f258a 100644
+index f77537f417..6208e9454c 100644
 --- a/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/swapcontext.S
 +++ b/sysdeps/unix/sysv/linux/powerpc/powerpc32/nofpu/swapcontext.S
 @@ -17,20 +17,22 @@
@@ -2422,7 +2307,7 @@ index 53e4c4f534..61ec6f258a 100644
  #if SHLIB_COMPAT (libc, GLIBC_2_3_3, GLIBC_2_3_4)
  
 diff --git a/sysdeps/unix/sysv/linux/powerpc/powerpc32/setcontext-common.S b/sysdeps/unix/sysv/linux/powerpc/powerpc32/setcontext-common.S
-index 7ec73cc578..910c22eeed 100644
+index 822f6c750f..453577aff0 100644
 --- a/sysdeps/unix/sysv/linux/powerpc/powerpc32/setcontext-common.S
 +++ b/sysdeps/unix/sysv/linux/powerpc/powerpc32/setcontext-common.S
 @@ -221,20 +221,24 @@ ENTRY(__CONTEXT_FUNC_NAME)
@@ -2451,7 +2336,7 @@ index 7ec73cc578..910c22eeed 100644
  	/* Restore the general registers */
  	lwz	r1,_UC_GREGS+(PT_R1*4)(r31)
 diff --git a/sysdeps/unix/sysv/linux/powerpc/powerpc32/swapcontext-common.S b/sysdeps/unix/sysv/linux/powerpc/powerpc32/swapcontext-common.S
-index 5a397d7171..44fad69147 100644
+index 1db8199f94..f8c89a442a 100644
 --- a/sysdeps/unix/sysv/linux/powerpc/powerpc32/swapcontext-common.S
 +++ b/sysdeps/unix/sysv/linux/powerpc/powerpc32/swapcontext-common.S
 @@ -258,20 +258,24 @@ ENTRY(__CONTEXT_FUNC_NAME)

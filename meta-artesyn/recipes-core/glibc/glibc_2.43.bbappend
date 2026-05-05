@@ -1,7 +1,8 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI:append = " \
-	file://0001-Restore-PowerPC-SPE-e500-support-for-glibc-2.39.patch \
+        file://0001-Restore-PowerPC-SPE-e500-support-for-glibc-2.43.patch \
+        file://0002-powerpc-Add-__feclearexcept-and-__fetestexcept-inter.patch \
 	"
 
 SYSROOT_PREPROCESS_FUNCS:append:ppce500v2 = " create_ld_compat_symlink"
