@@ -10,8 +10,6 @@ SRC_URI = " \
     "
 SRCREV = "b64332b6a63be3041619c717c2aa3e1922ed86b1"
 
-S = "${WORKDIR}/git"
-
 PACKAGES =+ "${PN}-bin"
 do_install:append() {
     install -d ${D}${bindir}

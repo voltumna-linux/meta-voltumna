@@ -9,6 +9,9 @@ Here we go and finally add it to our build.
 Suggested-by: Stefan Lehmann <stlm@posteo.de>
 Signed-off-by: Patrick Bruenn <p.bruenn@beckhoff.com>
 ---
+
+Upstream-Status: Inappropriate
+
  meson.build | 10 +++++++++-
  1 file changed, 9 insertions(+), 1 deletion(-)
 

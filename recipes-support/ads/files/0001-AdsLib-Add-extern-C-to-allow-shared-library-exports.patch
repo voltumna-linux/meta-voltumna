@@ -13,6 +13,9 @@ can build a shared library in the next step.
 Suggested-by: Stefan Lehmann <stlm@posteo.de>
 Signed-off-by: Patrick Bruenn <p.bruenn@beckhoff.com>
 ---
+
+Upstream-Status: Inappropriate
+
  AdsLib/AdsLib.h              | 7 +++++++
  AdsLib/standalone/AdsLib.cpp | 6 ++++++
  AdsLib/standalone/AdsLib.h   | 6 ++++++
