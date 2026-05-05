@@ -1,9 +1,7 @@
-From d27eb48e2feea67475025bcaf4d99467b280ff0b Mon Sep 17 00:00:00 2001
+From c466441e436b5110a0867ce6d1441ff5e0ec6056 Mon Sep 17 00:00:00 2001
 From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
 Date: Sun, 8 Mar 2026 07:52:09 +0100
-Subject: [PATCH] Port PowerPC SPE (e500) target backend to GCC 13.4
-
-Upstream-Status: Inappropriate
+Subject: [PATCH 1/6] Port PowerPC SPE (e500) target backend to GCC 13.4
 
 Reintegrate the powerpcspe target backend into GCC 13, adapted from the
 GCC 8 era fork of rs6000. This enables building a cross-compiler for
@@ -36,7 +34,11 @@ emit_group_load_1/emit_group_store to prevent invalid DF->DI subreg
 conversions on SPE targets where doubles live in GPR pairs.
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+(cherry picked from commit d27eb48e2feea67475025bcaf4d99467b280ff0b)
 ---
+
+Upstream-Status: Inappropriate
+
  contrib/config-list.mk                        |     1 +
  .../config/powerpcspe/powerpcspe-common.cc    |   270 +
  gcc/config.gcc                                |    32 +-
@@ -340,18 +342,18 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
  create mode 100644 gcc/config/powerpcspe/xilinx.opt
 
 diff --git a/contrib/config-list.mk b/contrib/config-list.mk
-index e570b13c71b..4e7900e3af5 100644
+index fc9fc9902bf..a373ecef9ba 100644
 --- a/contrib/config-list.mk
 +++ b/contrib/config-list.mk
-@@ -72,20 +72,21 @@ LIST = aarch64-elf aarch64-freebsd13 aarch64-linux-gnu aarch64-rtems \
+@@ -78,20 +78,21 @@ LIST = \
+   moxie-uclinux moxie-rtems \
    msp430-elf msp430-elfbare \
    nds32le-elf nds32be-elf \
-   nios2-elf nios2-linux-gnu nios2-rtems \
    nvptx-none \
    or1k-elf or1k-linux-uclibc or1k-linux-musl or1k-rtems \
    pdp11-aout \
-   powerpc-darwin8 \
-   powerpc-darwin7 powerpc64-darwin powerpc-freebsd13 powerpc-netbsd \
+   powerpc-apple-darwin9 powerpc64-apple-darwin9 powerpc-apple-darwin8 \
+   powerpc-freebsd13 powerpc-netbsd \
    powerpc-eabisimaltivec powerpc-eabisim ppc-elf \
    powerpc-eabialtivec powerpc-xilinx-eabi powerpc-eabi \
 +  powerpc-linux_gnuspe powerpc-eabispe \
@@ -642,10 +644,10 @@ index 00000000000..d55302f675d
 +
 +struct gcc_targetm_common targetm_common = TARGETM_COMMON_INITIALIZER;
 diff --git a/gcc/config.gcc b/gcc/config.gcc
-index ae332a88768..bade15d7b3e 100644
+index 53be4a7cfe7..111fe34e26e 100644
 --- a/gcc/config.gcc
 +++ b/gcc/config.gcc
-@@ -289,21 +289,20 @@ case ${target} in
+@@ -300,21 +300,20 @@ case ${target}${target_min} in
   | crisv32-*-*				\
   | i[34567]86-go32-*			\
   | i[34567]86-*-go32*			\
@@ -667,7 +669,7 @@ index ae332a88768..bade15d7b3e 100644
   | *-*-linux*libc1*			\
   | *-*-linux*oldld*			\
   | *-*-rtemsaout*			\
-@@ -494,20 +493,30 @@ nios2-*-*)
+@@ -514,20 +513,30 @@ nds32*)
  	;;
  nvptx-*-*)
  	cpu_type=nvptx
@@ -698,7 +700,7 @@ index ae332a88768..bade15d7b3e 100644
  	extra_headers="${extra_headers} xmmintrin.h mm_malloc.h emmintrin.h"
  	extra_headers="${extra_headers} mmintrin.h x86intrin.h"
  	extra_headers="${extra_headers} pmmintrin.h tmmintrin.h smmintrin.h"
-@@ -2914,20 +2923,26 @@ powerpc*-*-freebsd*)
+@@ -3019,20 +3028,26 @@ powerpc*-*-freebsd*)
  	        tm_file="${tm_file} rs6000/freebsd.h"
  		;;
  	esac
@@ -725,7 +727,7 @@ index ae332a88768..bade15d7b3e 100644
  	tm_file="${tm_file} elfos.h gnu-user.h usegas.h freebsd-spec.h newlib-stdint.h rs6000/sysv4.h rs6000/eabi.h rs6000/eabisim.h"
  	extra_options="${extra_options} rs6000/sysv4.opt"
  	tmake_file="rs6000/t-fprules rs6000/t-ppcgas rs6000/t-ppccomm"
-@@ -2948,20 +2963,35 @@ powerpc-*-eabi*)
+@@ -3053,20 +3068,35 @@ powerpc-*-eabi*)
  	tm_file="${tm_file} elfos.h gnu-user.h usegas.h freebsd-spec.h newlib-stdint.h rs6000/sysv4.h rs6000/eabi.h"
  	extra_options="${extra_options} rs6000/sysv4.opt"
  	tmake_file="rs6000/t-fprules rs6000/t-ppcgas rs6000/t-ppccomm"
@@ -762,7 +764,7 @@ index ae332a88768..bade15d7b3e 100644
  	esac
  	case ${target}:${with_cpu} in
 diff --git a/gcc/config.host b/gcc/config.host
-index 21a988e6376..48caaec96ba 100644
+index 4c1a5e9910c..e6c923b92df 100644
 --- a/gcc/config.host
 +++ b/gcc/config.host
 @@ -138,20 +138,24 @@ case ${host} in
@@ -113784,10 +113786,10 @@ index 00000000000..7afbcbb1e2c
 +
 +; This comment is to ensure we retain the blank line above.
 diff --git a/gcc/expr.cc b/gcc/expr.cc
-index 705d5b34eed..21f1f27a714 100644
+index c83c5616d9f..5868bbe3d39 100644
 --- a/gcc/expr.cc
 +++ b/gcc/expr.cc
-@@ -2567,21 +2567,23 @@ emit_group_load_1 (rtx *tmps, rtx dst, rtx orig_src, tree type,
+@@ -2974,21 +2974,23 @@ emit_group_load_1 (rtx *tmps, rtx dst, rtx orig_src, tree type,
    machine_mode m = GET_MODE (orig_src);
  
    gcc_assert (GET_CODE (dst) == PARALLEL);
@@ -113812,7 +113814,7 @@ index 705d5b34eed..21f1f27a714 100644
  	  emit_move_insn (src, orig_src);
  	}
        emit_group_load_1 (tmps, dst, src, type, ssize);
-@@ -2832,21 +2834,23 @@ emit_group_store (rtx orig_dst, rtx src, tree type ATTRIBUTE_UNUSED,
+@@ -3234,21 +3236,23 @@ emit_group_store (rtx orig_dst, rtx src, tree type ATTRIBUTE_UNUSED,
    rtx *tmps, dst;
    int start, finish, i;
    machine_mode m = GET_MODE (orig_dst);

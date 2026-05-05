@@ -20,9 +20,6 @@ No behavioural change intended.
 
 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 ---
-
-Upstream-Status: Inappropriate
-
  gcc/config/powerpcspe/darwin.h      |  2 +-
  gcc/config/powerpcspe/powerpcspe.cc | 22 +++++++++++-----------
  gcc/config/powerpcspe/powerpcspe.h  |  5 +++++

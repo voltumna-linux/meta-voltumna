@@ -37,9 +37,6 @@ existing TFmode test battery still produces the expected SPE codegen
 
 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 ---
-
-Upstream-Status: Inappropriate
-
  gcc/recog.cc | 12 ++++++++++--
  1 file changed, 10 insertions(+), 2 deletions(-)
 

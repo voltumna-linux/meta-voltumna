@@ -63,9 +63,6 @@ produces xgcc (GCC) 15.2.1 and cc1.  Smoke tests pass:
 
 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 ---
-
-Upstream-Status: Inappropriate
-
  gcc/config/powerpcspe/476.opt.urls            |  1 +
  gcc/config/powerpcspe/aix64.opt.urls          |  1 +
  gcc/config/powerpcspe/darwin.opt.urls         |  1 +
