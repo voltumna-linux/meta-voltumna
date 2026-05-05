@@ -1,0 +1,456 @@
+From 2848c2db6d86ff0ca20af4fc146597536dd549b4 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Fri, 24 Apr 2026 16:31:59 +0200
+Subject: [PATCH 3/6] Adapt powerpcspe backend to GCC 15 API changes
+
+Forward-port the out-of-tree PowerPC SPE (e500) target backend from
+GCC 13.4 to GCC 15.2.  Applies to the two preceding cherry-picks that
+reintroduced the backend from the GCC 8 era and fixed an SPE vec_perm
+ICE; both arrive cleanly on top of releases/gcc-15 but the middle-end
+API has moved on, and the target no longer builds without the
+following adjustments.
+
+API adaptations in gcc/config/powerpcspe/:
+
+- powerpcspe.h: FLOAT_TYPE_SIZE, DOUBLE_TYPE_SIZE and LONG_DOUBLE_TYPE_SIZE
+  are poisoned in GCC 15 system.h; remove the #define's and implement
+  TARGET_C_MODE_FOR_FLOATING_TYPE (rs6000_c_mode_for_floating_type) in
+  powerpcspe.cc, mirroring the rs6000 GCC 15 implementation: DFmode or
+  TFmode for TI_LONG_DOUBLE_TYPE depending on rs6000_long_double_type_size,
+  default_mode_for_floating_type otherwise.
+
+- powerpcspe.cc: rs6000_md_asm_adjust now takes an additional
+  vec<rtx> &uses parameter between constraints and clobbers
+  (TARGET_MD_ASM_ADJUST signature change).
+
+- powerpcspe.cc: rs6000_legitimate_address_p (and the debug wrapper)
+  gain a trailing code_helper argument, defaulted to ERROR_MARK, per
+  the TARGET_LEGITIMATE_ADDRESS_P signature change.  SPE ignores it.
+
+- powerpcspe.cc: the attribute table is now a scoped_attribute_specs.
+  Rename rs6000_attribute_table to rs6000_gnu_attributes, wrap it in
+  rs6000_gnu_attribute_table, and expose the new
+  rs6000_attribute_table[] array of scoped_attribute_specs pointers,
+  following the rs6000 layout.
+
+- powerpcspe-c.cc / powerpcspe-protos.h: altivec_resolve_overloaded_builtin
+  gains a trailing bool parameter; give it a default value of false in
+  the declaration so the numerous intra-file recursive call sites do
+  not need to be touched.
+
+Build-system adaptation:
+
+- Add stub .opt.urls files for every .opt file under
+  gcc/config/powerpcspe/ (476, aix64, darwin, linux64, powerpcspe,
+  powerpcspe-tables, sysv4, xilinx).  GCC 15's Makefile requires
+  <foo>.opt.urls for each <foo>.opt listed in extra_opt_files; we are
+  an out-of-tree fork with no corresponding invoke.texi sections, so
+  empty stubs (a single comment line) are the correct content.
+
+Verified end-to-end:
+
+  ../configure --target=powerpc-linux-gnuspe --enable-languages=c \
+               --disable-multilib --disable-bootstrap \
+               --without-headers --with-cpu=8548
+  make all-gcc
+
+produces xgcc (GCC) 15.2.1 and cc1.  Smoke tests pass:
+  * hello.c emits valid PowerPC assembly;
+  * double f(double, double) emits efdadd / efdmul with the ABI
+    passing doubles in GPR pairs (r3,r9) per E500ABIUG;
+  * a SLP-vectorizable vec_perm kernel on v2si compiles without the
+    ICE fixed by the preceding cherry-pick.
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+---
+
+Upstream-Status: Inappropriate
+
+ gcc/config/powerpcspe/476.opt.urls            |  1 +
+ gcc/config/powerpcspe/aix64.opt.urls          |  1 +
+ gcc/config/powerpcspe/darwin.opt.urls         |  1 +
+ gcc/config/powerpcspe/linux64.opt.urls        |  1 +
+ gcc/config/powerpcspe/powerpcspe-c.cc         |  2 +-
+ gcc/config/powerpcspe/powerpcspe-protos.h     |  3 +-
+ .../powerpcspe/powerpcspe-tables.opt.urls     |  1 +
+ gcc/config/powerpcspe/powerpcspe.cc           | 41 ++++++++++++++++---
+ gcc/config/powerpcspe/powerpcspe.h            | 18 ++------
+ gcc/config/powerpcspe/powerpcspe.opt.urls     |  1 +
+ gcc/config/powerpcspe/sysv4.opt.urls          |  1 +
+ gcc/config/powerpcspe/xilinx.opt.urls         |  1 +
+ 12 files changed, 50 insertions(+), 22 deletions(-)
+ create mode 100644 gcc/config/powerpcspe/476.opt.urls
+ create mode 100644 gcc/config/powerpcspe/aix64.opt.urls
+ create mode 100644 gcc/config/powerpcspe/darwin.opt.urls
+ create mode 100644 gcc/config/powerpcspe/linux64.opt.urls
+ create mode 100644 gcc/config/powerpcspe/powerpcspe-tables.opt.urls
+ create mode 100644 gcc/config/powerpcspe/powerpcspe.opt.urls
+ create mode 100644 gcc/config/powerpcspe/sysv4.opt.urls
+ create mode 100644 gcc/config/powerpcspe/xilinx.opt.urls
+
+diff --git a/gcc/config/powerpcspe/476.opt.urls b/gcc/config/powerpcspe/476.opt.urls
+new file mode 100644
+index 00000000000..bd0ea9ed840
+--- /dev/null
++++ b/gcc/config/powerpcspe/476.opt.urls
+@@ -0,0 +1 @@
++; Stub file for out-of-tree powerpcspe fork: no per-option help URLs.
+diff --git a/gcc/config/powerpcspe/aix64.opt.urls b/gcc/config/powerpcspe/aix64.opt.urls
+new file mode 100644
+index 00000000000..bd0ea9ed840
+--- /dev/null
++++ b/gcc/config/powerpcspe/aix64.opt.urls
+@@ -0,0 +1 @@
++; Stub file for out-of-tree powerpcspe fork: no per-option help URLs.
+diff --git a/gcc/config/powerpcspe/darwin.opt.urls b/gcc/config/powerpcspe/darwin.opt.urls
+new file mode 100644
+index 00000000000..bd0ea9ed840
+--- /dev/null
++++ b/gcc/config/powerpcspe/darwin.opt.urls
+@@ -0,0 +1 @@
++; Stub file for out-of-tree powerpcspe fork: no per-option help URLs.
+diff --git a/gcc/config/powerpcspe/linux64.opt.urls b/gcc/config/powerpcspe/linux64.opt.urls
+new file mode 100644
+index 00000000000..bd0ea9ed840
+--- /dev/null
++++ b/gcc/config/powerpcspe/linux64.opt.urls
+@@ -0,0 +1 @@
++; Stub file for out-of-tree powerpcspe fork: no per-option help URLs.
+diff --git a/gcc/config/powerpcspe/powerpcspe-c.cc b/gcc/config/powerpcspe/powerpcspe-c.cc
+index 0e69ebb994f..5e3941c4dc3 100644
+--- a/gcc/config/powerpcspe/powerpcspe-c.cc
++++ b/gcc/config/powerpcspe/powerpcspe-c.cc
+@@ -5631,21 +5631,21 @@ altivec_build_resolved_builtin (tree *args, int n,
+       gcc_unreachable ();
+     }
+   return fold_convert (ret_type, call);
+ }
+ 
+ /* Implementation of the resolve_overloaded_builtin target hook, to
+    support Altivec's overloaded builtins.  */
+ 
+ tree
+ altivec_resolve_overloaded_builtin (location_t loc, tree fndecl,
+-				    void *passed_arglist)
++				    void *passed_arglist, bool)
+ {
+   vec<tree, va_gc> *arglist = static_cast<vec<tree, va_gc> *> (passed_arglist);
+   unsigned int nargs = vec_safe_length (arglist);
+   enum rs6000_builtins fcode
+     = (enum rs6000_builtins)DECL_FUNCTION_CODE (fndecl);
+   tree fnargs = TYPE_ARG_TYPES (TREE_TYPE (fndecl));
+   tree types[3], args[3];
+   const struct altivec_builtin_types *desc;
+   unsigned int n;
+ 
+diff --git a/gcc/config/powerpcspe/powerpcspe-protos.h b/gcc/config/powerpcspe/powerpcspe-protos.h
+index 575a3ed3e6a..8e7851076e4 100644
+--- a/gcc/config/powerpcspe/powerpcspe-protos.h
++++ b/gcc/config/powerpcspe/powerpcspe-protos.h
+@@ -166,21 +166,22 @@ extern align_flags rs6000_loop_align (rtx);
+ extern void rs6000_split_logical (rtx [], enum rtx_code, bool, bool, bool);
+ #endif /* RTX_CODE */
+ 
+ #ifdef TREE_CODE
+ extern unsigned int rs6000_data_alignment (tree, unsigned int, enum data_align);
+ extern bool rs6000_special_adjust_field_align_p (tree, unsigned int);
+ extern unsigned int rs6000_special_round_type_align (tree, unsigned int,
+ 						     unsigned int);
+ extern unsigned int darwin_rs6000_special_round_type_align (tree, unsigned int,
+ 							    unsigned int);
+-extern tree altivec_resolve_overloaded_builtin (location_t, tree, void *);
++extern tree altivec_resolve_overloaded_builtin (location_t, tree, void *,
++						bool = false);
+ extern rtx rs6000_libcall_value (machine_mode);
+ extern rtx rs6000_va_arg (tree, tree);
+ extern int function_ok_for_sibcall (tree);
+ extern int rs6000_reg_parm_stack_space (tree, bool);
+ extern void rs6000_asm_weaken_decl (FILE *, tree, const char *, const char *);
+ extern void rs6000_xcoff_declare_function_name (FILE *, const char *, tree);
+ extern void rs6000_xcoff_declare_object_name (FILE *, const char *, tree);
+ extern void rs6000_xcoff_asm_output_aligned_decl_common (FILE *, tree,
+ 							 const char *,
+ 							 unsigned HOST_WIDE_INT,
+diff --git a/gcc/config/powerpcspe/powerpcspe-tables.opt.urls b/gcc/config/powerpcspe/powerpcspe-tables.opt.urls
+new file mode 100644
+index 00000000000..bd0ea9ed840
+--- /dev/null
++++ b/gcc/config/powerpcspe/powerpcspe-tables.opt.urls
+@@ -0,0 +1 @@
++; Stub file for out-of-tree powerpcspe fork: no per-option help URLs.
+diff --git a/gcc/config/powerpcspe/powerpcspe.cc b/gcc/config/powerpcspe/powerpcspe.cc
+index 94afa7ec401..aaa8e2dad02 100644
+--- a/gcc/config/powerpcspe/powerpcspe.cc
++++ b/gcc/config/powerpcspe/powerpcspe.cc
+@@ -1313,21 +1313,22 @@ static const struct rs6000_builtin_info_type rs6000_builtin_info[] =
+ #undef RS6000_BUILTIN_H
+ #undef RS6000_BUILTIN_P
+ #undef RS6000_BUILTIN_Q
+ #undef RS6000_BUILTIN_S
+ #undef RS6000_BUILTIN_X
+ 
+ /* Support for -mveclibabi=<xxx> to control which vector library to use.  */
+ static tree (*rs6000_veclib_handler) (combined_fn, tree, tree);
+ 
+ 
+-static bool rs6000_debug_legitimate_address_p (machine_mode, rtx, bool);
++static bool rs6000_debug_legitimate_address_p (machine_mode, rtx, bool,
++					       code_helper);
+ static bool spe_func_has_64bit_regs_p (void);
+ static struct machine_function * rs6000_init_machine_status (void);
+ static int rs6000_ra_ever_killed (void);
+ static tree rs6000_handle_longcall_attribute (tree *, tree, tree, int, bool *);
+ static tree rs6000_handle_altivec_attribute (tree *, tree, tree, int, bool *);
+ static tree rs6000_handle_struct_attribute (tree *, tree, tree, int, bool *);
+ static tree rs6000_builtin_vectorized_libmass (combined_fn, tree, tree);
+ static void rs6000_emit_set_long_const (rtx, HOST_WIDE_INT);
+ static int rs6000_memory_move_cost (machine_mode, reg_class_t, bool);
+ static bool rs6000_debug_rtx_costs (rtx, machine_mode, int, int, int *, bool);
+@@ -1520,38 +1521,47 @@ static const char alt_reg_names[][8] =
+   /* SPE High registers.  */
+   "%rh0",  "%rh1",  "%rh2",  "%rh3",  "%rh4",  "%rh5",  "%rh6",   "%rh7",
+   "%rh8",  "%rh9",  "%rh10", "%r11",  "%rh12", "%rh13", "%rh14", "%rh15",
+   "%rh16", "%rh17", "%rh18", "%rh19", "%rh20", "%rh21", "%rh22", "%rh23",
+   "%rh24", "%rh25", "%rh26", "%rh27", "%rh28", "%rh29", "%rh30", "%rh31"
+ };
+ #endif
+ 
+ /* Table of valid machine attributes.  */
+ 
+-static const struct attribute_spec rs6000_attribute_table[] =
++static const attribute_spec rs6000_gnu_attributes[] =
+ {
+   /* { name, min_len, max_len, decl_req, type_req, fn_type_req,
+        affects_type_identity, handler, exclude } */
+   { "altivec",   1, 1, false, true,  false, false,
+     rs6000_handle_altivec_attribute, NULL },
+   { "longcall",  0, 0, false, true,  true,  false,
+     rs6000_handle_longcall_attribute, NULL },
+   { "shortcall", 0, 0, false, true,  true,  false,
+     rs6000_handle_longcall_attribute, NULL },
+   { "ms_struct", 0, 0, false, false, false, false,
+     rs6000_handle_struct_attribute, NULL },
+   { "gcc_struct", 0, 0, false, false, false, false,
+     rs6000_handle_struct_attribute, NULL },
+ #ifdef SUBTARGET_ATTRIBUTE_TABLE
+   SUBTARGET_ATTRIBUTE_TABLE,
+ #endif
+-  { NULL,        0, 0, false, false, false, false, NULL, NULL }
++};
++
++static const scoped_attribute_specs rs6000_gnu_attribute_table =
++{
++  "gnu", { rs6000_gnu_attributes }
++};
++
++static const scoped_attribute_specs *const rs6000_attribute_table[] =
++{
++  &rs6000_gnu_attribute_table
+ };
+ 
+ #ifndef TARGET_PROFILE_KERNEL
+ #define TARGET_PROFILE_KERNEL 0
+ #endif
+ 
+ /* The VRSAVE bitmask puts bit %v0 as the most significant bit.  */
+ #define ALTIVEC_REG_BIT(REGNO) (0x80000000 >> ((REGNO) - FIRST_ALTIVEC_REGNO))
+ 
+ /* Initialize the GCC target structure.  */
+@@ -1938,20 +1948,23 @@ static const struct attribute_spec rs6000_attribute_table[] =
+ #define TARGET_LIBGCC_SHIFT_COUNT_MODE rs6000_abi_word_mode
+ #undef TARGET_UNWIND_WORD_MODE
+ #define TARGET_UNWIND_WORD_MODE rs6000_abi_word_mode
+ 
+ #undef TARGET_OFFLOAD_OPTIONS
+ #define TARGET_OFFLOAD_OPTIONS rs6000_offload_options
+ 
+ #undef TARGET_C_MODE_FOR_SUFFIX
+ #define TARGET_C_MODE_FOR_SUFFIX rs6000_c_mode_for_suffix
+ 
++#undef TARGET_C_MODE_FOR_FLOATING_TYPE
++#define TARGET_C_MODE_FOR_FLOATING_TYPE rs6000_c_mode_for_floating_type
++
+ #undef TARGET_INVALID_BINARY_OP
+ #define TARGET_INVALID_BINARY_OP rs6000_invalid_binary_op
+ 
+ #undef TARGET_OPTAB_SUPPORTED_P
+ #define TARGET_OPTAB_SUPPORTED_P rs6000_optab_supported_p
+ 
+ #undef TARGET_CUSTOM_FUNCTION_DESCRIPTORS
+ #define TARGET_CUSTOM_FUNCTION_DESCRIPTORS 1
+ 
+ #undef TARGET_HARD_REGNO_NREGS
+@@ -4013,20 +4026,21 @@ rs6000_builtin_mask_calculate (void)
+ /* Implement TARGET_MD_ASM_ADJUST.  All asm statements are considered
+    to clobber the XER[CA] bit because clobbering that bit without telling
+    the compiler worked just fine with versions of GCC before GCC 5, and
+    breaking a lot of older code in ways that are hard to track down is
+    not such a great idea.  */
+ 
+ static rtx_insn *
+ rs6000_md_asm_adjust (vec<rtx> &/*outputs*/, vec<rtx> &/*inputs*/,
+ 		      vec<machine_mode> &/*input_modes*/,
+ 		      vec<const char *> &/*constraints*/,
++		      vec<rtx> &/*uses*/,
+ 		      vec<rtx> &clobbers, HARD_REG_SET &clobbered_regs,
+ 		      location_t /*loc*/)
+ {
+   clobbers.safe_push (gen_rtx_REG (SImode, CA_REGNO));
+   SET_HARD_REG_BIT (clobbered_regs, CA_REGNO);
+   return NULL;
+ }
+ 
+ /* Override command line options.
+ 
+@@ -10184,21 +10198,22 @@ rs6000_debug_legitimize_reload_address (rtx x, machine_mode mode,
+    the sum of two registers, or a register indirect, possibly with an
+    auto-increment.  For DFmode, DDmode and DImode with a constant plus
+    register, we must ensure that both words are addressable or PowerPC64
+    with offset word aligned.
+ 
+    For modes spanning multiple registers (DFmode and DDmode in 32-bit GPRs,
+    32-bit DImode, TImode, TFmode, TDmode), indexed addressing cannot be used
+    because adjacent memory cells are accessed by adding word-sized offsets
+    during assembly output.  */
+ static bool
+-rs6000_legitimate_address_p (machine_mode mode, rtx x, bool reg_ok_strict)
++rs6000_legitimate_address_p (machine_mode mode, rtx x, bool reg_ok_strict,
++			     code_helper ATTRIBUTE_UNUSED)
+ {
+   bool reg_offset_p = reg_offset_addressing_ok_p (mode);
+   bool quad_offset_p = mode_supports_vsx_dform_quad (mode);
+ 
+   /* If this is an unaligned stvx/ldvx type address, discard the outer AND.  */
+   if (VECTOR_MEM_ALTIVEC_P (mode)
+       && GET_CODE (x) == AND
+       && GET_CODE (XEXP (x, 1)) == CONST_INT
+       && INTVAL (XEXP (x, 1)) == -16)
+     x = XEXP (x, 0);
+@@ -10277,23 +10292,24 @@ rs6000_legitimate_address_p (machine_mode mode, rtx x, bool reg_ok_strict)
+     return 1;
+   if (reg_offset_p && !quad_offset_p
+       && legitimate_lo_sum_address_p (mode, x, reg_ok_strict))
+     return 1;
+   return 0;
+ }
+ 
+ /* Debug version of rs6000_legitimate_address_p.  */
+ static bool
+ rs6000_debug_legitimate_address_p (machine_mode mode, rtx x,
+-				   bool reg_ok_strict)
++				   bool reg_ok_strict,
++				   code_helper ch = ERROR_MARK)
+ {
+-  bool ret = rs6000_legitimate_address_p (mode, x, reg_ok_strict);
++  bool ret = rs6000_legitimate_address_p (mode, x, reg_ok_strict, ch);
+   fprintf (stderr,
+ 	   "\nrs6000_legitimate_address_p: return = %s, mode = %s, "
+ 	   "strict = %d, reload = %s, code = %s\n",
+ 	   ret ? "true" : "false",
+ 	   GET_MODE_NAME (mode),
+ 	   reg_ok_strict,
+ 	   (reload_completed
+ 	    ? "after"
+ 	    : (reload_in_progress ? "progress" : "before")),
+ 	   GET_RTX_NAME (GET_CODE (x)));
+@@ -24951,20 +24967,33 @@ rs6000_generate_compare (rtx cmp, machine_mode mode)
+       compare_result = or_result;
+       code = EQ;
+     }
+ 
+   validate_condition_mode (code, GET_MODE (compare_result));
+ 
+   return gen_rtx_fmt_ee (code, VOIDmode, compare_result, const0_rtx);
+ }
+ 
+ 
++/* Implement TARGET_C_MODE_FOR_FLOATING_TYPE.  Return DFmode for the
++   long-double type on SPE (rs6000_long_double_type_size == 64), TFmode
++   when the variant with IEEE 128 / IBM long double is requested.  Delegate
++   other floating types to the middle-end default.  */
++
++static machine_mode
++rs6000_c_mode_for_floating_type (enum tree_index ti)
++{
++  if (ti == TI_LONG_DOUBLE_TYPE)
++    return rs6000_long_double_type_size == 128 ? TFmode : DFmode;
++  return default_mode_for_floating_type (ti);
++}
++
+ /* Return the diagnostic message string if the binary operation OP is
+    not permitted on TYPE1 and TYPE2, NULL otherwise.  */
+ 
+ static const char*
+ rs6000_invalid_binary_op (int op ATTRIBUTE_UNUSED,
+ 			  const_tree type1,
+ 			  const_tree type2)
+ {
+   machine_mode mode1 = TYPE_MODE (type1);
+   machine_mode mode2 = TYPE_MODE (type2);
+diff --git a/gcc/config/powerpcspe/powerpcspe.h b/gcc/config/powerpcspe/powerpcspe.h
+index bba20bc1848..78653380c1e 100644
+--- a/gcc/config/powerpcspe/powerpcspe.h
++++ b/gcc/config/powerpcspe/powerpcspe.h
+@@ -800,34 +800,24 @@ extern unsigned char rs6000_recip_bits[];
+ /* A C expression for the size in bits of the type `long' on the
+    target machine.  If you don't define this, the default is one
+    word.  */
+ #define LONG_TYPE_SIZE (TARGET_32BIT ? 32 : 64)
+ 
+ /* A C expression for the size in bits of the type `long long' on the
+    target machine.  If you don't define this, the default is two
+    words.  */
+ #define LONG_LONG_TYPE_SIZE 64
+ 
+-/* A C expression for the size in bits of the type `float' on the
+-   target machine.  If you don't define this, the default is one
+-   word.  */
+-#define FLOAT_TYPE_SIZE 32
+-
+-/* A C expression for the size in bits of the type `double' on the
+-   target machine.  If you don't define this, the default is two
+-   words.  */
+-#define DOUBLE_TYPE_SIZE 64
+-
+-/* A C expression for the size in bits of the type `long double' on
+-   the target machine.  If you don't define this, the default is two
+-   words.  */
+-#define LONG_DOUBLE_TYPE_SIZE rs6000_long_double_type_size
++/* FLOAT_TYPE_SIZE, DOUBLE_TYPE_SIZE, LONG_DOUBLE_TYPE_SIZE are poisoned
++   in GCC 15; their effect is now expressed via the
++   TARGET_C_MODE_FOR_FLOATING_TYPE target hook, implemented in
++   powerpcspe.cc.  */
+ 
+ /* Work around rs6000_long_double_type_size dependency in ada/targtyps.c.  */
+ #define WIDEST_HARDWARE_FP_SIZE 64
+ 
+ /* Width in bits of a pointer.
+    See also the macro `Pmode' defined below.  */
+ extern unsigned rs6000_pointer_size;
+ #define POINTER_SIZE rs6000_pointer_size
+ 
+ /* Allocation boundary (in *bits*) for storing arguments in argument list.  */
+diff --git a/gcc/config/powerpcspe/powerpcspe.opt.urls b/gcc/config/powerpcspe/powerpcspe.opt.urls
+new file mode 100644
+index 00000000000..bd0ea9ed840
+--- /dev/null
++++ b/gcc/config/powerpcspe/powerpcspe.opt.urls
+@@ -0,0 +1 @@
++; Stub file for out-of-tree powerpcspe fork: no per-option help URLs.
+diff --git a/gcc/config/powerpcspe/sysv4.opt.urls b/gcc/config/powerpcspe/sysv4.opt.urls
+new file mode 100644
+index 00000000000..bd0ea9ed840
+--- /dev/null
++++ b/gcc/config/powerpcspe/sysv4.opt.urls
+@@ -0,0 +1 @@
++; Stub file for out-of-tree powerpcspe fork: no per-option help URLs.
+diff --git a/gcc/config/powerpcspe/xilinx.opt.urls b/gcc/config/powerpcspe/xilinx.opt.urls
+new file mode 100644
+index 00000000000..bd0ea9ed840
+--- /dev/null
++++ b/gcc/config/powerpcspe/xilinx.opt.urls
+@@ -0,0 +1 @@
++; Stub file for out-of-tree powerpcspe fork: no per-option help URLs.
+-- 
+2.43.0
+

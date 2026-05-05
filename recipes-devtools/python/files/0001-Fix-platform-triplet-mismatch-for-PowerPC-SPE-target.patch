@@ -1,9 +1,7 @@
-From 32702db732cdcb62c5cc0c0cb75596481907b336 Mon Sep 17 00:00:00 2001
+From 74c94de3ad9e050c9caa02bd2995f7bd85f7cafb Mon Sep 17 00:00:00 2001
 From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
-Date: Sun, 8 Mar 2026 21:17:13 +0100
-Subject: [PATCH] Fix platform triplet mismatch for PowerPC SPE targets
-
-Upstream-Status: Inappropriate
+Date: Fri, 24 Apr 2026 16:50:21 +0200
+Subject: [PATCH 1/2] Fix platform triplet mismatch for PowerPC SPE targets
 
 GCC may report powerpc-linux-gnuspev1 as the multiarch value (the v1
 suffix indicates SPE ABI version 1), while the platform triplet is
@@ -13,21 +11,24 @@ triplet" failure.
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 ---
+
+Upstream-Status: Inappropriate
+
  configure.ac | 4 ++++
  1 file changed, 4 insertions(+)
 
 diff --git a/configure.ac b/configure.ac
-index 1a02d19f1b2..bf692dd058e 100644
+index d81c76fc122..08189e8b3ac 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -1118,20 +1118,24 @@ else
-   AC_MSG_RESULT([none])
- fi
- rm -f conftest.c conftest.out
- 
+@@ -1168,20 +1168,24 @@ dnl pass that includes multiple architectures, so it would be misleading for
+ dnl MULTIARCH (and thus the sysconfigdata module name) to include a single CPU
+ dnl architecture. PLATFORM_TRIPLET will be a pair or single value for these
+ dnl platforms.
  AC_MSG_CHECKING([for multiarch])
  AS_CASE([$ac_sys_system],
    [Darwin*], [MULTIARCH=""],
+   [iOS], [MULTIARCH=""],
    [FreeBSD*], [MULTIARCH=""],
    [MULTIARCH=$($CC --print-multiarch 2>/dev/null)]
  )
@@ -36,7 +37,6 @@ index 1a02d19f1b2..bf692dd058e 100644
 +AS_IF([test "x$MULTIARCH" = "xpowerpc-linux-gnuspev1"],
 +      [MULTIARCH="powerpc-linux-gnuspe"])
  AC_SUBST([MULTIARCH])
- AC_MSG_RESULT([$MULTIARCH])
  
  if test x$PLATFORM_TRIPLET != x && test x$MULTIARCH != x; then
    if test x$PLATFORM_TRIPLET != x$MULTIARCH; then
@@ -45,6 +45,7 @@ index 1a02d19f1b2..bf692dd058e 100644
  elif test x$PLATFORM_TRIPLET != x && test x$MULTIARCH = x; then
    MULTIARCH=$PLATFORM_TRIPLET
  fi
+ AC_SUBST([PLATFORM_TRIPLET])
 -- 
 2.43.0
 

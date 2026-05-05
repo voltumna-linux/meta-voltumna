@@ -14,6 +14,9 @@ fall back to the unpacked 12-byte tval representation. Standard PPC32
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 ---
+
+Upstream-Status: Inappropriate
+
  config/architectures/architecture_powerpc32.h.in | 5 +++++
  src/duk_config.h                                 | 8 ++++++++
  2 files changed, 13 insertions(+)
