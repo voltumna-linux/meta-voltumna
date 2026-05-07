@@ -121,6 +121,7 @@ PTESTS_SLOW = "\
     gettext \
     glib-2.0 \
     gnutls \
+    go \
     gstreamer1.0 \
     less \
     libevent \

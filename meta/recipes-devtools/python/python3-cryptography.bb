@@ -69,8 +69,4 @@ do_install_ptest() {
     cp -r ${S}/pyproject.toml ${D}${PTEST_PATH}/
 }
 
-FILES:${PN}-dbg += " \
-    ${PYTHON_SITEPACKAGES_DIR}/${SRCNAME}/hazmat/bindings/.debug \
-"
-
 BBCLASSEXTEND = "native nativesdk"

@@ -70,3 +70,5 @@ LICENSE:${PN} = "(BSD-3-Clause | GPL-2.0-only)${@bb.utils.contains('PACKAGECONFI
 LICENSE:${PN}-dev = "(BSD-3-Clause | GPL-2.0-only)"
 
 BBCLASSEXTEND = "native nativesdk"
+
+CVE_STATUS[CVE-2026-4878] = "fixed-version: fixed since 2.78"
