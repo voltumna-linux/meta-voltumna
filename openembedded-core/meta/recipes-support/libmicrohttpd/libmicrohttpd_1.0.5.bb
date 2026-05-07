@@ -25,3 +25,6 @@ do_compile:append() {
 }
 
 BBCLASSEXTEND = "native nativesdk"
+
+CVE_STATUS[CVE-2025-59777] = "fixed-version: fixed since 1.0.3"
+CVE_STATUS[CVE-2025-62689] = "fixed-version: fixed since 1.0.3"

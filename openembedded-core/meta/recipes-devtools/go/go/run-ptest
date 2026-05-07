@@ -1,0 +1,63 @@
+#!/bin/sh
+# SPDX-License-Identifier: MIT
+
+PTEST_DIR=$(cd "$(dirname "$0")" && pwd)
+GOROOT=/usr/lib/go
+
+export GOROOT
+export PATH=$GOROOT/bin:$PATH
+export GOCACHE=$(mktemp -d)
+export ZONEINFO=/usr/share/zoneinfo
+
+# Link ptest source tree into GOROOT for testing.
+# Save and restore any existing src directory.
+if [ -d "$GOROOT/src" ] && [ ! -L "$GOROOT/src" ]; then
+    mv "$GOROOT/src" "$GOROOT/src.orig"
+fi
+ln -sf "$PTEST_DIR/src" "$GOROOT/src"
+
+if [ -f "$PTEST_DIR/VERSION" ]; then
+    cp "$PTEST_DIR/VERSION" "$GOROOT/VERSION"
+fi
+if ls "$PTEST_DIR/pkg/include/"* >/dev/null 2>&1; then
+    mkdir -p "$GOROOT/pkg/include"
+    cp "$PTEST_DIR/pkg/include/"* "$GOROOT/pkg/include/"
+fi
+
+cd "$GOROOT" || exit 1
+
+# Packages skipped due to known issues in the ptest environment:
+#   debug/dwarf, debug/elf, debug/pe, debug/plan9obj, internal/xcoff:
+#       require binary testdata files excluded to avoid QA errors
+#   go/types: extremely slow, exceeds ptest timeout
+#   net/http: requires network access unavailable in qemu
+#   runtime: requires cgo rebuild and race detector setup
+#   testing: circular dependency when testing the test framework
+#   time: requires writable GOROOT for timezone data
+SKIP_PKGS="debug/dwarf debug/elf debug/pe debug/plan9obj go/types internal/xcoff net/http runtime testing time"
+
+SKIP_REGEX=$(echo "$SKIP_PKGS" | sed 's/ /|/g')
+
+for pkg in $(go list std); do
+    # Skip package and all its subpackages
+    if echo "$pkg" | grep -qE "^($SKIP_REGEX)(/|$)"; then
+        echo "SKIP: $pkg"
+        continue
+    fi
+
+    output=$(go test -short "$pkg" 2>&1)
+    ret=$?
+    if [ $ret -eq 0 ]; then
+        echo "PASS: $pkg"
+    else
+        echo "FAIL: $pkg"
+        echo "$output"
+    fi
+done
+
+# Cleanup: restore original src directory
+rm -f "$GOROOT/src"
+if [ -d "$GOROOT/src.orig" ]; then
+    mv "$GOROOT/src.orig" "$GOROOT/src"
+fi
+rm -rf "$GOCACHE"
