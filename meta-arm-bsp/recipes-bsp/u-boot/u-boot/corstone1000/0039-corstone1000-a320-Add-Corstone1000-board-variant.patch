@@ -1,4 +1,4 @@
-From da23886f3b38812c60a4597db129ab96df74bb99 Mon Sep 17 00:00:00 2001
+From 9b0a2622667bfe5794c77161d973d6f59871668c Mon Sep 17 00:00:00 2001
 From: Frazer Carsley <frazer.carsley@arm.com>
 Date: Wed, 25 Feb 2026 14:28:08 +0000
 Subject: [PATCH] corstone1000-a320: Add Corstone1000 board variant
@@ -400,7 +400,7 @@ index 00000000000..e62978b487e
 +F:	board/armltd/corstone1000-a320/
 +F:	configs/corstone1000-a320_defconfig
 diff --git a/board/armltd/corstone1000/corstone1000.c b/board/armltd/corstone1000/corstone1000.c
-index db8919298e1..2f65eac7bf4 100644
+index db8919298e1..fe6929e94e0 100644
 --- a/board/armltd/corstone1000/corstone1000.c
 +++ b/board/armltd/corstone1000/corstone1000.c
 @@ -1,6 +1,6 @@
