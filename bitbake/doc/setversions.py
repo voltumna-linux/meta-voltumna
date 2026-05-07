@@ -13,6 +13,7 @@
 # SPDX-License-Identifier: MIT
 #
 
+import argparse
 import itertools
 import json
 import os
@@ -22,6 +23,15 @@ import sys
 import textwrap
 
 from urllib.request import urlopen, URLError
+
+parser = argparse.ArgumentParser(
+    description="Parse https://dashboard.yoctoproject.org/releases.json to get current releases information"
+)
+parser.add_argument("--get-latest-branch",
+                    help="Print current latest branch and exit",
+                    action="store_true",
+                    default=False)
+args = parser.parse_args()
 
 # NOTE: the following variables contain default values in case we are not able to fetch
 # the releases.json file from https://dashboard.yoctoproject.org/releases.json
@@ -84,6 +94,10 @@ if RELEASES_FROM_JSON:
     # make the list of releases unique, there can be duplication when the
     # current releases is also an LTS
     ACTIVERELEASES = list(dict.fromkeys([current_branch] + LTSSERIES))
+
+if args.get_latest_branch:
+    print(ACTIVERELEASES[0])
+    sys.exit(0)
 
 print(f"ACTIVERELEASES calculated to be {ACTIVERELEASES}", file=sys.stderr)
 print(f"DEVBRANCH calculated to be {DEVBRANCH}", file=sys.stderr)
