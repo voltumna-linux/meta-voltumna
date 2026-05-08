@@ -7,4 +7,5 @@ SRC_URI:append = " \
     file://0004-powerpcspe-modernize-VECTOR_TYPE_P-and-by-pieces-mov.patch \
     file://0005-powerpcspe-fix-split2-segfault-on-TFmode-MEM-stores-.patch \
     file://0006-recog-don-t-gcc_unreachable-in-apply_to_rvalue_1-s-a.patch \
+    file://0007-libgcc-restore-SPE-save-restore-helpers-for-powerpcs.patch \
     "

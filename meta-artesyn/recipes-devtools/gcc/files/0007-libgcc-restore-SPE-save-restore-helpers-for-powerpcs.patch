@@ -1,0 +1,1177 @@
+From adffaae06e116f91b2028a151e4d27127ed8af67 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Thu, 7 May 2026 19:34:42 +0200
+Subject: [PATCH 7/7] libgcc: restore SPE save/restore helpers for powerpcspe
+
+The powerpcspe backend (gcc/config/powerpcspe/powerpcspe.cc) emits
+calls to SPE-specific GPR save/restore helpers
+_save{32,64}gpr_N / _rest{32,64}gpr_N[_x] whenever TARGET_SPE is in
+effect.  Those helpers used to live in libgcc as 13 dedicated asm
+sources (libgcc/config/rs6000/e500crt*.S), wired into the static
+runtime through libgcc/config/rs6000/t-savresfgpr.
+
+When the backend was forward-ported from GCC 13 to GCC 15 only the
+compiler half of the fork was carried over: the 13 e500crt*.S files
+and the corresponding LIB2ADD_ST entries in t-savresfgpr were lost.
+As a result libgcc.a built for powerpc-*-linux-gnuspe* contained only
+the standard SVR4 _savegpr_/_restgpr_ helpers, while the compiler
+kept emitting calls to the SPE names, producing 'undefined reference
+to _save64gpr_*' / '_rest32gpr_*_x' link failures (silent in -shared
+output, fatal at executable link).
+
+Restore the 13 asm sources from powerpcspe-gcc13 verbatim - they are
+pure SPE assembly, independent of GCC internals - and re-add them to
+LIB2ADD_ST so they end up in libgcc.a again.  No other host or
+config.host clauses are touched; only the powerpc*-*-linux* path of
+config.host (which already pulls in t-savresfgpr) is exercised by
+this change for the gnuspe targets.
+---
+
+Upstream-Status: Inappropriate
+
+ libgcc/config/rs6000/e500crtres32gpr.S     | 73 +++++++++++++++++
+ libgcc/config/rs6000/e500crtres64gpr.S     | 73 +++++++++++++++++
+ libgcc/config/rs6000/e500crtres64gprctr.S  | 90 +++++++++++++++++++++
+ libgcc/config/rs6000/e500crtrest32gpr.S    | 75 ++++++++++++++++++
+ libgcc/config/rs6000/e500crtrest64gpr.S    | 74 ++++++++++++++++++
+ libgcc/config/rs6000/e500crtresx32gpr.S    | 75 ++++++++++++++++++
+ libgcc/config/rs6000/e500crtresx64gpr.S    | 75 ++++++++++++++++++
+ libgcc/config/rs6000/e500crtsav32gpr.S     | 73 +++++++++++++++++
+ libgcc/config/rs6000/e500crtsav64gpr.S     | 72 +++++++++++++++++
+ libgcc/config/rs6000/e500crtsav64gprctr.S  | 91 ++++++++++++++++++++++
+ libgcc/config/rs6000/e500crtsavg32gpr.S    | 73 +++++++++++++++++
+ libgcc/config/rs6000/e500crtsavg64gpr.S    | 73 +++++++++++++++++
+ libgcc/config/rs6000/e500crtsavg64gprctr.S | 90 +++++++++++++++++++++
+ libgcc/config/rs6000/t-savresfgpr          | 15 +++-
+ 14 files changed, 1021 insertions(+), 1 deletion(-)
+ create mode 100644 libgcc/config/rs6000/e500crtres32gpr.S
+ create mode 100644 libgcc/config/rs6000/e500crtres64gpr.S
+ create mode 100644 libgcc/config/rs6000/e500crtres64gprctr.S
+ create mode 100644 libgcc/config/rs6000/e500crtrest32gpr.S
+ create mode 100644 libgcc/config/rs6000/e500crtrest64gpr.S
+ create mode 100644 libgcc/config/rs6000/e500crtresx32gpr.S
+ create mode 100644 libgcc/config/rs6000/e500crtresx64gpr.S
+ create mode 100644 libgcc/config/rs6000/e500crtsav32gpr.S
+ create mode 100644 libgcc/config/rs6000/e500crtsav64gpr.S
+ create mode 100644 libgcc/config/rs6000/e500crtsav64gprctr.S
+ create mode 100644 libgcc/config/rs6000/e500crtsavg32gpr.S
+ create mode 100644 libgcc/config/rs6000/e500crtsavg64gpr.S
+ create mode 100644 libgcc/config/rs6000/e500crtsavg64gprctr.S
+
+diff --git a/libgcc/config/rs6000/e500crtres32gpr.S b/libgcc/config/rs6000/e500crtres32gpr.S
+new file mode 100644
+index 00000000000..b361ffa208d
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtres32gpr.S
+@@ -0,0 +1,73 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */ 
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* Routines for restoring 32-bit integer registers, called by the compiler.  */
++/* "Bare" versions that simply return to their caller.  */
++
++HIDDEN_FUNC(_rest32gpr_14)	lwz 14,-72(11)
++HIDDEN_FUNC(_rest32gpr_15)	lwz 15,-68(11)
++HIDDEN_FUNC(_rest32gpr_16)	lwz 16,-64(11)
++HIDDEN_FUNC(_rest32gpr_17)	lwz 17,-60(11)
++HIDDEN_FUNC(_rest32gpr_18)	lwz 18,-56(11)
++HIDDEN_FUNC(_rest32gpr_19)	lwz 19,-52(11)
++HIDDEN_FUNC(_rest32gpr_20)	lwz 20,-48(11)
++HIDDEN_FUNC(_rest32gpr_21)	lwz 21,-44(11)
++HIDDEN_FUNC(_rest32gpr_22)	lwz 22,-40(11)
++HIDDEN_FUNC(_rest32gpr_23)	lwz 23,-36(11)
++HIDDEN_FUNC(_rest32gpr_24)	lwz 24,-32(11)
++HIDDEN_FUNC(_rest32gpr_25)	lwz 25,-28(11)
++HIDDEN_FUNC(_rest32gpr_26)	lwz 26,-24(11)
++HIDDEN_FUNC(_rest32gpr_27)	lwz 27,-20(11)
++HIDDEN_FUNC(_rest32gpr_28)	lwz 28,-16(11)
++HIDDEN_FUNC(_rest32gpr_29)	lwz 29,-12(11)
++HIDDEN_FUNC(_rest32gpr_30)	lwz 30,-8(11)
++HIDDEN_FUNC(_rest32gpr_31)	lwz 31,-4(11)
++				blr
++FUNC_END(_rest32gpr_31)
++FUNC_END(_rest32gpr_30)
++FUNC_END(_rest32gpr_29)
++FUNC_END(_rest32gpr_28)
++FUNC_END(_rest32gpr_27)
++FUNC_END(_rest32gpr_26)
++FUNC_END(_rest32gpr_25)
++FUNC_END(_rest32gpr_24)
++FUNC_END(_rest32gpr_23)
++FUNC_END(_rest32gpr_22)
++FUNC_END(_rest32gpr_21)
++FUNC_END(_rest32gpr_20)
++FUNC_END(_rest32gpr_19)
++FUNC_END(_rest32gpr_18)
++FUNC_END(_rest32gpr_17)
++FUNC_END(_rest32gpr_16)
++FUNC_END(_rest32gpr_15)
++FUNC_END(_rest32gpr_14)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtres64gpr.S b/libgcc/config/rs6000/e500crtres64gpr.S
+new file mode 100644
+index 00000000000..de7b171d64a
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtres64gpr.S
+@@ -0,0 +1,73 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ * 
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */ 
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* Routines for restoring 64-bit integer registers, called by the compiler.  */
++/* "Bare" versions that return to their caller.  */
++
++HIDDEN_FUNC(_rest64gpr_14)	evldd 14,0(11)
++HIDDEN_FUNC(_rest64gpr_15)	evldd 15,8(11)
++HIDDEN_FUNC(_rest64gpr_16)	evldd 16,16(11)
++HIDDEN_FUNC(_rest64gpr_17)	evldd 17,24(11)
++HIDDEN_FUNC(_rest64gpr_18)	evldd 18,32(11)
++HIDDEN_FUNC(_rest64gpr_19)	evldd 19,40(11)
++HIDDEN_FUNC(_rest64gpr_20)	evldd 20,48(11)
++HIDDEN_FUNC(_rest64gpr_21)	evldd 21,56(11)
++HIDDEN_FUNC(_rest64gpr_22)	evldd 22,64(11)
++HIDDEN_FUNC(_rest64gpr_23)	evldd 23,72(11)
++HIDDEN_FUNC(_rest64gpr_24)	evldd 24,80(11)
++HIDDEN_FUNC(_rest64gpr_25)	evldd 25,88(11)
++HIDDEN_FUNC(_rest64gpr_26)	evldd 26,96(11)
++HIDDEN_FUNC(_rest64gpr_27)	evldd 27,104(11)
++HIDDEN_FUNC(_rest64gpr_28)	evldd 28,112(11)
++HIDDEN_FUNC(_rest64gpr_29)	evldd 29,120(11)
++HIDDEN_FUNC(_rest64gpr_30)	evldd 30,128(11)
++HIDDEN_FUNC(_rest64gpr_31)	evldd 31,136(11)
++				blr
++FUNC_END(_rest64gpr_31)
++FUNC_END(_rest64gpr_30)
++FUNC_END(_rest64gpr_29)
++FUNC_END(_rest64gpr_28)
++FUNC_END(_rest64gpr_27)
++FUNC_END(_rest64gpr_26)
++FUNC_END(_rest64gpr_25)
++FUNC_END(_rest64gpr_24)
++FUNC_END(_rest64gpr_23)
++FUNC_END(_rest64gpr_22)
++FUNC_END(_rest64gpr_21)
++FUNC_END(_rest64gpr_20)
++FUNC_END(_rest64gpr_19)
++FUNC_END(_rest64gpr_18)
++FUNC_END(_rest64gpr_17)
++FUNC_END(_rest64gpr_16)
++FUNC_END(_rest64gpr_15)
++FUNC_END(_rest64gpr_14)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtres64gprctr.S b/libgcc/config/rs6000/e500crtres64gprctr.S
+new file mode 100644
+index 00000000000..5e787add6e1
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtres64gprctr.S
+@@ -0,0 +1,90 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */ 
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* Routines for restoring 64-bit integer registers where the number of
++   registers to be restored is passed in CTR, called by the compiler.  */
++
++HIDDEN_FUNC(_rest64gpr_ctr_14)	evldd 14,0(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_15)	evldd 15,8(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_16)	evldd 16,16(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_17)	evldd 17,24(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_18)	evldd 18,32(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_19)	evldd 19,40(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_20)	evldd 20,48(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_21)	evldd 21,56(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_22)	evldd 22,64(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_23)	evldd 23,72(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_24)	evldd 24,80(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_25)	evldd 25,88(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_26)	evldd 26,96(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_27)	evldd 27,104(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_28)	evldd 28,112(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_29)	evldd 29,120(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_30)	evldd 30,128(11)
++				bdz _rest64gpr_ctr_done
++HIDDEN_FUNC(_rest64gpr_ctr_31)	evldd 31,136(11)
++_rest64gpr_ctr_done:		blr
++FUNC_END(_rest64gpr_ctr_31)
++FUNC_END(_rest64gpr_ctr_30)
++FUNC_END(_rest64gpr_ctr_29)
++FUNC_END(_rest64gpr_ctr_28)
++FUNC_END(_rest64gpr_ctr_27)
++FUNC_END(_rest64gpr_ctr_26)
++FUNC_END(_rest64gpr_ctr_25)
++FUNC_END(_rest64gpr_ctr_24)
++FUNC_END(_rest64gpr_ctr_23)
++FUNC_END(_rest64gpr_ctr_22)
++FUNC_END(_rest64gpr_ctr_21)
++FUNC_END(_rest64gpr_ctr_20)
++FUNC_END(_rest64gpr_ctr_19)
++FUNC_END(_rest64gpr_ctr_18)
++FUNC_END(_rest64gpr_ctr_17)
++FUNC_END(_rest64gpr_ctr_16)
++FUNC_END(_rest64gpr_ctr_15)
++FUNC_END(_rest64gpr_ctr_14)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtrest32gpr.S b/libgcc/config/rs6000/e500crtrest32gpr.S
+new file mode 100644
+index 00000000000..bc1dd042c50
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtrest32gpr.S
+@@ -0,0 +1,75 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */ 
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* Routines for restoring 32-bit integer registers, called by the compiler.  */
++/* "Tail" versions that perform a tail call.  */
++
++HIDDEN_FUNC(_rest32gpr_14_t)	lwz 14,-72(11)
++HIDDEN_FUNC(_rest32gpr_15_t)	lwz 15,-68(11)
++HIDDEN_FUNC(_rest32gpr_16_t)	lwz 16,-64(11)
++HIDDEN_FUNC(_rest32gpr_17_t)	lwz 17,-60(11)
++HIDDEN_FUNC(_rest32gpr_18_t)	lwz 18,-56(11)
++HIDDEN_FUNC(_rest32gpr_19_t)	lwz 19,-52(11)
++HIDDEN_FUNC(_rest32gpr_20_t)	lwz 20,-48(11)
++HIDDEN_FUNC(_rest32gpr_21_t)	lwz 21,-44(11)
++HIDDEN_FUNC(_rest32gpr_22_t)	lwz 22,-40(11)
++HIDDEN_FUNC(_rest32gpr_23_t)	lwz 23,-36(11)
++HIDDEN_FUNC(_rest32gpr_24_t)	lwz 24,-32(11)
++HIDDEN_FUNC(_rest32gpr_25_t)	lwz 25,-28(11)
++HIDDEN_FUNC(_rest32gpr_26_t)	lwz 26,-24(11)
++HIDDEN_FUNC(_rest32gpr_27_t)	lwz 27,-20(11)
++HIDDEN_FUNC(_rest32gpr_28_t)	lwz 28,-16(11)
++HIDDEN_FUNC(_rest32gpr_29_t)	lwz 29,-12(11)
++HIDDEN_FUNC(_rest32gpr_30_t)	lwz 30,-8(11)
++HIDDEN_FUNC(_rest32gpr_31_t)	lwz 31,-4(11)
++				lwz 0,4(11)
++				mr 1,11
++				blr
++FUNC_END(_rest32gpr_31_t)
++FUNC_END(_rest32gpr_30_t)
++FUNC_END(_rest32gpr_29_t)
++FUNC_END(_rest32gpr_28_t)
++FUNC_END(_rest32gpr_27_t)
++FUNC_END(_rest32gpr_26_t)
++FUNC_END(_rest32gpr_25_t)
++FUNC_END(_rest32gpr_24_t)
++FUNC_END(_rest32gpr_23_t)
++FUNC_END(_rest32gpr_22_t)
++FUNC_END(_rest32gpr_21_t)
++FUNC_END(_rest32gpr_20_t)
++FUNC_END(_rest32gpr_19_t)
++FUNC_END(_rest32gpr_18_t)
++FUNC_END(_rest32gpr_17_t)
++FUNC_END(_rest32gpr_16_t)
++FUNC_END(_rest32gpr_15_t)
++FUNC_END(_rest32gpr_14_t)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtrest64gpr.S b/libgcc/config/rs6000/e500crtrest64gpr.S
+new file mode 100644
+index 00000000000..9e4e99f0ce7
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtrest64gpr.S
+@@ -0,0 +1,74 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */ 
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* "Tail" versions that perform a tail call.  */
++
++HIDDEN_FUNC(_rest64gpr_14_t)	evldd 14,0(11)
++HIDDEN_FUNC(_rest64gpr_15_t)	evldd 15,8(11)
++HIDDEN_FUNC(_rest64gpr_16_t)	evldd 16,16(11)
++HIDDEN_FUNC(_rest64gpr_17_t)	evldd 17,24(11)
++HIDDEN_FUNC(_rest64gpr_18_t)	evldd 18,32(11)
++HIDDEN_FUNC(_rest64gpr_19_t)	evldd 19,40(11)
++HIDDEN_FUNC(_rest64gpr_20_t)	evldd 20,48(11)
++HIDDEN_FUNC(_rest64gpr_21_t)	evldd 21,56(11)
++HIDDEN_FUNC(_rest64gpr_22_t)	evldd 22,64(11)
++HIDDEN_FUNC(_rest64gpr_23_t)	evldd 23,72(11)
++HIDDEN_FUNC(_rest64gpr_24_t)	evldd 24,80(11)
++HIDDEN_FUNC(_rest64gpr_25_t)	evldd 25,88(11)
++HIDDEN_FUNC(_rest64gpr_26_t)	evldd 26,96(11)
++HIDDEN_FUNC(_rest64gpr_27_t)	evldd 27,104(11)
++HIDDEN_FUNC(_rest64gpr_28_t)	evldd 28,112(11)
++HIDDEN_FUNC(_rest64gpr_29_t)	evldd 29,120(11)
++HIDDEN_FUNC(_rest64gpr_30_t)	evldd 30,128(11)
++HIDDEN_FUNC(_rest64gpr_31_t)	lwz 0,148(11)
++				evldd 31,136(11)
++				addi 1,11,144
++				blr
++FUNC_END(_rest64gpr_31_t)
++FUNC_END(_rest64gpr_30_t)
++FUNC_END(_rest64gpr_29_t)
++FUNC_END(_rest64gpr_28_t)
++FUNC_END(_rest64gpr_27_t)
++FUNC_END(_rest64gpr_26_t)
++FUNC_END(_rest64gpr_25_t)
++FUNC_END(_rest64gpr_24_t)
++FUNC_END(_rest64gpr_23_t)
++FUNC_END(_rest64gpr_22_t)
++FUNC_END(_rest64gpr_21_t)
++FUNC_END(_rest64gpr_20_t)
++FUNC_END(_rest64gpr_19_t)
++FUNC_END(_rest64gpr_18_t)
++FUNC_END(_rest64gpr_17_t)
++FUNC_END(_rest64gpr_16_t)
++FUNC_END(_rest64gpr_15_t)
++FUNC_END(_rest64gpr_14_t)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtresx32gpr.S b/libgcc/config/rs6000/e500crtresx32gpr.S
+new file mode 100644
+index 00000000000..73cbe09fa47
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtresx32gpr.S
+@@ -0,0 +1,75 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* Routines for restoring 32-bit integer registers, called by the compiler.  */
++/* "Exit" versions that return to the caller's caller.  */
++
++HIDDEN_FUNC(_rest32gpr_14_x)	lwz 14,-72(11)
++HIDDEN_FUNC(_rest32gpr_15_x)	lwz 15,-68(11)
++HIDDEN_FUNC(_rest32gpr_16_x)	lwz 16,-64(11)
++HIDDEN_FUNC(_rest32gpr_17_x)	lwz 17,-60(11)
++HIDDEN_FUNC(_rest32gpr_18_x)	lwz 18,-56(11)
++HIDDEN_FUNC(_rest32gpr_19_x)	lwz 19,-52(11)
++HIDDEN_FUNC(_rest32gpr_20_x)	lwz 20,-48(11)
++HIDDEN_FUNC(_rest32gpr_21_x)	lwz 21,-44(11)
++HIDDEN_FUNC(_rest32gpr_22_x)	lwz 22,-40(11)
++HIDDEN_FUNC(_rest32gpr_23_x)	lwz 23,-36(11)
++HIDDEN_FUNC(_rest32gpr_24_x)	lwz 24,-32(11)
++HIDDEN_FUNC(_rest32gpr_25_x)	lwz 25,-28(11)
++HIDDEN_FUNC(_rest32gpr_26_x)	lwz 26,-24(11)
++HIDDEN_FUNC(_rest32gpr_27_x)	lwz 27,-20(11)
++HIDDEN_FUNC(_rest32gpr_28_x)	lwz 28,-16(11)
++HIDDEN_FUNC(_rest32gpr_29_x)	lwz 29,-12(11)
++HIDDEN_FUNC(_rest32gpr_30_x)	lwz 30,-8(11)
++HIDDEN_FUNC(_rest32gpr_31_x)	lwz 0,4(11)
++				lwz 31,-4(11)
++				mr 1,11
++				mtlr 0
++				blr
++FUNC_END(_rest32gpr_31_x)
++FUNC_END(_rest32gpr_30_x)
++FUNC_END(_rest32gpr_29_x)
++FUNC_END(_rest32gpr_28_x)
++FUNC_END(_rest32gpr_27_x)
++FUNC_END(_rest32gpr_26_x)
++FUNC_END(_rest32gpr_25_x)
++FUNC_END(_rest32gpr_24_x)
++FUNC_END(_rest32gpr_23_x)
++FUNC_END(_rest32gpr_22_x)
++FUNC_END(_rest32gpr_21_x)
++FUNC_END(_rest32gpr_20_x)
++FUNC_END(_rest32gpr_19_x)
++FUNC_END(_rest32gpr_18_x)
++FUNC_END(_rest32gpr_17_x)
++FUNC_END(_rest32gpr_16_x)
++FUNC_END(_rest32gpr_15_x)
++FUNC_END(_rest32gpr_14_x)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtresx64gpr.S b/libgcc/config/rs6000/e500crtresx64gpr.S
+new file mode 100644
+index 00000000000..efb39d1f41e
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtresx64gpr.S
+@@ -0,0 +1,75 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */ 
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* "Exit" versions that return to their caller's caller.  */
++
++HIDDEN_FUNC(_rest64gpr_14_x)	evldd 14,0(11)
++HIDDEN_FUNC(_rest64gpr_15_x)	evldd 15,8(11)
++HIDDEN_FUNC(_rest64gpr_16_x)	evldd 16,16(11)
++HIDDEN_FUNC(_rest64gpr_17_x)	evldd 17,24(11)
++HIDDEN_FUNC(_rest64gpr_18_x)	evldd 18,32(11)
++HIDDEN_FUNC(_rest64gpr_19_x)	evldd 19,40(11)
++HIDDEN_FUNC(_rest64gpr_20_x)	evldd 20,48(11)
++HIDDEN_FUNC(_rest64gpr_21_x)	evldd 21,56(11)
++HIDDEN_FUNC(_rest64gpr_22_x)	evldd 22,64(11)
++HIDDEN_FUNC(_rest64gpr_23_x)	evldd 23,72(11)
++HIDDEN_FUNC(_rest64gpr_24_x)	evldd 24,80(11)
++HIDDEN_FUNC(_rest64gpr_25_x)	evldd 25,88(11)
++HIDDEN_FUNC(_rest64gpr_26_x)	evldd 26,96(11)
++HIDDEN_FUNC(_rest64gpr_27_x)	evldd 27,104(11)
++HIDDEN_FUNC(_rest64gpr_28_x)	evldd 28,112(11)
++HIDDEN_FUNC(_rest64gpr_29_x)	evldd 29,120(11)
++HIDDEN_FUNC(_rest64gpr_30_x)	evldd 30,128(11)
++HIDDEN_FUNC(_rest64gpr_31_x)	lwz 0,148(11)
++				evldd 31,136(11)
++				addi 1,11,144
++				mtlr 0
++				blr
++FUNC_END(_rest64gpr_31_x)
++FUNC_END(_rest64gpr_30_x)
++FUNC_END(_rest64gpr_29_x)
++FUNC_END(_rest64gpr_28_x)
++FUNC_END(_rest64gpr_27_x)
++FUNC_END(_rest64gpr_26_x)
++FUNC_END(_rest64gpr_25_x)
++FUNC_END(_rest64gpr_24_x)
++FUNC_END(_rest64gpr_23_x)
++FUNC_END(_rest64gpr_22_x)
++FUNC_END(_rest64gpr_21_x)
++FUNC_END(_rest64gpr_20_x)
++FUNC_END(_rest64gpr_19_x)
++FUNC_END(_rest64gpr_18_x)
++FUNC_END(_rest64gpr_17_x)
++FUNC_END(_rest64gpr_16_x)
++FUNC_END(_rest64gpr_15_x)
++FUNC_END(_rest64gpr_14_x)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtsav32gpr.S b/libgcc/config/rs6000/e500crtsav32gpr.S
+new file mode 100644
+index 00000000000..6c7b32b271c
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtsav32gpr.S
+@@ -0,0 +1,73 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */ 
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* Routines for saving 32-bit integer registers, called by the compiler.  */
++/* "Bare" versions that simply return to their caller.  */
++
++HIDDEN_FUNC(_save32gpr_14)	stw 14,-72(11)
++HIDDEN_FUNC(_save32gpr_15)	stw 15,-68(11)
++HIDDEN_FUNC(_save32gpr_16)	stw 16,-64(11)
++HIDDEN_FUNC(_save32gpr_17)	stw 17,-60(11)
++HIDDEN_FUNC(_save32gpr_18)	stw 18,-56(11)
++HIDDEN_FUNC(_save32gpr_19)	stw 19,-52(11)
++HIDDEN_FUNC(_save32gpr_20)	stw 20,-48(11)
++HIDDEN_FUNC(_save32gpr_21)	stw 21,-44(11)
++HIDDEN_FUNC(_save32gpr_22)	stw 22,-40(11)
++HIDDEN_FUNC(_save32gpr_23)	stw 23,-36(11)
++HIDDEN_FUNC(_save32gpr_24)	stw 24,-32(11)
++HIDDEN_FUNC(_save32gpr_25)	stw 25,-28(11)
++HIDDEN_FUNC(_save32gpr_26)	stw 26,-24(11)
++HIDDEN_FUNC(_save32gpr_27)	stw 27,-20(11)
++HIDDEN_FUNC(_save32gpr_28)	stw 28,-16(11)
++HIDDEN_FUNC(_save32gpr_29)	stw 29,-12(11)
++HIDDEN_FUNC(_save32gpr_30)	stw 30,-8(11)
++HIDDEN_FUNC(_save32gpr_31)	stw 31,-4(11)
++				blr
++FUNC_END(_save32gpr_31)
++FUNC_END(_save32gpr_30)
++FUNC_END(_save32gpr_29)
++FUNC_END(_save32gpr_28)
++FUNC_END(_save32gpr_27)
++FUNC_END(_save32gpr_26)
++FUNC_END(_save32gpr_25)
++FUNC_END(_save32gpr_24)
++FUNC_END(_save32gpr_23)
++FUNC_END(_save32gpr_22)
++FUNC_END(_save32gpr_21)
++FUNC_END(_save32gpr_20)
++FUNC_END(_save32gpr_19)
++FUNC_END(_save32gpr_18)
++FUNC_END(_save32gpr_17)
++FUNC_END(_save32gpr_16)
++FUNC_END(_save32gpr_15)
++FUNC_END(_save32gpr_14)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtsav64gpr.S b/libgcc/config/rs6000/e500crtsav64gpr.S
+new file mode 100644
+index 00000000000..db143963e0d
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtsav64gpr.S
+@@ -0,0 +1,72 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */ 
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* Routines for saving 64-bit integer registers, called by the compiler.  */
++
++HIDDEN_FUNC(_save64gpr_14)	evstdd 14,0(11)
++HIDDEN_FUNC(_save64gpr_15)	evstdd 15,8(11)
++HIDDEN_FUNC(_save64gpr_16)	evstdd 16,16(11)
++HIDDEN_FUNC(_save64gpr_17)	evstdd 17,24(11)
++HIDDEN_FUNC(_save64gpr_18)	evstdd 18,32(11)
++HIDDEN_FUNC(_save64gpr_19)	evstdd 19,40(11)
++HIDDEN_FUNC(_save64gpr_20)	evstdd 20,48(11)
++HIDDEN_FUNC(_save64gpr_21)	evstdd 21,56(11)
++HIDDEN_FUNC(_save64gpr_22)	evstdd 22,64(11)
++HIDDEN_FUNC(_save64gpr_23)	evstdd 23,72(11)
++HIDDEN_FUNC(_save64gpr_24)	evstdd 24,80(11)
++HIDDEN_FUNC(_save64gpr_25)	evstdd 25,88(11)
++HIDDEN_FUNC(_save64gpr_26)	evstdd 26,96(11)
++HIDDEN_FUNC(_save64gpr_27)	evstdd 27,104(11)
++HIDDEN_FUNC(_save64gpr_28)	evstdd 28,112(11)
++HIDDEN_FUNC(_save64gpr_29)	evstdd 29,120(11)
++HIDDEN_FUNC(_save64gpr_30)	evstdd 30,128(11)
++HIDDEN_FUNC(_save64gpr_31)	evstdd 31,136(11)
++				blr
++FUNC_END(_save64gpr_31)
++FUNC_END(_save64gpr_30)
++FUNC_END(_save64gpr_29)
++FUNC_END(_save64gpr_28)
++FUNC_END(_save64gpr_27)
++FUNC_END(_save64gpr_26)
++FUNC_END(_save64gpr_25)
++FUNC_END(_save64gpr_24)
++FUNC_END(_save64gpr_23)
++FUNC_END(_save64gpr_22)
++FUNC_END(_save64gpr_21)
++FUNC_END(_save64gpr_20)
++FUNC_END(_save64gpr_19)
++FUNC_END(_save64gpr_18)
++FUNC_END(_save64gpr_17)
++FUNC_END(_save64gpr_16)
++FUNC_END(_save64gpr_15)
++FUNC_END(_save64gpr_14)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtsav64gprctr.S b/libgcc/config/rs6000/e500crtsav64gprctr.S
+new file mode 100644
+index 00000000000..f7085fc1b4c
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtsav64gprctr.S
+@@ -0,0 +1,91 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */ 
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* Routines for saving 64-bit integer registers where the number of
++   registers to be saved is passed in CTR, called by the compiler.  */
++/* "Bare" versions that return to their caller.  */
++
++HIDDEN_FUNC(_save64gpr_ctr_14)	evstdd 14,0(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_15)	evstdd 15,8(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_16)	evstdd 16,16(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_17)	evstdd 17,24(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_18)	evstdd 18,32(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_19)	evstdd 19,40(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_20)	evstdd 20,48(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_21)	evstdd 21,56(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_22)	evstdd 22,64(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_23)	evstdd 23,72(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_24)	evstdd 24,80(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_25)	evstdd 25,88(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_26)	evstdd 26,96(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_27)	evstdd 27,104(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_28)	evstdd 28,112(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_29)	evstdd 29,120(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_30)	evstdd 30,128(11)
++				bdz _save64gpr_ctr_done
++HIDDEN_FUNC(_save64gpr_ctr_31)	evstdd 31,136(11)
++_save64gpr_ctr_done:		blr
++FUNC_END(_save64gpr_ctr_31)
++FUNC_END(_save64gpr_ctr_30)
++FUNC_END(_save64gpr_ctr_29)
++FUNC_END(_save64gpr_ctr_28)
++FUNC_END(_save64gpr_ctr_27)
++FUNC_END(_save64gpr_ctr_26)
++FUNC_END(_save64gpr_ctr_25)
++FUNC_END(_save64gpr_ctr_24)
++FUNC_END(_save64gpr_ctr_23)
++FUNC_END(_save64gpr_ctr_22)
++FUNC_END(_save64gpr_ctr_21)
++FUNC_END(_save64gpr_ctr_20)
++FUNC_END(_save64gpr_ctr_19)
++FUNC_END(_save64gpr_ctr_18)
++FUNC_END(_save64gpr_ctr_17)
++FUNC_END(_save64gpr_ctr_16)
++FUNC_END(_save64gpr_ctr_15)
++FUNC_END(_save64gpr_ctr_14)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtsavg32gpr.S b/libgcc/config/rs6000/e500crtsavg32gpr.S
+new file mode 100644
+index 00000000000..fc9edd773d1
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtsavg32gpr.S
+@@ -0,0 +1,73 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */ 
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* Routines for saving 32-bit integer registers, called by the compiler.  */
++/* "GOT" versions that load the address of the GOT into lr before returning.  */
++
++HIDDEN_FUNC(_save32gpr_14_g)	stw 14,-72(11)
++HIDDEN_FUNC(_save32gpr_15_g)	stw 15,-68(11)
++HIDDEN_FUNC(_save32gpr_16_g)	stw 16,-64(11)
++HIDDEN_FUNC(_save32gpr_17_g)	stw 17,-60(11)
++HIDDEN_FUNC(_save32gpr_18_g)	stw 18,-56(11)
++HIDDEN_FUNC(_save32gpr_19_g)	stw 19,-52(11)
++HIDDEN_FUNC(_save32gpr_20_g)	stw 20,-48(11)
++HIDDEN_FUNC(_save32gpr_21_g)	stw 21,-44(11)
++HIDDEN_FUNC(_save32gpr_22_g)	stw 22,-40(11)
++HIDDEN_FUNC(_save32gpr_23_g)	stw 23,-36(11)
++HIDDEN_FUNC(_save32gpr_24_g)	stw 24,-32(11)
++HIDDEN_FUNC(_save32gpr_25_g)	stw 25,-28(11)
++HIDDEN_FUNC(_save32gpr_26_g)	stw 26,-24(11)
++HIDDEN_FUNC(_save32gpr_27_g)	stw 27,-20(11)
++HIDDEN_FUNC(_save32gpr_28_g)	stw 28,-16(11)
++HIDDEN_FUNC(_save32gpr_29_g)	stw 29,-12(11)
++HIDDEN_FUNC(_save32gpr_30_g)	stw 30,-8(11)
++HIDDEN_FUNC(_save32gpr_31_g)	stw 31,-4(11)
++				b _GLOBAL_OFFSET_TABLE_-4
++FUNC_END(_save32gpr_31_g)
++FUNC_END(_save32gpr_30_g)
++FUNC_END(_save32gpr_29_g)
++FUNC_END(_save32gpr_28_g)
++FUNC_END(_save32gpr_27_g)
++FUNC_END(_save32gpr_26_g)
++FUNC_END(_save32gpr_25_g)
++FUNC_END(_save32gpr_24_g)
++FUNC_END(_save32gpr_23_g)
++FUNC_END(_save32gpr_22_g)
++FUNC_END(_save32gpr_21_g)
++FUNC_END(_save32gpr_20_g)
++FUNC_END(_save32gpr_19_g)
++FUNC_END(_save32gpr_18_g)
++FUNC_END(_save32gpr_17_g)
++FUNC_END(_save32gpr_16_g)
++FUNC_END(_save32gpr_15_g)
++FUNC_END(_save32gpr_14_g)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtsavg64gpr.S b/libgcc/config/rs6000/e500crtsavg64gpr.S
+new file mode 100644
+index 00000000000..2f3a5da4221
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtsavg64gpr.S
+@@ -0,0 +1,73 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */ 
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* Routines for saving 64-bit integer registers, called by the compiler.  */
++/* "GOT" versions that load the address of the GOT into lr before returning.  */
++
++HIDDEN_FUNC(_save64gpr_14_g)	evstdd 14,0(11)
++HIDDEN_FUNC(_save64gpr_15_g)	evstdd 15,8(11)
++HIDDEN_FUNC(_save64gpr_16_g)	evstdd 16,16(11)
++HIDDEN_FUNC(_save64gpr_17_g)	evstdd 17,24(11)
++HIDDEN_FUNC(_save64gpr_18_g)	evstdd 18,32(11)
++HIDDEN_FUNC(_save64gpr_19_g)	evstdd 19,40(11)
++HIDDEN_FUNC(_save64gpr_20_g)	evstdd 20,48(11)
++HIDDEN_FUNC(_save64gpr_21_g)	evstdd 21,56(11)
++HIDDEN_FUNC(_save64gpr_22_g)	evstdd 22,64(11)
++HIDDEN_FUNC(_save64gpr_23_g)	evstdd 23,72(11)
++HIDDEN_FUNC(_save64gpr_24_g)	evstdd 24,80(11)
++HIDDEN_FUNC(_save64gpr_25_g)	evstdd 25,88(11)
++HIDDEN_FUNC(_save64gpr_26_g)	evstdd 26,96(11)
++HIDDEN_FUNC(_save64gpr_27_g)	evstdd 27,104(11)
++HIDDEN_FUNC(_save64gpr_28_g)	evstdd 28,112(11)
++HIDDEN_FUNC(_save64gpr_29_g)	evstdd 29,120(11)
++HIDDEN_FUNC(_save64gpr_30_g)	evstdd 30,128(11)
++HIDDEN_FUNC(_save64gpr_31_g)	evstdd 31,136(11)
++				b _GLOBAL_OFFSET_TABLE_-4
++FUNC_END(_save64gpr_31_g)
++FUNC_END(_save64gpr_30_g)
++FUNC_END(_save64gpr_29_g)
++FUNC_END(_save64gpr_28_g)
++FUNC_END(_save64gpr_27_g)
++FUNC_END(_save64gpr_26_g)
++FUNC_END(_save64gpr_25_g)
++FUNC_END(_save64gpr_24_g)
++FUNC_END(_save64gpr_23_g)
++FUNC_END(_save64gpr_22_g)
++FUNC_END(_save64gpr_21_g)
++FUNC_END(_save64gpr_20_g)
++FUNC_END(_save64gpr_19_g)
++FUNC_END(_save64gpr_18_g)
++FUNC_END(_save64gpr_17_g)
++FUNC_END(_save64gpr_16_g)
++FUNC_END(_save64gpr_15_g)
++FUNC_END(_save64gpr_14_g)
++
++#endif
+diff --git a/libgcc/config/rs6000/e500crtsavg64gprctr.S b/libgcc/config/rs6000/e500crtsavg64gprctr.S
+new file mode 100644
+index 00000000000..3077f6df4e3
+--- /dev/null
++++ b/libgcc/config/rs6000/e500crtsavg64gprctr.S
+@@ -0,0 +1,90 @@
++/*
++ * Special support for e500 eabi and SVR4
++ *
++ *   Copyright (C) 2008-2023 Free Software Foundation, Inc.
++ *   Written by Nathan Froyd
++ * 
++ * This file is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 3, or (at your option) any
++ * later version.
++ * 
++ * This file is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ * 
++ * Under Section 7 of GPL version 3, you are granted additional
++ * permissions described in the GCC Runtime Library Exception, version
++ * 3.1, as published by the Free Software Foundation.
++ *
++ * You should have received a copy of the GNU General Public License and
++ * a copy of the GCC Runtime Library Exception along with this program;
++ * see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
++ * <http://www.gnu.org/licenses/>.
++ */
++
++	.section ".text"
++	#include "ppc-asm.h"
++
++#ifdef __SPE__
++
++/* Routines for saving 64-bit integer registers, called by the compiler.  */
++/* "GOT" versions that load the address of the GOT into lr before returning.  */
++
++HIDDEN_FUNC(_save64gpr_ctr_14_g)	evstdd 14,0(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_15_g)	evstdd 15,8(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_16_g)	evstdd 16,16(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_17_g)	evstdd 17,24(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_18_g)	evstdd 18,32(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_19_g)	evstdd 19,40(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_20_g)	evstdd 20,48(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_21_g)	evstdd 21,56(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_22_g)	evstdd 22,64(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_23_g)	evstdd 23,72(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_24_g)	evstdd 24,80(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_25_g)	evstdd 25,88(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_26_g)	evstdd 26,96(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_27_g)	evstdd 27,104(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_28_g)	evstdd 28,112(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_29_g)	evstdd 29,120(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_30_g)	evstdd 30,128(11)
++				bdz _save64gpr_ctr_g_done
++HIDDEN_FUNC(_save64gpr_ctr_31_g)	evstdd 31,136(11)
++_save64gpr_ctr_g_done:		b _GLOBAL_OFFSET_TABLE_-4
++FUNC_END(_save64gpr_ctr_31_g)
++FUNC_END(_save64gpr_ctr_30_g)
++FUNC_END(_save64gpr_ctr_29_g)
++FUNC_END(_save64gpr_ctr_28_g)
++FUNC_END(_save64gpr_ctr_27_g)
++FUNC_END(_save64gpr_ctr_26_g)
++FUNC_END(_save64gpr_ctr_25_g)
++FUNC_END(_save64gpr_ctr_24_g)
++FUNC_END(_save64gpr_ctr_23_g)
++FUNC_END(_save64gpr_ctr_22_g)
++FUNC_END(_save64gpr_ctr_21_g)
++FUNC_END(_save64gpr_ctr_20_g)
++FUNC_END(_save64gpr_ctr_19_g)
++FUNC_END(_save64gpr_ctr_18_g)
++FUNC_END(_save64gpr_ctr_17_g)
++FUNC_END(_save64gpr_ctr_16_g)
++FUNC_END(_save64gpr_ctr_15_g)
++FUNC_END(_save64gpr_ctr_14_g)
++
++#endif
+diff --git a/libgcc/config/rs6000/t-savresfgpr b/libgcc/config/rs6000/t-savresfgpr
+index e252cc8c32e..a8455ae1af9 100644
+--- a/libgcc/config/rs6000/t-savresfgpr
++++ b/libgcc/config/rs6000/t-savresfgpr
+@@ -1,10 +1,23 @@
+ # These can't end up in shared libgcc
+ LIB2ADD_ST += \
+ 	   $(srcdir)/config/rs6000/crtsavfpr.S \
+ 	   $(srcdir)/config/rs6000/crtresfpr.S \
+ 	   $(srcdir)/config/rs6000/crtsavgpr.S \
+ 	   $(srcdir)/config/rs6000/crtresgpr.S \
+ 	   $(srcdir)/config/rs6000/crtresxfpr.S \
+ 	   $(srcdir)/config/rs6000/crtresxgpr.S \
+ 	   $(srcdir)/config/rs6000/crtsavevr.S \
+-	   $(srcdir)/config/rs6000/crtrestvr.S
++	   $(srcdir)/config/rs6000/crtrestvr.S \
++	   $(srcdir)/config/rs6000/e500crtres32gpr.S \
++	   $(srcdir)/config/rs6000/e500crtres64gpr.S \
++	   $(srcdir)/config/rs6000/e500crtres64gprctr.S \
++	   $(srcdir)/config/rs6000/e500crtrest32gpr.S \
++	   $(srcdir)/config/rs6000/e500crtrest64gpr.S \
++	   $(srcdir)/config/rs6000/e500crtresx32gpr.S \
++	   $(srcdir)/config/rs6000/e500crtresx64gpr.S \
++	   $(srcdir)/config/rs6000/e500crtsav32gpr.S \
++	   $(srcdir)/config/rs6000/e500crtsav64gpr.S \
++	   $(srcdir)/config/rs6000/e500crtsav64gprctr.S \
++	   $(srcdir)/config/rs6000/e500crtsavg32gpr.S \
++	   $(srcdir)/config/rs6000/e500crtsavg64gpr.S \
++	   $(srcdir)/config/rs6000/e500crtsavg64gprctr.S
+-- 
+2.43.0
+
