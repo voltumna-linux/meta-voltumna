@@ -12,6 +12,7 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/GPL-2.0-only;m
 UBOOT_MACHINE = "dummy"
 PROVIDES += "virtual/bootloader"
 
+S = "${UNPACKDIR}"
 SRC_URI = " \
 	file://${UBOOT_SCRIPT_SOURCE} \
 	file://uEnv.txt \
