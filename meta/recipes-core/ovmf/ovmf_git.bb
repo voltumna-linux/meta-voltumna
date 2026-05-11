@@ -26,6 +26,9 @@ SRC_URI = "gitsm://github.com/tianocore/edk2.git;branch=master;protocol=https \
            file://0004-reproducible.patch \
            file://0001-MdePkg-Fix-overflow-issue-in-BasePeCoffLib.patch \
            file://0001-MdeModulePkg-Potential-UINT32-overflow-in-S3-ResumeC.patch \
+           file://0006-BaseTools-StringFuncs-fix-gcc-16-warning.patch \
+           file://0007-BaseTools-EfiRom-fix-compiler-warning.patch \
+           file://0008-BaseTools-Pccts-set-C-standard.patch \
            "
 
 PV = "edk2-stable202402"
