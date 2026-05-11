@@ -1,5 +1,0 @@
-define KMACHINE corstone1000
-define KTYPE standard
-define KARCH arm64
-
-kconf hardware corstone1000/base.cfg

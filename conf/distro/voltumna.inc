@@ -54,33 +54,6 @@ FILESYSTEM_PERMS_TABLES = "files/fs-perms-voltumna.txt"
 # Avoid to download and use new packages inadvertently
 BB_NO_NETWORK ??= "1"
 
-# We trying to use the same kernel and booloader release among all our boards
-OLDEST_KERNEL = "6.12"
-LINUXLIBCVERSION = "6.12"
-PREFERRED_VERSION_virtual/kernel ?= "6.12%"
-PREFERRED_VERSION_linux-libc-headers ?= "6.12%"
-PREFERRED_VERSION_linux-intel = "${PREFERRED_VERSION_virtual/kernel}"
-PREFERRED_VERSION_linux-intel-rt = "${PREFERRED_VERSION_virtual/kernel}"
-PREFERRED_VERSION_linux-yocto = "${PREFERRED_VERSION_virtual/kernel}"
-PREFERRED_VERSION_linux-yocto-rt = "${PREFERRED_VERSION_virtual/kernel}"
-#PREFERRED_VERSION_linux-bb.org = "${PREFERRED_VERSION_virtual/kernel}"
-#PREFERRED_VERSION_linux-socfpga-lts = "${PREFERRED_VERSION_virtual/kernel}"
-PREFERRED_VERSION_linux-amd = "6.12.57"
-
-#PREFERRED_VERSION_libbpf = "1.3.0"
-
-PREFERRED_VERSION_nativesdk-libgfortran = "${GCCVERSION}"
-
-PREFERRED_VERSION_tango-idl = "6.%"
-PREFERRED_VERSION_nativesdk-tango-idl = "6.%"
-PREFERRED_VERSION_cpptango = "10.1.%"
-PREFERRED_VERSION_nativesdk-cpptango = "10.1.%"
-PREFERRED_VERSION_python3-pytango = "10.1.%"
-PREFERRED_VERSION_nativesdk-python3-pytango = "10.1.%"
-PREFERRED_VERSION_nativesdk-pogo = "9.10%"
-
-PREFERRED_VERSION_python3-setuptools-scm = "8.3.1"
-
 # Use specific GCC version
 GCCVERSION = "15.%"
 
@@ -97,6 +70,9 @@ HOSTTOOLS += "pdftotext"
 
 # Set http server's root
 WWWDIR = "${datadir}/www/localhost/html"
+
+# Prefer mdns over avahi-libnss-mdns
+PREFERRED_RPROVIDER_libnss-mdns = "mdns"
 
 # Specific to TI
 TI_COMMON_DEPLOY = "${TOPDIR}/tmp/deploy"

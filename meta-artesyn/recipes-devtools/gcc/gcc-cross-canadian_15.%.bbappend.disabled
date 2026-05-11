@@ -1,3 +1,0 @@
-EXTRA_OECONF:append:ppce500v2 = " \
-        --enable-secureplt \
-        "

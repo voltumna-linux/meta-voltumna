@@ -1,6 +1,0 @@
-{
-	"op-tee" : {
-		"image": "tee-pager_v2.bin",
-		"pm": "optee_sp_manifest.dts"
-	}
-}

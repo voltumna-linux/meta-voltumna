@@ -1,5 +1,0 @@
-header:
-  version: 13
-
-env:
-  ARM_FVP_EULA_ACCEPT:

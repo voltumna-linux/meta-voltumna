@@ -1,15 +1,7 @@
 #!/bin/sh
 git subtree pull --prefix=bitbake https://git.openembedded.org/bitbake.git 2.18 --squash
-git subtree pull --prefix=meta-artesyn https://github.com/voltumna-linux/meta-artesyn.git wrynose --squash
-git subtree pull --prefix=meta-intel https://git.yoctoproject.org/meta-intel master --squash
 git subtree pull --prefix=meta-mingw https://git.yoctoproject.org/meta-mingw wrynose --squash
 git subtree pull --prefix=meta-openembedded https://git.openembedded.org/meta-openembedded wrynose --squash
-git subtree pull --prefix=meta-ti https://git.yoctoproject.org/meta-ti wrynose --squash
 git subtree pull --prefix=meta-tango https://github.com/voltumna-linux/meta-tango.git wrynose --squash
 git subtree pull --prefix=openembedded-core https://git.openembedded.org/openembedded-core wrynose --squash
-git subtree pull --prefix=meta-dpdk https://git.yoctoproject.org/meta-dpdk master --squash
-git subtree pull --prefix=meta-arm https://git.yoctoproject.org/meta-arm wrynose --squash
-git subtree pull --prefix=meta-intel-fpga https://git.yoctoproject.org/meta-intel-fpga master --squash
 git subtree pull --prefix=meta-clang https://github.com/kraj/meta-clang.git master --squash
-git subtree pull --prefix=meta-amd https://git.yoctoproject.org/meta-amd scarthgap --squash
-git subtree pull --prefix=meta-intel-qat https://git.yoctoproject.org/meta-intel-qat master --squash

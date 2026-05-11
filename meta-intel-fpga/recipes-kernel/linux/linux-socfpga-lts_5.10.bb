@@ -1,8 +1,0 @@
-LINUX_VERSION = "5.10.100"
-LINUX_VERSION_SUFFIX = "-lts"
-
-LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
-
-SRCREV = "47109d445dc0f922f6612ed1f5a229ea3f62f97e"
-
-include linux-socfpga.inc

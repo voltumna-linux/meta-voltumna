@@ -1,1 +1,0 @@
-linux-intel_%.bbappend

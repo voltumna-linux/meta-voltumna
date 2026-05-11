@@ -1,7 +1,0 @@
-LINUX_VERSION = "5.15"
-
-SRCREV = "ad617140bb242ff9971717f61489c7bb785a1483"
-
-include linux-socfpga.inc
-
-LIC_FILES_CHKSUM = "file://COPYING;md5=6bc538ed5bd9a7fc9398086aedcd7e46"
