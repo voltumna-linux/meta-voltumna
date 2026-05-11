@@ -12,7 +12,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=e548d28737289d75a8f1e01ba2fd7825 \
 
 SRC_URI = "http://lttng.org/files/urcu/userspace-rcu-${PV}.tar.bz2"
 
-SRC_URI[sha256sum] = "ca43bf261d4d392cff20dfae440836603bf009fce24fdc9b2697d837a2239d4f"
+SRC_URI[sha256sum] = "1337c49658367ca6df3c09a7c02303f752e2d964aa98518f4593f7781ad7aac2"
 
 S = "${WORKDIR}/userspace-rcu-${PV}"
 inherit autotools multilib_header
