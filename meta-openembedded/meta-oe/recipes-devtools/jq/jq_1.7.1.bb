@@ -15,6 +15,11 @@ SRC_URI = "${GITHUB_BASE_URI}/download/${BPN}-${PV}/${BPN}-${PV}.tar.gz \
     file://CVE-2024-53427.patch \
     file://CVE-2025-48060.patch \
     file://CVE-2025-9403.patch \
+    file://CVE-2026-40164.patch \
+    file://CVE-2026-32316.patch \
+    file://CVE-2026-33947.patch \
+    file://CVE-2026-33948.patch \
+    file://CVE-2026-39979.patch \
     "
 SRC_URI[sha256sum] = "478c9ca129fd2e3443fe27314b455e211e0d8c60bc8ff7df703873deeee580c2"
 
@@ -29,6 +34,9 @@ PACKAGECONFIG[maintainer-mode] = "--enable-maintainer-mode,--disable-maintainer-
 PACKAGECONFIG[oniguruma] = "--with-oniguruma,--without-oniguruma,onig"
 # enable if you want ptest running under valgrind
 PACKAGECONFIG[valgrind] = "--enable-valgrind,--disable-valgrind,valgrind"
+
+# Gets going with gcc-15 but See if it can be removed with next upgrade
+CFLAGS:append = " -std=gnu17"
 
 do_configure:append() {
 	sed -i -e "/^ac_cs_config=/ s:${WORKDIR}::g" ${B}/config.status
