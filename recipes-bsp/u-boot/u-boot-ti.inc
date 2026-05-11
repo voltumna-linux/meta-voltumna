@@ -96,8 +96,6 @@ EXTRA_OEMAKE += "${PACKAGECONFIG_CONFARGS} BINMAN_INDIRS=${BINMAN_INDIRS}"
 #PKG:${PN}-dev = "u-boot-dev"
 #PKG:${PN}-dbg = "u-boot-dbg"
 
-S = "${WORKDIR}/git"
-
 # Support for secure devices - detailed info is in doc/README.ti-secure
 inherit ti-secdev
 

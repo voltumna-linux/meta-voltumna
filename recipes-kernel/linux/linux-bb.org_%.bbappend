@@ -35,16 +35,6 @@ PB-MIKROBUS-0.dtbo \
 PB-MIKROBUS-1.dtbo \
 "
 
-# 6.6.32 version for 32-bit
-SRCREV:armv7a = "3202dbcd519061bd24e1fa30316dd888b7e31bb0"
-PV:armv7a = "6.6.32+git"
-BRANCH:armv7a = "v6.6.32-ti-arm32-r6"
-
-# 6.6.32 version for 64-bit
-SRCREV:aarch64 = "0feca8b61e0fe5efa5646373450fbe86468b5857"
-PV:aarch64 = "6.6.32+git"
-BRANCH:aarch64 = "v6.6.32-ti-arm64-r10"
-
 SRC_URI:append = " \
 	file://log.cfg \
 	file://zram.cfg \
@@ -67,20 +57,20 @@ SRC_URI:append = " \
 SRC_URI[sha256sum] = "f282d4d33ee9f3d679dd1e6c8290236b395ddda051346bb10e71e50c6bab2e7e"
 
 KERNEL_CONFIG_FRAGMENTS:append = " \
-	${WORKDIR}/log.cfg \
-	${WORKDIR}/zram.cfg \
-	${WORKDIR}/initrd.cfg \
-	${WORKDIR}/disable_ip_nfsroot.cfg \
-	${WORKDIR}/optimization.cfg \
-	${WORKDIR}/strict_devmem.cfg \
-	${WORKDIR}/systemd.cfg \
-	${WORKDIR}/disable_ptp.cfg \
-	${WORKDIR}/remove_martian_source_warning.cfg \
-	${WORKDIR}/enable_ebpf_xpd.cfg \
-	${WORKDIR}/disable_lttng.cfg \
-	${WORKDIR}/disable_ipv6.cfg \
-	${WORKDIR}/serial_console.cfg \
-	${WORKDIR}/static_usb_support.cfg \
+	${UNPACKDIR}/log.cfg \
+	${UNPACKDIR}/zram.cfg \
+	${UNPACKDIR}/initrd.cfg \
+	${UNPACKDIR}/disable_ip_nfsroot.cfg \
+	${UNPACKDIR}/optimization.cfg \
+	${UNPACKDIR}/strict_devmem.cfg \
+	${UNPACKDIR}/systemd.cfg \
+	${UNPACKDIR}/disable_ptp.cfg \
+	${UNPACKDIR}/remove_martian_source_warning.cfg \
+	${UNPACKDIR}/enable_ebpf_xpd.cfg \
+	${UNPACKDIR}/disable_lttng.cfg \
+	${UNPACKDIR}/disable_ipv6.cfg \
+	${UNPACKDIR}/serial_console.cfg \
+	${UNPACKDIR}/static_usb_support.cfg \
 	"
 
 KERNEL_FEATURES:remove = " features/security/security.scc"
