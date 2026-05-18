@@ -26,7 +26,7 @@ index 7d8e30db1a..bed9a605a9 100644
 -	"bootdir=/boot\0" \
 -	"bootfile=zImage\0" \
 +	"autoload=no\0" \
-+	"bootfile=boot.scr.uimg\0" \
++	"bootfile=/boot.scr.uimg\0" \
 +	"krnfile=zImage\0" \
  	"fdtfile=undefined\0" \
 -	"console=ttyO0,115200n8\0" \
@@ -149,7 +149,7 @@ index a598607ead..2d6baa0639 100644
  #define DEFAULT_COMMON_BOOT_TI_ARGS \
 -	"console=" CONSOLEDEV ",115200n8\0" \
 +	"autoload=no\0" \
-+	"bootfile=boot.scr.uimg\0" \
++	"bootfile=/boot.scr.uimg\0" \
 +	"krnfile=zImage\0" \
  	"fdtfile=undefined\0" \
 -	"boot=mmc\0" \

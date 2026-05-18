@@ -8,7 +8,7 @@ index 2fc4a12841..a6bf3af81b 100644
  #define CONFIG_EXTRA_ENV_SETTINGS \
 +	"autoload=no\0" \
  	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0" \
-+	"bootfile=boot.scr.uimg\0" \
++	"bootfile=/boot.scr.uimg\0" \
  	"bootm_size=0xa000000\0" \
 -	"kernel_addr_r="__stringify(CONFIG_SYS_LOAD_ADDR)"\0" \
 -	"fdt_addr_r=0x02000000\0" \
