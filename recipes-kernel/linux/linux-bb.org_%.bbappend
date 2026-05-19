@@ -77,8 +77,3 @@ KERNEL_FEATURES:remove = " features/security/security.scc"
 
 RDEPENDS:${KERNEL_PACKAGE_NAME}-base:remove:ti33x = "prueth-fw pruhsr-fw pruprp-fw"
 KERNEL_DTBDEST = "${KERNEL_IMAGEDEST}"
-
-do_deploy:append:beaglebone() {
-    mv ${D}/${KERNEL_DTBDEST}/ti/omap/* ${D}/${KERNEL_DTBDEST}
-    rm -fr ${D}/${KERNEL_DTBDEST}/ti/
-}
