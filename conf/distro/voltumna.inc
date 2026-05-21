@@ -95,9 +95,3 @@ INHERIT += "uninative"
 
 BB_SIGNATURE_HANDLER ?= "OEEquivHash"
 BB_HASHSERVE ??= "auto"
-
-# FIXME
-PTEST_ENABLED:pn-m4 = "0"
-PTEST_ENABLED:pn-bash = "0"
-PTEST_ENABLED:pn-gawk = "0"
-PTEST_ENABLED:pn-glib-2.0 = "0"
