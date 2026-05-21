@@ -24,6 +24,7 @@ SRC_URI:append = " \
 	file://serial_console.cfg \
 	file://ipmi.cfg \
 	file://osnoise.cfg \
+        file://perf/perf.scc \
 	\
 	file://resctrl.cfg \
 	"

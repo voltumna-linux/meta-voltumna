@@ -1,0 +1,46 @@
+From 7bc7f8918b534347906744e28bcf8fa9ea55fed5 Mon Sep 17 00:00:00 2001
+From: Yang Shi <yang.shi@windriver.com>
+Date: Fri, 25 Oct 2013 12:17:50 -0700
+Subject: [PATCH] perf: mips64: Convert __u64 to unsigned long long
+
+On MIPS64, "__u64" is "unsigned long" type, so the "%llu" specifier will cause
+build error on MIPS64.
+
+Convert __u64 to unsigned long long in those sprintf calls to avoid the build
+error.
+
+Signed-off-by: Yang Shi <yang.shi@windriver.com>
+---
+ tools/perf/tests/bp_signal.c          | 2 +-
+ tools/perf/tests/bp_signal_overflow.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tools/perf/tests/bp_signal.c b/tools/perf/tests/bp_signal.c
+index 3faeb5b6fe0bb..db33f1d72e482 100644
+--- a/tools/perf/tests/bp_signal.c
++++ b/tools/perf/tests/bp_signal.c
+@@ -125,7 +125,7 @@ static int __event(bool is_x, void *addr, int sig)
+ 	fd = sys_perf_event_open(&pe, 0, -1, -1,
+ 				 perf_event_open_cloexec_flag());
+ 	if (fd < 0) {
+-		pr_debug("failed opening event %llx\n", pe.config);
++		pr_debug("failed opening event %llx\n", (unsigned long long)pe.config);
+ 		return TEST_FAIL;
+ 	}
+ 
+diff --git a/tools/perf/tests/bp_signal_overflow.c b/tools/perf/tests/bp_signal_overflow.c
+index ee560e156be6d..9c730d2c233f3 100644
+--- a/tools/perf/tests/bp_signal_overflow.c
++++ b/tools/perf/tests/bp_signal_overflow.c
+@@ -102,7 +102,7 @@ static int test__bp_signal_overflow(struct test_suite *test __maybe_unused, int
+ 	fd = sys_perf_event_open(&pe, 0, -1, -1,
+ 				 perf_event_open_cloexec_flag());
+ 	if (fd < 0) {
+-		pr_debug("failed opening event %llx\n", pe.config);
++		pr_debug("failed opening event %llx\n", (unsigned long long)pe.config);
+ 		return TEST_FAIL;
+ 	}
+ 
+-- 
+2.39.2
+
