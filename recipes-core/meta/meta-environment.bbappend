@@ -22,7 +22,7 @@ create_sdk_files:append() {
 	bindir=${5:-${bindir_nativesdk}}
 	libdir=${4:-${libdir}}
 	sysroot=${SDKPATHNATIVE}
-	multimach_target_sys="x86_64-voltumnasdk-linux"
+	multimach_target_sys="x86_64-${SDK_VENDOR}-linux"
 	script=${1:-${SDK_OUTPUT}/${SDKPATH}/environment-setup-x86_64}
 	sdk_target_prefix="$multimach_target_sys-"
 	rm -f $script
