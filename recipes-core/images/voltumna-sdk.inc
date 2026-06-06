@@ -13,7 +13,8 @@ IMAGE_INSTALL:append:x86-64 = " liblsan-dev libtsan-dev"
 # nativesdk-rust nativesdk-cargo
 TOOLCHAIN_HOST_TASK:append = " nativesdk-make nativesdk-binutils nativesdk-cpp nativesdk-gcc \
 	nativesdk-libgcc-dev nativesdk-g++ nativesdk-libstdc++-dev nativesdk-libgomp-dev \
-	nativesdk-libasan-dev nativesdk-libubsan-dev nativesdk-clang nativesdk-python3-pylint"
+	nativesdk-libasan-dev nativesdk-libubsan-dev nativesdk-clang nativesdk-python3-pylint \
+        nativesdk-numactl-dev"
 TOOLCHAIN_HOST_TASK:append:arm = " nativesdk-dtc"
 TOOLCHAIN_HOST_TASK:append:x86 = " nativesdk-liblsan-dev nativesdk-libtsan-dev"
 TOOLCHAIN_HOST_TASK:append:x86-64 = " nativesdk-liblsan-dev nativesdk-libtsan-dev"
