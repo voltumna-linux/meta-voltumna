@@ -15,7 +15,8 @@ IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_EXTRA_RRECOMMEN
 	procps psmisc ldd less tzdata tzdata-europe polkit lsof socat stress-ng sed tar xz grep gawk \
 	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip \
 	nfs-utils-client iproute2 iproute2-ip iproute2-devlink ethtool inetutils-ping inetutils-telnet \
-	net-tools curl libnss-resolve strace ltrace gdb libasan libubsan e2fsprogs-mke2fs btop picocom lshw"
+	net-tools curl libnss-resolve strace ltrace gdb libasan libubsan e2fsprogs-mke2fs btop picocom \
+        lshw numactl"
 IMAGE_INSTALL:append:x86 = " thermald liblsan libtsan linux-firmware-ice nvme-cli"
 IMAGE_INSTALL:append:x86-64 = " thermald liblsan libtsan linux-firmware-ice nvme-cli"
 
@@ -31,7 +32,7 @@ append_to_osrelease() {
 remove_useless() {
 	rm -f ${IMAGE_ROOTFS}/usr/bin/su ${IMAGE_ROOTFS}/usr/bin/su.*
 # For rust
-#	rm -f ${IMAGE_ROOTFS}/usr/lib/rustlib/x86_64-voltumna-linux-gnu/x86_64-voltumnasdk-linux-gnu.json
+#	rm -f ${IMAGE_ROOTFS}/usr/lib/rustlib/x86_64-voltumna-linux-gnu/x86_64-${SDK_VENDOR}-linux-gnu.json
 	rm -fr ${IMAGE_ROOTFS}/usr/share/post-relocate-setup.d/
 }
 
