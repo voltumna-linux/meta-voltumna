@@ -27,7 +27,7 @@ except KeyError:
     sys.exit(1)
 
 file = os.path.join(sysroot, 'usr/lib/rustlib/', 
-        target, 'x86_64-${SDK_VENDOR}-linux-gnu.json')
+        target, 'x86_64${SDK_VENDOR}-linux-gnu.json')
 
 with open(file) as in_file:
     template = in_file.read()

@@ -10,7 +10,7 @@
     "env": "gnu",
     "vendor": "unknown",
     "target-family": "unix",
-    "linker": "x86_64-${SDK_VENDOR}-linux-gcc",
+    "linker": "x86_64${SDK_VENDOR}-linux-gcc",
          "pre-link-args": {
             "gcc": [
               "--sysroot=@SDKTARGETSYSROOT",
