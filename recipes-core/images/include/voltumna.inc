@@ -32,7 +32,7 @@ append_to_osrelease() {
 remove_useless() {
 	rm -f ${IMAGE_ROOTFS}/usr/bin/su ${IMAGE_ROOTFS}/usr/bin/su.*
 # For rust
-#	rm -f ${IMAGE_ROOTFS}/usr/lib/rustlib/x86_64-voltumna-linux-gnu/x86_64-voltumnasdk-linux-gnu.json
+#	rm -f ${IMAGE_ROOTFS}/usr/lib/rustlib/x86_64-voltumna-linux-gnu/x86_64${SDK_VENDOR}-linux-gnu.json
 	rm -fr ${IMAGE_ROOTFS}/usr/share/post-relocate-setup.d/
 }
 
