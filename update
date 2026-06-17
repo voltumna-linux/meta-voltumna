@@ -12,4 +12,4 @@ git subtree pull --prefix=meta-arm https://git.yoctoproject.org/meta-arm kirksto
 git subtree pull --prefix=meta-intel-fpga https://git.yoctoproject.org/meta-intel-fpga kirkstone --squash
 git subtree pull --prefix=meta-clang https://github.com/kraj/meta-clang.git kirkstone --squash
 git subtree pull --prefix=meta-amd https://git.yoctoproject.org/meta-amd kirkstone --squash
-git subtree pull --prefix=meta-intel-qat https://git.yoctoproject.org/meta-intel-qat master --squash
+git subtree pull --prefix=meta-intel-qat https://git.yoctoproject.org/meta-intel-qat scarthgap --squash
