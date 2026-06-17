@@ -27,7 +27,7 @@ COMPATIBLE_MACHINE = "null"
 
 inherit autotools-brokensep
 
-S = "${UNPACKDIR}/${BP}"
+S = "${WORKDIR}/git"
 
 do_configure:prepend() {
    cd ${S}
