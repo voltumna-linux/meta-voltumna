@@ -14,7 +14,13 @@ LAYERDEPENDS_intel-qat = "core"
 # This should only be incremented on significant changes that will
 # cause compatibility issues with other layers
 LAYERVERSION_intel-qat = "1"
+<<<<<<< HEAD
+LAYERSERIES_COMPAT_intel-qat = "kirkstone styhead scarthgap walnascar whinlatter wrynose"
+||||||| 5be832676f9
+LAYERSERIES_COMPAT_intel-qat = "whinlatter wrynose"
+=======
 LAYERSERIES_COMPAT_intel-qat = "kirkstone scarthgap walnascar"
+>>>>>>> 9b13898f22e486af0973b9ebbbf14ef05a398e6e
 
 
 require ${LAYERDIR}/conf/include/maintainers.inc
