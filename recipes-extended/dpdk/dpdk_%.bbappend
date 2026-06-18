@@ -42,4 +42,4 @@ do_install:append() {
 }
 
 BBCLASSEXTEND = "nativesdk"
-MACHINE_FEATURES:append = " highly-optimized"
+MACHINE_FEATURES:remove = "qemu-usermode"
