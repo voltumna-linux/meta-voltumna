@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=bd50e7e2ac1189caa30191dabbf7ecfb"
 SRC_URI = " \
 	git://github.com/intel/intel-cmt-cat;protocol=https;branch=master \
 	"
-SRCREV = "ad30dda2ed86dc82e78818f73c4d0b5027ec4834"
+SRCREV = "dae129762e411d0d4709c74bc143d93475aeea11"
 
 COMPATIBLE_HOST = '(x86_64).*-linux'
 COMPATIBLE_HOST:libc-musl = "null"
