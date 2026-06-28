@@ -2,7 +2,7 @@ SUMMARY = "A server-side, HTML-embedded scripting language"
 HOMEPAGE = "https://www.php.net"
 SECTION = "console/network"
 
-LICENSE = "PHP-3.0"
+LICENSE = "PHP-3.01"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=fd469cce1a919f0cc95bab7afb28d19d"
 
 BBCLASSEXTEND = "native"
@@ -32,7 +32,7 @@ UPSTREAM_CHECK_REGEX = "releases/tag/php-(?P<pver>\d+(\.\d+)+)"
 
 S = "${UNPACKDIR}/php-${PV}"
 
-SRC_URI[sha256sum] = "ee262beff61c431965d1f97192854b36208adeac38983c3498bb3500ae87283c"
+SRC_URI[sha256sum] = "4ef9355f784d4b320151eb3f31c5941c0da297025eedb97f2838b2ce73dd59bf"
 
 CVE_STATUS_GROUPS += "CVE_STATUS_PHP"
 CVE_STATUS_PHP[status] = "fixed-version: The name of this product is exactly the same as github.com/emlog/emlog. CVE can be safely ignored."
