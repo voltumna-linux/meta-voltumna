@@ -14,7 +14,7 @@ IMAGE_INSTALL_append_x86-64 += " liblsan-dev libtsan-dev"
 
 # Specific to SDE
 IMAGE_INSTALL_append += " binutils-symlinks cpp-symlinks gcc-symlinks g++-symlinks \
-	autoconf automake gettext libtool pkgconfig diffutils quilt git make cmake meson \
+	autoconf automake gettext libtool pkgconfig quilt git make cmake meson \
 	devmem2 gzip kernel-devsrc prepare-kernel-devsrc glib-2.0-utils \
 	powertop gdbserver valgrind"
 
