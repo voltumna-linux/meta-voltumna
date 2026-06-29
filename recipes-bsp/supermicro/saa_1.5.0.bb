@@ -18,7 +18,8 @@ PACKAGES = "${BPN}"
 INSANE_SKIP:${PN} = "already-stripped ldflags debug-files file-rdeps"
 
 do_install() {
-	install -d ${D}${datadir}/${BPN}
+	install -d ${D}${datadir}/${BPN} ${D}${datadir}/${BPN}/acpica_bin/
 	install -m 0744 ${S}/saa ${D}${datadir}/${BPN}
+        install -m 0744 ${S}/acpica_bin/* ${D}${datadir}/${BPN}/acpica_bin/
 	pdftotext ${S}/SAA_UserGuide.pdf ${D}${datadir}/${BPN}/SAA_UserGuide.txt
 }
