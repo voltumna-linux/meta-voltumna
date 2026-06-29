@@ -16,11 +16,8 @@ do_install:append() {
 	# Enable pam_limits during ssh login
 	echo "session    required     pam_limits.so" >> ${D}/etc/pam.d/sshd
 
-        # Add override for sshd@.service and for sshd.socket
-        install -d ${D}${sysconfdir}/systemd/system/sshd@.service.d/ \
-            ${D}${sysconfdir}/systemd/system/sshd.socket.d/
+        # Add override for sshd@.service
+        install -d ${D}${sysconfdir}/systemd/system/sshd@.service.d/
         install -m 0644 ${WORKDIR}/override.conf \
             ${D}${sysconfdir}/systemd/system/sshd@.service.d/
-        install -m 0644 ${WORKDIR}/override.conf \
-            ${D}${sysconfdir}/systemd/system/sshd.socket.d/
 }
