@@ -13,6 +13,7 @@ SRC_URI_append += " \
 	file://enable_ebpf_xpd.cfg \
         file://disable_ipv6.cfg  \
         file://vlan.cfg  \
+        file://disable_ftrace.cfg \
 	\
 	file://0001-arm-Makefile-Fix-systemtap.patch \
 	file://serial_console.cfg \
