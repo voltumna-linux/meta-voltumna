@@ -15,6 +15,7 @@ SRC_URI:append = " \
 	file://disable_ipv6.cfg \
         file://vlan.cfg \
         file://quota.cfg \
+        file://disable_ftrace.cfg \
 	\
 	file://numa.cfg \
 	file://dpdk.cfg \
@@ -24,8 +25,6 @@ SRC_URI:append = " \
 	file://netfilter.cfg \
 	file://serial_console.cfg \
 	file://ipmi.cfg \
-	file://osnoise.cfg \
-        file://perf/perf.scc \
 	\
 	file://resctrl.cfg \
 	"
