@@ -20,6 +20,7 @@ SRC_URI:append = " \
 	file://disable_ipv6.cfg \
 	file://disable_gpiolib.cfg \
         file://vlan.cfg \
+        file://disable_ftrace.cfg \
 	\
 	file://uio.cfg \
 	file://fpgamgr-debug.cfg \

@@ -14,6 +14,7 @@ SRC_URI:append = " \
 	file://disable_lttng.cfg \
 	file://disable_ipv6.cfg \
         file://vlan.cfg \
+        file://disable_ftrace.cfg \
         \
 	file://vme.cfg \
 	"
