@@ -49,6 +49,7 @@ SRC_URI:append = " \
 	file://disable_lttng.cfg \
 	file://disable_ipv6.cfg \
         file://vlan.cfg \
+	file://disable_ftrace.cfg \
         \
 	file://serial_console.cfg \
 	file://static_usb_support.cfg \
@@ -69,6 +70,8 @@ KERNEL_CONFIG_FRAGMENTS:append = " \
 	${WORKDIR}/enable_ebpf_xpd.cfg \
 	${WORKDIR}/disable_lttng.cfg \
 	${WORKDIR}/disable_ipv6.cfg \
+        ${WORKDIR}/vlan.cfg \
+	${WORKDIR}/disable_ftrace.cfg \
 	${WORKDIR}/serial_console.cfg \
 	${WORKDIR}/static_usb_support.cfg \
 	"
