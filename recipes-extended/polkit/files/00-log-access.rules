@@ -1,3 +1,8 @@
+/*
 polkit.addRule(function(action, subject) {
-	polkit.log("action=" + action, "subject=" + subject);
+    throw "POLKIT-DEBUG action=" + action.id +
+          " user=" + subject.user +
+          " local=" + subject.local +
+          " active=" + subject.active;
 });
+*/
