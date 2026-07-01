@@ -1,3 +1,5 @@
+Upstream-Status: Inappropriate
+
 diff --git a/meson.build b/meson.build
 index e44f189..2755556 100644
 --- a/meson.build
@@ -6,7 +8,7 @@ index e44f189..2755556 100644
    include_directories: inc,
    install: true,
    dependencies: libs,
-+  version: '113.0.32'
++  version: '113.0.34'
  )
  
  install_libs = [ adslib, adslib_so ]
