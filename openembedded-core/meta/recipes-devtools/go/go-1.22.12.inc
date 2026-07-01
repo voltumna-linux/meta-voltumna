@@ -41,7 +41,10 @@ SRC_URI += "\
     file://CVE-2025-68121_p1.patch \
     file://CVE-2025-68121_p2.patch \
     file://CVE-2025-68121_p3.patch \
+    file://CVE-2026-27140.patch \
     file://CVE-2026-27142.patch \
+    file://CVE-2026-27143.patch \
+    file://CVE-2026-27144.patch \
     file://CVE-2026-32280.patch \
     file://CVE-2026-32283.patch \
     file://CVE-2026-32289.patch \
@@ -55,7 +58,11 @@ SRC_URI += "\
     file://CVE-2026-42501.patch \
     file://CVE-2026-42504.patch \
     file://CVE-2026-42507.patch \
+    file://CVE-2025-58183.patch \
+    file://CVE-2026-25679.patch \
+    file://CVE-2026-32288.patch \
 "
 SRC_URI[main.sha256sum] = "012a7e1f37f362c0918c1dfa3334458ac2da1628c4b9cf4d9ca02db986e17d71"
 
 CVE_STATUS[CVE-2025-0913] = "not-applicable-platform: Issue only applies on Windows"
+CVE_STATUS[CVE-2026-39836] = "not-applicable-platform: Issue only applies on Windows"
