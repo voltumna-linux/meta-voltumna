@@ -4,9 +4,9 @@ LICENSE = "CLOSED"
 
 PV_MAJOR = "${@d.getVar('PV').split('.')[0]}"
 PV_MINOR = "${@d.getVar('PV').split('.')[1]}"
-NUM = "843853"
+NUM = "920683"
 SRC_URI = "https://downloadmirror.intel.com/${NUM}/700Series_NVMUpdatePackage_v${PV_MAJOR}_${PV_MINOR}.zip"
-SRC_URI[sha256sum] = "97efeb2e9e00c65803be9a0b48c1c0d697beb36d7df5cfa98d18656e8517db6f"
+SRC_URI[sha256sum] = "f0f946f25067030b601140313817d34dec5bf5617c9a1fc27541c2fc7c1aa58d"
 COMPATIBLE_HOST = "x86_64.*-linux"
 
 PACKAGES = "${BPN}"
