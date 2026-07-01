@@ -303,15 +303,70 @@ class Wget(FetchMethod):
             http_error_403 = http_error_405
 
 
+        def _url_origin(url):
+            parsed = urllib.parse.urlsplit(url)
+            scheme = parsed.scheme.lower()
+            host = parsed.hostname.lower() if parsed.hostname else ""
+            port = parsed.port
+            if port is None:
+                port = {"http": 80, "https": 443}.get(scheme)
+            return (scheme, host, port)
+
+        def _same_origin(url_a, url_b):
+            return _url_origin(url_a) == _url_origin(url_b)
+
         class FixedHTTPRedirectHandler(urllib.request.HTTPRedirectHandler):
             """
-            urllib2.HTTPRedirectHandler resets the method to GET on redirect,
-            when we want to follow redirects using the original method.
+            urllib2.HTTPRedirectHandler before 3.13 has two flaws:
+            
+            It resets the method to GET on redirect when we want to follow
+            redirects using the original method (typically HEAD). This was fixed
+            in 759e8e7.
+
+            It also doesn't handle 308 (Permanent Redirect). This was fixed in
+            c379bc5.
+
+            Until we depend on Python 3.13 onwards, copy the redirect_request
+            method to fix these issues.
+
+            Additionally, strip sensitive headers (Authorization, Cookie) when
+            redirecting to a different origin to avoid credential leaks.
             """
             def redirect_request(self, req, fp, code, msg, headers, newurl):
-                newreq = urllib.request.HTTPRedirectHandler.redirect_request(self, req, fp, code, msg, headers, newurl)
-                newreq.get_method = req.get_method
-                return newreq
+                m = req.get_method()
+                if (not (code in (301, 302, 303, 307, 308) and m in ("GET", "HEAD")
+                    or code in (301, 302, 303) and m == "POST")):
+                    raise urllib.HTTPError(req.full_url, code, msg, headers, fp)
+
+                # Strictly (according to RFC 2616), 301 or 302 in response to
+                # a POST MUST NOT cause a redirection without confirmation
+                # from the user (of urllib.request, in this case).  In practice,
+                # essentially all clients do redirect in this case, so we do
+                # the same.
+
+                # Be conciliant with URIs containing a space.  This is mainly
+                # redundant with the more complete encoding done in http_error_302(),
+                # but it is kept for compatibility with other callers.
+                newurl = newurl.replace(' ', '%20')
+
+                CONTENT_HEADERS = ("content-length", "content-type")
+                SENSITIVE_REDIRECT_HEADERS = ("authorization", "cookie")
+                same_origin = _same_origin(req.get_full_url(), newurl)
+                newheaders = {}
+                for k, v in req.headers.items():
+                    header = k.lower()
+                    if header in CONTENT_HEADERS:
+                        continue
+                    if not same_origin and header in SENSITIVE_REDIRECT_HEADERS:
+                        continue
+                    newheaders[k] = v
+                return urllib.request.Request(newurl,
+                            method="HEAD" if m == "HEAD" else "GET",
+                            headers=newheaders,
+                            origin_req_host=req.origin_req_host,
+                            unverifiable=True)
+
+            http_error_308 = urllib.request.HTTPRedirectHandler.http_error_302
 
         # We need to update the environment here as both the proxy and HTTPS
         # handlers need variables set. The proxy needs http_proxy and friends to
