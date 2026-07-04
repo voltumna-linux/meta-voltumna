@@ -5,8 +5,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=5adf4792c949a00013ce25d476a2abc0"
 
 inherit siteinfo
 
-PACKAGE_ARCH = "${MACHINE_ARCH}"
-
+DEPENDS += "libgfortran"
 RDEPENDS:${PN} += "libgomp"
 
 SRCREV = "b89fb708caa5a5a32de8f4306c4ff132e0228e9a"
@@ -14,30 +13,51 @@ SRC_URI = "git://github.com/xianyi/OpenBLAS.git;protocol=https;branch=release-0.
 
 S = "${WORKDIR}/git"
 
+# Full BLAS plus the bundled netlib LAPACK/LAPACKE inside libopenblas, LP64
+# interface. NUM_THREADS is only the runtime thread cap (256 = EPYC 9755 hw
+# threads); left unset it would default to the build host core count.
 EXTRA_OEMAKE += " \
 	FORCE_${OPENBLAS_TARGET}="1" \
 	TARGET=${OPENBLAS_TARGET} \
 	BINARY=${SITEINFO_BITS} \
-	ONLY_CBLAS="1" \
-	NOFORTRAN="1" \
+	NO_LAPACK="0" \
+	NO_LAPACKE="0" \
+	BUILD_LAPACK_DEPRECATED="1" \
+	INTERFACE64="0" \
+	NUM_THREADS="256" \
+	NO_AFFINITY="1" \
 	USE_OPENMP="1" \
 	HOSTCC="${BUILD_CC}" \
 	CC="${CC}" \
+	FC="${FC}" \
 	PREFIX=${exec_prefix} \
 	CROSS_SUFFIX=${HOST_PREFIX} \
 	DESTDIR=${D} \
 	"
 
+# Separate goals: with parallel make, goals given on one command line are
+# pursued concurrently.
 do_compile() {
-	oe_runmake libs shared
+	oe_runmake libs
+	oe_runmake netlib
+	oe_runmake shared
 }
 
 do_install() {
 	oe_runmake install
 	rmdir ${D}${bindir}
+	# libopenblas replaces netlib as the system BLAS/LAPACK/LAPACKE provider
+	for l in blas lapack lapacke; do
+		ln -sf libopenblas.so.0 ${D}${libdir}/lib${l}.so.3
+		ln -sf libopenblas.so ${D}${libdir}/lib${l}.so
+	done
 }
 
 FILES:${PN}     = "${libdir}/*"
-FILES:${PN}-dev = "${includedir} ${libdir}/lib${PN}.so ${libdir}/pkgconfig ${libdir}/cmake"
+FILES:${PN}-dev = "${includedir} ${libdir}/lib${PN}.so ${libdir}/pkgconfig ${libdir}/cmake \
+                   ${libdir}/libblas.so ${libdir}/liblapack.so ${libdir}/liblapacke.so"
+
+# Fortran is not enabled with clang
+TOOLCHAIN = "gcc"
 
 BBCLASSEXTEND = "nativesdk"
