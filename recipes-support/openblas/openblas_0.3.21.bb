@@ -38,9 +38,15 @@ EXTRA_OEMAKE += " \
 # Separate goals: with parallel make, goals given on one command line are
 # pursued concurrently.
 do_compile() {
+	# The cross toolchain provides no omp_lib.mod (libgomp's Fortran module
+	# is built by neither gcc-runtime nor libgfortran), so the bundled
+	# LAPACK cannot be compiled with -fopenmp: strip it the same way
+	# upstream does on Windows. Only the two-stage eigensolvers lose their
+	# internal threading; parallelism stays in the OpenMP BLAS kernels.
+	lapack_noomp='LAPACK_FFLAGS=$(filter-out -fopenmp -mp -openmp -xopenmp=parallel,$(FFLAGS))'
 	oe_runmake libs
-	oe_runmake netlib
-	oe_runmake shared
+	oe_runmake netlib "$lapack_noomp"
+	oe_runmake shared "$lapack_noomp"
 }
 
 do_install() {
