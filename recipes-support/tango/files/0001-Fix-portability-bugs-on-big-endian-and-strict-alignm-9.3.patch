@@ -1,0 +1,153 @@
+From 1a1a2686cac1434d9cf5baea6a69e8e2132d3b65 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Mon, 6 Jul 2026 11:05:06 +0200
+Subject: [PATCH] Fix portability bugs on big-endian and strict-alignment
+ architectures
+
+Backport of 820c29ee9 from main to 9.3.7.
+
+The hand-rolled byte-swap code in the ZMQ event path only runs between
+peers of different endianness, so it is never exercised by the
+little-endian, unaligned-tolerant CI. Harden the two genuine defects
+so they are correct on big-endian and strict-alignment targets:
+
+- ZmqAttrValUnion::init_seq (eventconsumer.h): load/store each element
+  via memcpy so the byte-swap is alignment-safe on strict-alignment
+  targets (Swap16/Swap32 macros are already endianness-portable and
+  are kept).
+- attribute discriminator decode (zmqeventconsumer.cpp): read the
+  discriminator with memcpy and swap it through an unsigned value,
+  removing the unaligned (int *) access and the signed-char shift
+  undefined behaviour.
+
+This branch predates the [portability] test suite added alongside the
+original fix on main, so the fix is applied in place without that
+test infrastructure.
+---
+ cppapi/client/eventconsumer.h      | 35 ++++++++++++++++++------------
+ cppapi/client/zmqeventconsumer.cpp | 17 +++++++++------
+ 2 files changed, 31 insertions(+), 21 deletions(-)
+
+diff --git a/cppapi/client/eventconsumer.h b/cppapi/client/eventconsumer.h
+index 856c16b5b..5f8ac5633 100644
+--- a/cppapi/client/eventconsumer.h
++++ b/cppapi/client/eventconsumer.h
+@@ -237,49 +237,56 @@ inline void ZmqAttrValUnion::init_seq(char *base_ptr,_CORBA_ULong &length,TangoC
+ 		ptr = (T *)(base_ptr + _n.currentInputPtr());
+ 	else
+ 	{
+ 		char *tmp = (char *)_n.get_mkr_in_buf();
+ 		int delta = tmp - base_ptr;
+ 		ptr = (T *)(base_ptr + delta);
+ 	}
+ 
+     if (_n.unmarshal_byte_swap() == true)
+     {
++        //
++        // Load/store each element via memcpy so the byte-swap stays correct even when the
++        // ZMQ buffer is not aligned on a sizeof(T) boundary (strict-alignment targets).
++        //
++        char *raw = (char *)ptr;
+         if (sizeof(T) == 2)
+         {
+             for (_CORBA_ULong i = 0;i < length;i++)
+             {
+-                _CORBA_UShort *tmp_ptr = (_CORBA_UShort *)ptr;
+-                _CORBA_UShort tt = *(tmp_ptr + i);
+-                *(tmp_ptr + i) = Swap16(tt);
++                _CORBA_UShort tt;
++                ::memcpy(&tt, raw + i * 2, sizeof(tt));
++                tt = Swap16(tt);
++                ::memcpy(raw + i * 2, &tt, sizeof(tt));
+             }
+         }
+         else if (sizeof(T) == 4)
+         {
+             for (_CORBA_ULong i = 0;i < length;i++)
+             {
+-               _CORBA_ULong *tmp_ptr = (_CORBA_ULong *)ptr;
+-                _CORBA_ULong t = *(tmp_ptr + i);
+-                *(tmp_ptr + i) = Swap32(t);
++                _CORBA_ULong t;
++                ::memcpy(&t, raw + i * 4, sizeof(t));
++                t = Swap32(t);
++                ::memcpy(raw + i * 4, &t, sizeof(t));
+             }
+         }
+         else if (sizeof(T) == 8)
+         {
+-            _CORBA_ULong double_length = length * 2;
+-            for (_CORBA_ULong i = 0;i < double_length;i += 2)
++            for (_CORBA_ULong i = 0;i < length;i++)
+             {
+-                _CORBA_ULong *tmp_ptr = (_CORBA_ULong *)ptr;
+-                _CORBA_ULong tl1 = *(tmp_ptr + i + 1);
+-                _CORBA_ULong tl2 = Swap32(tl1);
+-                tl1 = *(tmp_ptr + i);
+-                *(tmp_ptr + i) = tl2;
+-                *(tmp_ptr + i + 1) = Swap32(tl1);
++                _CORBA_ULong w0, w1;
++                ::memcpy(&w0, raw + i * 8, sizeof(w0));
++                ::memcpy(&w1, raw + i * 8 + 4, sizeof(w1));
++                _CORBA_ULong s0 = Swap32(w1);
++                _CORBA_ULong s1 = Swap32(w0);
++                ::memcpy(raw + i * 8, &s0, sizeof(s0));
++                ::memcpy(raw + i * 8 + 4, &s1, sizeof(s1));
+             }
+         }
+     }
+ 
+     TA &the_seq = get_seq<TA>();
+     the_seq.replace(length,length,ptr,false);
+ 
+     _n.tango_get_octet_array((length * sizeof(T)));
+ }
+ 
+diff --git a/cppapi/client/zmqeventconsumer.cpp b/cppapi/client/zmqeventconsumer.cpp
+index 55820a05f..2e809d464 100644
+--- a/cppapi/client/zmqeventconsumer.cpp
++++ b/cppapi/client/zmqeventconsumer.cpp
+@@ -2161,30 +2161,33 @@ void ZmqEventConsumer::push_zmq_event(string &ev_name,unsigned char endian,zmq::
+ 					shift_zmq420 = true;
+ 
+ 					data_ptr = dest;
+                 }
+ 
+ 				bool data64 = false;
+ 				if (data_type == PIPE)
+ 					data64 = true;
+ 				else if (data_type == ATT_VALUE && error == false)
+ 				{
+-					int disc = shift_zmq420 == true ? ((int *)data_ptr)[0] : ((int *)data_ptr)[1];
++					// Read the discriminator via memcpy so the load is alignment-safe on
++					// strict-alignment targets, and swap it through an unsigned value so
++					// high-bit bytes are not corrupted by sign extension (no signed
++					// left-shift undefined behaviour either).
++					_CORBA_ULong disc_raw;
++					::memcpy(&disc_raw, data_ptr + (shift_zmq420 == true ? 0 : sizeof(int)), sizeof(disc_raw));
+ 					if (endian == 0)
+                     {
+-                        char first_byte = disc & 0xFF;
+-                        char second_byte = (disc & 0xFF00) >> 8;
+-                        char third_byte = (disc & 0xFF0000) >> 16;
+-                        char forth_byte = (disc & 0xFF000000) >> 24;
+-                        disc = 0;
+-                        disc = forth_byte + (third_byte << 8) + (second_byte << 16) + (first_byte << 24);
++                        disc_raw = ((disc_raw & 0xFFu) << 24) | ((disc_raw & 0xFF00u) << 8) |
++                                   ((disc_raw & 0xFF0000u) >> 8) | ((disc_raw & 0xFF000000u) >> 24);
+                     }
++					int disc;
++					::memcpy(&disc, &disc_raw, sizeof(disc));
+ 					if (disc == ATT_DOUBLE || disc == ATT_LONG64 || disc == ATT_ULONG64)
+ 						data64 = true;
+ 				}
+ 
+ 				bool buffer_aligned64 = false;
+ 				if (data64 == true)
+ 				{
+ 					if (((unsigned long)data_ptr & 0x7) == 0)
+ 						buffer_aligned64 = true;
+ 				}
+-- 
+2.43.0
+

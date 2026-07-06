@@ -13,6 +13,7 @@ DEFAULT_PREFERENCE = "-1"
 SRCREV = "759ed4c75a2e02a6295264cce253f23fef4314c7"
 SRC_URI = " \
 	gitsm://gitlab.com/tango-controls/cppTango.git;protocol=https;nobranch=1 \
+        file://0001-Fix-portability-bugs-on-big-endian-and-strict-alignm-10.3.patch \
 	"
 
 PACKAGECONFIG ?= ""
