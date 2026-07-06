@@ -12,6 +12,7 @@ SRCREV = "29df0972ac8fbaf0158bda727100dba0916a190c"
 SRC_URI = "git://gitlab.com/tango-controls/cppTango.git;protocol=https;branch=9.3-backports \
 	file://disable-mmx.patch \
 	file://fix_wrong_comment.patch \
+        file://0001-Fix-portability-bugs-on-big-endian-and-strict-alignm-9.3.patch \
 "
 
 S = "${WORKDIR}/git"
