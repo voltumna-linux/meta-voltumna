@@ -1,0 +1,199 @@
+From 52e666a7c91f26756af5e3ed301474a274f4477b Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Mon, 6 Jul 2026 11:04:57 +0200
+Subject: [PATCH] Fix portability bugs on big-endian and strict-alignment
+ architectures
+
+Backport of 820c29ee9 from main to 10.3.2.
+
+The hand-rolled byte-swap code in the ZMQ event path only runs between
+peers of different endianness, so it is never exercised by the
+little-endian, unaligned-tolerant CI. Harden the two genuine defects
+so they are correct on big-endian and strict-alignment targets:
+
+- ZmqAttrValUnion::init_seq (zmq_event_marshalling.h): load/store each
+  element via memcpy so the byte-swap is alignment-safe on
+  strict-alignment targets (Swap16/Swap32 macros are already
+  endianness-portable and are kept).
+- attribute discriminator decode (ZmqEventConsumer.cpp): read the
+  discriminator with memcpy and swap it through an unsigned value,
+  removing the unaligned (int *) access and the signed-char shift
+  undefined behaviour.
+
+This branch predates the [portability] test suite added alongside the
+original fix on main, so the fix is applied in place without that
+test infrastructure.
+---
+Upstream-Status: Inappropriate
+
+ src/client/ZmqEventConsumer.cpp               | 18 ++++++----
+ .../tango/common/zmq_event_marshalling.h      | 36 +++++++++++--------
+ 2 files changed, 33 insertions(+), 21 deletions(-)
+
+diff --git a/src/client/ZmqEventConsumer.cpp b/src/client/ZmqEventConsumer.cpp
+index bbb986942..06877f59c 100644
+--- a/src/client/ZmqEventConsumer.cpp
++++ b/src/client/ZmqEventConsumer.cpp
+@@ -25,20 +25,21 @@
+ #include <tango/client/EventQueue.h>
+ #include <tango/client/FwdAttrConfEventData.h>
+ #include <tango/client/FwdEventData.h>
+ #include <tango/client/PipeEventData.h>
+ #include <tango/common/defines.h>
+ #include <tango/server/AutoTangoMonitor.h>
+ 
+ #include <omniORB4/internal/giopStream.h>
+ 
+ #include <cstdio>
++#include <cstring>
+ 
+ #ifdef _TG_WINDOWS_
+   #include <process.h>
+   #include <winsock2.h>
+   #include <ws2tcpip.h>
+ #else
+   #include <arpa/inet.h>
+   #include <fcntl.h>
+   #include <netinet/in.h> // Needed for systems that do not include this file from arpa/inet.h
+   #include <sys/socket.h>
+@@ -2404,30 +2405,33 @@ void ZmqEventConsumer::push_zmq_event(
+                     data_ptr = dest;
+                 }
+ 
+                 bool data64 = false;
+                 if(data_type == PIPE)
+                 {
+                     data64 = true;
+                 }
+                 else if(data_type == ATT_VALUE && !error)
+                 {
+-                    int disc = shift_zmq420 ? ((int *) data_ptr)[0] : ((int *) data_ptr)[1];
++                    // Read the discriminator via memcpy so the load is alignment-safe on
++                    // strict-alignment targets, and swap it through an unsigned value so
++                    // high-bit bytes are not corrupted by sign extension (no signed
++                    // left-shift undefined behaviour either).
++                    CORBA::ULong disc_raw;
++                    std::memcpy(&disc_raw, data_ptr + (shift_zmq420 ? 0 : sizeof(int)), sizeof(disc_raw));
+                     if(endian == 0)
+                     {
+-                        char first_byte = disc & 0xFF;
+-                        char second_byte = (disc & 0xFF00) >> 8;
+-                        char third_byte = (disc & 0xFF0000) >> 16;
+-                        char forth_byte = (disc & 0xFF000000) >> 24;
+-                        disc = 0;
+-                        disc = forth_byte + (third_byte << 8) + (second_byte << 16) + (first_byte << 24);
++                        disc_raw = ((disc_raw & 0xFFu) << 24) | ((disc_raw & 0xFF00u) << 8) |
++                                   ((disc_raw & 0xFF0000u) >> 8) | ((disc_raw & 0xFF000000u) >> 24);
+                     }
++                    int disc;
++                    std::memcpy(&disc, &disc_raw, sizeof(disc));
+                     if(disc == ATT_DOUBLE || disc == ATT_LONG64 || disc == ATT_ULONG64)
+                     {
+                         data64 = true;
+                     }
+                 }
+ 
+                 bool buffer_aligned64 = false;
+                 if(data64)
+                 {
+                     if((reinterpret_cast<std::uintptr_t>(data_ptr) & 0x7) == 0)
+diff --git a/src/include/tango/common/zmq_event_marshalling.h b/src/include/tango/common/zmq_event_marshalling.h
+index 087dc8608..fb55fe0c2 100644
+--- a/src/include/tango/common/zmq_event_marshalling.h
++++ b/src/include/tango/common/zmq_event_marshalling.h
+@@ -5,20 +5,21 @@
+  */
+ 
+ #ifndef TANGO_COMMON_ZMQ_EVENT_MARSHALLING_H
+ #define TANGO_COMMON_ZMQ_EVENT_MARSHALLING_H
+ 
+ #include <tango/common/tango_const.h>
+ #include <tango/common/utils/assert.h>
+ 
+ #include <omniORB4/CORBA.h>
+ 
++#include <cstring>
+ #include <iostream>
+ 
+ namespace Tango
+ {
+ 
+ /********************************************************************************
+  *                                                                                 *
+  *                         ZMQ event unmarshalling related classes                    *
+  *                                                                                 *
+  *******************************************************************************/
+@@ -246,49 +247,56 @@ inline void ZmqAttrValUnion::init_seq(char *base_ptr, CORBA::ULong &length, Tang
+     }
+     else
+     {
+         char *tmp = (char *) _n.get_mkr_in_buf();
+         int delta = tmp - base_ptr;
+         ptr = (T *) (base_ptr + delta);
+     }
+ 
+     if(_n.unmarshal_byte_swap())
+     {
++        //
++        // Load/store each element via memcpy so the byte-swap stays correct even when the
++        // ZMQ buffer is not aligned on a sizeof(T) boundary (strict-alignment targets).
++        //
++        char *raw = (char *) ptr;
+         if(sizeof(T) == 2)
+         {
+             for(CORBA::ULong i = 0; i < length; i++)
+             {
+-                _CORBA_UShort *tmp_ptr = (_CORBA_UShort *) ptr;
+-                _CORBA_UShort tt = *(tmp_ptr + i);
+-                *(tmp_ptr + i) = Swap16(tt);
++                _CORBA_UShort tt;
++                std::memcpy(&tt, raw + i * 2, sizeof(tt));
++                tt = Swap16(tt);
++                std::memcpy(raw + i * 2, &tt, sizeof(tt));
+             }
+         }
+         else if(sizeof(T) == 4)
+         {
+             for(CORBA::ULong i = 0; i < length; i++)
+             {
+-                CORBA::ULong *tmp_ptr = (CORBA::ULong *) ptr;
+-                CORBA::ULong t = *(tmp_ptr + i);
+-                *(tmp_ptr + i) = Swap32(t);
++                CORBA::ULong t;
++                std::memcpy(&t, raw + i * 4, sizeof(t));
++                t = Swap32(t);
++                std::memcpy(raw + i * 4, &t, sizeof(t));
+             }
+         }
+         else if(sizeof(T) == 8)
+         {
+-            CORBA::ULong double_length = length * 2;
+-            for(CORBA::ULong i = 0; i < double_length; i += 2)
++            for(CORBA::ULong i = 0; i < length; i++)
+             {
+-                CORBA::ULong *tmp_ptr = (CORBA::ULong *) ptr;
+-                CORBA::ULong tl1 = *(tmp_ptr + i + 1);
+-                CORBA::ULong tl2 = Swap32(tl1);
+-                tl1 = *(tmp_ptr + i);
+-                *(tmp_ptr + i) = tl2;
+-                *(tmp_ptr + i + 1) = Swap32(tl1);
++                CORBA::ULong w0, w1;
++                std::memcpy(&w0, raw + i * 8, sizeof(w0));
++                std::memcpy(&w1, raw + i * 8 + 4, sizeof(w1));
++                CORBA::ULong s0 = Swap32(w1);
++                CORBA::ULong s1 = Swap32(w0);
++                std::memcpy(raw + i * 8, &s0, sizeof(s0));
++                std::memcpy(raw + i * 8 + 4, &s1, sizeof(s1));
+             }
+         }
+     }
+ 
+     TA &the_seq = get_seq<TA>();
+     the_seq.replace(length, length, ptr, false);
+ 
+     _n.tango_get_octet_array((length * sizeof(T)));
+ }
+ 
+-- 
+2.43.0
+
