@@ -97,8 +97,8 @@ inherit core-image
 
 IMAGE_CMD:tar:append() {
         true
-	${IMAGE_CMD_TAR} --numeric-owner --exclude='.osdir*' -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar --transform 's;^rootfs;nfsroot;' -C ${IMAGE_ROOTFS}/.. rootfs || [ $? -eq 1 ]
-	${IMAGE_CMD_TAR} --numeric-owner -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.os.tar -C ${IMAGE_ROOTFS}/.osdir ${IMAGE_NAME} || [ $? -eq 1 ]
+	${IMAGE_CMD_TAR} --owner=0 --group=0 --numeric-owner --exclude='.osdir*' -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar --transform 's;^rootfs;nfsroot;' -C ${IMAGE_ROOTFS}/.. rootfs || [ $? -eq 1 ]
+	${IMAGE_CMD_TAR} --owner=0 --group=0 --numeric-owner -cf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.os.tar -C ${IMAGE_ROOTFS}/.osdir ${IMAGE_NAME} || [ $? -eq 1 ]
 }
 
 IMAGE_CMD:tar:append:arm() {
@@ -107,7 +107,7 @@ IMAGE_CMD:tar:append:arm() {
 	install -m 644 ${DEPLOY_DIR_IMAGE}/boot.scr.uimg ${WORKDIR}/tftpboot
 	install -m 644 ${DEPLOY_DIR_IMAGE}/uEnv-${IMAGE_LINK_NAME}.txt ${WORKDIR}/tftpboot/uEnv.txt
 	sed -i -e "s,\.osdir,voltumna,g" ${WORKDIR}/tftpboot/uEnv.txt
-	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
+	${IMAGE_CMD_TAR} --owner=0 --group=0 --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
 	rm -fr ${WORKDIR}/tftpboot
 }
 
@@ -117,7 +117,7 @@ IMAGE_CMD:tar:append:ppce500v2() {
 	install -m 644 ${DEPLOY_DIR_IMAGE}/boot.scr.uimg ${WORKDIR}/tftpboot
 	install -m 644 ${DEPLOY_DIR_IMAGE}/uEnv-${IMAGE_LINK_NAME}.txt ${WORKDIR}/tftpboot/uEnv.txt
 	sed -i -e "s,\.osdir,voltumna,g" ${WORKDIR}/tftpboot/uEnv.txt
-	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
+	${IMAGE_CMD_TAR} --owner=0 --group=0 --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
 	rm -fr ${WORKDIR}/tftpboot
 }
 
@@ -135,7 +135,7 @@ IMAGE_CMD:tar:append:x86() {
 		install -m 644 ${DEPLOY_DIR_IMAGE}/grub-${IMAGE_LINK_NAME}.cfg ${WORKDIR}/tftpboot/BOOT/grub.cfg
 		sed -i -e "s,default=localboot,default=netboot,g" ${WORKDIR}/tftpboot/BOOT/grub.cfg
 	fi
-	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
+	${IMAGE_CMD_TAR} --owner=0 --group=0 --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
 	rm -fr ${WORKDIR}/tftpboot
 }
 
@@ -153,6 +153,6 @@ IMAGE_CMD:tar:append:x86-64() {
 		install -m 644 ${DEPLOY_DIR_IMAGE}/grub-${IMAGE_LINK_NAME}.cfg ${WORKDIR}/tftpboot/BOOT/grub.cfg
 		sed -i -e "s,default=localboot,default=netboot,g" ${WORKDIR}/tftpboot/BOOT/grub.cfg
 	fi
-	${IMAGE_CMD_TAR} --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
+	${IMAGE_CMD_TAR} --owner=0 --group=0 --numeric-owner -rf ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.net.tar -C ${WORKDIR} tftpboot || [ $? -eq 1 ]
 	rm -fr ${WORKDIR}/tftpboot
 }
