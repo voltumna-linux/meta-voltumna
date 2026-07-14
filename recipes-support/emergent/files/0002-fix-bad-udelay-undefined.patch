@@ -1,0 +1,13 @@
+--- a/opt/EVT/myricom_mva/src/driver/linux/kbuild/mx.c
++++ b/opt/EVT/myricom_mva/src/driver/linux/kbuild/mx.c
+@@ -15,6 +15,10 @@
+ /* modifications for MX kernel lib made by
+  * Brice.Goglin@ens-lyon.org (LIP/INRIA/ENS-Lyon) */
+ 
++void __bad_udelay(void)
++{
++}
++
+ static const char __idstring[] = "@(#)$Id$";
+ 
+ #define mx_printf printk

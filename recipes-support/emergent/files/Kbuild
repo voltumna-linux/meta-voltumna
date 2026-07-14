@@ -1,0 +1,2 @@
+obj-m = myri_mva.o
+myri_mva-objs = mx.o mx_ether.o mx_common.o mx_instance.o mx_lanai_command.o kraw.o mcp_wrapper_common.o mx_lx.o mx_lz.o myri_ptp_common.o myri_raw_ops.o myri_mva_ops.o mx_ether_common.o

@@ -1,0 +1,10 @@
+[Match]
+Name=enp179s0
+
+[Link]
+MTUBytes=9000
+
+[Network]
+Address=10.3.1.210/24
+LLDP=false
+EmitLLDP=false
