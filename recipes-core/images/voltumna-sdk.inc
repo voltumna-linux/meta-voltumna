@@ -1,5 +1,5 @@
 LICENSE = "MIT"
-IMAGE_LINGUAS = "en-us"
+IMAGE_LINGUAS = "c"
 
 SDKIMAGE_FEATURES = "${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
 
