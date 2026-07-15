@@ -1,0 +1,15 @@
+Upstream-Status: Inappropriate
+
+diff -ruNp python3-pyads-3.6.0.orig/src/pyads/ads.py python3-pyads-3.6.0/src/pyads/ads.py
+--- python3-pyads-3.6.0.orig/src/pyads/ads.py	2026-07-11 04:18:40.450887428 +0200
++++ python3-pyads-3.6.0/src/pyads/ads.py	2026-07-15 10:57:15.206245544 +0200
+@@ -437,7 +437,8 @@ def bytes_from_dict(
+                     byte_list.extend(remaining_bytes * [0])
+                 elif type(plc_datatype) is tuple:
+                     bytecount = bytes_from_dict(
+-                        values=var[i], structure_def=plc_datatype
++                        values=var, structure_def=plc_datatype
++
+                     )
+                     byte_list += bytecount
+                 elif plc_datatype not in DATATYPE_MAP:

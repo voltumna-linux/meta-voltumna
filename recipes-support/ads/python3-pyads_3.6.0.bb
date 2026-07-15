@@ -5,6 +5,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=774af9d8c3ecbeb6a847dfac4c056bb3"
 
 SRC_URI = " \
         git://github.com/stlehmann/pyads;branch=master;protocol=https \
+        file://fix_writing_of_nested_structs_472.patch \
 	"
 SRCREV = "20ce6b14fd4d7078f8603c950ef9f1c88862c524"
 
