@@ -1,5 +1,5 @@
 LICENSE = "MIT"
-IMAGE_LINGUAS = "en-us"
+IMAGE_LINGUAS = "c"
 IMAGE_BOOT_FILES:remove = "${KERNEL_IMAGETYPE} ${KERNEL_DEVICETREE}"
 
 IMAGE_FEATURES += " bash-completion-pkgs ssh-server-openssh"
