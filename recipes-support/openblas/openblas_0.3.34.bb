@@ -8,7 +8,7 @@ inherit siteinfo
 DEPENDS += "libgfortran"
 RDEPENDS:${PN} += "libgomp"
 
-SRCREV = "62bcfb0dc9f1cfa685fc04135c50e2780c303137"
+SRCREV = "e0166008be8e466242aa76b2ff75ce3f0fbf574a"
 SRC_URI = "git://github.com/xianyi/OpenBLAS.git;protocol=https;branch=release-0.3.0"
 
 # Full BLAS plus the bundled netlib LAPACK/LAPACKE inside libopenblas, LP64
