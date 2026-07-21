@@ -55,6 +55,7 @@ do
 		mount.usr=*)		export usrpath="${arg//mount.usr=}";;
 		mount.usrfstype=*)	export usrfstype="${arg//mount.usrfstype=}";;
 		mount.usrflags=*)	export usrflags="${arg//mount.usrflags=}";;
+		net.ifnames=*)		export ifnames="${arg//net.ifnames=}";;
 		systemd.volatile=*)	echo "The $arg paramter is not implemented yet...";;
 	esac
 done
@@ -68,20 +69,26 @@ if [ -z "${usrflags}" ]; then
 	usrflags=${rootflags}
 fi
 
-# Rename network interfaces
-SYSCLASSNET=/sys/class/net/
-for NIC in $(ls ${SYSCLASSNET})
-do
-	UDEVADM_OUTPUT=$(udevadm test-builtin net_id ${SYSCLASSNET}${NIC} 2>/dev/null)
-	ID_NET_NAME_ONBOARD=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_ONBOARD=\(.*\)/\1/p')
-	if [ -n "${ID_NET_NAME_ONBOARD}" ]; then
-		ip link set ${NIC} name ${ID_NET_NAME_ONBOARD} >/dev/null 2>&1
-	fi
-	ID_NET_NAME_PATH=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_PATH=\(.*\)/\1/p')
-	if [ -n "${ID_NET_NAME_PATH}" ]; then
-		ip link set ${NIC} name ${ID_NET_NAME_PATH} >/dev/null 2>&1
-	fi
-done
+if [ -z "${ifnames}" ]; then
+	ifnames=1
+fi
+
+if [ "${ifnames}" -ne 0 ]; then
+	# Rename network interfaces
+	SYSCLASSNET=/sys/class/net/
+	for NIC in $(ls ${SYSCLASSNET})
+	do
+		UDEVADM_OUTPUT=$(udevadm test-builtin net_id ${SYSCLASSNET}${NIC} 2>/dev/null)
+		ID_NET_NAME_ONBOARD=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_ONBOARD=\(.*\)/\1/p')
+		if [ -n "${ID_NET_NAME_ONBOARD}" ]; then
+			ip link set ${NIC} name ${ID_NET_NAME_ONBOARD} >/dev/null 2>&1
+		fi
+		ID_NET_NAME_PATH=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_PATH=\(.*\)/\1/p')
+		if [ -n "${ID_NET_NAME_PATH}" ]; then
+			ip link set ${NIC} name ${ID_NET_NAME_PATH} >/dev/null 2>&1
+		fi
+	done
+fi
 
 # Drop into a shell...
 if [ "${break}" = "top" ]; then
