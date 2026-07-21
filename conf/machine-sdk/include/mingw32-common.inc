@@ -57,6 +57,9 @@ DISABLE_STATIC:mingw32 = ""
 # disable security flags
 GCCPIE:mingw32 = ""
 
+# qemu cannot run Windows PE executables, disable meson exe wrapper
+EXEWRAPPER_ENABLED:mingw32 = "False"
+
 # wine and wineserver are required to test MinGW SDKs
 HOSTTOOLS_NONFATAL += "wine wineserver"
 
