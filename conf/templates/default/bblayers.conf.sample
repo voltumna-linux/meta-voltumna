@@ -11,6 +11,7 @@ BBLAYERS ?= " \
   ##OEROOT##/../meta-tango \
   ##OEROOT##/../meta-mingw \
   ##OEROOT##/../meta-clang \
+  ##OEROOT##/../meta-python-ai \
   ##OEROOT##/../meta-openembedded/meta-oe \
   ##OEROOT##/../meta-openembedded/meta-filesystems \
   ##OEROOT##/../meta-openembedded/meta-python \
