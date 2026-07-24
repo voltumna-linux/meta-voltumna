@@ -6,4 +6,5 @@ git subtree pull --prefix=meta-dpdk https://git.yoctoproject.org/meta-dpdk wryno
 git subtree pull --prefix=meta-tango https://github.com/voltumna-linux/meta-tango.git wrynose --squash
 git subtree pull --prefix=openembedded-core https://git.openembedded.org/openembedded-core wrynose --squash
 git subtree pull --prefix=meta-clang https://github.com/kraj/meta-clang.git wrynose --squash
+git subtree pull --prefix=meta-virtualization https://git.yoctoproject.org/meta-virtualization.git wrynose --squash
 git subtree pull --prefix=meta-python-ai https://github.com/zboszor/meta-python-ai.git wrynose --squash
