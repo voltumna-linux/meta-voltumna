@@ -1,0 +1,15 @@
+Signed-off-by: Zoltán Böszörményi <zboszor@gmail.com>
+Upstream-Status: Inappropriate [Yocto specific]
+
+diff -durpN pywavelets-1.8.0.old/meson.build pywavelets-1.8.0/meson.build
+--- pywavelets-1.8.0.old/meson.build	2024-04-01 19:38:02.000000000 +0200
++++ pywavelets-1.8.0/meson.build	2024-04-14 16:56:58.188575658 +0200
+@@ -11,7 +11,7 @@ project(
+   ],
+ )
+ 
+-cython = find_program('cython')
++cython = find_program('cython3')
+ 
+ py = import('python').find_installation(pure: false)
+ py_dep = py.dependency()
