@@ -1,0 +1,64 @@
+# Container Registry Development Configuration
+# ============================================
+#
+# This is a simple configuration for running a local container registry
+# for development purposes. It uses filesystem storage and listens on
+# port 5000 without TLS.
+#
+# Usage:
+#   oe-run-native docker-distribution-native registry serve \
+#       /path/to/container-registry-dev.yml
+#
+# Or with explicit paths:
+#   /path/to/sysroot-native/usr/sbin/registry serve \
+#       /path/to/container-registry-dev.yml
+#
+# For production, consider:
+#   - Enabling TLS
+#   - Adding authentication
+#   - Using cloud storage (S3, GCS, Azure)
+#   - Setting up garbage collection
+#
+# See: https://distribution.github.io/distribution/about/configuration/
+
+version: 0.1
+
+log:
+  level: info
+  formatter: text
+  fields:
+    service: container-registry
+
+storage:
+  filesystem:
+    # Storage directory - override with REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY env var
+    rootdirectory: /tmp/container-registry
+  # Enable deletion of images/tags
+  delete:
+    enabled: true
+  # Don't redirect to external storage
+  redirect:
+    disable: true
+  # Maintenance settings
+  maintenance:
+    uploadpurging:
+      enabled: true
+      age: 168h    # 1 week
+      interval: 24h
+      dryrun: false
+
+http:
+  addr: :5000
+  headers:
+    X-Content-Type-Options: [nosniff]
+  # For development - allow HTTP. In production, use TLS.
+  # tls:
+  #   certificate: /path/to/cert.pem
+  #   key: /path/to/key.pem
+
+# Health check endpoint
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3

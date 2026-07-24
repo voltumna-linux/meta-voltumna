@@ -1,0 +1,8 @@
+{
+  "_comment": "Git-tracked repository overrides for modules where automatic discovery fails.",
+  "_format": "module/path or module/path@version -> repository URL",
+  "_example": {
+    "example.com/broken-vanity": "https://github.com/org/actual-repo",
+    "example.com/versioned@v1.2.3": "https://github.com/org/specific-version-repo"
+  }
+}

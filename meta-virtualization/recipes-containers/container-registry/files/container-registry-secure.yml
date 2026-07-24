@@ -1,0 +1,66 @@
+# Container Registry Secure Configuration (TLS + htpasswd authentication)
+# ============================================================================
+#
+# This configuration enables HTTPS with TLS certificates and htpasswd auth.
+# Certificates and credentials are auto-generated on first start.
+#
+# Usage:
+#   Enable secure mode in local.conf:
+#     CONTAINER_REGISTRY_SECURE = "1"
+#
+#   Run: container-registry.sh start
+#   This auto-generates:
+#     - pki/ca.crt, ca.key (CA certificate)
+#     - pki/server.crt, server.key (server certificate with SAN)
+#     - auth/htpasswd (bcrypt credentials)
+#     - auth/password (plaintext password for reference)
+#
+# See: https://distribution.github.io/distribution/about/configuration/
+
+version: 0.1
+
+log:
+  level: info
+  formatter: text
+  fields:
+    service: container-registry-secure
+
+storage:
+  filesystem:
+    # Storage directory - replaced at generation time
+    rootdirectory: __STORAGE_PATH__
+  # Enable deletion of images/tags
+  delete:
+    enabled: true
+  # Don't redirect to external storage
+  redirect:
+    disable: true
+  # Maintenance settings
+  maintenance:
+    uploadpurging:
+      enabled: true
+      age: 168h    # 1 week
+      interval: 24h
+      dryrun: false
+
+http:
+  addr: :5000
+  headers:
+    X-Content-Type-Options: [nosniff]
+  # TLS configuration - paths replaced at generation time
+  tls:
+    certificate: __PKI_DIR__/server.crt
+    key: __PKI_DIR__/server.key
+
+# htpasswd authentication
+auth:
+  htpasswd:
+    realm: "Yocto Container Registry"
+    path: __AUTH_DIR__/htpasswd
+
+# Health check endpoint
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3

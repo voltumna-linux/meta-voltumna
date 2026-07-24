@@ -1,0 +1,30 @@
+From cc1b6f4a2d4de9b024048626096cabcd1a674d06 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Tue, 8 Jul 2025 13:35:29 -0400
+Subject: [PATCH] vmm_types: drop C99 defined 'bool'
+
+Upstream-Status: Inappropriate [Adapting to OE default compiler]
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ core/include/vmm_types.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/core/include/vmm_types.h b/core/include/vmm_types.h
+index 70801c4f..7c1084f2 100644
+--- a/core/include/vmm_types.h
++++ b/core/include/vmm_types.h
+@@ -42,7 +42,9 @@ typedef long s64;
+ typedef unsigned long u64;
+ #endif
+ 
+-typedef unsigned int bool;
++// not needed for c99 and throws an error
++// typedef unsigned int bool;
++
+ /*
+  * Most 32 bit architectures use "unsigned int" size_t,
+  * and all 64 bit architectures use "unsigned long" size_t.
+-- 
+2.39.2
+

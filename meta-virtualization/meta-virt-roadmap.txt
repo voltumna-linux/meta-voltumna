@@ -1,0 +1,173 @@
+The roadmap items are broken into the following broad categories:
+
+  - container runtimes
+  - hypervisor base support
+  - build system / workflow
+  - container stacks / management
+  - container images / applications / artifacts
+  - container base / support components (tools, plugins, etc)
+
+Legend: [x] = done, [ ] = TODO, [~] = partial/in-progress
+
+Last updated: January 2026
+
+================================================================================
+Container base packages / support:
+================================================================================
+
+  - [~] package refresh (ongoing)
+
+================================================================================
+Container "Stacks", with integrated unit or system level testing in meta-virt:
+================================================================================
+
+  - base stacks: docker, containerd, podman
+  - reference "full" stacks: k8s, k3s
+
+  - [x] containerd (done)
+  - [x] docker (done)
+  - [x] podman (done)
+  - [x] k8s (done)
+  - [x] k3s (done)
+  - [x] cri-o (done)
+  - [ ] incus
+
+================================================================================
+Container Images / Reference Platforms:
+================================================================================
+
+  - [~] OverC / Oryx / Other reference platforms for small footprint testing
+     - [x] Reference container boot / initramfs (vcontainer/vdkr/vpdmn)
+
+  - [x] Reference container base images
+     - [x] small (container-base.bb)
+     - [x] medium (container-app-base.bb)
+     - [x] large (container-devtools-base.bb)
+     - [x] system (container-systemd-base.bb)
+
+  - [x] Container registry base / sample containers
+     - [x] example-container-bundle
+     - [x] remote-container-bundle (with digest pinning)
+
+  - [x] rootless / unpriv containers (rootlesskit)
+
+================================================================================
+Container runtimes:
+================================================================================
+
+  - [x] runx (done)
+  - [x] kata containers (done)
+  - [x] runc (done)
+  - [x] crun (done)
+  - [x] pflask (done - removed from layer, superseded)
+
+================================================================================
+Hypervisor base support:
+================================================================================
+
+  - [x] xen (recipes-extended/xen/)
+  - [x] KVM (done)
+  - [ ] jailhouse (roadmap: community)
+
+================================================================================
+Container support components:
+================================================================================
+
+  - [x] CNI refresh (done)
+      - [ ] CNI multus
+  - [x] Additional Container networking plugins
+      - [x] netavark
+      - [x] aardvark-dns
+      - [x] slirp4netns
+      - [x] passt
+
+  - [ ] h/w accelerated containers
+      - [ ] fpga / pci / other
+
+================================================================================
+Build system / workflow:
+================================================================================
+
+  - [~] Binary reference package feed integration / container extension
+      - [x] Decoupled container update (container-bundle.bbclass)
+      - [x] "Docker build" type functionality (buildah)
+
+  - [x] OCI container image backend
+      - [x] sloci (done)
+      - [x] skopeo (done)
+      - [x] buildah (done)
+      - [x] umoci (done)
+
+  - [x] Host side (builder) container installer
+      - [x] container-cross-install.bbclass
+      - [x] vrunner.sh (QEMU-based cross-arch container import)
+      - [x] skopeo integration
+
+  - [x] SDK based container update
+      - [x] vcontainer-tarball.bb (standalone SDK)
+      - [x] vdkr CLI (Docker commands)
+      - [x] vpdmn CLI (Podman commands)
+
+  - [x] devtool / recipe / manual: build -> deploy
+      - [x] local / build host deploy and test (pytest framework)
+
+  - [~] microservice reference workflow / container base
+
+================================================================================
+NEW: Cross-architecture container deployment (January 2026)
+================================================================================
+
+  - [x] vcontainer unified tooling
+      - [x] vcontainer-native.bb (native tools)
+      - [x] vcontainer-tarball.bb (SDK installer)
+      - [x] vrunner.sh (QEMU orchestration)
+
+  - [x] vdkr (Docker cross-arch CLI)
+      - [x] vdkr-initramfs-create (multiconfig blob builder)
+      - [x] vdkr-rootfs-image (squashfs Docker environment)
+      - [x] memres mode (persistent QEMU VM)
+      - [x] --network=host default
+
+  - [x] vpdmn (Podman cross-arch CLI)
+      - [x] vpdmn-initramfs-create (multiconfig blob builder)
+      - [x] vpdmn-rootfs-image (squashfs Podman environment)
+      - [x] memres mode (persistent QEMU VM)
+
+  - [x] container-bundle.bbclass
+      - [x] Package-based container bundling
+      - [x] Local container recipes support
+      - [x] Remote container fetch (skopeo + digest pinning)
+      - [x] Runtime auto-detection (CONTAINER_PROFILE)
+
+  - [x] container-cross-install.bbclass
+      - [x] ROOTFS_POSTPROCESS_COMMAND integration
+      - [x] Batch import via vrunner
+      - [x] Docker storage merging
+      - [x] Podman storage merging (VFS driver)
+      - [x] Container autostart (systemd services)
+      - [x] Podman Quadlet support
+
+  - [x] container-common.bbclass
+      - [x] Shared Python functions for multiconfig/arch mapping
+
+  - [x] Multiconfig blob builds
+      - [x] vruntime-aarch64.conf
+      - [x] vruntime-x86-64.conf
+      - [x] Automatic mcdepends triggering
+
+  - [x] Testing infrastructure
+      - [x] pytest framework (tests/)
+      - [x] test_vdkr.py (Docker CLI tests)
+      - [x] test_vpdmn.py (Podman CLI tests)
+      - [x] test_container_cross_install.py (bundling tests)
+      - [x] Boot tests with container verification
+
+================================================================================
+TODO (not yet started):
+================================================================================
+
+  - [ ] incus (LXD successor)
+  - [ ] jailhouse hypervisor
+  - [ ] CNI multus
+  - [ ] h/w accelerated containers (fpga/pci)
+

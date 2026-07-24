@@ -1,0 +1,34 @@
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Subject: [PATCH] images/Makefile: fix cross-compilation protobuf paths
+
+pkg-config --variable=includedir returns the host path (e.g.
+/usr/include) without applying PKG_CONFIG_SYSROOT_DIR, since sysroot
+prefixing only applies to -I flags from --cflags, not raw --variable
+queries. The protoc --proto_path was also hardcoded to /usr/include.
+
+Make the include dir overridable via PROTOBUF_INCLUDEDIR so cross-build
+systems can pass the correct sysroot path through EXTRA_OEMAKE.
+
+Upstream-Status: Pending
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ images/Makefile | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/images/Makefile b/images/Makefile
+--- a/images/Makefile
++++ b/images/Makefile
+@@ -93,10 +93,11 @@ makefile-deps := Makefile $(obj)/Makefile
+ #
+ # Generate descriptor.pb-c.c and descriptor.pb-c.h to compile opts.proto.
+ DESCRIPTOR_DIR := images/google/protobuf
+-GOOGLE_INCLUDE=$(shell pkg-config protobuf --variable=includedir)/google/protobuf
++PROTOBUF_INCLUDEDIR ?= $(shell pkg-config protobuf --variable=includedir)
++GOOGLE_INCLUDE=$(PROTOBUF_INCLUDEDIR)/google/protobuf
+ $(DESCRIPTOR_DIR)/descriptor.pb-c.c: $(GOOGLE_INCLUDE)/descriptor.proto
+ 	$(call msg-gen, $@)
+-	$(Q) protoc --proto_path=/usr/include --proto_path=$(obj)/ --c_out=$(obj)/ $<
++	$(Q) protoc --proto_path=$(PROTOBUF_INCLUDEDIR) --proto_path=$(obj)/ --c_out=$(obj)/ $<
+ 
+ cleanup-y += $(DESCRIPTOR_DIR)/descriptor.pb-c.d

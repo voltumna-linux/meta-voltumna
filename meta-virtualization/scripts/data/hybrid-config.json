@@ -1,0 +1,24 @@
+{
+    "_comment": "Configuration for oe-go-mod-fetcher-hybrid.py recommendations",
+    "_comment2": "Prefixes listed here are suggested for git:// (VCS provenance) vs gomod:// (fast proxy)",
+
+    "vcs_priority_prefixes": [
+        "github.com/containerd",
+        "github.com/rancher",
+        "github.com/k3s-io",
+        "k8s.io",
+        "sigs.k8s.io"
+    ],
+
+    "_vcs_priority_comment": "These prefixes are suggested to keep as git:// for VCS provenance and auditability",
+
+    "size_threshold_bytes": 1048576,
+    "_size_threshold_comment": "Modules larger than this (1MB) are suggested for gomod:// conversion",
+
+    "default_git_prefixes": [
+        "github.com/containerd",
+        "k8s.io",
+        "sigs.k8s.io"
+    ],
+    "_default_git_comment": "Default --git prefixes suggested when no VCS priority matches are found"
+}

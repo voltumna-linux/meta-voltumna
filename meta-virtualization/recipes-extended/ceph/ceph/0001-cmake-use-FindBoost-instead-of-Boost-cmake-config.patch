@@ -1,0 +1,47 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Sun, 23 Mar 2026 00:00:00 +0000
+Subject: [PATCH] cmake: use FindBoost instead of Boost cmake config
+
+Boost 1.90's native cmake config combined with OE's long PATH causes
+exponential search path expansion in CMake 4.x, resulting in an
+unbounded CMakeConfigureLog.yaml (100GB+) and infinite CPU spin during
+configure.
+
+Disable CMP0167 NEW so CMake falls back to the traditional FindBoost
+module instead of Boost's own cmake config files.
+
+Also remove 'headers' from BOOST_COMPONENTS since it is a Boost
+cmake-config-only pseudo-component that FindBoost does not recognize.
+
+Upstream-Status: Inappropriate [OE cross-compilation specific]
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ CMakeLists.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 82f49cab089..cb0ff5be14d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -7,7 +7,7 @@ project(ceph
+ foreach(policy CMP0127 CMP0135
+   CMP0144 # Ensure taking `BOOST_ROOT` keeps working. Otherwise,
+ 	  # config-based `find_package` will take `Boost_ROOT`.
+-  CMP0167 # Use Boost's own CMake config files instead of FindBoost module.
++  # CMP0167 - disabled: Boost 1.90 cmake config causes path explosion with OE cross-compilation
+   CMP0175)
+   if(POLICY ${policy})
+     cmake_policy(SET ${policy} NEW)
+@@ -744,7 +744,7 @@ option(WITH_SYSTEM_BOOST "require and build with system Boost" OFF)
+
+ # Boost::thread depends on Boost::atomic, so list it explicitly.
+ set(BOOST_COMPONENTS
+-  atomic chrono headers thread regex random program_options date_time
++  atomic chrono thread regex random program_options date_time
+   iostreams context coroutine url)
+ set(BOOST_HEADER_COMPONENTS container)
+
+--
+2.39.2
+

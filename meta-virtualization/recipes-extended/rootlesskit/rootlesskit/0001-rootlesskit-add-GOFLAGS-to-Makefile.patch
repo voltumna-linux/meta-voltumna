@@ -1,0 +1,41 @@
+From c68e9ee0da91955148ab682ea214c6fcb82b0249 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Sun, 7 Dec 2025 04:25:52 +0000
+Subject: [PATCH] rootlesskit: add GOFLAGS to Makefile
+
+By adding this to the Makefile we can pass in our OE build
+settings more easily.
+
+Upstream-Status: Inappropriate [embedded specific]
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ src/import/Makefile | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 808c2d3..63d4dec 100644
+--- a/src/import/Makefile
++++ b/src/import/Makefile
+@@ -10,15 +10,15 @@ clean:
+ 	$(RM) -r bin/ _artifact/
+ 
+ bin/rootlesskit: $(GO_FILES)
+-	$(GO) build -o $@ -v ./cmd/rootlesskit
++	$(GO) build $(GOFLAGS) -o $@ -v ./cmd/rootlesskit
+ 
+ bin/rootlessctl: $(GO_FILES)
+-	$(GO) build -o $@ -v ./cmd/rootlessctl
++	$(GO) build $(GOFLAGS) -o $@ -v ./cmd/rootlessctl
+ 
+ bin/rootlesskit-docker-proxy: $(GO_FILES)
+ 	@echo "NOTE: rootlesskit-docker-proxy is required only if you use Docker prior to v28."
+ 	@echo "NOTE: rootlesskit-docker-proxy is DEPRECATED and will be removed in RootlessKit v3."
+-	$(GO) build -o $@ -v ./cmd/rootlesskit-docker-proxy
++	$(GO) build $(GOFLAGS) -o $@ -v ./cmd/rootlesskit-docker-proxy
+ 
+ .PHONY: cross
+ cross:
+-- 
+2.43.0
+
