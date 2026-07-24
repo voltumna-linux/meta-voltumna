@@ -2,6 +2,8 @@
 git subtree pull --prefix=bitbake https://git.openembedded.org/bitbake.git 2.18 --squash
 git subtree pull --prefix=meta-mingw https://git.yoctoproject.org/meta-mingw wrynose --squash
 git subtree pull --prefix=meta-openembedded https://git.openembedded.org/meta-openembedded wrynose --squash
+git subtree pull --prefix=meta-dpdk https://git.yoctoproject.org/meta-dpdk wrynose --squash
 git subtree pull --prefix=meta-tango https://github.com/voltumna-linux/meta-tango.git wrynose --squash
 git subtree pull --prefix=openembedded-core https://git.openembedded.org/openembedded-core wrynose --squash
 git subtree pull --prefix=meta-clang https://github.com/kraj/meta-clang.git wrynose --squash
+git subtree pull --prefix=meta-python-ai https://github.com/zboszor/meta-python-ai.git wrynose --squash
