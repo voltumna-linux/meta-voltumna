@@ -1,0 +1,20 @@
+# K3s cluster network interface configuration
+#
+# Claims the secondary interface (eth1) for k3s cluster networking,
+# preventing systemd-networkd's default catch-all from configuring
+# it with DHCP. The static IP address is configured at boot by
+# k3s-role-setup.service via a runtime drop-in based on the
+# k3s.node-ip= kernel cmdline parameter.
+#
+# If no k3s.node-ip= is set, the interface stays up with no address
+# (link-local only), which is harmless.
+
+[Match]
+Name=eth1
+
+[Network]
+DHCP=no
+LinkLocalAddressing=ipv6
+
+[Link]
+RequiredForOnline=no

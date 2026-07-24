@@ -1,0 +1,16 @@
+#!/bin/sh
+# vctr - convenience wrapper for ctr with vxn runtime
+# Usage: vctr run <image> <cmd>   (same as: ctr run --runtime io.containerd.vxn.v2 ...)
+#        vctr <any ctr command>   (passed through to ctr)
+
+VXN_RUNTIME="io.containerd.vxn.v2"
+
+case "$1" in
+    run)
+        shift
+        exec ctr run --runtime "$VXN_RUNTIME" "$@"
+        ;;
+    *)
+        exec ctr "$@"
+        ;;
+esac

@@ -1,0 +1,7 @@
+#!/bin/sh
+# containerd-shim-vxn-v2
+# Wraps containerd-shim-runc-v2 so that when the shim execs "runc",
+# it finds vxn-oci-runtime instead. PATH trick — no temp files,
+# no symlink conflicts with the real runc package.
+export PATH="/usr/libexec/vxn/shim:$PATH"
+exec /usr/bin/containerd-shim-runc-v2 "$@"

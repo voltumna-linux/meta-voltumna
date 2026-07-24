@@ -1,0 +1,16 @@
+[Unit]
+Description=K3s Role Setup from Kernel Cmdline
+Documentation=https://k3s.io
+After=local-fs.target
+Before=systemd-networkd.service network-online.target
+
+# Only run if k3s.role= is on the kernel cmdline
+ConditionKernelCommandLine=k3s.role
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/k3s-role-setup.sh
+
+[Install]
+WantedBy=multi-user.target

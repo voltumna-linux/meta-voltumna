@@ -1,0 +1,54 @@
+From 70f96461462a5a0437398022aa71a2033c8c5c3a Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Thu, 15 May 2025 14:26:47 -0400
+Subject: [PATCH] xen: fix header guard inconsistencies (gcc15)
+
+Fixing the following header inconsistencies
+
+   | In file included from arch/arm/platforms/midway.c:22:
+   | ./arch/arm/include/asm/platforms/midway.h:1: error: header guard '__ASM_ARM_PLATFORMS_MIDWAY_H' followed by '#define' of a different macro [-Werror=header-guard]
+   |     1 | #ifndef __ASM_ARM_PLATFORMS_MIDWAY_H
+   | ./arch/arm/include/asm/platforms/midway.h:2: note: '__ASM_ASM_PLATFORMS_MIDWAY_H' is defined here; did you mean '__ASM_ARM_PLATFORMS_MIDWAY_H'?
+   |     2 | #define __ASM_ASM_PLATFORMS_MIDWAY_H
+   | In file included from arch/arm/platforms/omap5.c:21:
+   | ./arch/arm/include/asm/platforms/omap5.h:1: error: header guard '__ASM_ARM_PLATFORMS_OMAP5_H' followed by '#define' of a different macro [-Werror=header-guard]
+   |     1 | #ifndef __ASM_ARM_PLATFORMS_OMAP5_H
+   | ./arch/arm/include/asm/platforms/omap5.h:2: note: '__ASM_ASM_PLATFORMS_OMAP5_H' is defined here; did you mean '__ASM_ARM_PLATFORMS_OMAP5_H'?
+
+It is unclear whether this is on purpose or not, but for our limited
+set of permuations, we change them to match and no issues have been
+found.
+
+Upstream-Status: Pending [the xen folks understand the code and the right fix .. I don't]
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ xen/arch/arm/include/asm/platforms/midway.h | 2 +-
+ xen/arch/arm/include/asm/platforms/omap5.h  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/xen/arch/arm/include/asm/platforms/midway.h b/xen/arch/arm/include/asm/platforms/midway.h
+index 099e4350f9..69143931c2 100644
+--- a/xen/arch/arm/include/asm/platforms/midway.h
++++ b/xen/arch/arm/include/asm/platforms/midway.h
+@@ -1,5 +1,5 @@
+ #ifndef __ASM_ARM_PLATFORMS_MIDWAY_H
+-#define __ASM_ASM_PLATFORMS_MIDWAY_H
++#define __ASM_ARM_PLATFORMS_MIDWAY_H
+ 
+ /* addresses of SREG registers for resetting the SoC */
+ #define MW_SREG_PWR_REQ             0xfff3cf00
+diff --git a/xen/arch/arm/include/asm/platforms/omap5.h b/xen/arch/arm/include/asm/platforms/omap5.h
+index c559c84b61..8867b4589a 100644
+--- a/xen/arch/arm/include/asm/platforms/omap5.h
++++ b/xen/arch/arm/include/asm/platforms/omap5.h
+@@ -1,5 +1,5 @@
+ #ifndef __ASM_ARM_PLATFORMS_OMAP5_H
+-#define __ASM_ASM_PLATFORMS_OMAP5_H
++#define __ASM_ARM_PLATFORMS_OMAP5_H
+ 
+ #define REALTIME_COUNTER_BASE                   0x48243200
+ #define INCREMENTER_NUMERATOR_OFFSET            0x10
+-- 
+2.39.2
+

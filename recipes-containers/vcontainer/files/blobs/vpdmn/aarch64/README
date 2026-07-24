@@ -1,0 +1,26 @@
+vpdmn aarch64 Blobs
+====================
+
+This directory should contain the boot blobs for vpdmn aarch64:
+
+Required files:
+  - Image              : Linux kernel for aarch64
+  - initramfs.cpio.gz  : Tiny initramfs for switch_root
+  - rootfs.img         : Ext4 root filesystem with Podman tools
+
+Build instructions:
+  1. Set MACHINE for aarch64:
+     MACHINE=qemuarm64
+
+  2. Build the blobs:
+     bitbake vpdmn-initramfs-create
+
+  3. Copy from deploy directory:
+     cp tmp/deploy/images/qemuarm64/vpdmn/aarch64/Image .
+     cp tmp/deploy/images/qemuarm64/vpdmn/aarch64/initramfs.cpio.gz .
+     cp tmp/deploy/images/qemuarm64/vpdmn/aarch64/rootfs.img .
+
+Once these files are present, vcontainer-native will automatically include them.
+
+Alternatively, set VPDMN_USE_DEPLOY = "1" in local.conf to use blobs
+directly from DEPLOY_DIR without copying to the layer.

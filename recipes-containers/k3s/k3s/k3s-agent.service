@@ -1,0 +1,36 @@
+# Derived from the k3s install.sh's create_systemd_service_file() function
+[Unit]
+Description=Lightweight Kubernetes Agent
+Documentation=https://k3s.io
+Requires=containerd.service
+After=containerd.service k3s-role-setup.service
+After=network-online.target
+Wants=network-online.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=notify
+EnvironmentFile=-/etc/default/%N
+EnvironmentFile=-/etc/sysconfig/%N
+# Ensure CNI plugin binaries are discoverable
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/cni/bin:/usr/libexec/cni
+KillMode=control-group
+Delegate=yes
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+# Create flannel subnet.env if not present — k3s's embedded flannel
+# controller populates this after joining, but the CNI plugin needs
+# the file to exist at sandbox creation time
+ExecStartPre=/bin/sh -c 'mkdir -p /run/flannel && test -f /run/flannel/subnet.env || echo "FLANNEL_NETWORK=10.42.0.0/16\nFLANNEL_SUBNET=10.42.0.1/24\nFLANNEL_MTU=1450\nFLANNEL_IPMASQ=true" > /run/flannel/subnet.env'
+ExecStart=/usr/local/bin/k3s agent
+ExecStopPost=/usr/local/bin/k3s-clean
+

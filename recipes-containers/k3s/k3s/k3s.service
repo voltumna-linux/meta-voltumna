@@ -1,0 +1,42 @@
+# Derived from the k3s install.sh's create_systemd_service_file() function
+[Unit]
+Description=Lightweight Kubernetes
+Documentation=https://k3s.io
+Requires=containerd.service
+After=containerd.service
+After=network-online.target k3s-role-setup.service
+Wants=network-online.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=notify
+EnvironmentFile=-/etc/default/%N
+EnvironmentFile=-/etc/sysconfig/%N
+EnvironmentFile=-/etc/systemd/system/k3s.service.env
+# Ensure CNI plugin binaries are discoverable
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/cni/bin:/usr/libexec/cni
+KillMode=process
+Delegate=yes
+# Having non-zero Limit*s causes performance problems due to accounting overhead
+# in the kernel. We recommend using cgroups to do container-local accounting.
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+ExecStartPre=/bin/sh -xc '! systemctl is-enabled --quiet nm-cloud-setup.service'
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+# Create flannel subnet.env if not present — k3s's embedded flannel
+# controller expects this file for CNI plugin configuration
+ExecStartPre=/bin/sh -c 'mkdir -p /run/flannel && test -f /run/flannel/subnet.env || echo "FLANNEL_NETWORK=10.42.0.0/16\nFLANNEL_SUBNET=10.42.0.1/24\nFLANNEL_MTU=1450\nFLANNEL_IPMASQ=true" > /run/flannel/subnet.env'
+ExecStart=/usr/local/bin/k3s server
+# Avoid any delay due to this service when the system is rebooting or shutting
+# down by using the k3s-killall.sh script to kill all of the running k3s
+# services and containers
+ExecStopPost=/bin/sh -c "if systemctl is-system-running | grep -i \
+                           'stopping'; then /usr/local/bin/k3s-killall.sh; fi"

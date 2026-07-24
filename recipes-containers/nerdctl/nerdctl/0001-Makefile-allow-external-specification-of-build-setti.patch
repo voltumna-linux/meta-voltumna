@@ -1,0 +1,28 @@
+From 0e6809ea075acd3edf7de197cd4e190ccdad6361 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Mon, 29 Mar 2021 20:50:47 -0400
+Subject: [PATCH] Makefile: allow external specification of build settings
+
+Upstream-Status: Inappropriate [embedded specific]
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+
+Rebase to v2.0.2
+Signed-off-by: Hongxu Jia <hongxu.jia@windriver.com>
+---
+ src/import/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: nerdctl-v2.2.0/src/import/Makefile
+===================================================================
+--- nerdctl-v2.2.0.orig/src/import/Makefile
++++ nerdctl-v2.2.0/src/import/Makefile
+@@ -57,7 +57,7 @@
+ 	VERBOSE_FLAG_LONG := --verbose
+ endif
+ 
+-export GO_BUILD=CGO_ENABLED=0 GOOS=$(GOOS) $(GO) -C $(MAKEFILE_DIR) build $(GO_TAGS) -ldflags "$(GO_BUILD_LDFLAGS) $(VERBOSE_FLAG) -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
++export GO_BUILD=GOOS=$(GOOS) $(GO) -C $(MAKEFILE_DIR) build $(GO_TAGS) -ldflags "$(GO_BUILD_LDFLAGS) $(VERBOSE_FLAG) -X $(PACKAGE)/pkg/version.Version=$(VERSION) -X $(PACKAGE)/pkg/version.Revision=$(REVISION)"
+ 
+ ifndef NO_COLOR
+     NC := \033[0m

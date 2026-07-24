@@ -1,0 +1,24 @@
+Upstream-Status: Inappropriate [embedded specific]
+
+Index: src/Makefile.housekeeping
+===================================================================
+--- src.orig/Makefile.housekeeping
++++ src/Makefile.housekeeping
+@@ -496,7 +496,7 @@ endif
+ CFLAGS		+= $(WORKAROUND_CFLAGS) $(EXTRA_CFLAGS)
+ ASFLAGS		+= $(WORKAROUND_ASFLAGS) $(EXTRA_ASFLAGS)
+ LDFLAGS		+= $(WORKAROUND_LDFLAGS) $(EXTRA_LDFLAGS)
+-HOST_CFLAGS	+= -O2 -g
++HOST_CFLAGS	+= -O2 -g $(EXTRA_HOST_CFLAGS)
+ HOST_EFI_CFLAGS	+= -fshort-wchar
+ 
+ # Inhibit -Werror if NO_WERROR is specified on make command line
+@@ -1488,7 +1488,7 @@ endif # defined(BIN)
+ # The compression utilities
+ #
+ 
+-ZBIN_LDFLAGS := -llzma
++ZBIN_LDFLAGS := -llzma $(EXTRA_HOST_LDFLAGS)
+ 
+ $(ZBIN32) : util/zbin.c $(MAKEDEPS)
+ 	$(QM)$(ECHO) "  [HOSTCC] $@"

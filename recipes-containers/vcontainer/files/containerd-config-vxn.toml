@@ -1,0 +1,19 @@
+version = 2
+
+# Register vxn shim: containerd-shim-vxn-v2 (symlink to runc shim)
+# with BinaryName pointing to vxn-oci-runtime.
+# This allows: ctr run --runtime io.containerd.vxn.v2 ...
+
+# CRI plugin: make vxn the default runtime for Kubernetes
+[plugins."io.containerd.grpc.v1.cri".containerd]
+  default_runtime_name = "vxn"
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.vxn]
+  runtime_type = "io.containerd.vxn.v2"
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.vxn.options]
+    BinaryName = "/usr/bin/vxn-oci-runtime"
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+  runtime_type = "io.containerd.runc.v2"
+  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+    BinaryName = "runc"
