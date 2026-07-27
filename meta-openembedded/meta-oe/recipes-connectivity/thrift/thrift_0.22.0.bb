@@ -11,12 +11,16 @@ DEPENDS = "thrift-native boost flex-native bison-native openssl zlib"
 SRC_URI = "https://downloads.apache.org/${BPN}/${PV}/${BP}.tar.gz \
            file://0001-DefineInstallationPaths.cmake-Define-libdir-in-terms.patch \
            file://0001-support-reproducible-builds.patch \
+           file://CVE-2026-43868.patch \
+           file://CVE-2026-43870.patch \
            "
 SRC_URI[sha256sum] = "794a0e455787960d9f27ab92c38e34da27e8deeda7a5db0e59dc64a00df8a1e5"
 
 BBCLASSEXTEND = "native nativesdk"
 
 CVE_PRODUCT = "apache:thrift"
+
+CVE_STATUS[CVE-2026-43869] = "not-applicable-config: The issue is present in the Java client which is not built"
 
 inherit pkgconfig cmake python3native
 
