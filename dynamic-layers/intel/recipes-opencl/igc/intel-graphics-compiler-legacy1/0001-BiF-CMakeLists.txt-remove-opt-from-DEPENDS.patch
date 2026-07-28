@@ -1,0 +1,35 @@
+From 1b98a931c3bf8daccc48cd618335ff35e3d382da Mon Sep 17 00:00:00 2001
+From: Anuj Mittal <anuj.mittal@intel.com>
+Date: Tue, 12 Oct 2021 23:46:42 +0800
+Subject: [PATCH] BiF/CMakeLists.txt: remove opt from DEPENDS
+
+Otherwise it starts failing with:
+
+| ninja: error: 'IGC/VectorCompiler/lib/BiF/opt', needed by 'IGC/VectorCompiler/lib/BiF/VCBiFPrintfOCL32.opt.bc', missing and no known rule to make it
+
+We don't need to explicitly make sure opt is built when
+using prebuilt binaries.
+
+Upstream-Status: Inappropriate
+
+Signed-off-by: Anuj Mittal <anuj.mittal@intel.com>
+---
+ IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake b/IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake
+index df3222e31..5b79d342e 100644
+--- a/IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake
++++ b/IGC/VectorCompiler/lib/BiF/cmake/Functions.cmake
+@@ -109,7 +109,7 @@ function(vc_build_bif TARGET RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
+     COMMENT "vc_build_bif: Translating CMCL builtins:  ${BIF_CLANG_BC_NAME_FINAL} -> ${BIF_OPT_BC_NAME}"
+     COMMAND CMCLTranslatorTool -o ${BIF_CMCL_BC_NAME} ${BIF_CLANG_BC_NAME_FINAL}
+     COMMAND ${LLVM_OPT_EXE} ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT} --O2 -o ${BIF_OPT_BC_NAME} ${BIF_CMCL_BC_NAME}
+-    DEPENDS CMCLTranslatorTool ${LLVM_OPT_EXE} ${BIF_CLANG_BC_PATH_FINAL}
++    DEPENDS CMCLTranslatorTool ${BIF_CLANG_BC_PATH_FINAL}
+     BYPRODUCTS ${BIF_OPT_BC_PATH}
+     SOURCES ${CMCL_SRC_PATH})
+   set(${RES_FILE} ${BIF_OPT_BC_NAME} PARENT_SCOPE)
+-- 
+2.47.0
+

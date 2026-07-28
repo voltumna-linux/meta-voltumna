@@ -1,0 +1,33 @@
+From 0d9eadf39696c6e3286491b472ac158eee59c192 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zolt=C3=A1n=20B=C3=B6sz=C3=B6rm=C3=A9nyi?=
+ <zboszor@gmail.com>
+Date: Thu, 24 Jul 2025 11:31:35 +0200
+Subject: [PATCH] openmp/libomptarget/include/Debug.h: Add missing includes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Fixes the build with GCC 15.
+
+Signed-off-by: Zoltán Böszörményi <zboszor@gmail.com>
+Upstream-Status: Inappropriate [GCC 15 specific]
+---
+ openmp/libomptarget/include/Debug.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/openmp/libomptarget/include/Debug.h b/openmp/libomptarget/include/Debug.h
+index 942f39fe9c1a..f71e546d3ab0 100644
+--- a/openmp/libomptarget/include/Debug.h
++++ b/openmp/libomptarget/include/Debug.h
+@@ -37,6 +37,8 @@
+ #ifndef _OMPTARGET_DEBUG_H
+ #define _OMPTARGET_DEBUG_H
+ 
++#include <cstdlib>
++#include <string>
+ #include <atomic>
+ #include <mutex>
+ 
+-- 
+2.50.1
+

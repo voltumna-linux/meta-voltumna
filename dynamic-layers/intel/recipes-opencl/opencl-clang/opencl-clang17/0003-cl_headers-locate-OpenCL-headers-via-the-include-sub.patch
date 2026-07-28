@@ -1,0 +1,38 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Yogesh Tyagi <yogesh.tyagi@intel.com>
+Date: Thu, 25 Jun 2026 00:00:00 +0000
+Subject: [PATCH] cl_headers: locate OpenCL headers via the include/ subdir
+
+LLVM 17 installs the clang resource headers (opencl-c.h, opencl-c-base.h)
+under clang/<major>/include, while compiler-rt installs its runtime libs
+under clang/<major>.<minor>.<patch>/lib. The versioned directory therefore
+exists but has no include/ subdir, so the original existence check selected
+a headers path that does not contain opencl-c.h and configure failed with
+"Cannot find source file".
+
+Test for the include/ subdirectory directly so the correct clang resource
+headers directory is selected regardless of the resource-dir layout.
+
+Upstream-Status: Pending
+Signed-off-by: Yogesh Tyagi <yogesh.tyagi@intel.com>
+---
+ cl_headers/CMakeLists.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/cl_headers/CMakeLists.txt b/cl_headers/CMakeLists.txt
+index e4112c20..89790b71 100644
+--- a/cl_headers/CMakeLists.txt
++++ b/cl_headers/CMakeLists.txt
+@@ -19,10 +19,10 @@ add_custom_command(
+ endfunction(copy_file)
+ 
+ if(USE_PREBUILT_LLVM)
+-    if(EXISTS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}/")
++    if(EXISTS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}/include/")
+         set(OPENCL_HEADERS_DIR
+         "${LLVM_LIBRARY_DIRS}/clang/${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}/include/")
+-    elseif(EXISTS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_VERSION_MAJOR}/")
++    elseif(EXISTS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_VERSION_MAJOR}/include/")
+         set(OPENCL_HEADERS_DIR
+             "${LLVM_LIBRARY_DIRS}/clang/${LLVM_VERSION_MAJOR}/include/")
+     else()

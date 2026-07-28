@@ -1,0 +1,71 @@
+From c3093a703982aeb7bf36f40a834488c47ac2851d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zolt=C3=A1n=20B=C3=B6sz=C3=B6rm=C3=A9nyi?=
+ <zboszor@gmail.com>
+Date: Tue, 29 Apr 2025 14:08:41 +0200
+Subject: [PATCH] Fix building lldb with Python 3.13
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This change backports some pieces from the LLVM project.
+
+Upstream-Status: Backport
+Signed-off-by: Zoltán Böszörményi <zboszor@gmail.com>
+---
+ .../Python/PythonDataObjects.cpp              |  4 ++--
+ .../Python/ScriptInterpreterPython.cpp        | 19 +++++++++++--------
+ 2 files changed, 13 insertions(+), 10 deletions(-)
+
+diff --git a/lldb/source/Plugins/ScriptInterpreter/Python/PythonDataObjects.cpp b/lldb/source/Plugins/ScriptInterpreter/Python/PythonDataObjects.cpp
+index ae61736fbbb3..fe49d624ddc9 100644
+--- a/lldb/source/Plugins/ScriptInterpreter/Python/PythonDataObjects.cpp
++++ b/lldb/source/Plugins/ScriptInterpreter/Python/PythonDataObjects.cpp
+@@ -71,8 +71,8 @@ Expected<std::string> python::As<std::string>(Expected<PythonObject> &&obj) {
+ }
+ 
+ static bool python_is_finalizing() {
+-#if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 7
+-  return _Py_Finalizing != nullptr;
++#if PY_VERSION_HEX >= 0x030d0000
++  return Py_IsFinalizing();
+ #else
+   return _Py_IsFinalizing();
+ #endif
+diff --git a/lldb/source/Plugins/ScriptInterpreter/Python/ScriptInterpreterPython.cpp b/lldb/source/Plugins/ScriptInterpreter/Python/ScriptInterpreterPython.cpp
+index a21adcfbdbd6..25caa485e829 100644
+--- a/lldb/source/Plugins/ScriptInterpreter/Python/ScriptInterpreterPython.cpp
++++ b/lldb/source/Plugins/ScriptInterpreter/Python/ScriptInterpreterPython.cpp
+@@ -163,19 +163,22 @@ private:
+   }
+ 
+   void InitializeThreadsPrivate() {
+-// Since Python 3.7 `Py_Initialize` calls `PyEval_InitThreads` inside itself,
+-// so there is no way to determine whether the embedded interpreter
+-// was already initialized by some external code. `PyEval_ThreadsInitialized`
+-// would always return `true` and `PyGILState_Ensure/Release` flow would be
+-// executed instead of unlocking GIL with `PyEval_SaveThread`. When
+-// an another thread calls `PyGILState_Ensure` it would get stuck in deadlock.
+-#if (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 7) || (PY_MAJOR_VERSION > 3)
++    // Since Python 3.7 `Py_Initialize` calls `PyEval_InitThreads` inside itself,
++    // so there is no way to determine whether the embedded interpreter
++    // was already initialized by some external code. `PyEval_ThreadsInitialized`
++    // would always return `true` and `PyGILState_Ensure/Release` flow would be
++    // executed instead of unlocking GIL with `PyEval_SaveThread`. When
++    // an another thread calls `PyGILState_Ensure` it would get stuck in deadlock.
++
+     // The only case we should go further and acquire the GIL: it is unlocked.
+     if (PyGILState_Check())
+       return;
+-#endif
+ 
++#if PY_VERSION_HEX < 0x03090000
+     if (PyEval_ThreadsInitialized()) {
++#else
++    if (true) {
++#endif
+       Log *log = GetLog(LLDBLog::Script);
+ 
+       m_was_already_initialized = true;
+-- 
+2.49.0
+

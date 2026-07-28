@@ -1,0 +1,46 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Yogesh Tyagi <yogesh.tyagi@intel.com>
+Date: Tue, 10 Jun 2026 16:30:00 +0000
+Subject: [PATCH] clang-tidy: SignalHandlerCheck drop constexpr init lists
+
+GCC 16 rejects these StringRef initializer_list declarations as constexpr
+in this context ("modification of <temporary> is not a constant
+expression"). They are only used as lookup tables, so constexpr is not
+required.
+
+Upstream LLVM resolved this differently on main by changing the lookup
+tables to plain constexpr C arrays (constexpr StringRef Foo[]), which is
+unavailable for LLVM 15. As LLVM 15 is end-of-life, this is a local
+backward-compatibility workaround for building with GCC 16 sysroots.
+
+Upstream-Status: Inappropriate [LLVM 15 is EOL; fixed differently on llvm-project main]
+
+Signed-off-by: Yogesh Tyagi <yogesh.tyagi@intel.com>
+---
+ .../clang-tidy/bugprone/SignalHandlerCheck.cpp         | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/clang-tools-extra/clang-tidy/bugprone/SignalHandlerCheck.cpp b/clang-tools-extra/clang-tidy/bugprone/SignalHandlerCheck.cpp
+index e0800fca90d8..2866bd66da2d 100644
+--- a/clang-tools-extra/clang-tidy/bugprone/SignalHandlerCheck.cpp
++++ b/clang-tools-extra/clang-tidy/bugprone/SignalHandlerCheck.cpp
+@@ -13,7 +13,7 @@
+ 
+ // This is the minimal set of safe functions.
+ // https://wiki.sei.cmu.edu/confluence/display/c/SIG30-C.+Call+only+asynchronous-safe+functions+within+signal+handlers
+-constexpr std::initializer_list<llvm::StringRef> MinimalConformingFunctions = {
++static const std::initializer_list<llvm::StringRef> MinimalConformingFunctions = {
+     "signal", "abort", "_Exit", "quick_exit"};
+ 
+ // The POSIX-defined set of safe functions.
+@@ -23,7 +23,7 @@ constexpr std::initializer_list<llvm::StringRef> MinimalConformingFunctions = {
+ // mentioned POSIX specification was not updated after 'quick_exit' appeared
+ // in the C11 standard.
+ // Also, we want to keep the "minimal set" a subset of the "POSIX set".
+-constexpr std::initializer_list<llvm::StringRef> POSIXConformingFunctions = {
++static const std::initializer_list<llvm::StringRef> POSIXConformingFunctions = {
+     "_Exit",
+     "_exit",
+     "abort",
+-- 
+2.34.1
