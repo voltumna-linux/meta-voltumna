@@ -1,0 +1,31 @@
+From 6daf03bb538eaedf583125397ce6d15ff5e3ab71 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zolt=C3=A1n=20B=C3=B6sz=C3=B6rm=C3=A9nyi?=
+ <zboszor@gmail.com>
+Date: Thu, 9 Apr 2026 15:27:57 +0200
+Subject: [PATCH] Set libcxxabi soversion externally
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Zoltán Böszörményi <zboszor@gmail.com>
+Upstream-Status: Inappropriate
+---
+ libcxxabi/src/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libcxxabi/src/CMakeLists.txt b/libcxxabi/src/CMakeLists.txt
+index 58df59a5725a..0e8917e6c264 100644
+--- a/libcxxabi/src/CMakeLists.txt
++++ b/libcxxabi/src/CMakeLists.txt
+@@ -188,7 +188,7 @@ if (LIBCXXABI_ENABLE_SHARED)
+     PROPERTIES
+       LINK_FLAGS "${LIBCXXABI_LINK_FLAGS}"
+       OUTPUT_NAME "${LIBCXXABI_SHARED_OUTPUT_NAME}"
+-      SOVERSION "1"
++      SOVERSION "${LIBCXXABI_MAJOR_VERSION}"
+       VERSION "${LIBCXXABI_LIBRARY_VERSION}"
+   )
+ 
+-- 
+2.53.0
+

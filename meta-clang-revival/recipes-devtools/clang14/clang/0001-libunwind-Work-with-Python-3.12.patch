@@ -1,0 +1,54 @@
+From 3cb2df685671f34736cb4717a4fe6a786186585a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zolt=C3=A1n=20B=C3=B6sz=C3=B6rm=C3=A9nyi?=
+ <zboszor@gmail.com>
+Date: Mon, 8 Sep 2025 08:56:55 +0200
+Subject: [PATCH] libunwind: Work with Python 3.12+
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Fix this error:
+|     import distutils.spawn
+| ModuleNotFoundError: No module named 'distutils'
+
+Python 3.12 removed the 'distutils' module. Replace
+distutils.spawn.find_executable() with shutil.which().
+
+Signed-off-by: Zoltán Böszörményi <zboszor@gmail.com>
+Upstream-Status: Inappropriate [oe specific]
+---
+ libcxx/utils/merge_archives.py | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/libcxx/utils/merge_archives.py b/libcxx/utils/merge_archives.py
+index fa0b2ee68171..1358b8ef686d 100755
+--- a/libcxx/utils/merge_archives.py
++++ b/libcxx/utils/merge_archives.py
+@@ -8,7 +8,6 @@
+ #===----------------------------------------------------------------------===##
+ 
+ from argparse import ArgumentParser
+-import distutils.spawn
+ import tempfile
+ import os
+ import shutil
+@@ -110,14 +109,14 @@ def main():
+ 
+     ar_exe = args.ar_exe
+     if not ar_exe:
+-        ar_exe = distutils.spawn.find_executable('ar')
++        ar_exe = shutil.which('ar')
+     if not ar_exe:
+         print_and_exit("failed to find 'ar' executable")
+ 
+     if args.use_libtool:
+         libtool_exe = args.libtool_exe
+         if not libtool_exe:
+-            libtool_exe = distutils.spawn.find_executable('libtool')
++            libtool_exe = shutil.which('libtool')
+         if not libtool_exe:
+             print_and_exit("failed to find 'libtool' executable")
+ 
+-- 
+2.51.0
+

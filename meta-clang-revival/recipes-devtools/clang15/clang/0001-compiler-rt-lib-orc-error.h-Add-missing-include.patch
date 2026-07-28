@@ -1,0 +1,30 @@
+From e532db417a7859187f60fd5e32a27a9047e98f2e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zolt=C3=A1n=20B=C3=B6sz=C3=B6rm=C3=A9nyi?=
+ <zboszor@gmail.com>
+Date: Thu, 24 Jul 2025 11:49:44 +0200
+Subject: [PATCH] compiler-rt/lib/orc/error.h: Add missing include
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Zoltán Böszörményi <zboszor@gmail.com>
+Upstream-Status: Inappropriate [GCC 15 specific]
+---
+ compiler-rt/lib/orc/error.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/compiler-rt/lib/orc/error.h b/compiler-rt/lib/orc/error.h
+index 92ac5a884ac6..33a599f71149 100644
+--- a/compiler-rt/lib/orc/error.h
++++ b/compiler-rt/lib/orc/error.h
+@@ -14,6 +14,7 @@
+ #include "stl_extras.h"
+ 
+ #include <cassert>
++#include <cstdint>
+ #include <memory>
+ #include <string>
+ #include <type_traits>
+-- 
+2.50.1
+
