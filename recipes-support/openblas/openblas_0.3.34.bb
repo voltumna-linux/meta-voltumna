@@ -8,6 +8,12 @@ inherit siteinfo
 DEPENDS += "libgfortran"
 RDEPENDS:${PN} += "libgomp"
 
+# The native variant is only needed as a build-host BLAS/CBLAS provider. Keep
+# it independent from a host Fortran/OpenMP toolchain; neither libgfortran nor
+# libgomp has a native variant in OE-Core.
+DEPENDS:remove:class-native = "libgfortran"
+RDEPENDS:${PN}:remove:class-native = "libgomp"
+
 SRCREV = "e0166008be8e466242aa76b2ff75ce3f0fbf574a"
 SRC_URI = "git://github.com/xianyi/OpenBLAS.git;protocol=https;branch=release-0.3.0"
 
@@ -33,6 +39,26 @@ EXTRA_OEMAKE += " \
 	DESTDIR=${D} \
 	"
 
+# Native tools must run on the build host, whose microarchitecture is not
+# described by OPENBLAS_TARGET. A generic, single-threaded C BLAS avoids both
+# machine-specific instructions and dependencies on a host Fortran toolchain.
+EXTRA_OEMAKE:class-native = " \
+	TARGET=GENERIC \
+	BINARY=${SITEINFO_BITS} \
+	NOFORTRAN="1" \
+	NO_LAPACK="1" \
+	NO_LAPACKE="1" \
+	INTERFACE64="0" \
+	USE_THREAD="0" \
+	USE_OPENMP="0" \
+	NO_AFFINITY="1" \
+	HOSTCC="${BUILD_CC}" \
+	CC="${CC}" \
+	PREFIX=${exec_prefix} \
+	CROSS_SUFFIX=${HOST_PREFIX} \
+	DESTDIR=${D} \
+	"
+
 # Separate goals: with parallel make, goals given on one command line are
 # pursued concurrently.
 do_compile() {
@@ -47,6 +73,11 @@ do_compile() {
 	oe_runmake shared "$lapack_noomp"
 }
 
+do_compile:class-native() {
+	oe_runmake libs
+	oe_runmake shared
+}
+
 do_install() {
 	oe_runmake install
 	rmdir ${D}${bindir}
@@ -57,6 +88,13 @@ do_install() {
 	done
 }
 
+do_install:class-native() {
+	oe_runmake install
+	rmdir ${D}${bindir}
+	ln -sf libopenblas.so.0 ${D}${libdir}/libblas.so.3
+	ln -sf libopenblas.so ${D}${libdir}/libblas.so
+}
+
 FILES:${PN}     = "${libdir}/*"
 FILES:${PN}-dev = "${includedir} ${libdir}/lib${PN}.so ${libdir}/pkgconfig ${libdir}/cmake \
                    ${libdir}/libblas.so ${libdir}/liblapack.so ${libdir}/liblapacke.so"
@@ -64,4 +102,4 @@ FILES:${PN}-dev = "${includedir} ${libdir}/lib${PN}.so ${libdir}/pkgconfig ${lib
 # Fortran is not enabled with clang
 TOOLCHAIN = "gcc"
 
-BBCLASSEXTEND = "nativesdk"
+BBCLASSEXTEND = "native nativesdk"
