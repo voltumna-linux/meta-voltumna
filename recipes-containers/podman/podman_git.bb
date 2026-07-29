@@ -20,6 +20,7 @@ SRCREV = "88c5aaeec667af94c4fe3a5c2c7a42f8cf308b93"
 SRC_URI = " \
     git://github.com/containers/podman.git;branch=v5.8;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX} \
     ${@bb.utils.contains('PACKAGECONFIG', 'rootless', 'file://50-podman-rootless.conf', '', d)} \
+    file://CVE-2026-57231.patch;patchdir=src/import \
 "
 
 LICENSE = "Apache-2.0"
@@ -29,6 +30,8 @@ GO_IMPORT = "import"
 
 PV = "5.8.3-dev"
 
+CVE_STATUS[CVE-2019-10152] = "fixed-version: fixed since v1.4.0"
+CVE_STATUS[CVE-2020-1726] = "fixed-version: fixed since v1.8.1"
 CVE_STATUS[CVE-2022-2989] = "fixed-version: fixed since v4.3.0"
 CVE_STATUS[CVE-2023-0778] = "fixed-version: fixed since v4.5.0"
 
