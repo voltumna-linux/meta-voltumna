@@ -29,7 +29,6 @@ SYSLINUX_OPTS = "serial 0 115200"
 SERIAL_CONSOLES = "115200;ttyS0 115200;ttyS1 115200;ttyS2"
 APPEND += "rootwait console=ttyS0,115200 console=tty0"
 
-IMAGE_FSTYPES += "wic"
 WKS_FILE ?= "grub-bootdisk-microcode.wks.in"
 WKS_FILE_DEPENDS_append = " intel-microcode"
 
