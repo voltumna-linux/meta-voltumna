@@ -1,0 +1,55 @@
+From 540803387a2a9728e7231aa64f6f24084f2c87d5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zolt=C3=A1n=20B=C3=B6sz=C3=B6rm=C3=A9nyi?=
+ <zboszor@gmail.com>
+Date: Wed, 15 Jan 2025 11:11:12 +0100
+Subject: [PATCH] Assume f2py being the same version as numpy
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This fixes an error when meson tries to run "f2py -v".
+
+For nativesdk builds, Meson may not find the optional NumPy dependency.
+Calling version() on the not-found dependency returns "unknown", which must
+not be treated as an old f2py version.
+
+Upstream-Status: Inappropriate [Yocto specific]
+Signed-off-by: Zoltán Böszörményi <zboszor@gmail.com>
+---
+ scipy/meson.build | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/scipy/meson.build b/scipy/meson.build
+index 394c6b4..8bd79a5 100644
+--- a/scipy/meson.build
++++ b/scipy/meson.build
+@@ -203,23 +203,26 @@ fortranobject_dep = declare_dependency(
+ 
+ f2py = find_program('f2py')
+ # It should be quite rare for the `f2py` executable to not be the one from
+ # `numpy` installed in the Python env we are building for (unless we are
+ # cross-compiling). If it is from a different env, that is still fine as long
+ # as it's not too old. We are only using f2py as a code generator, and the
+ # output is not dependent on platform or Python version (see gh-20612 for more
+ # details).
+ # This should be robust enough. If not, we can make this more complex, using
+ # a fallback to `python -m f2py` rather than erroring out.
+-f2py_version = run_command([f2py, '-v'], check: true).stdout().strip()
+-if f2py_version.version_compare('<'+min_numpy_version)
+-  error(f'Found f2py executable is too old: @f2py_version@')
++# In Yocto, it's guaranteed that the numpy and f2py versions match.
++if _numpy_dep.found()
++  f2py_version = _numpy_dep.version()
++  if f2py_version.version_compare('<'+min_numpy_version)
++    error(f'Found f2py executable is too old: @f2py_version@')
++  endif
+ endif
+ 
+ # Note: this generator cannot handle:
+ # 1. `.pyf.src` files, because `@BASENAME@` will still include .pyf
+ # 2. targets with #include's (due to no `depend_files` - see feature request
+ #    at meson#8295)
+ f2py_gen = generator(generate_f2pymod,
+   arguments : ['@INPUT@', '-o', '@BUILD_DIR@', '@EXTRA_ARGS@'] + f2py_freethreading_arg,
+   output : ['_@BASENAME@module.c', '_@BASENAME@-f2pywrappers.f'],
+ )
