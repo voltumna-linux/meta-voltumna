@@ -19,6 +19,7 @@ def get_cpu_instruction_set(bb, d):
 
 EXTRA_OEMESON = " -Dcpu_instruction_set=${@get_cpu_instruction_set(bb, d)}"
 EXTRA_OEMESON:aarch64 = " --cross-file ${WORKDIR}/dpdk.cross"
+EXTRA_OEMESON:arm = " --cross-file ${WORKDIR}/dpdk.cross"
 
 COMPATIBLE_HOST:libc-musl:class-target = "null"
 COMPATIBLE_HOST:linux-gnux32 = "null"
@@ -38,6 +39,7 @@ inherit meson pkgconfig
 INSTALL_PATH = "${prefix}/share/dpdk"
 
 RTE_PLATFORM ?= "generic"
+RTE_PLATFORM:arm = "generic_aarch32"
 
 do_write_config:append() {
     cat >${WORKDIR}/dpdk.cross <<EOF
