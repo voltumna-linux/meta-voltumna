@@ -67,3 +67,5 @@ RCONFLICTS:${PN} = "${@'runc' if d.getVar('CRUN_AS_RUNC') else ''}"
 REQUIRED_DISTRO_FEATURES:class-native ?= ""
 DEPENDS:class-native += "yajl libcap go-md2man m4 libseccomp"
 BBCLASSEXTEND = "native"
+
+CVE_STATUS[CVE-2025-24965] = "fixed-version: Fixed since 1.20"
