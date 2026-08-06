@@ -30,6 +30,10 @@ GO_IMPORT = "import"
 
 PV = "5.1.0"
 
+CVE_PRODUCT = "docker:compose"
+
+CVE_STATUS[CVE-2025-62725] = "fixed-version: fixed in 2.40.2"
+
 COMPOSE_PKG = "github.com/docker/compose/v2"
 
 # go-mod-discovery configuration
