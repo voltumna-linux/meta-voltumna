@@ -28,8 +28,10 @@ PACKAGECONFIG:append = " \
 	journal-upload \
 "
 
+EXTRA_OEMESON:remove = "-Ddefault-locale=C"
 EXTRA_OEMESON += "-Dnobody-user=nobody \
                   -Dnobody-group=nogroup \
+                  -Ddefault-locale=C.UTF-8 \
                   "
 
 FILES:${PN}:append = " ${sbindir} ${systemd_unitdir}/system"

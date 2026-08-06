@@ -5,9 +5,13 @@ SRC_URI:append = " \
 	file://factory-reset \
 	file://etcdiff \
 	file://nsswitch.conf \
+        file://locale.sh \
 	"
 
-FILES:${PN} += "${sysconfdir}/profile.d/environment-setup.sh"
+FILES:${PN} += " \
+    ${sysconfdir}/profile.d/environment-setup.sh \
+    ${sysconfdir}/profile.d/locale.sh \
+    "
 
 volatiles = ""
 dirs1777 = "/tmp ${localstatedir}/tmp"
@@ -41,4 +45,8 @@ do_install:append() {
 
 	# Use systemd's nsswitch.conf file instead of the base-files's one
 	cp ${UNPACKDIR}/nsswitch.conf ${D}${sysconfdir}
+	
+        # Install locale export script
+	install -d ${D}/etc/profile.d
+	install -m 0644 ${S}/locale.sh ${D}/etc/profile.d/locale.sh
 }
