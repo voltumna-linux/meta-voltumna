@@ -92,5 +92,5 @@ IMAGE_PREPROCESS_COMMAND:append:mvme2500 = " complete_uboot_bootloader_conf;"
 IMAGE_PREPROCESS_COMMAND:append:x86-64 = " complete_grub_bootloader_conf;"
 IMAGE_PREPROCESS_COMMAND:append:x86 = " complete_grub_bootloader_conf;"
 
-BAD_RECOMMENDATIONS += "busybox-syslog grub-common"
+BAD_RECOMMENDATIONS += "busybox-syslog"
 inherit core-image
