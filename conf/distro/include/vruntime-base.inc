@@ -20,7 +20,13 @@ require conf/distro/poky.conf
 # - vxn: Xen container integration
 #
 # Explicitly NOT included: x11, wayland, pulseaudio, bluetooth, wifi, nfc, 3g, pcmcia
-DISTRO_FEATURES = "acl ext2 ipv4 ipv6 seccomp vfat pci vcontainer vxn"
+# 'virtualization' is required for the container kernel fragment (container.scc ->
+# 9p/squashfs/overlayfs, container-net.cfg, vxn.cfg), which linux-%.bbappend gates
+# on it. Declare it here so vruntime is self-contained and does not depend on a
+# top-level DISTRO_FEATURES:append (e.g. meta-virt-host.conf) leaking through the
+# multiconfig. It pulls no userspace packages -- only the kernel config the VM
+# needs -- so it does not bloat the rootfs.
+DISTRO_FEATURES = "acl ext2 ipv4 ipv6 seccomp vfat pci vcontainer vxn virtualization"
 
 # Opt out of default distro features not needed by container runtime
 # environments. Without this, gobject-introspection-data enables

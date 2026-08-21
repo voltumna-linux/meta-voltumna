@@ -81,7 +81,9 @@ BBMASK += "meta-virtualization/recipes-containers/docker-distribution/"
 # ---------------------------------------------------------------------------
 # Container tooling not used by vdkr/vpdmn
 # ---------------------------------------------------------------------------
-BBMASK += "meta-virtualization/recipes-containers/cgroup-lite/"
+# NOTE: do NOT mask cgroup-lite -- docker-moby hard-RDEPENDS it whenever systemd
+# is absent from DISTRO_FEATURES (docker.inc), and the vruntime rootfs is
+# busybox-init (no systemd), so masking it breaks a from-scratch do_rootfs.
 BBMASK += "meta-virtualization/recipes-containers/riddler/"
 BBMASK += "meta-virtualization/recipes-containers/umoci/"
 BBMASK += "meta-virtualization/recipes-containers/sloci-image/"
