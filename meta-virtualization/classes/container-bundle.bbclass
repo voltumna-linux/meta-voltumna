@@ -169,6 +169,11 @@
 
 CONTAINER_BUNDLES ?= ""
 
+# OCI arch for the build target (aarch64 -> arm64, x86_64 -> amd64, ...). Passed
+# to skopeo copy as --override-arch so a multiarch source is fetched for the
+# TARGET rather than for skopeo-native's host arch. Same mapping image-oci uses.
+CONTAINER_BUNDLE_OCI_ARCH ?= "${@oe.go.map_arch(d.getVar('TARGET_ARCH'))}"
+
 # Default runtime based on CONTAINER_PROFILE
 # Can be overridden in recipe with CONTAINER_BUNDLE_RUNTIME = "podman"
 def get_bundle_runtime(d):
@@ -338,6 +343,22 @@ python do_fetch_containers() {
     staging_sbindir = d.getVar('STAGING_SBINDIR_NATIVE')
     skopeo = os.path.join(staging_sbindir, 'skopeo')
 
+    # Select the target architecture from multiarch sources. Without these,
+    # skopeo copy defaults to skopeo-native's host arch (e.g. amd64 on an x86_64
+    # builder), so a cross build bundles the wrong image. --override-variant is
+    # needed for 32-bit arm (arm/v7 vs arm/v6) to match the manifest-list entry.
+    skopeo_arch_args = ['--override-os', 'linux']
+    oci_arch = d.getVar('CONTAINER_BUNDLE_OCI_ARCH') or ''
+    if oci_arch:
+        skopeo_arch_args += ['--override-arch', oci_arch]
+        if oci_arch == 'arm':
+            tune = d.getVar('TUNE_FEATURES') or ''
+            variant = ('v7' if 'armv7' in tune else
+                       'v6' if 'armv6' in tune else
+                       'v5' if 'armv5' in tune else '')
+            if variant:
+                skopeo_arch_args += ['--override-variant', variant]
+
     for url in remote_containers:
         if not url:
             continue
@@ -367,7 +388,8 @@ python do_fetch_containers() {
         bb.note(f"Fetching {src} -> {dest}")
 
         try:
-            subprocess.check_call([skopeo, 'copy', f'docker://{src}', dest])
+            subprocess.check_call([skopeo, 'copy'] + skopeo_arch_args +
+                                  [f'docker://{src}', dest])
         except subprocess.CalledProcessError as e:
             bb.fatal(f"Failed to fetch container '{url}': {e}")
 }

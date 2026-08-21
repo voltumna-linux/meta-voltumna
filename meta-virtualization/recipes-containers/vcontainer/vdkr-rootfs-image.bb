@@ -44,6 +44,13 @@ python () {
 # Inherit from core-image-minimal for a minimal base
 inherit core-image
 
+# The vruntime kernel needs the container fragment (container.scc -> 9p/squashfs/
+# overlayfs), which linux-%.bbappend gates on 'virtualization'. Without it the VM
+# silently cannot mount rootfs.img at runtime -- assert it here so a misconfigured
+# build fails early and clearly at parse instead.
+REQUIRED_DISTRO_FEATURES = "virtualization"
+inherit features_check
+
 # We need Docker and container tools
 # Note: runc is explicitly listed because vruntime distro sets
 # VIRTUAL-RUNTIME_container_runtime="" to avoid runc/crun conflicts.
