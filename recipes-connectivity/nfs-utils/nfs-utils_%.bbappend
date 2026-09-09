@@ -2,14 +2,13 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SYSTEMD_SERVICE:${PN} = ""
 
-PACKAGECONFIG:append = "nfsv4"
+PACKAGECONFIG:remove = "nfsv4 nfsv41"
 
 SRC_URI:append = " \
        file://nfs-statd.service \
        "
 
 FILES:${PN}-client:append = " ${nonarch_libdir}/tmpfiles.d"
-
 
 do_install:append() {
 	rm -f ${D}${systemd_unitdir}/system/sysinit.target.wants/proc-fs-nfsd.mount
