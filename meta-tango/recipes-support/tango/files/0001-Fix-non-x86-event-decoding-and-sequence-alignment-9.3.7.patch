@@ -1,0 +1,267 @@
+From 319266e6aa78ff328bb6065c19c63f63a7e31363 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Wed, 9 Sep 2026 10:47:02 +0200
+Subject: [PATCH] Fix non-x86 event decoding and sequence alignment
+
+Decode the event discriminator from unsigned bytes in sender wire order,
+independently of host endianness and input alignment.
+
+Use memcpy for sequence byte swaps and copy misaligned input into owned,
+aligned storage so subsequent typed reads are valid. Preserve borrowed
+storage for aligned input and avoid narrowing the pipe buffer offset.
+
+Keep these runtime corrections separate from the preceding portability
+infrastructure and regression tests.
+
+(cherry picked from commit f8584b99bc9d852934ec2606e4084705e184e21c)
+---
+
+Upstream-Status: Inappropriate
+
+ cppapi/client/eventconsumer.h      | 117 ++++++++++++++++++++---------
+ cppapi/client/zmqeventconsumer.cpp |  12 +--
+ 2 files changed, 85 insertions(+), 44 deletions(-)
+
+diff --git a/cppapi/client/eventconsumer.h b/cppapi/client/eventconsumer.h
+index 856c16b5b..deb0c2c7a 100644
+--- a/cppapi/client/eventconsumer.h
++++ b/cppapi/client/eventconsumer.h
+@@ -33,20 +33,23 @@
+ #define _EVENTCONSUMER_H
+ 
+ #include <attribute.h>
+ #include <except.h>
+ #include <tango_const.h>
+ #include <COS/CosNotification.hh>
+ #include <COS/CosNotifyChannelAdmin.hh>
+ #include <COS/CosNotifyComm.hh>
+ #include <omnithread.h>
+ #include <map>
++#include <cassert>
++#include <cstddef>
++#include <cstring>
+ 
+ #include <readers_writers_lock.h>
+ 
+ #include <zmq.hpp>
+ 
+ namespace Tango
+ {
+ 
+ #ifndef _USRDLL
+ extern "C"
+@@ -179,20 +182,38 @@ struct ZmqDevPipeDataElt:public DevPipeDataElt
+ 
+ #ifndef Swap32
+ #define Swap32(l) ((((l) & 0xff000000) >> 24) | \
+ 		   (((l) & 0x00ff0000) >> 8)  | \
+ 		   (((l) & 0x0000ff00) << 8)  | \
+ 		   (((l) & 0x000000ff) << 24))
+ #else
+ #error "Swap32 has already been defined"
+ #endif
+ 
++namespace detail
++{
++// Decode a four-byte discriminator independently of host byte order.
++// Precondition: src points to at least four readable bytes; no alignment is required.
++inline CORBA::ULong decode_att_discriminator(const char *src, bool sender_big_endian)
++{
++    assert(src != NULL);
++    const unsigned char *bytes = reinterpret_cast<const unsigned char *>(src);
++    CORBA::ULong value = 0;
++    for(unsigned int i = 0; i < 4; ++i)
++    {
++        const unsigned int index = sender_big_endian ? i : 3 - i;
++        value = (value << 8) | bytes[index];
++    }
++    return value;
++}
++} // namespace detail
++
+ //
+ // These template specialization allow us to set or get sequences within a AttrValUnion union.
+ // Union method to get/set sequence value are named short_att_value(), double_att_value(),
+ // float_att_value()....
+ //
+ 
+ #define SEQ_METH(NAME,TYPE) \
+ template <> \
+ inline void ZmqAttrValUnion::set_seq<TYPE>(TYPE &val) {NAME##_att_value(val);} \
+ \
+@@ -219,73 +240,101 @@ SEQ_METH(state,DevVarStateArray)
+ // Create a dummy empty sequence and init union with this dummy sequence (minimun data copy)
+ // Retrieve a reference to that sequence once it is in the union and replace its data pointer
+ // by the data in the CdrMemoryStream.
+ // Use set_seq(), get_seq() specialized template created just above to set/get union sequences
+ // T is the basic data type (DevShort)
+ // TA is the sequence data type (DevVarShortArray)
+ //
+ // Also manage big and litle endian!!
+ //
+ 
+-template <typename T,typename TA>
+-inline void ZmqAttrValUnion::init_seq(char *base_ptr,_CORBA_ULong &length,TangoCdrMemoryStream &_n)
++template <typename T, typename TA>
++inline void ZmqAttrValUnion::init_seq(char *base_ptr, CORBA::ULong &length, TangoCdrMemoryStream &_n)
+ {
+     TA dummy_val;
+     set_seq<TA>(dummy_val);
+ 
+-    T *ptr;
+-	if (_n.get_un_marshal_type() == TangoCdrMemoryStream::UN_ATT)
+-		ptr = (T *)(base_ptr + _n.currentInputPtr());
+-	else
+-	{
+-		char *tmp = (char *)_n.get_mkr_in_buf();
+-		int delta = tmp - base_ptr;
+-		ptr = (T *)(base_ptr + delta);
+-	}
+-
+-    if (_n.unmarshal_byte_swap() == true)
++    char *raw;
++    if(_n.get_un_marshal_type() == TangoCdrMemoryStream::UN_ATT)
+     {
+-        if (sizeof(T) == 2)
++        raw = base_ptr + _n.currentInputPtr();
++    }
++    else
++    {
++        raw = static_cast<char *>(_n.get_mkr_in_buf());
++    }
++
++    TA &the_seq = get_seq<TA>();
++    // Obtain scalar alignment without requiring C++11 on this release branch.
++    struct AlignmentProbe
++    {
++        char prefix;
++        T value;
++    };
++    const bool needs_copy = reinterpret_cast<omni::ptr_arith_t>(raw) % offsetof(AlignmentProbe, value) != 0;
++    if(needs_copy)
++    {
++        // Swapping safely is not enough: consumers dereference the returned
++        // sequence. Own aligned storage when the input cannot be borrowed.
++        the_seq.length(length);
++        if(length != 0)
+         {
+-            for (_CORBA_ULong i = 0;i < length;i++)
++            std::memcpy(the_seq.get_buffer(), raw, static_cast<std::size_t>(length) * sizeof(T));
++        }
++        raw = reinterpret_cast<char *>(the_seq.get_buffer());
++    }
++
++    if(_n.unmarshal_byte_swap())
++    {
++        //
++        // Load/store each element via memcpy so the byte-swap stays correct even when the
++        // ZMQ buffer is not aligned on a sizeof(T) boundary (strict-alignment targets).
++        //
++        if(sizeof(T) == 2)
++        {
++            for(CORBA::ULong i = 0; i < length; i++)
+             {
+-                _CORBA_UShort *tmp_ptr = (_CORBA_UShort *)ptr;
+-                _CORBA_UShort tt = *(tmp_ptr + i);
+-                *(tmp_ptr + i) = Swap16(tt);
++                _CORBA_UShort tt;
++                std::memcpy(&tt, raw + static_cast<std::size_t>(i) * 2, sizeof(tt));
++                tt = Swap16(tt);
++                std::memcpy(raw + static_cast<std::size_t>(i) * 2, &tt, sizeof(tt));
+             }
+         }
+-        else if (sizeof(T) == 4)
++        else if(sizeof(T) == 4)
+         {
+-            for (_CORBA_ULong i = 0;i < length;i++)
++            for(CORBA::ULong i = 0; i < length; i++)
+             {
+-               _CORBA_ULong *tmp_ptr = (_CORBA_ULong *)ptr;
+-                _CORBA_ULong t = *(tmp_ptr + i);
+-                *(tmp_ptr + i) = Swap32(t);
++                CORBA::ULong t;
++                std::memcpy(&t, raw + static_cast<std::size_t>(i) * 4, sizeof(t));
++                t = Swap32(t);
++                std::memcpy(raw + static_cast<std::size_t>(i) * 4, &t, sizeof(t));
+             }
+         }
+-        else if (sizeof(T) == 8)
++        else if(sizeof(T) == 8)
+         {
+-            _CORBA_ULong double_length = length * 2;
+-            for (_CORBA_ULong i = 0;i < double_length;i += 2)
++            for(CORBA::ULong i = 0; i < length; i++)
+             {
+-                _CORBA_ULong *tmp_ptr = (_CORBA_ULong *)ptr;
+-                _CORBA_ULong tl1 = *(tmp_ptr + i + 1);
+-                _CORBA_ULong tl2 = Swap32(tl1);
+-                tl1 = *(tmp_ptr + i);
+-                *(tmp_ptr + i) = tl2;
+-                *(tmp_ptr + i + 1) = Swap32(tl1);
++                CORBA::ULong w0, w1;
++                std::memcpy(&w0, raw + static_cast<std::size_t>(i) * 8, sizeof(w0));
++                std::memcpy(&w1, raw + static_cast<std::size_t>(i) * 8 + 4, sizeof(w1));
++                CORBA::ULong s0 = Swap32(w1);
++                CORBA::ULong s1 = Swap32(w0);
++                std::memcpy(raw + static_cast<std::size_t>(i) * 8, &s0, sizeof(s0));
++                std::memcpy(raw + static_cast<std::size_t>(i) * 8 + 4, &s1, sizeof(s1));
+             }
+         }
+     }
+ 
+-    TA &the_seq = get_seq<TA>();
+-    the_seq.replace(length,length,ptr,false);
++    if(!needs_copy)
++    {
++        the_seq.replace(length, length, reinterpret_cast<T *>(raw), false);
++    }
+ 
+     _n.tango_get_octet_array((length * sizeof(T)));
+ }
+ 
+ /********************************************************************************
+  * 																				*
+  * 						KeepAliveThCmd class									*
+  * 																				*
+  *******************************************************************************/
+ 
+diff --git a/cppapi/client/zmqeventconsumer.cpp b/cppapi/client/zmqeventconsumer.cpp
+index 55820a05f..07b3cb007 100644
+--- a/cppapi/client/zmqeventconsumer.cpp
++++ b/cppapi/client/zmqeventconsumer.cpp
+@@ -2161,30 +2161,22 @@ void ZmqEventConsumer::push_zmq_event(string &ev_name,unsigned char endian,zmq::
+ 					shift_zmq420 = true;
+ 
+ 					data_ptr = dest;
+                 }
+ 
+ 				bool data64 = false;
+ 				if (data_type == PIPE)
+ 					data64 = true;
+ 				else if (data_type == ATT_VALUE && error == false)
+ 				{
+-					int disc = shift_zmq420 == true ? ((int *)data_ptr)[0] : ((int *)data_ptr)[1];
+-					if (endian == 0)
+-                    {
+-                        char first_byte = disc & 0xFF;
+-                        char second_byte = (disc & 0xFF00) >> 8;
+-                        char third_byte = (disc & 0xFF0000) >> 16;
+-                        char forth_byte = (disc & 0xFF000000) >> 24;
+-                        disc = 0;
+-                        disc = forth_byte + (third_byte << 8) + (second_byte << 16) + (first_byte << 24);
+-                    }
++                    const CORBA::ULong disc = Tango::detail::decode_att_discriminator(
++                        data_ptr + (shift_zmq420 ? 0 : sizeof(CORBA::ULong)), endian == 0);
+ 					if (disc == ATT_DOUBLE || disc == ATT_LONG64 || disc == ATT_ULONG64)
+ 						data64 = true;
+ 				}
+ 
+ 				bool buffer_aligned64 = false;
+ 				if (data64 == true)
+ 				{
+ 					if (((unsigned long)data_ptr & 0x7) == 0)
+ 						buffer_aligned64 = true;
+ 				}
+-- 
+2.53.0
+
