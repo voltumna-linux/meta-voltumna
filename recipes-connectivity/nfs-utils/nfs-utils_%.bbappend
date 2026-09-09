@@ -2,6 +2,8 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 SYSTEMD_SERVICE_${PN} = ""
 
+PACKAGECONFIG:remove = "nfsv4 nfsv41"
+
 SRC_URI += " \
 	file://nfs-statd.service \
 	"
