@@ -45,6 +45,11 @@ CFLAGS += "-I${STAGING_INCDIR}/${PYTHON_DIR}"
 SYSTEMD_SERVICE:${PN} = "postgresql.service"
 SYSTEMD_AUTO_ENABLE:${PN} = "disable"
 
+# The postinst below calls systemctl at rootfs time when both systemd and
+# sysvinit are enabled. systemd-systemctl-native was merged into
+# systemd-tools-native in oe-core, and systemd.bbclass no longer adds it to
+# PACKAGE_WRITE_DEPS, so depend on it explicitly here.
+PACKAGE_WRITE_DEPS:append = " ${@bb.utils.contains('DISTRO_FEATURES','systemd sysvinit','systemd-tools-native','',d)}"
 pkg_postinst:${PN} () {
     if ${@bb.utils.contains('DISTRO_FEATURES', 'systemd sysvinit', 'true', 'false', d)}; then
         if [ -n "$D" ]; then
@@ -64,7 +69,7 @@ PACKAGECONFIG[python] = "--with-python,--without-python,python3,python3"
 PACKAGECONFIG[gssapi] = "--with-gssapi,--without-gssapi,krb5"
 PACKAGECONFIG[pam] = "--with-pam,--without-pam,libpam"
 PACKAGECONFIG[ldap] = "--with-ldap,--without-ldap,openldap"
-PACKAGECONFIG[systemd] = "--with-systemd,--without-systemd,systemd systemd-systemctl-native"
+PACKAGECONFIG[systemd] = "--with-systemd,--without-systemd,systemd"
 PACKAGECONFIG[uuid] = "--with-uuid=e2fs,--without-uuid,util-linux"
 PACKAGECONFIG[libxml] = "--with-libxml,--without-libxml,libxml2,libxml2"
 PACKAGECONFIG[libxslt] = "--with-libxslt,--without-libxslt,libxslt"
@@ -239,7 +244,7 @@ INITSCRIPT_PARAMS = "start 64 . stop 36 0 1 2 3 4 5 6 ."
 do_install:append() {
     # install contrib
     oe_runmake DESTDIR=${D} -C contrib install
-    oe_multilib_header pg_config.h pg_config_ext.h ecpg_config.h postgresql/server/pg_config.h postgresql/server/pg_config_ext.h
+    oe_multilib_header pg_config.h ecpg_config.h postgresql/server/pg_config.h
     # install tutorial
     install -d -m 0755 ${D}${libdir}/${BPN}/tutorial
     install ${B}/src/tutorial/* ${D}${libdir}/${BPN}/tutorial
