@@ -259,6 +259,13 @@ def pytest_addoption(parser):
         default=False,
         help="Run secure registry tests (requires openssl, htpasswd)",
     )
+    # Container cross-install coverage options
+    parser.addoption(
+        "--container-profiles",
+        action="store",
+        default="docker,podman",
+        help="Comma-separated container profiles to test (default: docker,podman)",
+    )
 
 
 def _cleanup_stale_test_state():
@@ -488,7 +495,7 @@ class VdkrRunner:
             cmd, proc.returncode, stdout=output, stderr="")
         return result
 
-    def memres_stop(self, timeout=30):
+    def memres_stop(self, timeout=120):
         """Stop memory resident mode."""
         return self.run("memres", "stop", timeout=timeout, check=False)
 
@@ -501,10 +508,17 @@ class VdkrRunner:
         result = self.memres_status()
         return result.returncode == 0 and "running" in result.stdout.lower()
 
-    def ensure_memres(self, timeout=180):
-        """Ensure memres is running, starting it if needed."""
+    def ensure_memres(self, timeout=180, no_registry=True):
+        """Ensure memres is running, starting it if needed.
+
+        Args:
+            timeout: Timeout for memres start
+            no_registry: Disable baked-in registry (default True for tests
+                so that pulled images use short names like alpine:latest
+                rather than registry-prefixed names)
+        """
         if not self.is_memres_running():
-            result = self.memres_start(timeout=timeout)
+            result = self.memres_start(timeout=timeout, no_registry=no_registry)
             if result.returncode != 0:
                 raise RuntimeError(f"Failed to start memres: {result.stderr}")
 
@@ -638,6 +652,9 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers", "boot: marks tests that boot a QEMU image (requires built image)"
+    )
+    config.addinivalue_line(
+        "markers", "container_profile: marks tests parametrized over container profiles"
     )
     config.addinivalue_line(
         "markers", "k3s: marks k3s runtime tests"
@@ -777,7 +794,7 @@ class VpdmnRunner:
             cmd, proc.returncode, stdout=output, stderr="")
         return result
 
-    def memres_stop(self, timeout=30):
+    def memres_stop(self, timeout=120):
         """Stop memory resident mode."""
         return self.run("memres", "stop", timeout=timeout, check=False)
 
@@ -790,10 +807,17 @@ class VpdmnRunner:
         result = self.memres_status()
         return result.returncode == 0 and "running" in result.stdout.lower()
 
-    def ensure_memres(self, timeout=180):
-        """Ensure memres is running, starting it if needed."""
+    def ensure_memres(self, timeout=180, no_registry=True):
+        """Ensure memres is running, starting it if needed.
+
+        Args:
+            timeout: Timeout for memres start
+            no_registry: Disable baked-in registry (default True for tests
+                so that pulled images use short names like alpine:latest
+                rather than registry-prefixed names)
+        """
         if not self.is_memres_running():
-            result = self.memres_start(timeout=timeout)
+            result = self.memres_start(timeout=timeout, no_registry=no_registry)
             if result.returncode != 0:
                 raise RuntimeError(f"Failed to start memres: {result.stderr}")
 

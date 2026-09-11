@@ -42,6 +42,9 @@ SRC_URI = "\
     file://vcontainer-common.sh \
     file://vdkr.sh \
     file://vpdmn.sh \
+    file://boot-xen.sh \
+    file://vxn.sh \
+    file://vrunner-backend-qemu-xen.sh \
     file://toolchain-shar-extract.sh \
 "
 
@@ -138,15 +141,65 @@ def get_available_architectures(d):
 #   VCONTAINER_ARCHITECTURES = "aarch64"
 VCONTAINER_ARCHITECTURES ?= "x86_64 aarch64"
 
+# vxn (Xen dom0 image) is opt-in -- it is more niche than vdkr/vpdmn, so it is
+# NOT packaged into the tarball unless explicitly enabled. To include it:
+#   VCONTAINER_INCLUDE_VXN = "1"
+# and add the vxn-<arch> multiconfig to BBMULTICONFIG (currently x86_64 only;
+# aarch64 Xen boots via a different mechanism and is a follow-up).
+VCONTAINER_INCLUDE_VXN ?= "0"
+
+# vdkr (docker) and vpdmn (podman) are included by default. Set either to "0" to
+# build a subset SDK -- e.g. a vxn-only SDK for AXIS:
+#   VCONTAINER_INCLUDE_VXN = "1"
+#   VCONTAINER_INCLUDE_VDKR = "0"
+#   VCONTAINER_INCLUDE_VPDMN = "0"
+# Their blobs (~127MB each per arch) are then neither built nor bundled.
+VCONTAINER_INCLUDE_VDKR ?= "1"
+VCONTAINER_INCLUDE_VPDMN ?= "1"
+
 # Conditionally set mcdepends based on available multiconfigs
 # (avoids parse errors when BBMULTICONFIG is not set, e.g. yocto-check-layer)
+#
+# Two layers of dependency per arch:
+#
+#   1. initramfs-create:do_deploy
+#      Task ordering — guarantees the rootfs.img / kernel / initramfs are
+#      staged under tmp-<mc>/deploy/images/<machine>/<tool>/<arch>/ before
+#      do_populate_sdk reads them.
+#
+#   2. rootfs-image:do_image_complete
+#      Defence-in-depth for sstate consistency. Without this, a rootfs
+#      content change (e.g. adding netavark, switching iptables -> nftables)
+#      would only invalidate the tarball's sstate hash if it propagates
+#      cleanly through rootfs-image:do_build -> initramfs-create:do_compile
+#      -> initramfs-create:do_deploy -> mcdepends. Any break in that chain
+#      (the DEPLOY_DIR-input sstate pattern is one known way to get a stale
+#      hit) re-introduces the netavark-stale-tarball failure mode. Listing
+#      the rootfs-image task directly puts its hash in our chain regardless
+#      of intermediate propagation, and costs nothing if the chain was
+#      already healthy.
 python () {
     bbmulticonfig = (d.getVar('BBMULTICONFIG') or "").split()
     mcdeps = []
+    inc_vdkr = d.getVar('VCONTAINER_INCLUDE_VDKR') == '1'
+    inc_vpdmn = d.getVar('VCONTAINER_INCLUDE_VPDMN') == '1'
     for mc in ['vruntime-x86-64', 'vruntime-aarch64']:
         if mc in bbmulticonfig:
-            mcdeps.append('mc::%s:vdkr-initramfs-create:do_deploy' % mc)
-            mcdeps.append('mc::%s:vpdmn-initramfs-create:do_deploy' % mc)
+            if inc_vdkr:
+                mcdeps.append('mc::%s:vdkr-initramfs-create:do_deploy' % mc)
+                mcdeps.append('mc::%s:vdkr-rootfs-image:do_image_complete' % mc)
+            if inc_vpdmn:
+                mcdeps.append('mc::%s:vpdmn-initramfs-create:do_deploy' % mc)
+                mcdeps.append('mc::%s:vpdmn-rootfs-image:do_image_complete' % mc)
+
+    # vxn (opt-in): depend on the Xen dom0 image built in the vxn-<arch> MC.
+    # Guarded by VCONTAINER_INCLUDE_VXN and MC presence so the tarball never
+    # pulls in the vxn image (or errors on a missing MC) when vxn is off.
+    if d.getVar('VCONTAINER_INCLUDE_VXN') == '1':
+        for mc in ['vxn-x86-64', 'vxn-aarch64']:
+            if mc in bbmulticonfig:
+                mcdeps.append('mc::%s:xen-image-minimal:do_image_complete' % mc)
+
     if mcdeps:
         d.setVarFlag('do_populate_sdk', 'mcdepends', ' '.join(mcdeps))
 
@@ -207,42 +260,44 @@ create_sdk_files:append () {
         MC_DEPLOY="${TOPDIR}/tmp-${MC}/deploy/images/${MC_MACHINE}"
         bbnote "MC_DEPLOY=${MC_DEPLOY} for ${ARCH}"
 
-        # Create blob directories
-        mkdir -p "${SDK_OUT}/vdkr-blobs/${ARCH}"
-        mkdir -p "${SDK_OUT}/vpdmn-blobs/${ARCH}"
-
-        # Copy vdkr blobs
-        VDKR_SRC="${MC_DEPLOY}/vdkr/${ARCH}"
-        if [ -d "${VDKR_SRC}" ]; then
-            for blob in ${KERNEL} initramfs.cpio.gz rootfs.img; do
-                if [ -f "${VDKR_SRC}/${blob}" ]; then
-                    cp "${VDKR_SRC}/${blob}" "${SDK_OUT}/vdkr-blobs/${ARCH}/"
-                    bbnote "Copied vdkr blob: ${ARCH}/${blob}"
-                else
-                    bbfatal "vdkr blob not found: ${VDKR_SRC}/${blob}"
-                fi
-            done
-            VDKR_INCLUDED=1
-        else
-            bbfatal "vdkr blobs not found for ${ARCH}. Build them first with:
+        # Copy vdkr blobs (skip entirely when VCONTAINER_INCLUDE_VDKR = 0)
+        if [ "${VCONTAINER_INCLUDE_VDKR}" = "1" ]; then
+            mkdir -p "${SDK_OUT}/vdkr-blobs/${ARCH}"
+            VDKR_SRC="${MC_DEPLOY}/vdkr/${ARCH}"
+            if [ -d "${VDKR_SRC}" ]; then
+                for blob in ${KERNEL} initramfs.cpio.gz rootfs.img; do
+                    if [ -f "${VDKR_SRC}/${blob}" ]; then
+                        cp "${VDKR_SRC}/${blob}" "${SDK_OUT}/vdkr-blobs/${ARCH}/"
+                        bbnote "Copied vdkr blob: ${ARCH}/${blob}"
+                    else
+                        bbfatal "vdkr blob not found: ${VDKR_SRC}/${blob}"
+                    fi
+                done
+                VDKR_INCLUDED=1
+            else
+                bbfatal "vdkr blobs not found for ${ARCH}. Build them first with:
   bitbake mc:${MC}:vdkr-initramfs-create"
+            fi
         fi
 
-        # Copy vpdmn blobs
-        VPDMN_SRC="${MC_DEPLOY}/vpdmn/${ARCH}"
-        if [ -d "${VPDMN_SRC}" ]; then
-            for blob in ${KERNEL} initramfs.cpio.gz rootfs.img; do
-                if [ -f "${VPDMN_SRC}/${blob}" ]; then
-                    cp "${VPDMN_SRC}/${blob}" "${SDK_OUT}/vpdmn-blobs/${ARCH}/"
-                    bbnote "Copied vpdmn blob: ${ARCH}/${blob}"
-                else
-                    bbfatal "vpdmn blob not found: ${VPDMN_SRC}/${blob}"
-                fi
-            done
-            VPDMN_INCLUDED=1
-        else
-            bbfatal "vpdmn blobs not found for ${ARCH}. Build them first with:
+        # Copy vpdmn blobs (skip entirely when VCONTAINER_INCLUDE_VPDMN = 0)
+        if [ "${VCONTAINER_INCLUDE_VPDMN}" = "1" ]; then
+            mkdir -p "${SDK_OUT}/vpdmn-blobs/${ARCH}"
+            VPDMN_SRC="${MC_DEPLOY}/vpdmn/${ARCH}"
+            if [ -d "${VPDMN_SRC}" ]; then
+                for blob in ${KERNEL} initramfs.cpio.gz rootfs.img; do
+                    if [ -f "${VPDMN_SRC}/${blob}" ]; then
+                        cp "${VPDMN_SRC}/${blob}" "${SDK_OUT}/vpdmn-blobs/${ARCH}/"
+                        bbnote "Copied vpdmn blob: ${ARCH}/${blob}"
+                    else
+                        bbfatal "vpdmn blob not found: ${VPDMN_SRC}/${blob}"
+                    fi
+                done
+                VPDMN_INCLUDED=1
+            else
+                bbfatal "vpdmn blobs not found for ${ARCH}. Build them first with:
   bitbake mc:${MC}:vpdmn-initramfs-create"
+            fi
         fi
     done
 
@@ -288,6 +343,88 @@ create_sdk_files:append () {
         bbnote "Installed vpdmn"
     fi
 
+    # -----------------------------------------------------------------------
+    # vxn (opt-in): Xen dom0 image blob + boot-xen.sh launcher
+    # -----------------------------------------------------------------------
+    INCLUDE_VXN="${VCONTAINER_INCLUDE_VXN}"
+    if [ "${INCLUDE_VXN}" = "1" ]; then
+        VXN_INCLUDED=0
+        for ARCH in ${ARCHITECTURES}; do
+            case "${ARCH}" in
+                x86_64) VXN_MC="vxn-x86-64"; VXN_MACHINE="qemux86-64" ;;
+                *)
+                    bbwarn "vxn: no multiconfig for ${ARCH} yet (x86_64 only); skipping"
+                    continue
+                    ;;
+            esac
+            VXN_WIC="${TOPDIR}/tmp-${VXN_MC}/deploy/images/${VXN_MACHINE}/xen-image-minimal-${VXN_MACHINE}.rootfs.wic"
+            if [ -f "${VXN_WIC}" ]; then
+                mkdir -p "${SDK_OUT}/vxn-blobs/${ARCH}"
+                cp -L "${VXN_WIC}" "${SDK_OUT}/vxn-blobs/${ARCH}/xen-dom0.wic"
+                VXN_INCLUDED=1
+                bbnote "Copied vxn blob: ${ARCH}/xen-dom0.wic"
+            else
+                bbfatal "VCONTAINER_INCLUDE_VXN=1 but Xen image not found:
+  ${VXN_WIC}
+Build it first with:
+  bitbake mc:${VXN_MC}:xen-image-minimal"
+            fi
+        done
+        if [ "${VXN_INCLUDED}" = "1" ]; then
+            # mode 1 (transparent host-side, the vdkr/vpdmn UX): the qemu-xen
+            # backend boots the dom0 wic under QEMU and proxies commands into
+            # dom0. Ships the backend + the vxn frontend with per-arch symlinks
+            # (vxn-x86_64 -> vxn); arch is inferred from the invoked name, and
+            # vxn.sh auto-selects qemu-xen when it finds a dom0 *.wic blob.
+            if [ -f "${FILES_DIR}/vrunner-backend-qemu-xen.sh" ]; then
+                cp "${FILES_DIR}/vrunner-backend-qemu-xen.sh" "${SDK_OUT}/"
+                chmod 755 "${SDK_OUT}/vrunner-backend-qemu-xen.sh"
+            else
+                bbfatal "vrunner-backend-qemu-xen.sh not found in ${FILES_DIR}"
+            fi
+            if [ -f "${FILES_DIR}/vxn.sh" ]; then
+                cp "${FILES_DIR}/vxn.sh" "${SDK_OUT}/vxn"
+                chmod 755 "${SDK_OUT}/vxn"
+                for ARCH in ${ARCHITECTURES}; do
+                    if [ -d "${SDK_OUT}/vxn-blobs/${ARCH}" ]; then
+                        ln -sf vxn "${SDK_OUT}/vxn-${ARCH}"
+                        bbnote "Created symlink vxn-${ARCH}"
+                    fi
+                done
+                bbnote "Installed vxn host CLI (qemu-xen backend)"
+            else
+                bbfatal "vxn.sh not found in ${FILES_DIR}"
+            fi
+
+            # vpm: drive dom0's container engine from the host over ssh, for the
+            # two-context image load (docker save | vpm load) without the ssh
+            # key/port/TMPDIR incantation. Engine via VXN_ENGINE (default docker,
+            # matching the vexpose demo path). NOT for run -- run uses plain
+            # docker/podman after `eval $(vxn vexpose env)`. (No 'vdk' alias --
+            # too easily confused with the vdkr QEMU CLI.)
+            if [ -f "${FILES_DIR}/vpm.sh" ]; then
+                cp "${FILES_DIR}/vpm.sh" "${SDK_OUT}/vpm"
+                chmod 755 "${SDK_OUT}/vpm"
+                # Named engine entrypoints (same proxy, different dom0 engine),
+                # for hosts that don't have the client installed:
+                #   vdo  -> docker,  vpd -> podman,  vctr -> containerd
+                # These proxy INTO dom0 (each container is a Xen DomU); distinct
+                # from vdkr/vpdmn (the QEMU-VM CLIs). vpm stays the load helper.
+                ln -sf vpm "${SDK_OUT}/vctr"
+                ln -sf vpm "${SDK_OUT}/vpd"
+                ln -sf vpm "${SDK_OUT}/vdo"
+                bbnote "Installed vpm + vdo + vpd + vctr helpers"
+            fi
+
+            # mode 2 (interactive): boot-xen.sh drops you into the dom0 shell.
+            if [ -f "${FILES_DIR}/boot-xen.sh" ]; then
+                cp "${FILES_DIR}/boot-xen.sh" "${SDK_OUT}/boot-xen.sh"
+                chmod 755 "${SDK_OUT}/boot-xen.sh"
+                bbnote "Installed boot-xen.sh (vxn mode-2 launcher)"
+            fi
+        fi
+    fi
+
     # Copy CA certificate for secure registry mode (if available)
     SECURE_MODE="${CONTAINER_REGISTRY_SECURE}"
     CA_CERT="${CONTAINER_REGISTRY_CA_CERT}"
@@ -299,6 +436,38 @@ create_sdk_files:append () {
         bbwarn "Secure registry mode enabled but CA cert not found at ${CA_CERT}"
         bbwarn "Run: bitbake container-registry-index -c generate_registry_script"
     fi
+
+    # CA-cert drop dir: users place their corporate root CA (PEM/.crt) here and
+    # it is installed into the container VM's / dom0's system trust store at
+    # boot, so docker/skopeo pulls work behind a TLS-intercepting proxy.
+    mkdir -p "${SDK_OUT}/certs"
+    cat > "${SDK_OUT}/certs/README" <<'CERTEOF'
+vcontainer CA certificate drop dir
+==================================
+
+Behind a corporate TLS-intercepting proxy (e.g. Zscaler), the container VM
+(vdkr/vpdmn) or the Xen dom0 (vxn) does not trust the proxy's root CA, so image
+pulls from docker.io fail with:
+
+    x509: certificate signed by unknown authority
+
+FIX: copy your corporate root CA certificate(s) into THIS directory:
+
+    certs/your-corporate-root-ca.crt        (PEM format: .crt / .pem / .cer)
+
+Then re-run any vdkr / vpdmn / vxn command. The certificate(s) are transported
+into the VM/dom0 over a read-only 9p share and installed into its system trust
+store (update-ca-certificates) on every boot -- the same thing an OS admin does
+on a native machine. For vxn, the CA is also propagated into each container
+(DomU) so containers that make their own TLS calls trust it too.
+
+Getting the cert (AMD/Zscaler example): it is usually already in the host trust
+store, e.g.
+    cp /usr/local/share/ca-certificates/amd-corporate-root-ca.crt certs/
+
+Override the location with VCONTAINER_CA_DIR=/path/to/certs if you prefer.
+CERTEOF
+    bbnote "Created certs/ drop-dir + README"
 
     # Create README
     cat > "${SDK_OUT}/README.txt" <<EOF
@@ -334,9 +503,50 @@ Requirements:
   - Linux x86_64 host
   - KVM support recommended (for performance)
 
+Corporate TLS proxy (e.g. Zscaler):
+  If image pulls fail with "x509: certificate signed by unknown authority",
+  drop your corporate root CA (PEM/.crt) into certs/ and re-run. It is installed
+  into the VM/dom0 trust store on boot. See certs/README.
+
 For more information:
   https://git.yoctoproject.org/meta-virtualization/
 EOF
+
+    # vxn (opt-in) works differently from vdkr/vpdmn -- document it only when included
+    if [ -f "${SDK_OUT}/vxn" ]; then
+        cat >> "${SDK_OUT}/README.txt" <<EOF
+
+vxn (Docker for Xen)
+====================
+vxn runs containers as Xen PV DomU guests. A Xen dom0 image is bundled and run
+under QEMU (KVM-accelerated); works on a Linux host or WSL2 with /dev/kvm. Two
+ways to use it:
+
+  Mode 1 -- transparent host CLI (the vdkr/vpdmn UX):
+    vxn-x86_64 run --rm alpine echo hi
+  The dom0 boots once under QEMU and stays resident (memres); later commands
+  reuse it. vxn auto-selects the qemu-xen backend from the bundled dom0 .wic.
+
+  Mode 2 -- docker/podman UI (drive dom0's engine from the host):
+    vxn-x86_64 vmemres start
+    eval "\$(vxn-x86_64 vexpose env --export)"   # sets DOCKER_HOST + API version
+    docker run --network=none --rm alpine echo hi
+  Uses your host's docker/podman CLI against dom0's engine (which creates a
+  DomU via vxn-oci-runtime). Requires the vxn-podman-api package in the dom0
+  image. --network=none is required; the DomU still gets its own networking.
+  Run 'vxn-x86_64 vexpose' (no args) for the full explanation.
+
+  Mode 3 -- interactive dom0 shell:
+    ./boot-xen.sh                        # boot Xen dom0 (KVM); Ctrl-A X to quit
+    (in dom0) vxn run --rm alpine echo hi
+    ssh -p 18022 root@localhost           # reach the booted dom0
+
+Tunables (env vars): VXN_VCPUS, VXN_MEM, VXN_SSH_PORT, VXN_API_PORT, VXN_IMAGE.
+Contents: vxn, vxn-<arch>, vrunner-backend-qemu-xen.sh, boot-xen.sh,
+          vxn-blobs/ (per-arch Xen dom0 image)
+EOF
+        bbnote "Documented vxn in README"
+    fi
 
     bbnote "vcontainer blobs and scripts added to SDK"
 
@@ -391,7 +601,21 @@ echo "  vpdmn vimport ./oci/ app # Import OCI directory"
 ENVEOF
     fi
 
+    if [ -f "${SDK_OUT}/vxn" ]; then
+        cat >> $script <<'ENVEOF'
+echo "vxn (Docker for Xen) -- containers as Xen DomU guests:"
+echo "  vxn-x86_64 run --rm alpine echo hi   # transparent: boots dom0 under QEMU"
+echo "  vxn-x86_64 vmemres start; eval \"\$(vxn-x86_64 vexpose env --export)\""
+echo "    then: docker run --network=none --rm alpine echo hi   # docker/podman UI"
+echo "  ./boot-xen.sh                        # or interactive dom0 shell (Ctrl-A X quits)"
+echo "  vxn-x86_64 vexpose                   # explains the docker/podman UI"
+ENVEOF
+    fi
+
     cat >> $script <<ENVEOF
+echo ""
+echo "Behind a TLS proxy (x509 pull errors)? drop your corporate root CA into"
+echo "  \$VCONTAINER_DIR/certs/   (see certs/README)"
 echo ""
 echo "Architectures: ${VCONTAINER_ARCHITECTURES}"
 ENVEOF
@@ -429,7 +653,9 @@ ENVEOF
 # SDK relocation rewrites these paths at install time.
 export VCONTAINER_DIR="${SDKPATH}"
 export OECORE_NATIVE_SYSROOT="${SDKPATHNATIVE}"
-export PATH="${SDKPATH}:${SDKPATHNATIVE}/usr/bin:/usr/bin:/bin:\$PATH"
+export PATH="${SDKPATH}:${SDKPATHNATIVE}/usr/bin:\$PATH"
+# Clean up - unset to avoid confusing other Yocto tools'
+unset OECORE_NATIVE_SYSROOT
 CISCRIPT
     chmod 755 $ci_script
 
@@ -469,7 +695,7 @@ CISCRIPT
     bbnote "SDK size optimization complete"
 }
 
-create_sdk_files[vardeps] += "VCONTAINER_TARGET_ARCH VCONTAINER_KERNEL_NAME VCONTAINER_MC"
+create_sdk_files[vardeps] += "VCONTAINER_TARGET_ARCH VCONTAINER_KERNEL_NAME VCONTAINER_MC VCONTAINER_INCLUDE_VXN"
 
 # ===========================================================================
 # Substitute custom placeholders in installer script
@@ -496,10 +722,17 @@ python do_populate_sdk:append() {
     toolchain_outputname = d.getVar('TOOLCHAIN_OUTPUTNAME')
     architectures = d.getVar('VCONTAINER_ARCHITECTURES').split()
 
-    # Find the installer script
+    # Find the installer script. Report its final SDK_DEPLOY path (where the
+    # user will find it), but size it from the SDKDEPLOYDIR work copy: this runs
+    # in do_populate_sdk:append, before the .sh is copied out to SDK_DEPLOY, so
+    # getsize() on the final path reads 0 (the "Size: 0 MB" banner bug).
     installer = os.path.join(deploy_dir, toolchain_outputname + '.sh')
+    installer_workdir = os.path.join(d.getVar('SDKDEPLOYDIR'),
+                                     toolchain_outputname + '.sh')
     installer_size = 0
-    if os.path.exists(installer):
+    if os.path.exists(installer_workdir):
+        installer_size = os.path.getsize(installer_workdir) // (1024 * 1024)
+    elif os.path.exists(installer):
         installer_size = os.path.getsize(installer) // (1024 * 1024)
 
     # Check what was included
@@ -508,6 +741,7 @@ python do_populate_sdk:append() {
     sdk_out = os.path.join(sdk_output, sdkpath.lstrip('/'))
     vdkr_included = os.path.exists(os.path.join(sdk_out, 'vdkr'))
     vpdmn_included = os.path.exists(os.path.join(sdk_out, 'vpdmn'))
+    vxn_included = os.path.exists(os.path.join(sdk_out, 'boot-xen.sh'))
 
     bb.plain("")
     bb.plain("=" * 70)
@@ -517,6 +751,7 @@ python do_populate_sdk:append() {
     bb.plain("  Architectures: %s" % " ".join(architectures))
     bb.plain("  vdkr (Docker): %s" % ("included" if vdkr_included else "NOT included"))
     bb.plain("  vpdmn (Podman): %s" % ("included" if vpdmn_included else "NOT included"))
+    bb.plain("  vxn (Docker/Xen): %s" % ("included" if vxn_included else "NOT included"))
     bb.plain("")
     bb.plain("To extract and use:")
     bb.plain("  %s -d /tmp/vcontainer -y" % installer)
@@ -527,5 +762,7 @@ python do_populate_sdk:append() {
             bb.plain("  vdkr-%s images      # Docker for %s" % (arch, arch))
         if vpdmn_included:
             bb.plain("  vpdmn-%s images     # Podman for %s" % (arch, arch))
+    if vxn_included:
+        bb.plain("  ./boot-xen.sh        # boot Xen dom0, then run vxn inside it")
     bb.plain("=" * 70)
 }

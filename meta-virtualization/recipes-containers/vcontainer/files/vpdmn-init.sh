@@ -247,6 +247,10 @@ configure_networking
 # Verify podman is available (no daemon to start)
 verify_podman
 
+# Install host-provided corporate CA(s) into the system trust store before any
+# pull, so podman/skopeo trust a TLS-intercepting proxy's certificate.
+install_host_ca_certs
+
 # Install user-supplied auth config from the dedicated auth 9p share, if any.
 # Done before command execution so pulls/logins have credentials available.
 install_auth_config

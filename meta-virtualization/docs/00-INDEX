@@ -17,5 +17,8 @@ openvswitch.txt
 podman.txt
 	- documentation on podman container engine integration.
 
+vxn-sdk.md
+	- how to build a vxn SDK (Docker-for-Xen, containers as Xen DomU) from Yocto.
+
 xvisor.txt
 	- example on how to setup Xvisor for RISC-V QEMU.

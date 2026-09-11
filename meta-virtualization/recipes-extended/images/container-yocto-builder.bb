@@ -25,9 +25,6 @@ OCI_IMAGE_ENTRYPOINT = "/usr/bin/builder-entry.sh"
 OCI_IMAGE_AUTHOR ?= "meta-virtualization"
 OCI_IMAGE_TAG ?= "latest"
 
-# All packages listed here to trigger builds (multi-layer requirement)
-IMAGE_INSTALL = "packagegroup-yocto-builder"
-
 # No kernel needed for container
 IMAGE_CONTAINER_NO_DUMMY = "1"
 

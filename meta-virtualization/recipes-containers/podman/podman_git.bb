@@ -16,11 +16,10 @@ DEPENDS = " \
     gettext-native \
 "
 
-SRCREV = "88c5aaeec667af94c4fe3a5c2c7a42f8cf308b93"
+SRCREV = "a2409076ef2fef60ad9ac046375dedc7d9410ef4"
 SRC_URI = " \
-    git://github.com/containers/podman.git;branch=v5.8;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX} \
+    git://github.com/containers/podman.git;branch=main;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX} \
     ${@bb.utils.contains('PACKAGECONFIG', 'rootless', 'file://50-podman-rootless.conf', '', d)} \
-    file://CVE-2026-57231.patch;patchdir=src/import \
 "
 
 LICENSE = "Apache-2.0"
@@ -28,7 +27,9 @@ LIC_FILES_CHKSUM = "file://src/import/LICENSE;md5=3d9b931fa23ab1cacd0087f9e2ee12
 
 GO_IMPORT = "import"
 
-PV = "5.8.3-dev"
+PV = "6.1.0-dev"
+
+CVE_PRODUCT = "podman_project:podman libpod_project:libpod"
 
 CVE_STATUS[CVE-2019-10152] = "fixed-version: fixed since v1.4.0"
 CVE_STATUS[CVE-2020-1726] = "fixed-version: fixed since v1.8.1"
@@ -39,13 +40,10 @@ PACKAGES =+ "${PN}-contrib"
 
 PODMAN_PKG = "github.com/containers/podman"
 
-# Include the cni build tag unless the distro explicitly selects netavark-only.
-# The runtime backend is selected via containers.conf (network_backend),
-# but podman must be compiled with the cni tag to support it at all.
-# Previously this was gated on VIRTUAL-RUNTIME_container_networking == "cni",
-# which excluded cni in vruntime builds where that variable is intentionally
-# blank (vpdmn-rootfs-image installs cni packages directly in IMAGE_INSTALL).
-BUILDTAGS_EXTRA ?= "${@'' if d.getVar('VIRTUAL-RUNTIME_container_networking') == 'netavark' else 'cni'}"
+# Podman's vendored containers/common library removed CNI support entirely
+# (commit 8d1f636e40, March 2026). The network backend is now unconditionally
+# netavark — the cni build tag is a no-op.
+BUILDTAGS_EXTRA ?= ""
 BUILDTAGS ?= "seccomp varlink \
 ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'systemd', '', d)} \
 exclude_graphdriver_btrfs exclude_graphdriver_devicemapper ${BUILDTAGS_EXTRA}"
@@ -140,7 +138,6 @@ FILES:${PN} += " \
     ${systemd_user_unitdir}/* \
     ${nonarch_libdir}/tmpfiles.d/* \
     ${datadir}/user-tmpfiles.d/* \
-    ${sysconfdir}/cni \
 "
 
 SYSTEMD_SERVICE:${PN} = "podman.service podman.socket"
@@ -151,9 +148,13 @@ VIRTUAL-RUNTIME_base-utils-nsenter ?= "util-linux-nsenter"
 
 COMPATIBLE_HOST = "^(?!mips).*"
 
+# netavark is the only supported network backend since podman 6.0
+VIRTUAL-RUNTIME_container_networking = "netavark"
+VIRTUAL-RUNTIME_container_dns = "aardvark-dns"
+
 RDEPENDS:${PN} += "\
 	catatonit conmon ${VIRTUAL-RUNTIME_container_runtime} gpgme iptables libdevmapper \
-	${VIRTUAL-RUNTIME_container_dns} ${VIRTUAL-RUNTIME_container_networking} ${VIRTUAL-RUNTIME_base-utils-nsenter} \
+	${VIRTUAL-RUNTIME_container_networking} ${VIRTUAL-RUNTIME_container_dns} ${VIRTUAL-RUNTIME_base-utils-nsenter} \
 "
 RRECOMMENDS:${PN} += "slirp4netns \
                       kernel-module-xt-masquerade \

@@ -1,0 +1,15 @@
+# NAT mode (XEN_DOM0_NETWORK = "nat"): xenbr0 as an internal DomU network.
+# dom0 is the gateway (10.0.100.1); DomU vifs attach here and get addresses
+# from dnsmasq (see xenbr0-dnsmasq.conf).  IPMasquerade makes systemd-networkd
+# enable forwarding and masquerade DomU traffic out the uplink -- no separate
+# nftables/iptables service needed.  ConfigureWithoutCarrier lets the bridge
+# come up with no ports attached (DomUs attach later, at launch).
+[Match]
+Name=xenbr0
+
+[Network]
+Address=10.0.100.1/24
+IPMasquerade=ipv4
+IPForward=yes
+ConfigureWithoutCarrier=yes
+LinkLocalAddressing=no

@@ -70,6 +70,24 @@ do_image_oci[depends] += "jq-native:do_populate_sysroot"
 OCI_PM_DEPENDS = "${@oci_get_pm_depends(d)}"
 do_image_oci[depends] += "${OCI_PM_DEPENDS}"
 
+def oci_pkg_type(d):
+    """Resolve IMAGE_PKGTYPE with a single, documented default.
+
+    Historically three separate call sites in this class each hardcoded
+    their own default for IMAGE_PKGTYPE when it was unset -- and they
+    disagreed with each other ('rpm', 'ipk', 'rpm'). That meant the
+    build-time dependency graph and the actual per-layer install could
+    silently take different code paths when no upper-level config had
+    pinned IMAGE_PKGTYPE.
+
+    The default here matches oe-core's PACKAGE_CLASSES default of
+    'package_ipk' (meta/conf/distro/defaultsetup.conf), which sets
+    IMAGE_PKGTYPE=ipk. Recipes/distros that pin IMAGE_PKGTYPE via
+    PACKAGE_CLASSES or directly always win.
+    """
+    return d.getVar('IMAGE_PKGTYPE') or 'ipk'
+
+
 def oci_get_pm_depends(d):
     """Get native package manager dependency for multi-layer mode."""
     if d.getVar('OCI_LAYER_MODE') != 'multi':
@@ -78,7 +96,7 @@ def oci_get_pm_depends(d):
         return ''
     # rsync-native is needed to copy pre-installed packages to bundle rootfs
     deps = 'rsync-native:do_populate_sysroot'
-    pkg_type = d.getVar('IMAGE_PKGTYPE') or 'rpm'
+    pkg_type = oci_pkg_type(d)
     if pkg_type == 'rpm':
         deps += ' dnf-native:do_populate_sysroot createrepo-c-native:do_populate_sysroot'
     elif pkg_type == 'ipk':
@@ -94,7 +112,8 @@ OCI_IMAGE_AUTHOR ?= "${PATCH_GIT_USER_NAME}"
 OCI_IMAGE_AUTHOR_EMAIL ?= "${PATCH_GIT_USER_EMAIL}"
 
 OCI_IMAGE_TAG ?= "latest"
-OCI_IMAGE_RUNTIME_UID ?= ""
+# Allow other classes e.g. container-nonroot-user to set with ?=
+OCI_IMAGE_RUNTIME_UID ??= ""
 
 OCI_IMAGE_ARCH ?= "${@oe.go.map_arch(d.getVar('TARGET_ARCH'))}"
 OCI_IMAGE_SUBARCH ?= "${@oci_map_subarch(d.getVar('TARGET_ARCH'), d.getVar('TUNE_FEATURES'), d)}"
@@ -357,7 +376,7 @@ python __anonymous() {
 
         # Add package manager native dependency if using 'packages' layer type
         if has_packages_layer:
-            pkg_type = d.getVar('IMAGE_PKGTYPE') or 'ipk'
+            pkg_type = oci_pkg_type(d)
             if pkg_type == 'ipk':
                 d.appendVarFlag('do_image_oci', 'depends',
                     " opkg-native:do_populate_sysroot opkg-utils-native:do_populate_sysroot")
@@ -371,8 +390,20 @@ python __anonymous() {
                     " apt-native:do_populate_sysroot")
                 bb.debug(1, "OCI: Added apt-native dependency for packages layers")
 
-            # Extract all packages from OCI_LAYERS and add do_package_write dependencies
-            # This allows IMAGE_INSTALL = "" for pure multi-layer builds
+            # Extract all packages from OCI_LAYERS and fold them into
+            # IMAGE_INSTALL so do_rootfs's recrdeptask actually builds them.
+            #
+            # Without this, multi-layer recipes have to duplicate every
+            # package across two source-of-truth lists: once in OCI_LAYERS
+            # (used at layer-assembly time) and once in IMAGE_INSTALL (to
+            # trigger the build via do_rootfs). Any drift between the two
+            # silently breaks builds at layer-assembly time when the
+            # missing package isn't in DEPLOY_DIR_*PK.
+            #
+            # We append rather than replace: a recipe is still free to add
+            # IMAGE_INSTALL entries that aren't named in OCI_LAYERS (e.g.
+            # for rootfs-only postprocess fixups that don't land in any
+            # final layer).
             all_packages = set()
             for layer_def in oci_layers.split():
                 parts = layer_def.split(':')
@@ -383,9 +414,9 @@ python __anonymous() {
                         all_packages.add(pkg)
 
             if all_packages:
-                # Note: Packages need to be in IMAGE_INSTALL to trigger builds
-                # via do_rootfs recrdeptask. We just log which packages we found.
-                bb.debug(1, f"OCI multi-layer: Found packages in OCI_LAYERS: {' '.join(all_packages)}")
+                d.appendVar('IMAGE_INSTALL', ' ' + ' '.join(sorted(all_packages)))
+                bb.debug(1, "OCI multi-layer: auto-added to IMAGE_INSTALL: "
+                            + ' '.join(sorted(all_packages)))
 
     # Resolve base image and set up dependencies
     if base_image:
@@ -451,7 +482,7 @@ def oci_install_layer_packages(d, layer_rootfs, layer_packages, layer_name):
 
     bb.note(f"OCI: Installing packages for layer '{layer_name}': {' '.join(packages)}")
 
-    pkg_type = d.getVar('IMAGE_PKGTYPE') or 'rpm'
+    pkg_type = oci_pkg_type(d)
 
     # Ensure layer rootfs directory exists
     bb.utils.mkdirhier(layer_rootfs)
@@ -471,6 +502,7 @@ def oci_install_layer_packages(d, layer_rootfs, layer_packages, layer_name):
 
         # Generate/update repo indexes
         pm.write_index()
+        pm.update()
 
         # Install packages
         # Use attempt_only=True to allow unresolved deps (resolved in later layers)
@@ -496,6 +528,7 @@ def oci_install_layer_packages(d, layer_rootfs, layer_packages, layer_name):
 
         # Write indexes
         pm.write_index()
+        pm.update()
 
         # Install packages
         try:

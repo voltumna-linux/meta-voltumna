@@ -1,19 +1,63 @@
 SUMMARY = "Xen hypervisor tools"
 DESCRIPTION = "Tools and utility software for the Xen hypervisor"
 
-COMPATIBLE_HOST = 'i686-.*-linux|(x86_64.*).*-linux|aarch64.*-linux|arm-.*-linux-gnueabi'
+COMPATIBLE_HOST = 'i686-.*-linux|(x86_64.*).*-linux|aarch64.*-linux'
 
 inherit setuptools3 update-rc.d systemd deploy
 require xen-blktap.inc
 
+# dom0 network topology for DomU guests. Set XEN_DOM0_NETWORK in local.conf:
+#   bridged (default) - eth0 is enslaved into xenbr0 and xenbr0 gets DHCP; DomU
+#                       vifs bridge onto whatever LAN xenbr0's uplink is on.
+#                       Suits real hardware with a LAN DHCP server.
+#   nat               - eth0 is a DHCP uplink (not bridged); xenbr0 is an
+#                       internal bridge with a static gateway, dnsmasq DHCP/DNS
+#                       for DomUs, and masquerade out the uplink (dom0 is a NAT
+#                       router).  Required under QEMU/slirp (and WSL2), where the
+#                       DomU guests have no LAN DHCP to reach.
+XEN_DOM0_NETWORK ?= "bridged"
+
 SRC_URI += "file://10-ether.network \
             file://10-xenbr0.netdev \
-            file://10-xenbr0.network"
+            file://10-xenbr0.network \
+            file://nat-uplink.network \
+            file://nat-xenbr0.network \
+            file://xenbr0-dnsmasq.conf \
+            file://xen-nat-forward.conf \
+            file://xen-dom0-nat.service"
 
-VIRT_NETWORKING_FILES = "${UNPACKDIR}/10-ether.network \
-                         ${UNPACKDIR}/10-xenbr0.netdev \
-			 ${UNPACKDIR}/10-xenbr0.network"
+VIRT_NETWORKING_FILES = "${@'${UNPACKDIR}/nat-uplink.network ${UNPACKDIR}/10-xenbr0.netdev ${UNPACKDIR}/nat-xenbr0.network' if d.getVar('XEN_DOM0_NETWORK') == 'nat' else '${UNPACKDIR}/10-ether.network ${UNPACKDIR}/10-xenbr0.netdev ${UNPACKDIR}/10-xenbr0.network'}"
 inherit virt_networking
+
+# NAT mode: dom0 is a NAT router for the DomU guests. All of this goes into the
+# -net-conf package alongside the systemd-networkd files:
+#   - dnsmasq   DHCP + DNS for DomUs on xenbr0
+#   - sysctl    net.ipv4.ip_forward = 1 (routing)
+#   - iptables  masquerade 10.0.100.0/24 out the uplink, applied by a oneshot
+#               service (systemd-networkd IPMasquerade= proved unreliable, and
+#               this image ships the iptables nat path, not the nft nat module)
+RDEPENDS:${PN}-net-conf:append = "${@' dnsmasq iptables' if d.getVar('XEN_DOM0_NETWORK') == 'nat' else ''}"
+FILES:${PN}-net-conf += "${sysconfdir}/dnsmasq.d/xenbr0.conf \
+                         ${sysconfdir}/sysctl.d/90-xen-nat-forward.conf \
+                         ${systemd_system_unitdir}/xen-dom0-nat.service"
+SYSTEMD_PACKAGES:append = "${@' ${PN}-net-conf' if d.getVar('XEN_DOM0_NETWORK') == 'nat' else ''}"
+SYSTEMD_SERVICE:${PN}-net-conf = "${@'xen-dom0-nat.service' if d.getVar('XEN_DOM0_NETWORK') == 'nat' else ''}"
+
+do_install:append() {
+    if [ "${XEN_DOM0_NETWORK}" = "nat" ]; then
+        install -d "${D}${sysconfdir}/dnsmasq.d"
+        install -m 0644 "${UNPACKDIR}/xenbr0-dnsmasq.conf" \
+            "${D}${sysconfdir}/dnsmasq.d/xenbr0.conf"
+
+        install -d "${D}${sysconfdir}/sysctl.d"
+        install -m 0644 "${UNPACKDIR}/xen-nat-forward.conf" \
+            "${D}${sysconfdir}/sysctl.d/90-xen-nat-forward.conf"
+
+        install -d "${D}${systemd_system_unitdir}"
+        install -m 0644 "${UNPACKDIR}/xen-dom0-nat.service" \
+            "${D}${systemd_system_unitdir}/xen-dom0-nat.service"
+    fi
+}
 
 QEMU_SYSTEM ?= "qemu-system-i386"
 # The qemu-firware package is only available if "vmsep" is in distro features

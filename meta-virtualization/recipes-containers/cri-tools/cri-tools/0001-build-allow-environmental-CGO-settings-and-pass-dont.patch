@@ -35,11 +35,11 @@ Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
  src/import/Makefile | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
-Index: cri-tools-1.27.0+gite73a7139ed4986d6a0db784ae7a036841a02b351/src/import/Makefile
+Index: cri-tools-1.36.0+git/src/import/Makefile
 ===================================================================
---- cri-tools-1.27.0+gite73a7139ed4986d6a0db784ae7a036841a02b351.orig/src/import/Makefile
-+++ cri-tools-1.27.0+gite73a7139ed4986d6a0db784ae7a036841a02b351/src/import/Makefile
-@@ -74,7 +74,8 @@
+--- cri-tools-1.36.0+git.orig/src/import/Makefile
++++ cri-tools-1.36.0+git/src/import/Makefile
+@@ -123,7 +123,8 @@ crictl: ## Build the crictl binary.
  	@$(MAKE) -B $(CRICTL)
  
  $(CRICTL):
@@ -47,5 +47,5 @@ Index: cri-tools-1.27.0+gite73a7139ed4986d6a0db784ae7a036841a02b351/src/import/M
 +	$(GO_BUILD) -o $@ \
 +		-a -pkgdir dontusecurrentpkgs \
  		-ldflags '$(GO_LDFLAGS)' \
- 		$(GOFLAGS) \
  		$(PROJECT)/cmd/crictl
+ 

@@ -1,6 +1,6 @@
 DESCRIPTION = "lxc aims to use these new functionnalities to provide an userspace container object"
 SECTION = "console/utils"
-LICENSE = "LGPL-2.1-only & GPL-2.0-only"
+LICENSE = "GPL-2.0-only AND LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://LICENSE.LGPL2.1;md5=4fbd65380cdd255951079008b364516c \
                     file://LICENSE.GPL2;md5=751419260aa954499f7abaabaa882bbe \
 "
@@ -32,14 +32,24 @@ RDEPENDS:${PN} = " \
 
 RDEPENDS:${PN}:append:libc-glibc = " glibc-utils"
 
+# Soft-pull the layer's own sub-packages so a default `lxc` install lands a
+# functional LXC. Without networking, lxc-net.service is missing and lxcbr0
+# never comes up, so any container whose config references lxcbr0 (the
+# download template's default) fails to start with:
+#   network.c: netdev_configure_server_veth: Failed to attach "vethXXX" to
+#   bridge "lxcbr0", bridge interface doesn't exist
+# Without templates, lxc-create --template <foo> has no template scripts
+# to invoke. Users who genuinely don't want either can drop them with
+# BAD_RECOMMENDATIONS.
+RRECOMMENDS:${PN} += "${PN}-networking ${PN}-templates"
+
 RDEPENDS:${PN}-ptest += "file make gmp nettle gnutls bash libgcc"
 
 RDEPENDS:${PN}-networking += "iptables"
 
-SRC_URI = "git://github.com/lxc/lxc.git;branch=stable-6.0;protocol=https \
+SRC_URI = "git://github.com/lxc/lxc.git;branch=main;protocol=https \
 	file://lxc-1.0.0-disable-udhcp-from-busybox-template.patch \
 	file://run-ptest \
-	file://templates-actually-create-DOWNLOAD_TEMP-directory.patch \
 	file://template-make-busybox-template-compatible-with-core-.patch \
 	file://templates-use-curl-instead-of-wget.patch \
 	file://0001-download-don-t-try-compatbility-index.patch \
@@ -49,8 +59,8 @@ SRC_URI = "git://github.com/lxc/lxc.git;branch=stable-6.0;protocol=https \
 	file://lxc-net \
 	"
 
-SRCREV = "2597434ae2472114c70ad2bdf4ae5580c9e22717"
-PV = "6.0.6"
+SRCREV = "dc15af12c6a12d2946a5178001b3c377e2a9c694"
+PV = "7.0.0"
 
 # Let's not configure for the host distro.
 #

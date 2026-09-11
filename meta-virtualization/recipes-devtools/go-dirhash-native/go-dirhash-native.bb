@@ -4,7 +4,7 @@ HOMEPAGE = "https://go.googlesource.com/mod"
 LICENSE = "BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=7998cb338f82d15c0eff93b7004d272a"
 
-SRC_URI = "git://go.googlesource.com/mod;protocol=https;nobranch=1;rev=f8a9fe217cff893cb67f4acad96a0021c13ee6e7;destsuffix=git/mod \
+SRC_URI = "git://go.googlesource.com/mod;protocol=https;nobranch=1;rev=087f6515dd3ba3e8b06918fa425ffe7732321a7a;destsuffix=git/mod \
            file://dirhash-helper.go \
            file://LICENSE"
 

@@ -1,0 +1,57 @@
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Subject: [PATCH] x86/hyperv: disable hypercall-assisted TLB flush
+
+Enabling CONFIG_HYPERV_GUEST is required for Xen to find a usable
+platform timer when running as a guest under Hyper-V Generation 2 VMs
+(the Hyper-V reference-TSC timer is the only candidate; HPET, ACPI PM
+timer and PIT are not exposed).
+
+However, the same config also turns on the Hyper-V assisted TLB flush,
+which issues hypercalls through the Hyper-V hypercall page.  On nested
+and Generation 2 Hyper-V VMs that hypercall page is not usable -- the
+first probe hypercall issued from hypervisor_setup() faults inside
+hyperv_flush_tlb() and takes the hypervisor down before dom0 is even
+started:
+
+    Xen call trace:
+       [<...>] hyperv_flush_tlb
+       [<...>] hypervisor_setup
+
+The assisted TLB flush is only a performance optimisation; Xen falls
+back to native IPI-based flushing (exactly what it uses on bare metal)
+when it is unavailable.  The TLB flush is also the only user of Hyper-V
+hypercalls in the tree, so clearing the recommendation means Xen never
+executes a Hyper-V hypercall.  The MSR-based reference-TSC timer does
+not use hypercalls and is unaffected.
+
+Clear HV_X64_REMOTE_TLB_FLUSH_RECOMMENDED at probe time so the existing
+gate in flush_tlb() returns -EOPNOTSUPP and Xen keeps the native path.
+
+Upstream-Status: Inappropriate [embedded specific]
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ xen/arch/x86/guest/hyperv/hyperv.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+--- a/xen/arch/x86/guest/hyperv/hyperv.c
++++ b/xen/arch/x86/guest/hyperv/hyperv.c
+@@ -60,6 +60,18 @@ const struct hypervisor_ops *__init hyperv_probe(void)
+
+     ms_hyperv.hints = cpuid_eax(HYPERV_CPUID_ENLIGHTMENT_INFO);
+
++    /*
++     * The Hyper-V assisted (hypercall-based) TLB flush relies on the
++     * hypercall page being usable.  On nested and Generation 2 Hyper-V
++     * VMs the hypercall page instruction faults, taking down the very
++     * first probe hypercall issued from hypervisor_setup() before dom0
++     * is started.  Clear the recommendation so the flush_tlb() gate
++     * returns -EOPNOTSUPP and Xen falls back to native IPI-based TLB
++     * flushes.  This is the only user of Hyper-V hypercalls; the
++     * MSR-based reference-TSC timer does not use hypercalls.
++     */
++    ms_hyperv.hints &= ~HV_X64_REMOTE_TLB_FLUSH_RECOMMENDED;
++
+     if ( ms_hyperv.hints & HV_X64_ENLIGHTENED_VMCS_RECOMMENDED )
+         ms_hyperv.nested_features = cpuid_eax(HYPERV_CPUID_NESTED_FEATURES);
+

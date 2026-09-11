@@ -1,0 +1,385 @@
+From a976988d0e41f20950baf6df5c2f0c5ead1df8af Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Tue, 11 Aug 2026 13:46:39 +0000
+Subject: [PATCH 01/10] sandbox: add vxn RuntimeProvider (Xen DomU isolation
+ backend)
+
+AXIS's Linux isolation is process-level (bubblewrap/Landlock/seccomp on the host
+kernel). For high-risk agents a stronger boundary is a whole VM: run the
+sandboxed command inside a Xen DomU, where a guest-kernel exploit cannot reach
+the host and denied resources simply do not exist in the guest.
+
+Add RuntimeProvider::Vxn, selected on Linux as the LinuxVxn backend, implemented
+by a new VxnSandbox that drives the vxn CLI. A foreground `vxn run` maps directly
+onto the Child-shaped SandboxImpl trait: start->pid, wait->exit code,
+take_std*->the child's stdio, destroy->kill. VXN_BIN selects the vxn binary (host
+CLI fronting a nested dom0, or the in-dom0 vxn), VXN_BASE_IMAGE the DomU rootfs.
+
+Network policy maps to the VM boundary: Block -> --no-network (no vif at all),
+Allow -> bridge. Proxy (the default) fails closed rather than silently
+downgrading to allow -- vxn has no AXIS-proxy path yet, and the isolation
+contract forbids reporting weaker behaviour as exact enforcement. On non-Linux
+the provider is rejected.
+
+The AXIS process primitives are kernel-local and do not cross into the DomU's
+separate kernel, so they are not applied here; the VM boundary enforces the
+coarse policy structurally. Filesystem mounts, env transport, the rw workspace,
+and nested in-guest enforcement are follow-ups.
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ crates/axis-core/src/policy.rs       |   4 +
+ crates/axis-sandbox/src/linux/mod.rs |   1 +
+ crates/axis-sandbox/src/linux/vxn.rs | 245 +++++++++++++++++++++++++++
+ crates/axis-sandbox/src/sandbox.rs   |  17 ++
+ 4 files changed, 267 insertions(+)
+ create mode 100644 crates/axis-sandbox/src/linux/vxn.rs
+
+diff --git a/crates/axis-core/src/policy.rs b/crates/axis-core/src/policy.rs
+index 7c220c6..43e896c 100644
+--- a/crates/axis-core/src/policy.rs
++++ b/crates/axis-core/src/policy.rs
+@@ -455,6 +455,9 @@ pub enum RuntimeProvider {
+     Mxc,
+     #[serde(alias = "axis-native")]
+     AxisNative,
++    /// Each sandbox is a Xen DomU (a VM) driven through the vxn CLI /
++    /// vxn-oci-runtime. VM-strength isolation tier; Linux/Xen only.
++    Vxn,
+ }
+ 
+ impl RuntimeProvider {
+@@ -463,6 +466,7 @@ impl RuntimeProvider {
+             Self::Auto => "auto",
+             Self::Mxc => "mxc",
+             Self::AxisNative => "axis_native",
++            Self::Vxn => "vxn",
+         }
+     }
+ }
+diff --git a/crates/axis-sandbox/src/linux/mod.rs b/crates/axis-sandbox/src/linux/mod.rs
+index 5b71f9a..c82f466 100644
+--- a/crates/axis-sandbox/src/linux/mod.rs
++++ b/crates/axis-sandbox/src/linux/mod.rs
+@@ -13,6 +13,7 @@ pub mod netns;
+ pub mod resources;
+ pub mod seccomp;
+ pub mod strategy;
++pub(crate) mod vxn;
+ 
+ use crate::sandbox::{SandboxConfig, SandboxError, SandboxImpl};
+ use axis_core::connect_attribution::policy_requires_connect_attribution;
+diff --git a/crates/axis-sandbox/src/linux/vxn.rs b/crates/axis-sandbox/src/linux/vxn.rs
+new file mode 100644
+index 0000000..7bb76ac
+--- /dev/null
++++ b/crates/axis-sandbox/src/linux/vxn.rs
+@@ -0,0 +1,245 @@
++// Copyright 2026 Advanced Micro Devices, Inc.
++// SPDX-License-Identifier: Apache-2.0
++
++//! vxn backend: each AXIS sandbox is a Xen DomU (a VM), driven through the vxn
++//! CLI. See meta-virtualization's axis-integration.md for the full model.
++//!
++//! First cut = VM boundary only (config "a"): the host `vxn` CLI already boots /
++//! uses a nested dom0 (qemu-xen backend) and dispatches the container DomU, so
++//! this backend just spawns `vxn run ...` as a child process and manages it
++//! through the `SandboxImpl` lifecycle. `VXN_BIN` overrides the binary; pointing
++//! it at the in-dom0 `vxn` gives config "b" (no code change).
++//!
++//! IMPORTANT: the AXIS native process primitives (seccomp-BPF, Landlock, netns,
++//! cgroups) are kernel-local — they act on whichever kernel the process runs
++//! under. In a vxn DomU that is the guest's own kernel, so enforcing the
++//! sandbox policy inside the VM is the responsibility of the DomU (applied
++//! guest-side by its init), not of this host-side backend. The VM boundary is
++//! the outer guarantee, with fine-grained in-guest enforcement layered on top
++//! (see axis-integration.md).
++
++use crate::sandbox::{SandboxConfig, SandboxError, SandboxImpl};
++use axis_core::policy::NetworkMode;
++use axis_core::types::SandboxId;
++use std::process::{Child, Command, Stdio};
++use std::time::Duration;
++
++/// Default vxn CLI binary (config a). Override with `VXN_BIN` (e.g. `vxn-x86_64`,
++/// an absolute path, or the in-dom0 `vxn` for config b).
++const DEFAULT_VXN_BIN: &str = "vxn";
++/// Default base image the DomU boots to run the sandboxed command in. AXIS-native
++/// runs a command against the host fs; a vxn DomU has its own rootfs, so a base
++/// image is required. Override with `VXN_BASE_IMAGE`.
++const DEFAULT_BASE_IMAGE: &str = "docker.io/library/alpine:latest";
++/// Grace period after SIGTERM before a hard SIGKILL (timeout / destroy).
++const KILL_GRACE_SEC: u64 = 5;
++
++pub(crate) struct VxnSandbox {
++    id: SandboxId,
++    /// Fully-built argv: [vxn_bin, "run", "--rm", <net flag>?, image, cmd, args…]
++    argv: Vec<String>,
++    capture_output: bool,
++    timeout_sec: Option<u64>,
++    child: Option<Child>,
++    exit_code: Option<i32>,
++}
++
++impl VxnSandbox {
++    pub(crate) fn new(config: &SandboxConfig) -> Result<Self, SandboxError> {
++        if config.command.is_empty() {
++            return Err(SandboxError::CreationFailed(
++                "vxn backend: command must not be empty".into(),
++            ));
++        }
++
++        let vxn_bin = std::env::var("VXN_BIN").unwrap_or_else(|_| DEFAULT_VXN_BIN.to_string());
++        let base_image =
++            std::env::var("VXN_BASE_IMAGE").unwrap_or_else(|_| DEFAULT_BASE_IMAGE.to_string());
++
++        let mut argv = vec![vxn_bin, "run".to_string(), "--rm".to_string()];
++
++        // AXIS network policy -> the DomU's NIC.
++        //   Block -> --no-network (no vif at all; stronger than a netns)
++        //   Allow -> default bridge (leave the flag off)
++        //   Proxy (the DEFAULT) -> FAIL CLOSED. vxn has no AXIS-proxy path yet,
++        //   and silently downgrading strict-proxy to allow would violate the
++        //   isolation contract (no silent degradation). Require block/allow.
++        match config.policy.network.mode {
++            NetworkMode::Block => argv.push("--no-network".to_string()),
++            NetworkMode::Allow => {}
++            NetworkMode::Proxy => {
++                return Err(SandboxError::Unsupported(
++                    "vxn backend does not yet enforce 'proxy' network mode; set \
++                     network.mode to 'block' or 'allow' (strict-proxy is a TODO)"
++                        .into(),
++                ));
++            }
++        }
++
++        // TODO(vxn/axis): filesystem deny/allow -> DomU mount set; rw workspace
++        // (#15, two-hop in config a); env transport (#20); nested seccomp/Landlock
++        // enforcement inside the DomU (defense-in-depth). First cut = base image +
++        // command only.
++        argv.push(base_image);
++        argv.push(config.command.clone());
++        argv.extend(config.args.iter().cloned());
++
++        Ok(Self {
++            id: config.id.clone(),
++            argv,
++            capture_output: config.capture_output,
++            timeout_sec: config.timeout_sec,
++            child: None,
++            exit_code: None,
++        })
++    }
++
++    /// SIGTERM, brief grace, then SIGKILL the foreground `vxn run` child.
++    fn kill_child(child: &mut Child) {
++        let pid = child.id() as i32;
++        unsafe {
++            libc::kill(pid, libc::SIGTERM);
++        }
++        for _ in 0..(KILL_GRACE_SEC * 10) {
++            if matches!(child.try_wait(), Ok(Some(_))) {
++                return;
++            }
++            std::thread::sleep(Duration::from_millis(100));
++        }
++        unsafe {
++            libc::kill(pid, libc::SIGKILL);
++        }
++        let _ = child.wait();
++    }
++}
++
++impl SandboxImpl for VxnSandbox {
++    fn start(&mut self) -> Result<u32, SandboxError> {
++        if self.child.is_some() {
++            return Err(SandboxError::SpawnFailed(
++                "vxn sandbox already running".into(),
++            ));
++        }
++        let mut cmd = Command::new(&self.argv[0]);
++        cmd.args(&self.argv[1..]);
++        if self.capture_output {
++            cmd.stdout(Stdio::piped())
++                .stderr(Stdio::piped())
++                .stdin(Stdio::piped());
++        }
++        let child = cmd
++            .spawn()
++            .map_err(|e| SandboxError::SpawnFailed(format!("vxn run spawn failed: {e}")))?;
++        let pid = child.id();
++        tracing::info!("sandbox {} started as a vxn DomU (pid={pid})", self.id);
++        self.child = Some(child);
++        Ok(pid)
++    }
++
++    fn wait(
++        &mut self,
++    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<i32, SandboxError>> + Send + '_>>
++    {
++        Box::pin(async move {
++            if let Some(code) = self.exit_code {
++                return Ok(code);
++            }
++            let mut child = self
++                .child
++                .take()
++                .ok_or_else(|| SandboxError::SpawnFailed("no vxn child process".into()))?;
++            let pid = child.id() as i32;
++            let timeout_sec = self.timeout_sec;
++
++            // std Child::wait blocks; run it on a blocking thread so we can await.
++            let mut task = tokio::task::spawn_blocking(move || {
++                let status = child.wait();
++                (child, status)
++            });
++
++            let joined = match timeout_sec {
++                None => (&mut task).await,
++                Some(secs) => {
++                    let sleep = tokio::time::sleep(Duration::from_secs(secs));
++                    tokio::pin!(sleep);
++                    tokio::select! {
++                        j = &mut task => j,
++                        _ = &mut sleep => {
++                            tracing::warn!(
++                                "sandbox {} exceeded timeout {secs}s; terminating DomU",
++                                self.id
++                            );
++                            // SIGTERM unblocks the child.wait() on the blocking
++                            // thread; grace, then SIGKILL if still stuck.
++                            unsafe { libc::kill(pid, libc::SIGTERM); }
++                            match tokio::time::timeout(
++                                Duration::from_secs(KILL_GRACE_SEC),
++                                &mut task,
++                            )
++                            .await
++                            {
++                                Ok(j) => j,
++                                Err(_) => {
++                                    unsafe { libc::kill(pid, libc::SIGKILL); }
++                                    (&mut task).await
++                                }
++                            }
++                        }
++                    }
++                }
++            };
++
++            let (_child, status) = joined
++                .map_err(|e| SandboxError::IsolationFailed(format!("vxn wait join: {e}")))?;
++            let code = status.map_err(SandboxError::Io)?.code().unwrap_or(-1);
++            self.exit_code = Some(code);
++            tracing::info!("sandbox {} exited (code={code})", self.id);
++            Ok(code)
++        })
++    }
++
++    fn try_wait(&mut self) -> Result<Option<i32>, SandboxError> {
++        if let Some(code) = self.exit_code {
++            return Ok(Some(code));
++        }
++        let status_opt = match self.child.as_mut() {
++            Some(child) => child.try_wait()?,
++            None => return Err(SandboxError::SpawnFailed("no vxn child process".into())),
++        };
++        match status_opt {
++            Some(status) => {
++                self.child = None;
++                let code = status.code().unwrap_or(-1);
++                self.exit_code = Some(code);
++                Ok(Some(code))
++            }
++            None => Ok(None),
++        }
++    }
++
++    fn take_stdout(&mut self) -> Option<std::process::ChildStdout> {
++        self.child.as_mut().and_then(|c| c.stdout.take())
++    }
++
++    fn take_stderr(&mut self) -> Option<std::process::ChildStderr> {
++        self.child.as_mut().and_then(|c| c.stderr.take())
++    }
++
++    fn take_stdin(&mut self) -> Option<std::process::ChildStdin> {
++        self.child.as_mut().and_then(|c| c.stdin.take())
++    }
++
++    fn destroy(&mut self) -> Result<(), SandboxError> {
++        if let Some(mut child) = self.child.take() {
++            Self::kill_child(&mut child);
++            if self.exit_code.is_none() {
++                self.exit_code = Some(-1);
++            }
++        }
++        // TODO(vxn/axis): `vxn run --rm` cleans the DomU on normal exit, but on a
++        // hard kill the DomU may linger; a best-effort `vxn rm` / `xl destroy` by
++        // domain name belongs here once we track it. Idempotent (contract).
++        tracing::info!("sandbox {} destroyed (vxn backend)", self.id);
++        Ok(())
++    }
++}
+diff --git a/crates/axis-sandbox/src/sandbox.rs b/crates/axis-sandbox/src/sandbox.rs
+index 15d8260..fb91b24 100644
+--- a/crates/axis-sandbox/src/sandbox.rs
++++ b/crates/axis-sandbox/src/sandbox.rs
+@@ -728,6 +728,8 @@ pub(crate) enum PlatformBackendSelection {
+     LinuxNative,
+     #[cfg(target_os = "linux")]
+     LinuxMxc,
++    #[cfg(target_os = "linux")]
++    LinuxVxn,
+     #[cfg(target_os = "windows")]
+     WindowsMxc,
+ }
+@@ -746,6 +748,8 @@ fn process_backend_for_provider(
+         RuntimeProvider::Auto | RuntimeProvider::Mxc => Ok(PlatformBackendSelection::LinuxMxc),
+         #[cfg(target_os = "linux")]
+         RuntimeProvider::AxisNative => Ok(PlatformBackendSelection::LinuxNative),
++        #[cfg(target_os = "linux")]
++        RuntimeProvider::Vxn => Ok(PlatformBackendSelection::LinuxVxn),
+ 
+         #[cfg(target_os = "windows")]
+         RuntimeProvider::Auto | RuntimeProvider::Mxc => Ok(PlatformBackendSelection::WindowsMxc),
+@@ -753,6 +757,10 @@ fn process_backend_for_provider(
+         RuntimeProvider::AxisNative => Err(SandboxError::Unsupported(
+             "runtime provider 'axis_native' is disabled on Windows because the legacy native path does not currently enforce AXIS policy; use 'auto' or 'mxc'".into(),
+         )),
++        #[cfg(target_os = "windows")]
++        RuntimeProvider::Vxn => Err(SandboxError::Unsupported(
++            "runtime provider 'vxn' requires Linux/Xen (dom0); it is not available on Windows".into(),
++        )),
+ 
+         #[cfg(all(not(target_os = "linux"), not(target_os = "windows")))]
+         RuntimeProvider::Auto | RuntimeProvider::AxisNative => {
+@@ -763,6 +771,11 @@ fn process_backend_for_provider(
+             "runtime provider 'mxc' is not available on {}",
+             std::env::consts::OS
+         ))),
++        #[cfg(all(not(target_os = "linux"), not(target_os = "windows")))]
++        RuntimeProvider::Vxn => Err(SandboxError::Unsupported(format!(
++            "runtime provider 'vxn' requires Linux/Xen (dom0); it is not available on {}",
++            std::env::consts::OS
++        ))),
+     }
+ }
+ 
+@@ -845,6 +858,9 @@ fn create_platform_sandbox_with_backend(
+             PlatformBackendSelection::LinuxMxc => {
+                 Ok(Box::new(crate::linux::mxc::MxcLinuxSandbox::new(config)?))
+             }
++            PlatformBackendSelection::LinuxVxn => {
++                Ok(Box::new(crate::linux::vxn::VxnSandbox::new(config)?))
++            }
+             PlatformBackendSelection::Default => unreachable!("Linux default backend is resolved"),
+         }
+     }
+@@ -885,6 +901,7 @@ fn effective_linux_backend(backend: PlatformBackendSelection) -> PlatformBackend
+             PlatformBackendSelection::LinuxMxc
+         }
+         PlatformBackendSelection::LinuxNative => PlatformBackendSelection::LinuxNative,
++        PlatformBackendSelection::LinuxVxn => PlatformBackendSelection::LinuxVxn,
+     }
+ }
+ 

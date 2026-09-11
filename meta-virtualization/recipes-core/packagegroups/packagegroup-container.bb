@@ -31,6 +31,8 @@ RDEPENDS:${PN} = " \
 
 RDEPENDS:packagegroup-lxc = " \
     lxc \
+    lxc-networking \
+    lxc-templates \
 "
 
 RDEPENDS:packagegroup-docker = " \
@@ -51,6 +53,7 @@ RDEPENDS:packagegroup-cni = " \
 
 RDEPENDS:packagegroup-netavark = " \
     ${@bb.utils.contains('DISTRO_FEATURES', 'seccomp', 'netavark aardvark-dns', '', d)} \
+    nftables \
 "
 
 RDEPENDS:packagegroup-container-tools = " \

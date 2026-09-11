@@ -2,6 +2,7 @@
 data/module-cache.json
 data/vanity-url-cache.json
 data/ls-remote-cache.json
+data/dumb-http-urls.json
 data/verify-cache.json
 data/.verify/
 

@@ -1,0 +1,11 @@
+# Example startup state for the ankaios-image-minimal test image.
+# Starts a single long-running "hello-ankaios" workload under podman so the
+# orchestrator can be exercised end-to-end (see README-ankaios.md).
+apiVersion: v1
+workloads:
+  hello-ankaios:
+    runtime: podman
+    agent: agent_A
+    runtimeConfig: |
+      image: docker.io/alpine:latest
+      commandArgs: [ "sh", "-c", "trap 'echo; exit' SIGINT SIGTERM; while true; do echo 'Hello Ankaios!'; sleep 1; done" ]

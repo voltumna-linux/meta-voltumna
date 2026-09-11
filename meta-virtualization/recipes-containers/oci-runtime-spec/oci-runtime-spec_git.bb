@@ -9,8 +9,8 @@ SRCNAME = "runtime-spec"
 PKG_NAME = "github.com/opencontainers/${SRCNAME}"
 SRC_URI = "git://${PKG_NAME};destsuffix=${BB_GIT_DEFAULT_DESTSUFFIX}/src/${PKG_NAME};branch=main;protocol=https"
 
-SRCREV = "701738418b9555d5213337a0991fd0ffd6c37808"
-PV = "v1.2.0+git"
+SRCREV = "6999a89a76a0329f440d5740497bedb9dd431297"
+PV = "v1.3.0+git"
 
 # NO-OP the do compile rule because this recipe is source only.
 do_compile() {

@@ -1,13 +1,13 @@
 DESCRIPTION = "Init scripts for use on cloud images"
 HOMEPAGE = "https://github.com/canonical/cloud-init"
 SECTION = "devel/python"
-LICENSE = "GPL-3.0-only | Apache-2.0"
+LICENSE = "Apache-2.0 OR GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=c6dd79b6ec2130a3364f6fa9d6380408 \
     file://LICENSE-GPLv3;md5=d32239bcb673463ab874e80d47fae504 \
     file://LICENSE-Apache2.0;md5=3b83ef96387f14655fc854ddc3c6bd57 \
 "
 
-SRCREV = "0052a66dfa463186dc286d75079d451030468e0f"
+SRCREV = "35ada55691e4d7b3578a7304221be4ba94a76cf6"
 SRC_URI = "git://github.com/canonical/cloud-init;branch=main;protocol=https \
            file://cloud-init-source-local-lsb-functions.patch \
 "

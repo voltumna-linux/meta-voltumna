@@ -125,6 +125,41 @@ def get_oci_layer_count(oci_dir):
         return None
 
 
+def get_oci_layer_blob_sizes(oci_dir):
+    """Return the on-disk sizes (bytes) of every layer blob in the image,
+    in manifest order.
+
+    A "packages" layer that failed to install anything produces a
+    near-empty tarball (a few hundred bytes of gzip framing); a real
+    populated layer is orders of magnitude larger. Asserting a floor
+    on layer size catches the "silent empty-layer" failure mode where
+    do_image_oci warns instead of erroring (pm.install() finding no
+    candidates because pm.update() was never called, package feed
+    misconfiguration, etc.). Without this, a layer-count check passes
+    on an empty build.
+    """
+    inspect = subprocess.run(
+        ["skopeo", "inspect", f"oci:{oci_dir}"],
+        capture_output=True, text=True, timeout=30,
+    )
+    if inspect.returncode != 0:
+        return None
+    try:
+        data = json.loads(inspect.stdout)
+    except json.JSONDecodeError:
+        return None
+
+    blobs_dir = oci_dir / "blobs" / "sha256"
+    sizes = []
+    for digest in data.get("Layers", []):
+        # digest is like "sha256:abc123..."
+        blob_path = blobs_dir / digest.split(":", 1)[-1]
+        if not blob_path.exists():
+            return None
+        sizes.append(blob_path.stat().st_size)
+    return sizes
+
+
 def get_task_log(build_dir, machine, recipe, task):
     """Get the path to a bitbake task log."""
     work_dir = build_dir / "tmp" / "work"
@@ -211,6 +246,25 @@ class TestMultiLayerOCIBuild:
         layer_count = get_oci_layer_count(oci_dir)
         assert layer_count is not None, f"Failed to inspect OCI image: {oci_dir}"
         assert layer_count == 3, f"Expected 3 layers, got {layer_count}"
+
+        # Check that every layer actually has content. A "packages" layer
+        # whose install silently failed (e.g. missing pm.update() on the
+        # opkg path, or a misconfigured feed) still assembles into a
+        # valid-looking layer -- gzip framing runs to a few hundred bytes
+        # even when the tarball is empty. 4 KiB is well above the
+        # empty-tarball floor and comfortably below any realistic
+        # populated layer. This catches the "layers exist but are empty"
+        # regression the count check misses.
+        sizes = get_oci_layer_blob_sizes(oci_dir)
+        assert sizes is not None, f"Failed to read layer blob sizes from {oci_dir}"
+        min_size = 4096
+        empty = [(i, s) for i, s in enumerate(sizes) if s < min_size]
+        assert not empty, (
+            f"Suspiciously small layer blob(s) in {oci_dir} (index, bytes): "
+            f"{empty}. Each layer should exceed {min_size} bytes; smaller "
+            f"means the layer install produced an empty tarball -- typically "
+            f"a silent pm.install() failure demoted to bb.warn()."
+        )
 
 
 class TestLayerCaching:

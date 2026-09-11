@@ -11,7 +11,7 @@ inherit autotools-brokensep
 PV = "0.3.2+git"
 
 # This version support the RISC-V v0.5.0 Hypervisor extensions
-SRCREV = "355c79a07d9c1b783962ebf47b9b18194b7d40bd"
+SRCREV = "e700f46cda1997f17e4f084de5e22e268ccae0aa"
 SRC_URI = "git://github.com/xvisor/xvisor.git;branch=master;protocol=https \
     file://0001-TESTS-Don-t-specify-mabi-or-march-for-RISC-V.patch \
 "

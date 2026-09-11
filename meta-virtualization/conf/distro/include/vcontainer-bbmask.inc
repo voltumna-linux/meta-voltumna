@@ -88,11 +88,15 @@ BBMASK += "meta-virtualization/recipes-networking/passt/"
 # ---------------------------------------------------------------------------
 # meta-oe / meta-networking: mask heavyweight categories
 # ---------------------------------------------------------------------------
-BBMASK += "meta-oe/recipes-(?!devtools|extended|support)"
-BBMASK += "meta-networking/recipes-(?!filter|support)"
+BBMASK += "meta-oe/recipes-(?!devtools|extended|support|connectivity/libwebsockets)"
+BBMASK += "meta-networking/recipes-(?!filter|support|connectivity/mosquitto)"
 BBMASK += "meta-openstack/recipes-dbs/postgresql/"
 BBMASK += "meta-oe/dynamic-layers/networking-layer/recipes-core/"
 BBMASK += "meta-openstack/recipes-extended/libvirt/"
+BBMASK += "meta-webserver/recipes-(?!httpd/nginx)"
+# To satisfy RDEPENDS for packagegroup-yocto-builder-extras in mc:container-*
+BBMASK += "meta-python/recipes-devtools/python/python3-(?!pexpect|ptyprocess)"
+BBMASK += "meta-oe/dynamic-layers/meta-python/recipes-core/packagegroups/"
 
 # ---------------------------------------------------------------------------
 # Entire layers with 0 recipes in the container image dependency graph.
@@ -100,8 +104,7 @@ BBMASK += "meta-openstack/recipes-extended/libvirt/"
 # does not warn about zero files matching BBFILE_PATTERN.
 # ---------------------------------------------------------------------------
 BBMASK += "meta-filesystems/"
-BBMASK += "meta-python/"
-BBMASK += "meta-webserver/"
+
 # Warning suppression for these fully-masked layers is in meta-virt-host.conf
 # (BBFILE_PATTERN_IGNORE_EMPTY) because BitBake checks the base datastore,
 # not per-multiconfig datastores.

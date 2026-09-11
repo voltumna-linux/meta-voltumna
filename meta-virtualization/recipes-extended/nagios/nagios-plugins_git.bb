@@ -8,10 +8,10 @@ LICENSE = "GPL-3.0-only"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
 
-SRCREV = "7c74420158c3e228b3d66d4c781a6abc7a93075a"
+SRCREV = "8852bf48d5a190df3ca32da253ee4ddf38c35e16"
 SRC_URI = "git://github.com/nagios-plugins/nagios-plugins.git;protocol=https;branch=master"
 
-PV = "2.4.12+git"
+PV = "2.5+git"
 
 inherit autotools gettext pkgconfig autotools-brokensep
 

@@ -79,6 +79,18 @@
 #                                   Default: "${FILE_DIRNAME}" (recipe's directory)
 #
 #   GO_MOD_DISCOVERY_SKIP_LICENSES - Set to "1" to skip license scanning
+#
+#   GO_MOD_DISCOVERY_LICENSE_TARGETS - Space-separated list of go build
+#                                      targets used by the recipe's
+#                                      do_compile. When set, the license
+#                                      scan filter is derived from
+#                                      `go list -deps` on these targets
+#                                      (the most accurate filter). Useful
+#                                      when do_compile builds multiple
+#                                      binaries with a wider import graph
+#                                      than the discovery's single
+#                                      BUILD_TARGET. Falls back to the
+#                                      GOMODCACHE walk when unset.
 #                                    Default: "" (scan enabled)
 #
 # WORKFLOW EXAMPLES:
@@ -421,6 +433,15 @@ Or run 'bitbake ${PN} -c show_upgrade_commands' to see manual options."
     LICENSE_FLAGS=""
     if [ "${GO_MOD_DISCOVERY_SKIP_LICENSES}" != "1" ]; then
         LICENSE_FLAGS="--scan-licenses --common-license-dir ${COMMON_LICENSE_DIR} --discovery-cache ${GO_MOD_DISCOVERY_DIR}/cache"
+        # If the recipe declares its full set of build targets (used by its
+        # own do_compile), pass each one through so the license scan can
+        # scope the filter via `go list -deps` rather than the discovery's
+        # single BUILD_TARGET-derived GOMODCACHE walk. Use repeated
+        # --build-target flags so the values survive shell word-splitting
+        # without quoting tricks.
+        for target in ${GO_MOD_DISCOVERY_LICENSE_TARGETS}; do
+            LICENSE_FLAGS="${LICENSE_FLAGS} --build-target ${target}"
+        done
     fi
 
     python3 "${FETCHER_SCRIPT}" \

@@ -57,10 +57,11 @@ IMAGE_INSTALL = " \
     crun \
     skopeo \
     conmon \
-    cni \
+    netavark \
+    aardvark-dns \
     busybox \
     iproute2 \
-    iptables \
+    nftables \
     util-linux \
     ca-certificates \
 "
@@ -128,13 +129,9 @@ additionalimagestores = []
 EOF
 
     # Create containers.conf for podman engine settings
-    # Use CNI instead of netavark — netavark's dependency chain
-    # (nmap → libpcap → bluez5 → python3-pygobject → cairo) is too
-    # heavy for the vruntime BBMASK environment.
     cat > ${IMAGE_ROOTFS}/etc/containers/containers.conf << 'EOF'
 [network]
-network_backend = "cni"
-cni_plugin_dirs = ["/opt/cni/bin", "/usr/libexec/cni"]
+network_backend = "netavark"
 EOF
 
     # Prevent libnss_systemd segfaults — systemd is not running in the

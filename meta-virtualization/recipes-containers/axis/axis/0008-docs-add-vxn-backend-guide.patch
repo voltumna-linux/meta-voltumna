@@ -1,0 +1,177 @@
+From a3f7cf49aa07b7f810f54295c018798958012a19 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Fri, 14 Aug 2026 04:04:48 +0000
+Subject: [PATCH 08/10] docs: add vxn backend guide
+
+The vxn sandbox backend needs a vxn SDK (the `vxn` CLI) installed, which a
+user builds from the meta-virtualization Yocto layer. Document the
+axis-specific side: the SDK prerequisite (referring to meta-virt's
+docs/vxn-sdk.md for the build), `axis run --policy vxn -- <tool>`, the env
+knobs (VXN_BIN, VXN_BASE_IMAGE, VXN_FORWARD_ENV, VXN_MEMORY), how policy
+network modes map to the DomU NIC, and config a vs b. Linked from the
+README's Linux-backends section.
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ README.md           |   5 ++
+ docs/vxn-backend.md | 135 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 140 insertions(+)
+ create mode 100644 docs/vxn-backend.md
+
+diff --git a/README.md b/README.md
+index a736fed..21ade81 100644
+--- a/README.md
++++ b/README.md
+@@ -124,6 +124,11 @@ than silently weakening the sandbox. See
+ [Install And Runtime Dependencies](docs/install-and-runtime-dependencies.md)
+ for the package boundary.
+ 
++For VM-level isolation — running the sandboxed command inside a Xen DomU
++instead of as a host process — see the [vxn Backend](docs/vxn-backend.md)
++(`axis run --policy vxn -- <tool>`). It requires a vxn SDK built from the
++meta-virtualization Yocto layer.
++
+ ## Platform Details
+ 
+ ### macOS (Seatbelt)
+diff --git a/docs/vxn-backend.md b/docs/vxn-backend.md
+new file mode 100644
+index 0000000..89c72a0
+--- /dev/null
++++ b/docs/vxn-backend.md
+@@ -0,0 +1,135 @@
++# vxn backend (Xen DomU isolation)
++
++The `vxn` sandbox backend runs an AXIS-sandboxed command inside a **Xen DomU** —
++a small VM with its own kernel — instead of as an isolated host process. Where
++the native backend confines a process on the host kernel (Landlock + seccomp +
++namespaces), vxn puts a whole VM boundary around the workload: a guest-kernel
++exploit cannot reach the host, and denied resources simply do not exist in the
++guest. It is selected with `axis run --policy vxn` (or any policy whose
++`runtime.provider` is `vxn`).
++
++> **Important:** the AXIS-native process primitives (seccomp-BPF, Landlock,
++> netns, cgroups) are kernel-local and do **not** cross into the DomU's separate
++> kernel, so they are not applied inside the guest. The VM boundary itself
++> enforces the big-ticket policy (filesystem isolation, network block, memory
++> cap, separate kernel). Fine-grained in-guest enforcement is a documented
++> future layer.
++
++## Prerequisite: a vxn SDK
++
++The vxn backend drives the **`vxn` CLI**, which ships in a *vxn SDK* built from
++the `meta-virtualization` Yocto layer. The SDK is a relocatable tarball bundling
++the `vxn` host CLI plus a Xen dom0 image that runs under QEMU (KVM-accelerated),
++so it works on any Linux host (or WSL2) with `/dev/kvm` — no Xen hardware
++needed.
++
++Build it yourself following meta-virtualization's **`docs/vxn-sdk.md`**
++(<https://git.yoctoproject.org/meta-virtualization/>, under `docs/`), or install
++a prebuilt SDK if one was provided to you. Then, in the shell where you run
++`axis`:
++
++```
++source <sdk-install-dir>/init-env.sh     # puts vxn / vxn-<arch> on PATH
++vxn-x86_64 run --rm alpine echo hi         # sanity-check the SDK itself first
++```
++
++If the sanity check works, AXIS can use the backend.
++
++## Running an agent under vxn
++
++```
++axis run --policy vxn -- claude
++```
++
++- The **image is derived from the command name** when `VXN_BASE_IMAGE` is unset
++  (`-- claude` → image `claude`), which vxn auto-provisions from its shipped
++  recipe on first run. Set `VXN_BASE_IMAGE` to run a command in a fixed base
++  image instead (`VXN_BASE_IMAGE=alpine axis run --policy vxn -- echo hi`).
++- Under a tty, `axis run` is interactive: the backend adds `-it`, and the
++  agent's TUI (e.g. claude's login/REPL) drives your real terminal.
++- The built-in `vxn` policy sets `network.mode: allow` so an interactive agent's
++  OAuth/API calls work out of the box. Use a file policy with
++  `network.mode: block` for a no-egress run.
++
++## Environment knobs
++
++| Variable | Effect |
++|----------|--------|
++| `VXN_BIN` | vxn binary to invoke (default `vxn`). Set to the arch-suffixed `vxn-x86_64`, an absolute path, or the in-dom0 `vxn` (see config a/b below). |
++| `VXN_BASE_IMAGE` | Force the DomU image instead of deriving it from the command. |
++| `VXN_FORWARD_ENV` | Comma-separated host env var **names** to forward into the DomU. AXIS strips secrets from the collected sandbox env; this is the knowing opt-in to re-introduce e.g. `ANTHROPIC_API_KEY` for a direct-key (non-proxy) run. Nothing is forwarded unless named here. |
++| `VXN_MEMORY` / `VXN_VCPUS` | Memory / vCPUs for the container DomU. |
++
++## Network modes
++
++The policy's `network.mode` maps to the DomU NIC:
++
++- `block` → `--no-network` (no vif at all — stronger than a netns)
++- `allow` → default bridge (DomU gets its own networking)
++- `proxy` → **fails closed**: vxn has no AXIS managed-inference path yet, and
++  silently downgrading strict-proxy to allow would violate the isolation
++  contract. Use `block` or `allow`.
++
++## config "a" vs config "b"
++
++- **config a (default):** the host `vxn` CLI boots and uses a nested dom0 under
++  QEMU and dispatches the container DomU. The backend just spawns `vxn run …`.
++  Nothing extra to set.
++- **config b:** AXIS and vxn run *inside* a real Xen dom0. Point `VXN_BIN` at the
++  in-dom0 `vxn` — no code change, same backend.
++
++## Porting to other host platforms
++
++Today the vxn backend is **Linux-only by design**: it lives in
++`crates/axis-sandbox/src/linux/vxn.rs`, is selected only as the Linux `LinuxVxn`
++backend, and `sandbox.rs` returns `Unsupported` for `provider: vxn` on Windows
++and other platforms. This section is what a port *would* take — it is not yet
++implemented.
++
++Two independent things must be true on the target host.
++
++**1. A `vxn` CLI on that host** (the backend spawns it; `VXN_BIN` points at it).
++The backend's contract with the CLI is small and OS-agnostic in shape:
++
++- `vxn run [-it] [--env-b64=…] [--policy-b64=…] <image> <argv…>` starts the sandbox;
++- the backend manages the child by pid / stdio / (pty for `-it`) / wait / kill.
++
++So "interface with a vxn running on that platform" means a `vxn` that speaks this
++same `run` interface and reaches a dom0. The `vxn` CLI itself is POSIX shell +
++`ssh` + the `xl` toolstack, so the host needs a POSIX environment.
++
++**2. The axis Rust selecting + driving it on that OS.** The code is nearly
++portable; the concrete Linux-isms are:
++
++- **Placement + gating** — the module is under `src/linux/` and `sandbox.rs`
++  hard-errors on non-Linux. Lift `VxnSandbox` to a shared location (or add the
++  target OS to the platform selection) and relax the guard.
++- **`libc::kill(pid, SIGTERM/SIGKILL)`** — the only OS-specific syscall (the
++  kill/timeout path). Replace with a portable stop: `Child::kill()` for the hard
++  kill, and a `#[cfg(unix)]` / `#[cfg(windows)]` split (or a small crate) for the
++  graceful SIGTERM-then-SIGKILL sequence.
++
++Everything else — `Command`, `Stdio`, the child stdio handles, the base64 /
++env / policy-blob building, image derivation — is already cross-platform.
++
++**Per platform:**
++
++- **macOS** — the tractable case. `bash` and `ssh` are native, so the `vxn` SDK
++  CLI runs as-is and the dom0 boots under QEMU (HVF). Work is the Rust changes
++  above (small, mechanical) plus verifying the CLI path.
++- **Other Unix (BSD, …)** — same shape as macOS: a POSIX shell + `ssh` are
++  present; the Rust port is identical.
++- **Windows** — the hard case, deliberately excluded today. There is no native
++  POSIX path for the `vxn` CLI (shell + ssh + xl), so it needs **WSL**: run the
++  `vxn` CLI inside WSL2 and point `VXN_BIN` at a wrapper that crosses into it (the
++  dom0 boots under WSL2 / Hyper-V / QEMU). This is why the code returns a
++  Windows-specific `Unsupported` message rather than the generic one.
++
++In short: the axis-side port is small — relocate the module, relax the guard, and
++swap the one `libc::kill` for a portable stop. The substantive requirement is a
++**POSIX `vxn` CLI on the host**: native on macOS/BSD, WSL on Windows.
++
++## See also
++
++- meta-virtualization `docs/vxn-sdk.md` — building the SDK.
++- The extracted SDK's `README.txt` — the three vxn runtime modes.

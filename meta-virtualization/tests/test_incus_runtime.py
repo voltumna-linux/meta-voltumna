@@ -5,15 +5,11 @@
 Incus runtime tests - boot container-image-host with incus and verify
 system container management.
 
-Build prerequisites (in local.conf):
-    require conf/distro/include/meta-virt-host.conf
-    require conf/distro/include/container-host-incus.conf
-    MACHINE = "qemux86-64"  # or qemuarm64
-
-    bitbake container-image-host
+The tests automatically build container-image-host with CONTAINER_PROFILE=incus
+before booting. No local.conf changes needed.
 
 Run:
-    pytest tests/test_incus_runtime.py -v --machine qemux86-64
+    pytest tests/test_incus_runtime.py -v --poky-dir /opt/bruce/poky
 
 Options:
     --boot-timeout      QEMU boot timeout (default: 120s)
@@ -22,8 +18,11 @@ Options:
 
 import os
 import re
+import subprocess
+import tempfile
 import time
 import pytest
+from pathlib import Path
 
 try:
     import pexpect
@@ -38,19 +37,60 @@ pytestmark = [
 ]
 
 
+def _run_bitbake(build_dir, recipe, extra_vars=None, timeout=3600):
+    """Run bitbake with optional variable overrides via -R conf file."""
+    bb_cmd = "bitbake"
+    conf_file = None
+    if extra_vars:
+        conf_file = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.conf', prefix='pytest-incus-',
+            dir=str(build_dir / "conf"), delete=False)
+        for var, val in extra_vars.items():
+            conf_file.write(f'{var} = "{val}"\n')
+        conf_file.close()
+        bb_cmd += f" -R {conf_file.name}"
+    bb_cmd += f" {recipe}"
+    poky_dir = build_dir.parent
+    full_cmd = f"bash -c 'cd {poky_dir} && source oe-init-build-env {build_dir} >/dev/null 2>&1 && {bb_cmd}'"
+    try:
+        return subprocess.run(full_cmd, shell=True, cwd=build_dir,
+                              timeout=timeout, capture_output=True, text=True)
+    finally:
+        if conf_file:
+            os.unlink(conf_file.name)
+
+
 @pytest.fixture(scope="module")
-def incus_qemu(request):
-    """Boot a QEMU VM with incus and return the pexpect session."""
+def incus_image(request):
+    """Build container-image-host with incus profile."""
+    poky_dir = Path(request.config.getoption("--poky-dir"))
+    bd = request.config.getoption("--build-dir")
+    build_dir = Path(bd) if bd else poky_dir / "build"
+    result = _run_bitbake(
+        build_dir, "container-image-host",
+        extra_vars={
+            "CONTAINER_PROFILE": "incus",
+        },
+    )
+    if result.returncode != 0:
+        pytest.fail(f"Incus image build failed: {result.stderr}")
+
+
+@pytest.fixture(scope="module")
+def incus_qemu(request, incus_image):
+    """Build incus image, boot a QEMU VM, and return the pexpect session."""
     machine = request.config.getoption("--machine", default="qemux86-64")
     boot_timeout = int(request.config.getoption("--boot-timeout", default="120"))
     no_kvm = request.config.getoption("--no-kvm", default=False)
 
-    builddir = os.environ.get("BUILDDIR", os.path.expanduser("~/poky/build"))
+    poky_dir = Path(request.config.getoption("--poky-dir"))
+    bd = request.config.getoption("--build-dir")
+    builddir = str(Path(bd) if bd else poky_dir / "build")
 
     kvm_opt = "" if no_kvm else "kvm"
-    cmd = f"runqemu {machine} nographic slirp {kvm_opt} qemuparams=\"-m 4096\""
+    cmd = f"runqemu {machine} container-image-host ext4 nographic slirp {kvm_opt} qemuparams=\"-m 4096\""
 
-    child = pexpect.spawn(f"bash -c 'source {builddir}/oe-init-build-env {builddir} >/dev/null 2>&1 && {cmd}'",
+    child = pexpect.spawn(f"bash -c 'cd {poky_dir} && source oe-init-build-env {builddir} >/dev/null 2>&1 && {cmd}'",
                           timeout=boot_timeout, encoding="utf-8", logfile=None)
 
     # Wait for login prompt

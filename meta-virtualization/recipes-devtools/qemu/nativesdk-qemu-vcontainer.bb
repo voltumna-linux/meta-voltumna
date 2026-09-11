@@ -54,9 +54,26 @@ EXTRA_OECONF:append = " --target-list=${@get_qemu_target_list(d)}"
 # virtfs is needed for volume mounts (-v host:container)
 PACKAGECONFIG = "fdt kvm pie slirp virtfs"
 
-# Only build the QEMU targets we actually need for vcontainer
-# This saves ~150MB compared to building all architectures
-QEMU_TARGETS = "aarch64 x86_64"
+# Build only the QEMU system targets for the architectures the SDK actually
+# bundles (VCONTAINER_ARCHITECTURES). An x86_64-only SDK then drops
+# qemu-system-aarch64 (~33MB). Fallback default matches the tarball's.
+VCONTAINER_ARCHITECTURES ??= "x86_64 aarch64"
+QEMU_TARGETS = "${VCONTAINER_ARCHITECTURES}"
+
+# EDK2 firmware for architectures this SDK does not target is dead weight
+# (~290MB). riscv, loongarch and 32-bit arm are never vcontainer targets, so
+# always drop them; aarch64 firmware is kept only when the SDK actually builds
+# for aarch64 (VCONTAINER_ARCHITECTURES) -- so a future ARM-host SDK keeps it.
+# x86_64 OVMF is always kept (Xen dom0 XEN_BOOT_MODE=efi).
+# NOTE: arch-driven, NOT vxn-specific -- this qemu is the SDK's host qemu for
+# ANY vcontainer build (vdkr/vpdmn boot the vruntime VMs; vxn boots the dom0).
+do_install:append() {
+    find ${D} -type f \( -name 'edk2-riscv-*.fd' -o -name 'edk2-loongarch64-*.fd' \
+        -o -name 'edk2-arm-*.fd' \) -delete 2>/dev/null || true
+    if ! echo "${VCONTAINER_ARCHITECTURES}" | grep -qw aarch64; then
+        find ${D} -type f -name 'edk2-aarch64-*.fd' -delete 2>/dev/null || true
+    fi
+}
 
 # QEMU's configure doesn't support --disable-static, so disable it
 DISABLE_STATIC = ""

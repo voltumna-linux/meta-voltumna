@@ -155,10 +155,14 @@ Create explicit layers with fine-grained control:
         app:packages:curl \
     "
 
-    # IMAGE_INSTALL must include all packages to trigger builds
-    IMAGE_INSTALL = "base-files base-passwd netbase busybox curl"
-
 Result: 3 layers (base, shell, app)
+
+Packages named in any `packages:` layer are automatically folded into
+`IMAGE_INSTALL`, so do_rootfs's recrdeptask builds them. You do not
+need to repeat the package list in `IMAGE_INSTALL`. If a recipe needs
+additional packages that aren't part of any final layer (e.g. for a
+rootfs-only postprocess fixup), it can still add to `IMAGE_INSTALL`
+itself — the auto-derivation is additive.
 
 #### Layer Definition Format
 
@@ -169,6 +173,7 @@ Result: 3 layers (base, shell, app)
 | `packages` | `pkg1+pkg2+pkg3` | Install packages (use + delimiter) |
 | `directories` | `/path1+/path2` | Copy directories from IMAGE_ROOTFS |
 | `files` | `/file1+/file2` | Copy specific files from IMAGE_ROOTFS |
+| `host` | `src:dst+src:dst` | Copy from build machine (sparingly — see below) |
 
 #### Example Recipes
 
@@ -180,7 +185,6 @@ OCI_LAYERS = "\
     python:packages:python3+python3-pip \
     app:directories:/opt/myapp \
 "
-IMAGE_INSTALL = "base-files base-passwd netbase python3 python3-pip myapp"
 ```
 
 **Two-layer with base image + multi-layer app:**
@@ -192,6 +196,33 @@ OCI_LAYERS = "\
     app:directories:/opt/myapp \
 "
 ```
+
+#### Conditional Packages per Layer
+
+Use `${@bb.utils.contains(...)}` directly inside a layer's package list
+to add or omit packages based on `PACKAGECONFIG` (or any other
+distro/recipe variable) without duplicating the whole `OCI_LAYERS`
+declaration in two branches:
+
+```bitbake
+PACKAGECONFIG ??= ""
+PACKAGECONFIG[dev] = ""
+
+OCI_LAYER_MODE = "multi"
+OCI_LAYERS = "\
+    base:packages:base-files+base-passwd+netbase \
+    python:packages:python3+coreutils${@bb.utils.contains('PACKAGECONFIG', 'dev', '+python3-pip', '', d)} \
+"
+```
+
+The expression expands to `+python3-pip` when `dev` is enabled and to
+nothing otherwise. Because the `+` delimiter is folded into the
+substituted text, the resulting layer string is well-formed in both
+cases (`python3+coreutils` or `python3+coreutils+python3-pip`).
+
+This composes with the auto-derivation above: `python3-pip` is added to
+`IMAGE_INSTALL` only when the `dev` config is active, exactly as if you
+had written it out by hand.
 
 ### Layer Caching
 
@@ -341,6 +372,57 @@ To get the digest for a remote container, use skopeo:
 Install in your host image:
 
     IMAGE_INSTALL:append:pn-container-image-host = " my-bundle"
+
+
+Acknowledging Third-Party Container Licenses
+--------------------------------------------
+
+Every fetch of a remote container emits a build-time warning to remind
+integrators that they are shipping content they did not build from source:
+
+    WARNING: Fetching third-party container: docker.io/library/alpine
+             Ensure you have rights to redistribute this container in your
+             image. Check the container's license terms before distribution.
+             To acknowledge this container and silence this warning
+             (downgrades to a bb.note for build-log/SBOM audit), add to
+             local.conf or your distro config:
+               CONTAINER_FLAGS_ACCEPTED += "docker.io/library/alpine"
+
+Once you have reviewed the container's license and confirmed redistribution
+rights, add the URL to `CONTAINER_FLAGS_ACCEPTED` in `local.conf` or your
+distro config:
+
+    CONTAINER_FLAGS_ACCEPTED += "docker.io/library/alpine"
+    CONTAINER_FLAGS_ACCEPTED += "docker.io/library/busybox"
+
+Subsequent builds demote the warning to a `bb.note`, which is suppressed
+from normal build output but still recorded in `bitbake-cookerdaemon.log`
+and the recipe's task log:
+
+    NOTE: Fetching third-party container (license acknowledged via
+          CONTAINER_FLAGS_ACCEPTED): docker.io/library/alpine
+
+The note is intentionally not silent — it preserves the audit trail for
+SBOM tools and distro release reviews while removing the visible
+"WARNING" line from clean builds.
+
+### Matching rules
+
+- URLs in `CONTAINER_FLAGS_ACCEPTED` are matched against both the full URL
+  (with `:tag` or `@digest`) and the bare URL with tag/digest stripped.
+  Accepting `docker.io/library/alpine` covers `alpine:3.19`, `alpine:3.20`,
+  any `alpine@sha256:...`, etc.
+- The `*` wildcard accepts every third-party container in the build.
+  Convenient for distros that have a standing license-review process,
+  riskier as a casual opt-in.
+
+### Where to set it
+
+Acknowledgement belongs in the **integration layer** — `local.conf`,
+distro config, or an image recipe that gathers multiple bundles. Recipe
+authors should not pre-accept the containers their own recipe bundles;
+that defeats the warning's purpose by hiding the license question from
+the integrator who has to make the call.
 
 
 Container Autostart

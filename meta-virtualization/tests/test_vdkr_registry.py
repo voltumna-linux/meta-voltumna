@@ -112,15 +112,20 @@ class TestImageCompoundCommands:
             return None, None
 
         # Parse the images output to find alpine
+        # Docker output format varies by version:
+        #   Old: REPOSITORY  TAG  IMAGE ID  CREATED  SIZE
+        #   New: IMAGE  ID  DISK USAGE  CONTENT SIZE  EXTRA
         for line in images_result.stdout.splitlines():
-            if "alpine" in line.lower() and "REPOSITORY" not in line:
-                # Parse: REPOSITORY TAG IMAGE_ID CREATED SIZE
+            if "alpine" in line.lower() and "REPOSITORY" not in line and "IMAGE" not in line:
                 parts = line.split()
-                if len(parts) >= 3:
-                    repo = parts[0]
-                    tag = parts[1]
-                    image_id = parts[2]
-                    return f"{repo}:{tag}", image_id
+                if len(parts) >= 2:
+                    image_ref = parts[0]
+                    image_id = parts[1]
+                    # Old format: repo and tag are separate columns
+                    if ':' not in image_ref and len(parts) >= 3:
+                        image_ref = f"{parts[0]}:{parts[1]}"
+                        image_id = parts[2]
+                    return image_ref, image_id
         return None, None
 
     def test_image_ls(self):

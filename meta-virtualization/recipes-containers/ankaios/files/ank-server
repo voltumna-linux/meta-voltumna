@@ -1,0 +1,96 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          ank-server
+# Required-Start:    $remote_fs $network $syslog
+# Required-Stop:     $remote_fs $network $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Ankaios server
+### END INIT INFO
+
+set -e
+
+NAME="ank-server"
+DAEMON="/usr/bin/ank-server"
+CONFIG="/etc/ankaios/ank-server.conf"
+PIDFILE="/run/${NAME}.pid"
+
+[ -r "/etc/default/${NAME}" ] && . "/etc/default/${NAME}"
+
+RUST_LOG="${RUST_LOG:-info}"
+LOGFILE="${LOGFILE:-/var/log/${NAME}.log}"
+
+is_running() {
+    [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null
+}
+
+do_start() {
+    if [ ! -x "$DAEMON" ]; then
+        echo "$DAEMON not installed"
+        return 5
+    fi
+
+    if is_running; then
+        echo "$NAME already running"
+        return 0
+    fi
+
+    export RUST_LOG
+    mkdir -p "$(dirname "$PIDFILE")" "$(dirname "$LOGFILE")"
+
+    start-stop-daemon -S -b -m -p "$PIDFILE" -x /bin/sh -- -c "exec \"$DAEMON\" -x \"$CONFIG\" >>\"$LOGFILE\" 2>&1"
+}
+
+do_stop() {
+    if ! [ -f "$PIDFILE" ]; then
+        return 0
+    fi
+
+    start-stop-daemon -K -p "$PIDFILE" -x "$DAEMON" -s TERM || true
+
+    for _i in 1 2 3 4 5; do
+        if is_running; then
+            sleep 1
+        else
+            break
+        fi
+    done
+
+    if is_running; then
+        start-stop-daemon -K -p "$PIDFILE" -x "$DAEMON" -s KILL || true
+    fi
+
+    rm -f "$PIDFILE"
+}
+
+do_status() {
+    if is_running; then
+        echo "$NAME running"
+        return 0
+    fi
+
+    echo "$NAME not running"
+    return 3
+}
+
+case "$1" in
+    start)
+        do_start
+        ;;
+    stop)
+        do_stop
+        ;;
+    restart|force-reload)
+        do_stop
+        do_start
+        ;;
+    status)
+        do_status
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|force-reload|status}"
+        exit 2
+        ;;
+esac
+
+exit 0

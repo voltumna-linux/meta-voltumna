@@ -9,8 +9,8 @@ SRCNAME = "image-spec"
 PKG_NAME = "github.com/opencontainers/${SRCNAME}"
 SRC_URI = "git://${PKG_NAME};destsuffix=${BB_GIT_DEFAULT_DESTSUFFIX}/src/${PKG_NAME};branch=main;protocol=https"
 
-SRCREV = "39ab2d54cfa8fe1bee1ff20001264986d92ab85a"
-PV = "v1.1.0"
+SRCREV = "13cff54902ec9ad6320cbc487a685b66fcd67171"
+PV = "v1.1.1"
 
 # NO-OP the do compile rule because this recipe is source only.
 do_compile() {

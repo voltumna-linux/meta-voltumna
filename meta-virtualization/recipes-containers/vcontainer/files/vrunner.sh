@@ -28,6 +28,7 @@ set -e
 
 VERSION="3.5.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PATH="$PATH:/sbin:/usr/sbin"
 
 # Runtime selection: docker or podman
 # This affects blob directory, cmdline prefix, state directory, and log prefix
@@ -64,8 +65,22 @@ set_runtime_config() {
             STATE_DIR_BASE="${VPDMN_STATE_DIR:-$HOME/.${TOOL_NAME}}"
             STATE_FILE="podman-state.img"
             ;;
+        vxn)
+            # qemu-xen mode: the host relays commands to dom0's own vxn front
+            # end (skopeo + xl), so the dispatched command word is "vxn", and
+            # that same value arrives here as --runtime. CMDLINE_PREFIX/state
+            # mirror docker (vxn is docker-compatible); note CMDLINE_PREFIX is
+            # not actually applied for qemu-xen since the wic boot ignores the
+            # kernel -append. State lives under ~/.vxn (matches VXN_* paths).
+            TOOL_NAME="${VCONTAINER_RUNTIME_NAME:-vxn}"
+            BLOB_SUBDIR="vxn-blobs"
+            BLOB_SUBDIR_ALT="blobs"
+            CMDLINE_PREFIX="docker"
+            STATE_DIR_BASE="${VXN_STATE_DIR:-$HOME/.${TOOL_NAME}}"
+            STATE_FILE="docker-state.img"
+            ;;
         *)
-            echo "ERROR: Unknown runtime: $RUNTIME (use docker or podman)" >&2
+            echo "ERROR: Unknown runtime: $RUNTIME (use docker, podman, or vxn)" >&2
             exit 1
             ;;
     esac
@@ -334,6 +349,7 @@ BATCH_IMPORT="false"
 
 # Daemon mode options
 DAEMON_MODE=""          # start, send, stop, status
+FORCE="false"           # --force: skip graceful daemon_stop, go straight to QMP quit + SIGKILL
 DAEMON_SOCKET_DIR=""    # Directory for daemon socket/PID files
 IDLE_TIMEOUT="1800"     # Default: 30 minutes
 EXIT_GRACE_PERIOD=""    # Entrypoint exit grace period (vxn)
@@ -472,6 +488,10 @@ while [ $# -gt 0 ]; do
             DAEMON_MODE="stop"
             shift
             ;;
+        --force)
+            FORCE="true"
+            shift
+            ;;
         --daemon-status)
             DAEMON_MODE="status"
             shift
@@ -596,6 +616,32 @@ daemon_stop() {
         return 0
     fi
 
+    # --force: skip the graceful ===SHUTDOWN=== + up-to-60s poll entirely and
+    # tear the VM down now. For a wedged guest (e.g. reboot-looping after a
+    # failed run) the graceful path blocks the caller; this goes straight to
+    # QMP quit, then SIGKILL, then any backend cleanup. NOTE: this bypasses the
+    # guest's clean umount, so the state disk may be left mid-write -- use only
+    # when the guest is stuck; recover the next session with `memres restart --clean`.
+    if [ "$FORCE" = "true" ]; then
+        local fpid=$(cat "$DAEMON_PID_FILE" 2>/dev/null)
+        log "WARN" "Force-stopping daemon (PID: ${fpid:-unknown})..."
+        local qmp_sock="$DAEMON_SOCKET_DIR/qmp.sock"
+        if [ -S "$qmp_sock" ]; then
+            echo '{"execute":"qmp_capabilities"}{"execute":"quit"}' | \
+                socat - "UNIX-CONNECT:$qmp_sock" >/dev/null 2>&1 || true
+            sleep 1
+        fi
+        if [ -n "$fpid" ]; then
+            kill -0 "$fpid" 2>/dev/null && { kill "$fpid" 2>/dev/null; sleep 1; }
+            kill -0 "$fpid" 2>/dev/null && kill -9 "$fpid" 2>/dev/null || true
+        fi
+        # backend teardown (e.g. xl destroy) best-effort
+        type hv_destroy_vm >/dev/null 2>&1 && hv_destroy_vm 2>/dev/null || true
+        rm -f "$DAEMON_PID_FILE" "$DAEMON_SOCKET"
+        log "INFO" "Daemon force-stopped"
+        return 0
+    fi
+
     # Use backend-specific stop if available (e.g. Xen xl shutdown/destroy)
     if type hv_daemon_stop >/dev/null 2>&1; then
         hv_daemon_stop
@@ -607,13 +653,71 @@ daemon_stop() {
     local pid=$(cat "$DAEMON_PID_FILE")
     log "INFO" "Stopping daemon (PID: $pid)..."
 
-    # Send shutdown command via socket
+    # Send shutdown command via socket, then poll until the VM exits.
+    #
+    # The guest's graceful_shutdown() does sync + umount of
+    # /var/lib/containers/storage + blockdev --flushbufs + sync + sleep 2
+    # + reboot -f. Under load (e.g. tens of MB of just-imported layer
+    # blobs awaiting ext4 journal commit) this routinely takes 5-30
+    # seconds. A fixed 2-second wait followed by SIGTERM kills the
+    # guest mid-umount and leaves the state disk's ext4 journal
+    # half-committed: layer files have correct inode metadata but
+    # partially-unwritten data extents, and the next session's reads
+    # hit EOF or CRC failures during tar-split layer reassembly:
+    #
+    #   Error: reading blob sha256:<hash>: EOF
+    #   Error: reading blob sha256:<hash>: file integrity checksum
+    #          failed for "<file>"
     if [ -S "$DAEMON_SOCKET" ]; then
-        echo "===SHUTDOWN===" | socat - "UNIX-CONNECT:$DAEMON_SOCKET" 2>/dev/null || true
-        sleep 2
+        # Hold the connection open briefly after sending the command so the
+        # guest's "===SHUTTING_DOWN===" ack has somewhere to land (mirrors
+        # the ===PING===/===PONG=== handshake above). A bare `echo | socat`
+        # closes the connection the instant echo's stdin hits EOF; the
+        # guest's write of its ack into that already-closed channel then
+        # never returns, so it never reaches `break` and graceful_shutdown()
+        # never runs -- every stop was silently burning the full 60s poll
+        # below and falling through to QMP quit / SIGKILL instead.
+        { echo "===SHUTDOWN==="; sleep 3; } | timeout 10 socat - "UNIX-CONNECT:$DAEMON_SOCKET" 2>/dev/null || true
+        # Poll up to 60s (120 * 0.5s). Generous enough to cover heavy
+        # ext4 journal commits; short enough that a truly hung guest
+        # doesn't block the caller indefinitely.
+        for _i in $(seq 1 120); do
+            kill -0 "$pid" 2>/dev/null || break
+            sleep 0.5
+        done
     fi
 
-    # If still running, kill it
+    # If still running after the graceful window, the guest didn't complete
+    # its graceful_shutdown() — meaning the state disk's ext4 journal may
+    # not have committed all pending writes from this session. Any escalation
+    # from here on risks leaving the disk image partially-written: layer
+    # files with correct inode metadata but unwritten data extents, which
+    # surface as "reading blob ...: EOF" or "file integrity checksum failed"
+    # errors on the *next* session's reads. Warn loudly so the operator can
+    # decide whether to start the next session with `memres restart --clean`.
+    if kill -0 "$pid" 2>/dev/null; then
+        log "WARN" "Guest did not exit within graceful window — state disk integrity may be compromised."
+        log "WARN" "If subsequent sessions report 'reading blob ...: EOF' or 'file integrity checksum failed',"
+        log "WARN" "discard state with: ${VCONTAINER_RUNTIME_NAME:-vrunner} memres restart --clean"
+    fi
+
+    # If still running after the graceful window, escalate via QMP quit.
+    # Functionally similar to SIGTERM at the QEMU-process level (both
+    # converge on qemu_system_killed and a block-layer flush), but goes
+    # through QEMU's monitor interface — the same path hv_idle_shutdown()
+    # uses. Keeps the two escalation paths consistent.
+    if kill -0 "$pid" 2>/dev/null; then
+        local qmp_sock="$DAEMON_SOCKET_DIR/qmp.sock"
+        if [ -S "$qmp_sock" ]; then
+            log "INFO" "Sending QMP quit..."
+            echo '{"execute":"qmp_capabilities"}{"execute":"quit"}' | \
+                socat - "UNIX-CONNECT:$qmp_sock" >/dev/null 2>&1 || true
+            sleep 2
+        fi
+    fi
+
+    # If QMP quit didn't take (or no QMP socket — older configs), fall
+    # back to SIGTERM.
     if kill -0 "$pid" 2>/dev/null; then
         log "INFO" "Sending SIGTERM..."
         kill "$pid" 2>/dev/null || true
@@ -628,6 +732,24 @@ daemon_stop() {
 
     rm -f "$DAEMON_PID_FILE" "$DAEMON_SOCKET"
     log "INFO" "Daemon stopped"
+}
+
+# Directed hint when the guest reports a TLS trust failure -- typically a
+# corporate TLS-intercepting proxy (e.g. Zscaler) whose root CA the VM's trust
+# store doesn't have, so docker/skopeo pulls fail with x509.
+_vxn_cert_hint() {
+    local ca_dir="${VCONTAINER_CA_DIR:-$SCRIPT_DIR/certs}"
+    {
+        echo ""
+        echo "[${VCONTAINER_RUNTIME_NAME:-vcontainer}] TLS certificate not trusted by the VM (x509)."
+        echo "  This is typical behind a corporate TLS proxy (e.g. Zscaler): the VM does"
+        echo "  not trust the CA that signed the registry's certificate. To fix, install"
+        echo "  your corporate root CA into the VM's system trust store -- drop the"
+        echo "  PEM/.crt file into:"
+        echo "      $ca_dir/"
+        echo "  and re-run. It is installed via update-ca-certificates on boot."
+        echo "  (See $ca_dir/README.)"
+    } >&2
 }
 
 daemon_send() {
@@ -661,6 +783,7 @@ daemon_send() {
 
     local EXIT_CODE=0
     local in_output=false
+    local _cert_err=false
     local TIMEOUT=60
 
     # Send command to socat's stdin
@@ -685,6 +808,10 @@ daemon_send() {
             *)
                 if [ "$in_output" = "true" ]; then
                     echo "$line"
+                    case "$line" in
+                        *"certificate signed by unknown"*|*"x509: certificate"*|*"tls: failed to verify"*)
+                            _cert_err=true ;;
+                    esac
                 fi
                 ;;
         esac
@@ -694,6 +821,8 @@ daemon_send() {
     eval "exec ${SOCAT[0]}<&- ${SOCAT[1]}>&-"
     kill $SOCAT_PID 2>/dev/null || true
     wait $SOCAT_PID 2>/dev/null || true
+
+    [ "$_cert_err" = "true" ] && _vxn_cert_hint
 
     return ${EXIT_CODE:-0}
 }
@@ -863,8 +992,13 @@ if [ -z "$DOCKER_CMD" ] && [ "$DAEMON_MODE" != "start" ] && [ "$BATCH_IMPORT" !=
     exit 1
 fi
 
-# Create temp directory early (needed for batch import and other operations)
-TEMP_DIR="${TMPDIR:-/tmp}/vdkr-$$"
+# Create temp directory early (needed for batch import and other operations).
+# Default to a disk-backed path under $HOME, NOT /tmp: in a vxn dom0 /tmp is a
+# small RAM tmpfs, and image prep (copying the OCI out of the ~/.vxn/images cache
+# plus building the DomU disk) needs real space for multi-hundred-MB images --
+# that overflow is the "No space left on device" seen on a cache-hit. $HOME is on
+# the rootfs (disk) in both dom0 and on the host. An explicit TMPDIR still wins.
+TEMP_DIR="${TMPDIR:-${HOME:-/var/tmp}/.vxn/tmp}/vdkr-$$"
 mkdir -p "$TEMP_DIR"
 
 # ============================================================================
@@ -983,6 +1117,117 @@ setup_auth_share() {
     # --verbose mode only.
     log "INFO" "Registry auth config staged on read-only 9p share (tag=$auth_tag)"
     log "DEBUG" "Auth source: $AUTH_CONFIG"
+}
+
+# Stage host-provided CA certificate(s) into a dedicated read-only 9p share so
+# the guest/dom0 can install them into its SYSTEM trust store -- exactly how an
+# OS admin adds a corporate root CA (update-ca-certificates), which docker and
+# skopeo then honour automatically. Needed behind TLS-intercepting corporate
+# proxies (e.g. Zscaler): otherwise the guest's pull from docker.io fails with
+# "x509: certificate signed by unknown authority". Certs are read from
+# $VCONTAINER_CA_DIR, else the SDK's certs/ dir (next to this script). The guest
+# re-installs them every boot since it is ephemeral. Generic across runtimes.
+CA_SHARE_DIR=""
+setup_ca_share() {
+    local ca_dir="${VCONTAINER_CA_DIR:-$SCRIPT_DIR/certs}"
+
+    # Cert source dirs, searched in order:
+    #   1. VCONTAINER_CA_DIR (explicit) or the SDK's certs/ drop dir.
+    #   2. The host's admin-added trust dir(s) -- ONLY when the user did not set
+    #      an explicit VCONTAINER_CA_DIR. This mirrors native docker, which
+    #      trusts whatever the OS admin installed: on Debian/Ubuntu/WSL the
+    #      locally-added certs (e.g. a corporate proxy root) live in
+    #      /usr/local/share/ca-certificates -- the delta, NOT the base bundle,
+    #      so we don't drag the whole distro CA set onto the share. It means a
+    #      machine already configured for its proxy Just Works with no manual
+    #      copy into certs/. Set VCONTAINER_CA_SYSTEM=0 to opt out.
+    local ca_dirs="$ca_dir"
+    if [ "${VCONTAINER_CA_SYSTEM:-1}" = "1" ] && [ -z "${VCONTAINER_CA_DIR:-}" ]; then
+        ca_dirs="$ca_dirs /usr/local/share/ca-certificates /etc/pki/ca-trust/source/anchors"
+    fi
+
+    # Collect cert files via globbing, NOT `ls`. Under `set -e`, an assignment
+    # from a failing command substitution (ls exits non-zero when no *.crt /
+    # *.pem / *.cer match -- e.g. the drop dir holds only its README) aborts
+    # the whole daemon start silently. A non-matching glob stays literal, so
+    # the [ -e ] guard filters it out and the loop is set -e safe.
+    local certs="" f d
+    for d in $ca_dirs; do
+        [ -d "$d" ] || continue
+        for f in "$d"/*.crt "$d"/*.pem "$d"/*.cer; do
+            [ -e "$f" ] && certs="$certs $f"
+        done
+    done
+    [ -z "$certs" ] && return 0
+
+    CA_SHARE_DIR="$TEMP_DIR/ca_share"
+    mkdir -p "$CA_SHARE_DIR"
+    chmod 700 "$CA_SHARE_DIR"
+    local n=0
+    for f in $certs; do
+        # update-ca-certificates only picks up *.crt, so normalise the name.
+        if cp "$f" "$CA_SHARE_DIR/$(basename "${f%.*}").crt" 2>/dev/null; then
+            n=$((n + 1))
+        fi
+    done
+    if [ "$n" -eq 0 ]; then
+        rm -rf "$CA_SHARE_DIR"; CA_SHARE_DIR=""; return 0
+    fi
+
+    local ca_tag="${TOOL_NAME}_ca"
+    hv_build_9p_opts "$CA_SHARE_DIR" "$ca_tag" "readonly=on"
+    # Flag for kernel-boot guests (vdkr/vpdmn). qemu-xen (wic boot) ignores
+    # KERNEL_APPEND; its dom0 cert service mounts the tag unconditionally.
+    KERNEL_APPEND="$KERNEL_APPEND ${CMDLINE_PREFIX}_ca=1"
+    log "INFO" "$n host CA certificate(s) staged on read-only 9p share (tag=$ca_tag)"
+    log "DEBUG" "CA source dirs:$ca_dirs"
+}
+
+# ---------------------------------------------------------------------------
+# SSH key share (qemu-xen interactive support).
+#
+# Interactive containers (`vxn -it run ... sh`) can't ride the marker command
+# channel -- it isn't a PTY. The transparent SDK instead routes -it over
+# `ssh -tt` to dom0's native vxn, which does the interactive work via
+# `xl create -c`. For that ssh to be passwordless, the SDK's PUBLIC key must be
+# in dom0's authorized_keys. Generate an SDK keypair once and stage the pubkey
+# on a read-only 9p share (tag <tool>_sshkey); dom0 installs it at boot
+# (vxn-authorized-keys.service). Only meaningful for the qemu-xen backend
+# (native-xen vxn runs IN dom0; vdkr/vpdmn already do interactive via the
+# daemon PTY).
+# ---------------------------------------------------------------------------
+SSHKEY_SHARE_DIR=""
+setup_ssh_key_share() {
+    [ "$VCONTAINER_HYPERVISOR" = "qemu-xen" ] || return 0
+
+    local key="${VXN_SSH_KEY:-$HOME/.${TOOL_NAME}/id_${TOOL_NAME}}"
+    local keydir
+    keydir=$(dirname "$key")
+    mkdir -p "$keydir"
+    chmod 700 "$keydir" 2>/dev/null || true
+
+    # Generate the SDK keypair once (idempotent). ed25519: small, fast, no size
+    # prompt; no passphrase -- it is a local dom0-only credential.
+    if [ ! -f "$key" ]; then
+        if ! command -v ssh-keygen >/dev/null 2>&1; then
+            log "WARN" "ssh-keygen not found; interactive (-it) over ssh will be unavailable"
+            return 0
+        fi
+        if ! ssh-keygen -t ed25519 -N '' -C "${TOOL_NAME}-sdk" -f "$key" >/dev/null 2>&1; then
+            log "WARN" "ssh-keygen failed; interactive (-it) over ssh will be unavailable"
+            return 0
+        fi
+    fi
+    [ -f "$key.pub" ] || return 0
+
+    SSHKEY_SHARE_DIR="$TEMP_DIR/sshkey_share"
+    mkdir -p "$SSHKEY_SHARE_DIR"
+    chmod 700 "$SSHKEY_SHARE_DIR"
+    cp "$key.pub" "$SSHKEY_SHARE_DIR/authorized_keys"
+    chmod 644 "$SSHKEY_SHARE_DIR/authorized_keys"
+
+    hv_build_9p_opts "$SSHKEY_SHARE_DIR" "${TOOL_NAME}_sshkey" "readonly=on"
+    log "INFO" "SDK ssh public key staged for dom0 (tag=${TOOL_NAME}_sshkey)"
 }
 
 cleanup() {
@@ -1147,29 +1392,36 @@ hv_setup_arch
 hv_check_accel
 hv_find_command
 
-# Check for kernel
-if [ ! -f "$KERNEL_IMAGE" ]; then
-    log "ERROR" "Kernel not found: $KERNEL_IMAGE"
-    log "ERROR" "Set --blob-dir to location of blobs"
-    log "ERROR" "Build with: bitbake ${TOOL_NAME}-initramfs-create"
-    exit 1
-fi
+# Kernel/initramfs/rootfs validation applies only to backends that boot a
+# Linux kernel directly (qemu, xen DomU) -- their hv_setup_arch sets
+# KERNEL_IMAGE. The qemu-xen backend boots a self-contained Xen dom0 wic
+# instead (no kernel/initramfs blob) and validates that wic in its own
+# hv_setup_arch, so skip these checks when no KERNEL_IMAGE was set.
+if [ -n "${KERNEL_IMAGE:-}" ]; then
+    # Check for kernel
+    if [ ! -f "$KERNEL_IMAGE" ]; then
+        log "ERROR" "Kernel not found: $KERNEL_IMAGE"
+        log "ERROR" "Set --blob-dir to location of blobs"
+        log "ERROR" "Build with: bitbake ${TOOL_NAME}-initramfs-create"
+        exit 1
+    fi
 
-# Check for initramfs
-if [ ! -f "$INITRAMFS" ]; then
-    log "ERROR" "Initramfs not found: $INITRAMFS"
-    log "ERROR" "Build with: MACHINE=qemuarm64 bitbake vdkr-initramfs-build"
-    exit 1
-fi
+    # Check for initramfs
+    if [ ! -f "$INITRAMFS" ]; then
+        log "ERROR" "Initramfs not found: $INITRAMFS"
+        log "ERROR" "Build with: MACHINE=qemuarm64 bitbake vdkr-initramfs-build"
+        exit 1
+    fi
 
-# Check for rootfs image
-if [ ! -f "$ROOTFS_IMG" ]; then
-    log "ERROR" "Rootfs image not found: $ROOTFS_IMG"
-    log "ERROR" "Build with: MACHINE=qemuarm64 bitbake vdkr-initramfs-create"
-    exit 1
-fi
+    # Check for rootfs image
+    if [ ! -f "$ROOTFS_IMG" ]; then
+        log "ERROR" "Rootfs image not found: $ROOTFS_IMG"
+        log "ERROR" "Build with: MACHINE=qemuarm64 bitbake vdkr-initramfs-create"
+        exit 1
+    fi
 
-log "DEBUG" "Using initramfs: $INITRAMFS"
+    log "DEBUG" "Using initramfs: $INITRAMFS"
+fi
 
 # Let backend prepare container image if needed (e.g., Xen pulls OCI via skopeo)
 if type hv_prepare_container >/dev/null 2>&1; then
@@ -1182,28 +1434,48 @@ if [ -n "$INPUT_PATH" ] && [ "$INPUT_TYPE" != "none" ]; then
     log "INFO" "Creating input disk image..."
     INPUT_IMG="$TEMP_DIR/input.img"
 
-    # Calculate size (use -L to dereference hardlinks in OCI containers)
+    # Calculate size. NOTE: no -L. A real rootfs is full of symlinks with
+    # absolute targets (etc/ssl/certs/*, /etc/alternatives/*, zoneinfo); -L makes
+    # du follow them against dom0's root, spraying "cannot access" errors and
+    # undercounting. Plain du counts each file once (hardlinks included) -- the
+    # size we actually need for the disk.
     if [ -d "$INPUT_PATH" ]; then
-        SIZE_KB=$(du -skL "$INPUT_PATH" | cut -f1)
+        SIZE_KB=$(du -sk "$INPUT_PATH" | cut -f1)
     else
         SIZE_KB=$(($(stat -c%s "$INPUT_PATH") / 1024))
     fi
-    SIZE_MB=$(( (SIZE_KB / 1024) + 20 ))
+    # ext4 overhead (journal, inode tables, the default 5% reserved blocks, block
+    # rounding) scales with disk size, so a flat +20MB margin TRUNCATES large
+    # images: a ~300MB binary lost half its bytes here and Bun then SIGBUS'd
+    # mmap'ing past the cut. Give content + 30% + 64MB, and drop the reserved
+    # cushion (-m 0). The image is sparse and lands on ample scratch, so
+    # over-sizing costs nothing.
+    SIZE_MB=$(( (SIZE_KB / 1024) * 130 / 100 + 64 ))
     [ $SIZE_MB -lt 20 ] && SIZE_MB=20
 
     log "DEBUG" "Input size: ${SIZE_KB}KB, Image size: ${SIZE_MB}MB"
 
+    [ "${VXN_TIMING:-0}" = "1" ] && echo "DTIME diskbuild_start $(date +%s.%N)" >&2
     dd if=/dev/zero of="$INPUT_IMG" bs=1M count=$SIZE_MB 2>/dev/null
+    [ "${VXN_TIMING:-0}" = "1" ] && echo "DTIME dd_done $(date +%s.%N)" >&2
 
     if [ -d "$INPUT_PATH" ]; then
-        mke2fs -t ext4 -d "$INPUT_PATH" "$INPUT_IMG" >/dev/null 2>&1
+        _mke2fs_src="$INPUT_PATH"
     else
         # Single file - create temp dir with the file
         EXTRACT_DIR="$TEMP_DIR/input-extract"
         mkdir -p "$EXTRACT_DIR"
         cp "$INPUT_PATH" "$EXTRACT_DIR/"
-        mke2fs -t ext4 -d "$EXTRACT_DIR" "$INPUT_IMG" >/dev/null 2>&1
+        _mke2fs_src="$EXTRACT_DIR"
     fi
+    # Do NOT silence mke2fs: an out-of-space -d copy is exactly what truncated
+    # the binary and turned a hard error into a runtime SIGBUS. Fail loudly.
+    if ! mke2fs -t ext4 -m 0 -F -d "$_mke2fs_src" "$INPUT_IMG" > "$TEMP_DIR/mke2fs.log" 2>&1; then
+        log "ERROR" "mke2fs failed building the container disk (${SIZE_MB}MB may be too small):"
+        while IFS= read -r _l; do log "ERROR" "  mke2fs: $_l"; done < "$TEMP_DIR/mke2fs.log"
+        exit 1
+    fi
+    [ "${VXN_TIMING:-0}" = "1" ] && echo "DTIME mke2fs_done $(date +%s.%N)" >&2
 
     DISK_OPTS="-drive file=$INPUT_IMG,if=virtio,format=raw"
     log "DEBUG" "Input disk: $(ls -lh "$INPUT_IMG" | awk '{print $5}')"
@@ -1452,6 +1724,14 @@ if [ "$DAEMON_MODE" = "start" ]; then
     # read-only 9p share. See setup_auth_share() for the security model.
     setup_auth_share
 
+    # Stage host-provided CA certs (corporate proxy roots) onto a read-only 9p
+    # share; the guest/dom0 installs them into its system trust store.
+    setup_ca_share
+
+    # Stage the SDK ssh public key so dom0 accepts passwordless `ssh -tt` for
+    # transparent interactive (-it) containers. No-op unless qemu-xen backend.
+    setup_ssh_key_share
+
     log "INFO" "Starting daemon..."
     log "DEBUG" "PID file: $DAEMON_PID_FILE"
     log "DEBUG" "Socket: $DAEMON_SOCKET"
@@ -1594,7 +1874,7 @@ if [ "$INTERACTIVE" = "true" ]; then
         log "WARN" "Interactive mode requested but stdin is not a terminal"
     fi
 
-    if [ -t 1 ]; then
+    if [ "$VERBOSE" = "true" ] && [ -t 1 ]; then
         printf "\r\033[0;36m[${TOOL_NAME}]\033[0m Starting container... \r"
     fi
 

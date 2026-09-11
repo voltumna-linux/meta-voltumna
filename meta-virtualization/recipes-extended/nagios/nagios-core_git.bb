@@ -10,7 +10,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=4c4203caac58013115c9ca4b85f296ae"
 
 SRCNAME = "nagios"
 
-SRCREV = "2706fa7a451afe48bd4dc240d72d23fdcec0d9ef"
+SRCREV = "ea1f4cbe2a5743329f689fe16b1a84464102ba39"
 
 SRC_URI = "git://github.com/NagiosEnterprises/nagioscore.git;protocol=https;branch=master \
            file://eventhandlers_nagioscmd_path.patch \
@@ -21,7 +21,7 @@ SRC_URI = "git://github.com/NagiosEnterprises/nagioscore.git;protocol=https;bran
            file://nagios-core-systemd-volatile.conf \
            "
 
-PV = "4.5.9+git"
+PV = "4.5.13+git"
 
 inherit autotools-brokensep update-rc.d systemd update-alternatives pkgconfig
 
@@ -74,8 +74,18 @@ NAGIOS_MODIFY_APACHE ??= "1"
 do_configure:prepend() {
 	# rename these macros to have .m4 suffix so that autoreconf could recognize them
 	for macro in `ls ${S}/autoconf-macros/ax_nagios_get_*`; do
-		mv $macro $macro.m4
+		case "$macro" in
+		    *.m4) ;;
+		    *) mv $macro $macro.m4 ;;
+		esac
 	done
+	# The in-tree aclocal.m4 m4_include()s the macros by their pre-rename
+	# names (matching the upstream layout); after our rename autoreconf's
+	# tracing step fails with `cannot open autoconf-macros/ax_nagios_get_os:
+	# No such file or directory` because the unsuffixed paths are gone.
+	# Drop the stale aclocal.m4 so autoreconf regenerates it from the
+	# actual .m4 file names.
+	rm -f ${S}/aclocal.m4
 }
 
 do_compile() {

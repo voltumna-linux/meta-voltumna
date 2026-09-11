@@ -1,6 +1,6 @@
 DESCRIPTION = "A toolkit to interact with the virtualization capabilities of recent versions of Linux." 
 HOMEPAGE = "http://libvirt.org"
-LICENSE = "LGPL-2.1-or-later & GPL-2.0-or-later"
+LICENSE = "GPL-2.0-or-later AND LGPL-2.1-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263 \
                     file://COPYING.LESSER;md5=4b54a1fd55a448865a0b32d41598759d"
 SECTION = "console/tools"
@@ -26,25 +26,23 @@ RDEPENDS:libvirt-libvirtd:append:aarch64 = " dmidecode"
 #connman blocks the 53 port and libvirtd can't start its DNS service
 RCONFLICTS:${PN}_libvirtd = "connman"
 
-SRCREV_libvirt = "9fa6beff05728a32dd11f7ccb7e3c97fca510029"
+SRCREV_libvirt = "7daf35474716702739f409e8bbea68800229955d"
 
-LIBVIRT_VERSION = "12.1.0"
+LIBVIRT_VERSION = "12.6.0"
 PV = "v${LIBVIRT_VERSION}+git"
 
 SRC_URI = "gitsm://github.com/libvirt/libvirt.git;name=libvirt;protocol=https;branch=master \
            file://libvirtd.sh \
            file://libvirtd.conf \
+           file://run-ptest \
            file://dnsmasq.conf \
            file://hook_support.py \
            file://gnutls-helper.py;subdir=${BP} \
            file://libvirt-qemu.conf \
            file://0001-prevent-gendispatch.pl-generating-build-path-in-code.patch \
-           file://0001-messon.build-remove-build-path-information-to-avoid-.patch \
-           file://0001-tests-meson-clear-absolute-directory-paths.patch \
-           file://0001-qemu_nbdkit.c-use-llu-to-print-time_t.patch \
           "
 
-inherit meson gettext update-rc.d pkgconfig systemd useradd perlnative
+inherit meson gettext update-rc.d pkgconfig systemd useradd perlnative ptest
 USERADD_PACKAGES = "${PN}"
 GROUPADD_PARAM:${PN} = "-r qemu; -r kvm; -r libvirt; -r virtlogin"
 USERADD_PARAM:${PN} = "-r -g qemu -G kvm qemu"
@@ -130,7 +128,7 @@ SYSTEMD_SERVICE:${PN}-libvirtd = " \
 
 # full config
 PACKAGECONFIG ??= "gnutls qemu openvz vmware vbox esx lxc test remote \
-                   libvirtd udev python fuse firewalld libpcap \
+                   libvirtd udev python fuse firewalld libpcap nftables \
                    ${@bb.utils.contains('DISTRO_FEATURES', 'selinux', 'selinux audit libcap-ng', '', d)} \
                    ${@bb.utils.contains('DISTRO_FEATURES', 'xen', 'libxl', '', d)} \
                    ${@bb.utils.contains('DISTRO_FEATURES', 'polkit', 'polkit', '', d)} \
@@ -141,6 +139,11 @@ PACKAGECONFIG:remove:mipsarchn32 = "qemu"
 PACKAGECONFIG:remove:mipsarchn64 = "qemu"
 PACKAGECONFIG:remove:powerpc = "qemu"
 PACKAGECONFIG:remove:riscv32 = "qemu"
+# QEMU 11.0.0+ requires 64-bit host architecture
+PACKAGECONFIG:remove:arm = "qemu"
+PACKAGECONFIG:remove:armeb = "qemu"
+PACKAGECONFIG:remove:mipsarch = "qemu"
+PACKAGECONFIG:remove:x86 = "qemu"
 
 # numactl is NOT compatible with arm
 PACKAGECONFIG:remove:arm = "numactl"
@@ -188,6 +191,46 @@ CVE_STATUS[CVE-2023-3750] = "fixed-version: Fixed in 9.6.0, NVD tracks this as v
 # Enable the Python tool support
 require libvirt-python.inc
 
+do_configure:prepend() {
+      sed -i \
+        -e "s|meson.current_build_dir()|'${PTEST_PATH}/tests'|g" \
+        -e "s|meson.project_build_root()|'${PTEST_PATH}'|g" \
+        -e "s|meson.current_source_dir()|'${PTEST_PATH}/datas/tests'|g" \
+        -e "s|meson.project_source_root()|'${PTEST_PATH}/datas'|g" \
+        ${S}/tests/meson.build ${S}/scripts/rpcgen/tests/meson.build ${S}/tests/schemas/meson.build
+}
+
+# Guard abs_top_builddir/abs_top_srcdir defines with #ifndef to avoid
+# -Werror redefinition conflict when tests pass them via -D compile flags.
+do_configure:append() {
+      sed -i '/^#define abs_top_builddir/c\#ifndef abs_top_builddir\n#define abs_top_builddir " "\n#endif' ${B}/meson-config.h
+      sed -i '/^#define abs_top_srcdir/c\#ifndef abs_top_srcdir\n#define abs_top_srcdir " "\n#endif' ${B}/meson-config.h
+}
+
+
+do_install_ptest() {
+       install -d ${D}${PTEST_PATH}/tests
+       install -d ${D}${PTEST_PATH}/datas/tests
+        # The virshtest expects virsh at ${PTEST_PATH}/tests/tools/virsh, but it is
+        # installed to /usr/bin/virsh by libvirt-virsh. Create a symlink to satisfy
+        # the test's expected path.
+       install -d ${D}${PTEST_PATH}/tools 
+       ln -sf /usr/bin/virsh ${D}${PTEST_PATH}/tools/virsh 
+       find ${B}/tests/  -type f -executable -print -maxdepth 1 | xargs -i cp {} ${D}${PTEST_PATH}/tests -rf
+       cd ${S}/tests && find . -mindepth 1 -maxdepth 1 -type d | xargs -i cp {} ${D}${PTEST_PATH}/datas/tests -a
+       install -m 0755 ${B}/scripts/rpcgen/tests/test_demo ${D}${PTEST_PATH}/tests
+       install -m 0644 ${S}/scripts/rpcgen/tests/*.bin ${D}${PTEST_PATH}/datas/tests
+       install -D -m 0644 -t ${D}${PTEST_PATH}/datas/examples/xml/test/  ${S}/examples/xml/test/*.xml
+       install -D -m 0644 -t ${D}${PTEST_PATH}/datas/examples/xml/storage/ ${S}/examples/xml/storage/*.xml
+       install -D -m 0644 -t ${D}${PTEST_PATH}/datas/src/conf/schemas/ ${S}/src/conf/schemas/*.rng
+       install -D -m 0644 -t ${D}${PTEST_PATH}/datas/src/nwfilter/xml/ ${S}/src/nwfilter/xml/*.xml
+       install -D -m 0644 -t ${D}${PTEST_PATH}/tests/schemas/ ${B}/tests/schemas/*.rng
+       install -m 0644 ${S}/tests/openvzutilstest.conf ${D}${PTEST_PATH}/datas/tests
+       install -d ${D}${PTEST_PATH}/datas/src/network
+}
+
+RDEPENDS:${PN}-ptest += " ${PN}-virsh"
+
 do_compile() {
 	cd ${B}/src
 	# There may be race condition, but without creating these directories
@@ -217,6 +260,16 @@ do_install:append() {
 	install -m 0755 ${UNPACKDIR}/libvirtd.sh ${D}/etc/init.d/libvirtd
 	install -m 0644 ${UNPACKDIR}/libvirtd.conf ${D}/etc/libvirt/libvirtd.conf
 	install -m 0644 ${UNPACKDIR}/libvirt-qemu.conf ${D}${nonarch_libdir}/sysusers.d/libvirt-qemu.conf
+
+	# Disable secrets encryption — requires systemd-creds with TPM or
+	# persistent host key that embedded/QEMU environments do not have.
+	# The encrypted credential generated at build time cannot be decrypted
+	# at runtime on a different machine, causing libvirtd to fail with
+	# "Invalid encryption key for the secret".
+	sed -i 's/^#encrypt_data = 1/encrypt_data = 0/' ${D}${sysconfdir}/libvirt/secret.conf
+	# Remove the stale build-time encrypted key so the init service
+	# does not skip regeneration on first boot
+	rm -f ${D}${localstatedir}/lib/libvirt/secrets/secrets-encryption-key
 
 	if ${@bb.utils.contains('DISTRO_FEATURES','sysvinit','true','false',d)}; then
 	    # This will wind up in the libvirtd package, but will NOT be invoked by default.

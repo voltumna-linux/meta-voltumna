@@ -742,6 +742,10 @@ install_registry_ca
 # both mechanisms are used.
 install_auth_config
 
+# Install host-provided corporate CA(s) into the system trust store BEFORE the
+# engine starts, so dockerd/skopeo pulls trust a TLS-intercepting proxy's cert.
+install_host_ca_certs
+
 # Start containerd and dockerd (Docker-specific)
 start_containerd
 start_dockerd

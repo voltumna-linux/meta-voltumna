@@ -1,0 +1,63 @@
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Subject: [PATCH] x86/io_apic: don't panic on missing legacy timer under a hypervisor
+
+check_timer() validates that the legacy 8254 PIT timer interrupt (IRQ0)
+can be routed to a CPU through the IO-APIC (or, failing that, the 8259A
+PIC, virtual wire, or ExtINT).  It counts PIT ticks via timer_irq_works()
+to confirm delivery.
+
+Generation 2 Hyper-V VMs (and other modern virtual platforms) emulate
+neither the 8254 PIT nor the 8259 PIC, so IRQ0 never fires and every
+routing path check_timer() tries fails:
+
+    ..MP-BIOS bug: 8254 timer not connected to IO-APIC
+    ...trying to set up timer (IRQ0) through the 8259A ... failed.
+    ...trying to set up timer as Virtual Wire IRQ... failed.
+    ...trying to set up timer as ExtINT IRQ... failed :(
+    (XEN) *** Panic: IO-APIC + timer doesn't work!
+
+The legacy timer is not required for timekeeping here: under a hypervisor
+Xen trusts and uses the local APIC timer in TSC-deadline mode (see
+check_deadline_errata() and setup_boot_APIC_clock(), the latter called
+immediately after setup_IO_APIC()/check_timer()).  This is exactly how
+Linux runs on Hyper-V Generation 2.
+
+When running under a hypervisor, downgrade the fatal panic to a warning
+and continue.  This is safe: a platform with a working legacy timer
+returns early from check_timer() long before this point, so only guests
+that genuinely lack a legacy timer reach here, and for those the local
+APIC timer set up next is the intended time source.
+
+Upstream-Status: Pending
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ xen/arch/x86/io_apic.c | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+--- a/xen/arch/x86/io_apic.c
++++ b/xen/arch/x86/io_apic.c
+@@ -2005,6 +2005,24 @@
+         return;
+     }
+     printk(" failed :(.\n");
++
++    if ( cpu_has_hypervisor )
++    {
++        /*
++         * Modern hypervisors such as Generation 2 Hyper-V emulate neither
++         * the legacy 8254 PIT nor the 8259 PIC, so there is no IRQ0 timer
++         * interrupt for the routing checks above to validate and they all
++         * fail.  This is not fatal: under a hypervisor the local APIC timer
++         * (TSC-deadline mode) is the real time source and is brought up
++         * immediately afterwards in setup_boot_APIC_clock().  Warn and
++         * continue instead of panicking so Xen can boot as a PIT-less guest.
++         */
++        printk(KERN_WARNING
++               "..no legacy timer interrupt available; "
++               "relying on local APIC timer\n");
++        return;
++    }
++
+     panic("IO-APIC + timer doesn't work!  Boot with apic_verbosity=debug and send a report\n");
+ }

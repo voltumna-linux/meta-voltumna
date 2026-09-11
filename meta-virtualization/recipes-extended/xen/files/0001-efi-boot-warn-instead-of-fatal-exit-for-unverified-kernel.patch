@@ -1,0 +1,62 @@
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Subject: [PATCH] efi/boot: warn instead of fatal exit for unverified kernel without shim
+
+Some hypervisors (notably Hyper-V) report SecureBoot=1 in the EFI
+variable even when Secure Boot enforcement is disabled in the VM
+settings.  Without a shim installed there is no way for Xen to verify
+the kernel, so the existing blexit() makes these environments
+completely unbootable.
+
+Only fatally exit when a shim verification protocol was found but
+actively rejected the kernel.  When no shim is present, downgrade to a
+warning — there is no verification mechanism to enforce.
+
+Upstream-Status: Inappropriate [embedded specific]
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ xen/common/efi/boot.c | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
+
+--- a/xen/common/efi/boot.c
++++ b/xen/common/efi/boot.c
+@@ -1094,11 +1094,13 @@
+     EFI_SHIM_LOCK_PROTOCOL *shim_lock;
+     EFI_STATUS status;
+     bool verified = false;
++    bool shim_found = false;
+
+     /* Look for SHIM_IMAGE_LOADER first. */
+     if ( !EFI_ERROR(efi_bs->LocateProtocol(&shim_image_guid, NULL,
+                                            (void **)&shim_loader)) )
+     {
++        shim_found = true;
+         status = shim_loader->LoadImage(false, ImageHandle, NULL,
+                                         (void *)kernel.ptr, kernel.size,
+                                         &loaded_kernel);
+@@ -1118,16 +1120,22 @@
+     /* Otherwise, fall back to SHIM_LOCK. */
+     if ( !verified &&
+          !EFI_ERROR(efi_bs->LocateProtocol(&shim_lock_guid, NULL,
+-                                           (void **)&shim_lock)) &&
+-         shim_lock->Verify(kernel.ptr, kernel.size) == EFI_SUCCESS )
+-        verified = true;
++                                           (void **)&shim_lock)) )
++    {
++        shim_found = true;
++        if ( shim_lock->Verify(kernel.ptr, kernel.size) == EFI_SUCCESS )
++            verified = true;
++    }
+
+     if ( !verified )
+     {
+         PrintStr(L"Kernel was not verified\n");
+
+-        if ( efi_secure_boot )
++        if ( efi_secure_boot && shim_found )
+             blexit(L"Refusing to boot unverified kernel with UEFI SecureBoot enabled");
++
++        if ( efi_secure_boot )
++            PrintStr(L"WARNING: SecureBoot variable set but no shim present, booting anyway\n");
+     }
+ }

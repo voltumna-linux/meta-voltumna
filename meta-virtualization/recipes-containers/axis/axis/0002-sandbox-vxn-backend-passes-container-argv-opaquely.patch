@@ -1,0 +1,76 @@
+From 217139783232efcab3b4a61f779fd9a8fd8bdb32 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Tue, 11 Aug 2026 17:23:29 +0000
+Subject: [PATCH 02/10] sandbox: vxn backend passes container argv opaquely
+
+VxnSandbox handed the container command to `vxn run` as loose args, where vxn's
+own parser ate container flags (`--version`) and the guest's `sh -c` wrapper
+re-lexed quotes/parens -- so arbitrary commands did not run as issued. AXIS must
+run the exact argv it is given (a faithful SandboxImpl), and real agent CLIs carry
+flags, quotes, and parens.
+
+Encode [command, args...] as a single sentinel token
+`__VXNARGV__<base64(arg0)>,<base64(arg1)>,...` (inline base64, no Cargo.lock
+change). It is one metacharacter-free word that survives the vxn string dispatch;
+the guest decodes it and exec's the vector verbatim. Verified: `python3 --version`
+-> Python 3.14.7, `python3 -c` with parens -> HTTP 200.
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ crates/axis-sandbox/src/linux/vxn.rs | 36 ++++++++++++++++++++++++++--
+ 1 file changed, 34 insertions(+), 2 deletions(-)
+
+diff --git a/crates/axis-sandbox/src/linux/vxn.rs b/crates/axis-sandbox/src/linux/vxn.rs
+index 7bb76ac..5f420cd 100644
+--- a/crates/axis-sandbox/src/linux/vxn.rs
++++ b/crates/axis-sandbox/src/linux/vxn.rs
+@@ -34,6 +34,25 @@ const DEFAULT_BASE_IMAGE: &str = "docker.io/library/alpine:latest";
+ /// Grace period after SIGTERM before a hard SIGKILL (timeout / destroy).
+ const KILL_GRACE_SEC: u64 = 5;
+ 
++/// Standard base64 (RFC 4648, with padding) — matches busybox `base64 -d` in the
++/// guest. Inlined to avoid adding a direct dependency (would change Cargo.lock and
++/// break `--locked`). Used only to encode short argv elements.
++fn b64(input: &[u8]) -> String {
++    const T: &[u8; 64] =
++        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
++    let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
++    for c in input.chunks(3) {
++        let b0 = c[0];
++        let b1 = *c.get(1).unwrap_or(&0);
++        let b2 = *c.get(2).unwrap_or(&0);
++        out.push(T[(b0 >> 2) as usize] as char);
++        out.push(T[(((b0 & 0x03) << 4) | (b1 >> 4)) as usize] as char);
++        out.push(if c.len() > 1 { T[(((b1 & 0x0f) << 2) | (b2 >> 6)) as usize] as char } else { '=' });
++        out.push(if c.len() > 2 { T[(b2 & 0x3f) as usize] as char } else { '=' });
++    }
++    out
++}
++
+ pub(crate) struct VxnSandbox {
+     id: SandboxId,
+     /// Fully-built argv: [vxn_bin, "run", "--rm", <net flag>?, image, cmd, args…]
+@@ -81,8 +100,21 @@ impl VxnSandbox {
+         // enforcement inside the DomU (defense-in-depth). First cut = base image +
+         // command only.
+         argv.push(base_image);
+-        argv.push(config.command.clone());
+-        argv.extend(config.args.iter().cloned());
++
++        // Opaque argv (#31): encode [command, args...] as a single sentinel token
++        //   __VXNARGV__<base64(arg0)>,<base64(arg1)>,...
++        // instead of loose args. It is one space-free, metacharacter-free word
++        // starting with '_', so vxn's parser can't eat a container flag (e.g.
++        // `--version`) and no shell hop can re-lex quotes/parens/$ in transit. The
++        // guest (vxn-init.sh exec_in_container) decodes it back to a vector and
++        // exec's it verbatim as positional params -- so an arbitrary agent command
++        // (claude, python -c '...', ...) runs exactly as AXIS specified it.
++        let mut toks = Vec::with_capacity(1 + config.args.len());
++        toks.push(b64(config.command.as_bytes()));
++        for a in &config.args {
++            toks.push(b64(a.as_bytes()));
++        }
++        argv.push(format!("__VXNARGV__{}", toks.join(",")));
+ 
+         Ok(Self {
+             id: config.id.clone(),

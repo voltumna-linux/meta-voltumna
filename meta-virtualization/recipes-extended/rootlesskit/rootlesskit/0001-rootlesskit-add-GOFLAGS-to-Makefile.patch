@@ -13,10 +13,10 @@ Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
  src/import/Makefile | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/Makefile b/Makefile
-index 808c2d3..63d4dec 100644
---- a/src/import/Makefile
-+++ b/src/import/Makefile
+Index: rootlesskit-v3.0.1+git/src/import/Makefile
+===================================================================
+--- rootlesskit-v3.0.1+git.orig/src/import/Makefile
++++ rootlesskit-v3.0.1+git/src/import/Makefile
 @@ -10,15 +10,15 @@ clean:
  	$(RM) -r bin/ _artifact/
  
@@ -30,12 +30,9 @@ index 808c2d3..63d4dec 100644
  
  bin/rootlesskit-docker-proxy: $(GO_FILES)
  	@echo "NOTE: rootlesskit-docker-proxy is required only if you use Docker prior to v28."
- 	@echo "NOTE: rootlesskit-docker-proxy is DEPRECATED and will be removed in RootlessKit v3."
+ 	@echo "NOTE: rootlesskit-docker-proxy is DEPRECATED and will be removed in RootlessKit v4."
 -	$(GO) build -o $@ -v ./cmd/rootlesskit-docker-proxy
 +	$(GO) build $(GOFLAGS) -o $@ -v ./cmd/rootlesskit-docker-proxy
  
  .PHONY: cross
  cross:
--- 
-2.43.0
-

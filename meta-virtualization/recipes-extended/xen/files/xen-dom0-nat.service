@@ -1,0 +1,19 @@
+[Unit]
+Description=Xen dom0 NAT masquerade for DomU guests (xenbr0)
+Documentation=man:iptables(8)
+# Apply after networkd has created xenbr0/eth0. The rule is source-based
+# (10.0.100.0/24) so it does not depend on the bridge having carrier yet.
+After=systemd-networkd.service network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# systemd-networkd's IPMasquerade= did not install the rule, and this image
+# ships the iptables nat path (xt_MASQUERADE) rather than the nftables nat
+# chain module, so masquerade via iptables.  -C (check) then -A (add) makes it
+# idempotent -- only add the rule if it is not already present.
+ExecStart=/bin/sh -c '/usr/sbin/iptables -t nat -C POSTROUTING -s 10.0.100.0/24 -j MASQUERADE 2>/dev/null || /usr/sbin/iptables -t nat -A POSTROUTING -s 10.0.100.0/24 -j MASQUERADE'
+
+[Install]
+WantedBy=multi-user.target

@@ -1,12 +1,13 @@
 [Unit]
 Description=Incus - Container and VM manager
 Documentation=https://linuxcontainers.org/incus/docs/main/
-After=network-online.target
+After=network-online.target incus.socket
 Wants=network-online.target
+Requires=incus.socket
 ConditionPathExists=/var/lib/incus
 
 [Service]
-Type=notify
+Type=simple
 ExecStart=/usr/sbin/incusd --group incus-admin
 ExecStop=/usr/sbin/incusd shutdown
 TimeoutStartSec=600
@@ -16,7 +17,7 @@ LimitNOFILE=1048576
 LimitNPROC=infinity
 TasksMax=infinity
 Delegate=yes
-KillMode=process
+KillMode=control-group
 
 [Install]
 WantedBy=multi-user.target

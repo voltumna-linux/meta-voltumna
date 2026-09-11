@@ -19,12 +19,12 @@ Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
  Makefile | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
-Index: containerd/Makefile
+Index: v2/Makefile
 ===================================================================
---- containerd.orig/Makefile
-+++ containerd/Makefile
-@@ -129,7 +129,8 @@
- GOPATHS=$(shell $(GO) env GOPATH | tr ":" "\n" | tr ";" "\n")
+--- v2.orig/Makefile
++++ v2/Makefile
+@@ -133,7 +133,8 @@ endif
+ GOPATHS := $(shell $(GO) env GOPATH | tr ":" "\n" | tr ";" "\n")
  
  TESTFLAGS_RACE=
 -GO_BUILD_FLAGS ?=

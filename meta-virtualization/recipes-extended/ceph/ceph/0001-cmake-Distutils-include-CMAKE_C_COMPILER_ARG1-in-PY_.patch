@@ -1,0 +1,43 @@
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Mon Jun  2 00:00:00 2026 +0000
+Subject: [PATCH] cmake/Distutils: include CMAKE_C_COMPILER_ARG1 in PY_CC
+
+The distutils_install_cython_module function constructs the CC env
+variable for the in-CMake-install pip invocation using only the bare
+${CMAKE_C_COMPILER}. When CMake is invoked with a compiler path that
+expands to "<binary> <args>" (e.g. via OECMAKE_C_COMPILER carrying a
+--sysroot=/path suffix in Yocto/OE cross-compile setups), CMake parses
+the value as a list and stashes everything past the first element in
+CMAKE_C_COMPILER_ARG1. Distutils.cmake then drops those args entirely
+when populating PY_CC, so the resulting cmake_install.cmake emits a
+`set(ENV{CC} "<binary>")` line with no --sysroot. The pip-driven
+setuptools C extension build then invokes the target cross-gcc against
+the native sysroot for system headers and fails with the cryptic
+`fatal error: assert.h: No such file or directory`.
+
+distutils_add_cython_module (the build-time counterpart in the same
+file) already includes ${c_compiler_arg1} in its PY_CC; this commit
+mirrors that fix in the install-time function so both code paths
+pass the full compiler command line through to setuptools.
+
+Upstream-Status: Inappropriate [OE-Specific cross-compile fixup]
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ cmake/modules/Distutils.cmake | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+--- a/cmake/modules/Distutils.cmake
++++ b/cmake/modules/Distutils.cmake
+@@ -116,8 +116,9 @@
+ function(distutils_install_cython_module name)
+   get_property(compiler_launcher GLOBAL PROPERTY RULE_LAUNCH_COMPILE)
+   get_property(link_launcher GLOBAL PROPERTY RULE_LAUNCH_LINK)
+-  set(PY_CC "${compiler_launcher} ${CMAKE_C_COMPILER}")
+-  set(PY_LDSHARED "${link_launcher} ${CMAKE_C_COMPILER} -shared")
++  string(STRIP "${CMAKE_C_COMPILER_ARG1}" c_compiler_arg1)
++  set(PY_CC "${compiler_launcher} ${CMAKE_C_COMPILER} ${c_compiler_arg1}")
++  set(PY_LDSHARED "${link_launcher} ${CMAKE_C_COMPILER} ${c_compiler_arg1} -shared")
+   set(PY_LDFLAGS "${CMAKE_SHARED_LINKER_FLAGS} -L${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+   cmake_parse_arguments(DU "DISABLE_VTA" "" "" ${ARGN})
+   if(DU_DISABLE_VTA AND HAS_VTA)

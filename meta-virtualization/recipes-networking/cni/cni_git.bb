@@ -9,9 +9,9 @@ Because of this focus, CNI has a wide range of support and the specification \
 is simple to implement. \
 "
 
-SRCREV_cni = "7c270076995b6a35f4774ce94dafcf266d1c6925"
-SRCREV_plugins = "6d8f05b82e47b3bf573986146842c08f358270a7"
-SRCREV_flannel_plugin = "09e4c7f9bee6abdf56e97f167a85248a7084f7ef"
+SRCREV_cni = "3f51e8803ebbdba0ebeed735b42137e4c7302403"
+SRCREV_plugins = "4f4df5d7757cb86630d15a7489e75647df9a8719"
+SRCREV_flannel_plugin = "b380f201008e9bed159703846cf10d3c50b4f9ce"
 SRCREV_FORMAT = "cni_plugins"
 SRC_URI = "\
 	git://github.com/containernetworking/cni.git;branch=main;name=cni;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX} \
@@ -22,6 +22,9 @@ SRC_URI += "git://github.com/flannel-io/cni-plugin;branch=main;name=flannel_plug
 
 include go-mod-git.inc
 include go-mod-cache.inc
+
+# Per-dependency license tracking
+include go-mod-licenses.inc
 
 DEPENDS = " \
     rsync-native \

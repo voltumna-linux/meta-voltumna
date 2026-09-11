@@ -12,6 +12,8 @@ SRC_URI = "git://${PKG_NAME};branch=master;protocol=https"
 SRCREV = "a29884b9be3dc22c18338c0fe5a51d23e69731e4"
 PV = "1.9.4+git"
 
+CVE_PRODUCT = "turbopuffer:logrus"
+
 inherit meta-virt-depreciated-warning
 
 do_install() {
