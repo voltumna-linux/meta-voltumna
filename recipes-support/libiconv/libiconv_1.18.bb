@@ -6,7 +6,7 @@ SECTION = "libs"
 NOTES = "Needs to be stripped down to: ascii iso8859-1 eucjp iso-2022jp gb utf8"
 PROVIDES = "virtual/libiconv"
 PR = "r1"
-LICENSE = "GPL-3.0-only & LGPL-2.1-only"
+LICENSE = "GPL-3.0-only AND LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504 \
 					file://COPYING.LIB;md5=4bf661c1e3793e55c8d1051bc5e0ae21 \
                     file://libcharset/COPYING.LIB;md5=4bf661c1e3793e55c8d1051bc5e0ae21"
