@@ -10,7 +10,7 @@ inherit allarch python3native
 
 SRC_URI = "git://gitlab.com/redhat-crypto/fedora-crypto-policies.git;protocol=https;branch=master"
 
-SRCREV = "f3f5fa454345b03039ee3d904964fc14829637ce"
+SRCREV = "359ab169da6a0d4d0fa09fed562bb0d56f470030"
 UPSTREAM_CHECK_COMMITS = "1"
 
 do_compile () {

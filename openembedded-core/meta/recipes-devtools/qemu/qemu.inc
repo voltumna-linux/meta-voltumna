@@ -4,7 +4,8 @@ machine's processor through dynamic binary translation and provides a set \
 of different hardware and device models for the machine, enabling it to run \
 a variety of guest operating systems"
 HOMEPAGE = "http://qemu.org"
-LICENSE = "GPL-2.0-only & LGPL-2.1-only"
+BUGTRACKER = "https://gitlab.com/qemu-project/qemu/-/issues"
+LICENSE = "GPL-2.0-only AND LGPL-2.1-only"
 
 DEPENDS += "bison-native meson-native ninja-native"
 
@@ -22,7 +23,6 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=a3b50d8b88dcc0eb3d7d39b760b9e821 \
 SRC_URI = "https://download.qemu.org/${BPN}-${PV}.tar.xz \
            file://powerpc_rom.bin \
            file://run-ptest \
-           file://fix-strerrorname_np.patch \
            file://0001-qemu-Add-addition-environment-space-to-boot-loader-q.patch \
            file://0002-apic-fixup-fallthrough-to-PIC.patch \
            file://0004-qemu-Do-not-include-file-if-not-exists.patch \
@@ -32,22 +32,18 @@ SRC_URI = "https://download.qemu.org/${BPN}-${PV}.tar.xz \
            file://0008-Define-MAP_SYNC-and-MAP_SHARED_VALIDATE-on-needed-li.patch \
            file://0010-configure-lookup-meson-exutable-from-PATH.patch \
            file://0011-qemu-Ensure-pip-and-the-python-venv-aren-t-used-for-.patch \
-           file://0001-linux-user-elfload.c-Correction-to-HWCAP2-accessor.patch \
-           file://0001-accel-tcg-Fix-iotlb_to_section-for-different-Address.patch \
            file://qemu-guest-agent.init \
            file://qemu-guest-agent.udev \
-           file://CVE-2024-6519.patch \
-           file://CVE-2026-2243.patch \
-           file://CVE-2026-0665.patch \
-           file://CVE-2025-14876_p1.patch \
-           file://CVE-2025-14876_p2.patch \
-           file://0012-linux-user-Check-if-RESOLVE_CACHED-flag-is-defined-b.patch \
+           file://0001-ui-sdl2.c-force-disable-SDL_HINT_VIDEO_X11_FORCE_EGL.patch \
+           file://0001-target-riscv-extract-sfence_vma_allowed-from-helper_.patch \
+           file://0002-target-riscv-add-helper_tlb_flush_page.patch \
+           file://0003-target-riscv-use-a-targeted-TLB-page-flush-for-sfenc.patch \
            "
 # file index at download.qemu.org isn't reliable: https://gitlab.com/qemu-project/qemu-web/-/issues/9
 UPSTREAM_CHECK_URI = "https://www.qemu.org"
 UPSTREAM_CHECK_REGEX = "qemu-(?P<pver>\d+(\.\d+)+)\.tar"
 
-SRC_URI[sha256sum] = "9e30ad1b8b9f7b4463001582d1ab297f39cfccea5d08540c0ca6d6672785883a"
+SRC_URI[sha256sum] = "079ffbff8a7111bbc89022107cbabf3bbfd614d5fc9d7cc675991196aca12482"
 
 CVE_STATUS[CVE-2007-0998] = "not-applicable-config: The VNC server can expose host files uder some circumstances. We don't enable it by default."
 
@@ -59,6 +55,7 @@ CVE_STATUS[CVE-2023-2680] = "not-applicable-platform: RHEL specific issue."
 
 # NVD DB has this CVE as version-less (with "-")
 CVE_STATUS[CVE-2024-6505] = "fixed-version: this CVE is fixed since 9.1.0"
+CVE_STATUS[CVE-2024-6519] = "fixed-version: this CVE is fixed since 11.0.0"
 CVE_STATUS[CVE-2024-8354] = "fixed-version: this CVE is fixed since 10.0.5"
 
 CVE_STATUS[CVE-2023-1386] = "disputed: not an issue as per https://bugzilla.redhat.com/show_bug.cgi?id=2223985"
@@ -66,6 +63,10 @@ CVE_STATUS[CVE-2023-1386] = "disputed: not an issue as per https://bugzilla.redh
 COMPATIBLE_HOST:mipsarchn32 = "null"
 COMPATIBLE_HOST:mipsarchn64 = "null"
 COMPATIBLE_HOST:riscv32 = "null"
+
+# QEMU 11.0.0+ requires a 64-bit host architecture for emulator builds
+COMPATIBLE_HOST:class-target = "(aarch64|x86_64|ppc64|ppc64le|riscv64|loongarch64|mips64|s390x|sparc64).*-linux"
+COMPATIBLE_HOST:class-nativesdk = "(aarch64|x86_64|ppc64|ppc64le|riscv64|loongarch64|mips64|s390x|sparc64).*-.*"
 
 # Per https://lists.nongnu.org/archive/html/qemu-devel/2020-09/msg03873.html
 # upstream states qemu doesn't work without optimization
@@ -81,7 +82,7 @@ do_install_ptest() {
 	find ${D}${PTEST_PATH}/tests -type f -name "*.[Sshcodp]" | xargs -i rm -rf {}
 
 	# Don't check the file genreated by configure
-	sed -i -e "1s,#!/usr/bin/bash,#!${base_bindir}/bash," ${D}${PTEST_PATH}/tests/data/acpi/disassemle-aml.sh
+	sed -i -e "1s,#!/usr/bin/bash,#!${base_bindir}/bash," ${D}${PTEST_PATH}/tests/data/acpi/disassemble-aml.sh
 
 	# Strip the paths from the QEMU variable, we can use PATH
 	makfiles=$(find ${D}${PTEST_PATH} -name "*.mak")
@@ -125,19 +126,17 @@ EXTRA_OECONF = " \
     ${PACKAGECONFIG_CONFARGS} \
     "
 
-EXTRA_OECONF:append:class-target = " --cross-prefix=${HOST_PREFIX}"
-EXTRA_OECONF:append:class-nativesdk = " --cross-prefix=${HOST_PREFIX}"
+EXTRA_OECONF:append:class-target = " --cross-prefix=${HOST_PREFIX} --cpu=${TUNE_ARCH}"
+EXTRA_OECONF:append:class-nativesdk = " --cross-prefix=${HOST_PREFIX} --cpu=${@d.getVar('SDK_ARCH').replace('i686', 'i386')}"
 
 B = "${WORKDIR}/build"
 
 #EXTRA_OECONF:append = " --python=${HOSTTOOLS_DIR}/python3"
 
 do_configure:prepend:class-native() {
-	# Append build host pkg-config paths for native target since the host may provide sdl
-	BHOST_PKGCONFIG_PATH=$(PATH=/usr/bin:/bin pkg-config --variable pc_path pkg-config || echo "")
-	if [ ! -z "$BHOST_PKGCONFIG_PATH" ]; then
-		export PKG_CONFIG_LIBDIR=$PKG_CONFIG_LIBDIR:$BHOST_PKGCONFIG_PATH
-	fi
+	# Avoid leaking host pkg-config paths which may find incompatible
+	# old system libraries (e.g. glib-2.0, fixesproto, gtk+-3.0)
+	export PKG_CONFIG_PATH="${STAGING_LIBDIR_NATIVE}/pkgconfig:${STAGING_DATADIR_NATIVE}/pkgconfig"
 }
 
 do_configure() {
@@ -145,6 +144,9 @@ do_configure() {
     ${S}/configure ${EXTRA_OECONF}
 }
 do_configure[cleandirs] += "${B}"
+
+# Use the Meson progress regex as qemu uses meson internally
+do_compile[progress] = "outof:^\[(\d+)/(\d+)\]\s+"
 
 do_install () {
 	export STRIP=""
@@ -212,7 +214,6 @@ PACKAGECONFIG[spice] = "--enable-spice,--disable-spice,spice"
 PACKAGECONFIG[dbus-display] = "--enable-dbus-display,--disable-dbus-display,glib-2.0-native,dbus"
 PACKAGECONFIG[usb-redir] = "--enable-usb-redir,--disable-usb-redir,usbredir"
 PACKAGECONFIG[snappy] = "--enable-snappy,--disable-snappy,snappy"
-PACKAGECONFIG[glusterfs] = "--enable-glusterfs,--disable-glusterfs,glusterfs"
 PACKAGECONFIG[xkbcommon] = "--enable-xkbcommon,--disable-xkbcommon,libxkbcommon"
 PACKAGECONFIG[libudev] = "--enable-libudev,--disable-libudev,udev"
 PACKAGECONFIG[attr] = "--enable-attr,--disable-attr,attr,"

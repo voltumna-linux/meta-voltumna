@@ -4,7 +4,8 @@ HOMEPAGE = "http://www.x.org"
 
 SECTION = "x11/fonts"
 
-LICENSE = "PD"
+# Compiled fonts from https://gitlab.freedesktop.org/xorg/font/misc-misc/
+LICENSE = "LicenseRef-PD"
 LIC_FILES_CHKSUM = "file://../misc/fonts.dir;md5=82a143d94d6a974aafe97132d2d519ab \
                     file://../misc/cursor.pcf.gz;md5=40bc81001fef4c21ca08df4305014a2a"
 

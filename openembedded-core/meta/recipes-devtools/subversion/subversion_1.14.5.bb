@@ -2,7 +2,7 @@ SUMMARY = "Subversion (svn) version control system client"
 HOMEPAGE = "http://subversion.apache.org"
 DESCRIPTION = "Subversion is an open source version control system."
 SECTION = "console/network"
-LICENSE = "Apache-2.0 & MIT"
+LICENSE = "Apache-2.0 AND MIT"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=6487ae7094d359fa90fb9c4096e52e2b"
 
 DEPENDS = "apr-util serf sqlite3 file lz4 expat"
@@ -11,6 +11,7 @@ DEPENDS:append:class-native = " file-replacement-native"
 SRC_URI = "${APACHE_MIRROR}/${BPN}/${BPN}-${PV}.tar.bz2 \
            file://serfmacro.patch \
            file://parallel.patch \
+           file://0001-fix-svn-revision-host-contamination.patch \
            "
 
 SRC_URI[sha256sum] = "e78a29e7766b8b7b354497d08f71a55641abc53675ce1875584781aae35644a1"

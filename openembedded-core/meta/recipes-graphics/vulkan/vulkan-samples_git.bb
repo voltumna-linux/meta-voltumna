@@ -9,7 +9,7 @@ SRC_URI = "gitsm://github.com/KhronosGroup/Vulkan-Samples.git;branch=main;protoc
            "
 
 UPSTREAM_CHECK_COMMITS = "1"
-SRCREV = "fa2cf45adde08778d1e8f885f21f934f56d9eb58"
+SRCREV = "383471195757abdd43339c464db60449619d4f84"
 
 UPSTREAM_CHECK_GITTAGREGEX = "These are not the releases you're looking for"
 
@@ -31,6 +31,8 @@ EXTRA_OECMAKE += "-DVKB_WSI_SELECTION=D2D"
 
 # Clang is fussy about incompatible options on aarch64/x86_64
 # x86_64-poky-linux-clang++: error: overriding '-ffp-model=precise' option with '-ffp-contract=fast' [-Werror,-Woverriding-option]
-CXXFLAGS:append:toolchain-clang = " -Wno-error=overriding-option"
+# clang 23's -Wdangling-gsl also flags framework code taking .begin() of a
+# temporary (postprocessing_computepass.cpp); keep it a warning, not an error.
+CXXFLAGS:append:toolchain-clang = " -Wno-error=overriding-option -Wno-error=dangling-gsl"
 
 COMPATIBLE_HOST = "(aarch64|x86_64).*-linux"

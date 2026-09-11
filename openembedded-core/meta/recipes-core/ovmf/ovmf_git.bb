@@ -9,29 +9,21 @@ LIC_FILES_CHKSUM = "file://OvmfPkg/License.txt;md5=06357ddc23f46577c2aeaeaf7b776
 # Enabling Secure Boot adds a dependency on OpenSSL and implies
 # compiling OVMF twice, so it is disabled by default. Distros
 # may change that default.
-PACKAGECONFIG ??= ""
-PACKAGECONFIG += "${@bb.utils.contains('MACHINE_FEATURES', 'tpm', 'tpm', '', d)}"
-PACKAGECONFIG += "${@bb.utils.contains('MACHINE_FEATURES', 'tpm2', 'tpm', '', d)}"
+PACKAGECONFIG ??= "${@bb.utils.contains_any('MACHINE_FEATURES', 'tpm tpm2', 'tpm', '', d)}"
 PACKAGECONFIG[debug] = ",,,"
 PACKAGECONFIG[secureboot] = ",,,"
 PACKAGECONFIG[tpm] = "-D TPM2_ENABLE=TRUE,-D TPM2_ENABLE=FALSE,,"
-
-# GCC12 trips on it
-#see https://src.fedoraproject.org/rpms/edk2/blob/rawhide/f/0032-Basetools-turn-off-gcc12-warning.patch
-BUILD_CFLAGS += "-Wno-error=stringop-overflow"
 
 SRC_URI = "gitsm://github.com/tianocore/edk2.git;branch=master;protocol=https;tag=${PV} \
            file://0001-ovmf-update-path-to-native-BaseTools.patch \
            file://0002-BaseTools-makefile-adjust-to-build-in-under-bitbake.patch \
            file://0003-debug-prefix-map.patch \
            file://0004-reproducible.patch \
-           file://0005-UefiCpuPkg-CpuExceptionHandlerLib-fix-push-instructi.patch \
-           file://0001-BaseTools-StringFuncs-fix-gcc-16-warning.patch \
-           file://0002-BaseTools-EfiRom-fix-compiler-warning.patch \
+           file://0005-CryptoPkg-IntrinsicLib-fix-memcpy-alias-prototype-fo.patch \
            "
 
-PV = "edk2-stable202511"
-SRCREV = "46548b1adac82211d8d11da12dd914f41e7aa775"
+PV = "edk2-stable202605"
+SRCREV = "b03a21a63e3bd001f52c527e5a57feddb53a690b"
 UPSTREAM_CHECK_GITTAGREGEX = "(?P<pver>edk2-stable.*)"
 
 CVE_PRODUCT = "edk2"
@@ -40,11 +32,13 @@ CVE_VERSION = "${@d.getVar('PV').split('stable')[1]}"
 CVE_STATUS[CVE-2014-8271] = "fixed-version: Fixed in svn_16280, which is an unusual versioning breaking version comparison."
 CVE_STATUS[CVE-2014-4859] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
 CVE_STATUS[CVE-2014-4860] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
+CVE_STATUS[CVE-2017-5731] = "fixed-version: fixed since 2017-11-07"
 CVE_STATUS[CVE-2019-14553] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
 CVE_STATUS[CVE-2019-14559] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
 CVE_STATUS[CVE-2019-14562] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
 CVE_STATUS[CVE-2019-14563] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
 CVE_STATUS[CVE-2019-14575] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
+CVE_STATUS[CVE-2019-14584] = "fixed-version: fixed since edk2-stables202011"
 CVE_STATUS[CVE-2019-14586] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
 CVE_STATUS[CVE-2019-14587] = "fixed-version: The CPE in the NVD database doesn't reflect correctly the vulnerable versions."
 CVE_STATUS[CVE-2024-1298] = "fixed-version: fixed since edk2-stable202405"
@@ -61,6 +55,7 @@ inherit deploy
 PARALLEL_MAKE = ""
 
 DEPENDS = "nasm-native acpica-native ovmf-native util-linux-native"
+DEPENDS:append:toolchain-clang = " lld-native"
 
 EDK_TOOLS_DIR = "edk2_basetools"
 
@@ -151,38 +146,12 @@ fix_toolchain:append:class-native() {
 export NASM_PREFIX_MAP = "--debug-prefix-map=${WORKDIR}=${TARGET_DBGSRC_DIR}"
 export GCC_PREFIX_MAP = "${DEBUG_PREFIX_MAP} -Wno-stringop-overflow -Wno-maybe-uninitialized"
 
-GCC_VER = "$(${CC} -v 2>&1 | tail -n1 | awk '{print $3}')"
-
-fixup_target_tools() {
-    case ${1} in
-      4.4.*)
-        FIXED_GCCVER=GCC44
-        ;;
-      4.5.*)
-        FIXED_GCCVER=GCC45
-        ;;
-      4.6.*)
-        FIXED_GCCVER=GCC46
-        ;;
-      4.7.*)
-        FIXED_GCCVER=GCC47
-        ;;
-      4.8.*)
-        FIXED_GCCVER=GCC48
-        ;;
-      4.9.*)
-        FIXED_GCCVER=GCC49
-        ;;
-      *)
-        FIXED_GCCVER=GCC5
-        ;;
-    esac
-    echo ${FIXED_GCCVER}
-}
-
 do_compile:class-native() {
     oe_runmake -C ${S}/BaseTools
 }
+
+TARGET_TOOLS ?= "GCC"
+TARGET_TOOLS:toolchain-clang = "CLANGDWARF"
 
 do_compile:class-target() {
     export LFLAGS="${LDFLAGS}"
@@ -204,13 +173,12 @@ do_compile:class-target() {
     rm -rf ${WORKDIR}/ovmf
     mkdir ${WORKDIR}/ovmf
     OVMF_DIR_SUFFIX="X64"
-    FIXED_GCCVER=$(fixup_target_tools ${GCC_VER})
-    bbnote FIXED_GCCVER is ${FIXED_GCCVER}
-    build_dir="${S}/Build/Ovmf$OVMF_DIR_SUFFIX/${OVMF_BUILD_TYPE}_${FIXED_GCCVER}"
+    bbnote TARGET_TOOLS is ${TARGET_TOOLS}
+    build_dir="${S}/Build/Ovmf$OVMF_DIR_SUFFIX/${OVMF_BUILD_TYPE}_${TARGET_TOOLS}"
 
     bbnote "Building without Secure Boot."
     rm -rf ${S}/Build/Ovmf$OVMF_DIR_SUFFIX
-    ${S}/OvmfPkg/build.sh $PARALLEL_JOBS -a $OVMF_ARCH -b ${OVMF_BUILD_TYPE} -t ${FIXED_GCCVER} ${PACKAGECONFIG_CONFARGS}
+    ${S}/OvmfPkg/build.sh $PARALLEL_JOBS -a $OVMF_ARCH -b ${OVMF_BUILD_TYPE} -t ${TARGET_TOOLS} ${PACKAGECONFIG_CONFARGS}
     ln ${build_dir}/FV/OVMF.fd ${WORKDIR}/ovmf/ovmf.fd
     ln ${build_dir}/FV/OVMF_CODE.fd ${WORKDIR}/ovmf/ovmf.code.fd
     ln ${build_dir}/FV/OVMF_VARS.fd ${WORKDIR}/ovmf/ovmf.vars.fd
@@ -220,7 +188,7 @@ do_compile:class-target() {
         # Repeat build with the Secure Boot flags.
         bbnote "Building with Secure Boot."
         rm -rf ${S}/Build/Ovmf$OVMF_DIR_SUFFIX
-        ${S}/OvmfPkg/build.sh $PARALLEL_JOBS -a $OVMF_ARCH -b ${OVMF_BUILD_TYPE} -t ${FIXED_GCCVER} ${PACKAGECONFIG_CONFARGS} ${OVMF_SECURE_BOOT_FLAGS}
+        ${S}/OvmfPkg/build.sh $PARALLEL_JOBS -a $OVMF_ARCH -b ${OVMF_BUILD_TYPE} -t ${TARGET_TOOLS} ${PACKAGECONFIG_CONFARGS} ${OVMF_SECURE_BOOT_FLAGS}
         ln ${build_dir}/FV/OVMF.fd ${WORKDIR}/ovmf/ovmf.secboot.fd
         ln ${build_dir}/FV/OVMF_CODE.fd ${WORKDIR}/ovmf/ovmf.secboot.code.fd
         ln ${build_dir}/${OVMF_ARCH}/EnrollDefaultKeys.efi ${WORKDIR}/ovmf/
@@ -283,4 +251,3 @@ do_deploy:class-target() {
 addtask do_deploy after do_compile before do_build
 
 BBCLASSEXTEND = "native"
-TOOLCHAIN = "gcc"

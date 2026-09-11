@@ -48,6 +48,8 @@ def get_common_data(e):
     data['layer_version'] = get_layers_branch_rev(e.data)
     data['local_conf'] = get_conf_data(e, 'local.conf')
     data['auto_conf'] = get_conf_data(e, 'auto.conf')
+    data['site_conf'] = get_conf_data(e, 'site.conf')
+    data['toolcfg_conf'] = get_conf_data(e, 'toolcfg.conf')
     return data
 
 python errorreport_handler () {
@@ -58,7 +60,7 @@ python errorreport_handler () {
             nativelsbstr = e.data.getVar("NATIVELSBSTRING")
             # provide a bit more host info in case of uninative build
             if e.data.getVar('UNINATIVE_URL') != 'unset':
-                return '/'.join([nativelsbstr, lsb_distro_identifier(e.data)])
+                return '/'.join([nativelsbstr, oe.lsb.distro_identifier(e.data)])
             return nativelsbstr
 
         logpath = e.data.getVar('ERR_REPORT_DIR')

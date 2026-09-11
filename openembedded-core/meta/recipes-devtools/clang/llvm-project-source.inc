@@ -55,36 +55,38 @@ python do_preconfigure() {
     bb.note("Adding support following TARGET_VENDOR values")
     bb.note(str(vendors_to_add))
     bb.note("in llvm/lib/TargetParser/Triple.cpp and ${S}/clang/lib/Driver/ToolChains/Gnu.cpp")
-    cmd = d.expand("sed -i 's#//CLANG_EXTRA_OE_VENDORS_TRIPLES#%s#g' ${S}/clang/lib/Driver/ToolChains/Gnu.cpp" % (triple))
-    subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-    cmd = d.expand("sed -i 's#//CLANG_EXTRA_OE_VENDORS_CASES#%s#g' -i ${S}/llvm/lib/TargetParser/Triple.cpp" % (case))
-    subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+    source = d.getVar("S")
+    cmd = ['sed', '-i', 's#//CLANG_EXTRA_OE_VENDORS_TRIPLES#%s#g' % triple, source + '/clang/lib/Driver/ToolChains/Gnu.cpp']
+    subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+    cmd = ['sed', '-i', 's#//CLANG_EXTRA_OE_VENDORS_CASES#%s#g' % case, source + '/llvm/lib/TargetParser/Triple.cpp']
+    subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 
     case = ""
     triple = ""
     name = ""
     check = ""
-    oe_names = ""
+    oe_names = []
     distros = d.getVar('CLANG_EXTRA_OE_DISTRO')
     for distro in distros.split():
-        distro_id = distro.split(":")[0].replace('-','_')
+        distro_id_raw = distro.split(":")[0]
+        distro_id = distro_id_raw.replace('-','_')
         distro_triple = distro.split(":")[1]
-        case += '\\n    .Case("' + distro_id + '", Distro::' + distro_id.upper() + ')'
-        triple += '\\n   if (Distro.Is' + distro_id.upper() + '())\\n     return "x86_64-' + distro_triple + '-linux",'
+        case += '\\n    .Case("' + distro_id_raw + '", Distro::' + distro_id.upper() + ')'
+        triple += '\\n   if (Distro.Is' + distro_id.upper() + '())\\n     return "x86_64-' + distro_triple + '-linux";'
         name += '\\n    '+ distro_id.upper() + ','
         check += '\\nbool Is' + distro_id.upper() + '() const { return DistroVal == ' + distro_id.upper() + '; }'
-        oe_names +=  distro_id.upper() + ' ||'
+        oe_names.append('DistroVal == ' + distro_id.upper())
 
-    check += '\\nbool IsOpenEmbedded() const { return DistroVal == ' + oe_names[0:-3] + '; }'
+    check += '\\nbool IsOpenEmbedded() const { return ' + ' || '.join(oe_names) + '; }'
 
-    cmd = d.expand("sed -i 's#//CLANG_EXTRA_OE_DISTRO_NAME#%s#g' ${S}/clang/include/clang/Driver/Distro.h" % (name))
-    subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-    cmd = d.expand("sed -i 's#//CLANG_EXTRA_OE_DISTRO_CHECK#%s#g' ${S}/clang/include/clang/Driver/Distro.h" % (check))
-    subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-    cmd = d.expand("sed -i 's#//CLANG_EXTRA_OE_DISTRO_TRIPLES#%s#g' ${S}/clang/lib/Driver/ToolChains/Linux.cpp" % (triple))
-    subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-    cmd = d.expand("sed -i 's#//CLANG_EXTRA_OE_DISTRO_CASES#%s#g' -i ${S}/clang/lib/Driver/Distro.cpp" % (case))
-    subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+    cmd = ['sed', '-i', 's#//CLANG_EXTRA_OE_DISTRO_NAME#%s#g' % name, source + '/clang/include/clang/Driver/Distro.h']
+    subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+    cmd = ['sed', '-i', 's#//CLANG_EXTRA_OE_DISTRO_CHECK#%s#g' % check, source + '/clang/include/clang/Driver/Distro.h']
+    subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+    cmd = ['sed', '-i', 's#//CLANG_EXTRA_OE_DISTRO_TRIPLE#%s#g' % triple, source + '/clang/lib/Driver/ToolChains/Linux.cpp']
+    subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+    cmd = ['sed', '-i', 's#//CLANG_EXTRA_OE_DISTRO_CASE#%s#g' % case, source + '/clang/lib/Driver/Distro.cpp']
+    subprocess.check_output(cmd, stderr=subprocess.STDOUT)
 }
 
 do_patch[vardepsexclude] += "MULTILIBS MULTILIB_VARIANTS"

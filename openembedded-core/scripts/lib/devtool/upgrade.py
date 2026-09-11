@@ -9,7 +9,9 @@
 import os
 import sys
 import re
+import shlex
 import shutil
+import subprocess
 import tempfile
 import logging
 import argparse
@@ -26,9 +28,48 @@ from devtool import exec_build_env_command, setup_tinfoil, DevtoolError, parse_r
 
 logger = logging.getLogger('devtool')
 
+# Common changelog filenames found in upstream source trees (matched case-insensitively):
+# changelog - util-linux, coreutils, dbus, acpid, hdparm
+# changelog.md - libslirp, ttyrun, python3-maturin, libjpeg-turbo
+# changelog.rst - python3-pluggy, python3-packaging
+# changes - openssl, python3-babel, icu, tcl
+# changes.md - openssl
+# changes.rst - python3-babel, python3-pathspec
+# changes.txt - python3-lxml, icu
+# news - systemd, glib-2.0, libxml2, dbus
+# news.md - libxml2
+# news.rst - python3-sphinx
+# news.adoc - ccache
+# history.md - python3-requests, python3-hatch-vcs
+# history.rst - python3-idna, python3-docutils
+# releases.md - rust, cargo (includes CVEs)
+# whatsnew.txt - libsdl2
+# perldelta.pod - perl
+_CHANGELOG_BASENAMES = {
+    'changelog', 'changelog.md', 'changelog.rst', 'changelog.txt',
+    'changes', 'changes.md', 'changes.rst', 'changes.txt',
+    'news', 'news.md', 'news.rst', 'news.adoc',
+    'history', 'history.md', 'history.rst',
+    'releasenotes.md', 'releasenotes.rst',
+    'releases.md',
+    'whatsnew.txt',
+    'perldelta.pod',
+}
+
+# Path components indicating a bundled/vendored dependency rather than the
+# recipe's own source, so its changelog-like files should not be mistaken
+# for the recipe's own changes (e.g. third-party/mruby/NEWS.md in nghttp2).
+_VENDORED_PATH_RE = re.compile(
+    r'(^|/)(third[-_]party|vendor|vendored|external|extern|deps|3rdparty)(/|$)',
+    re.IGNORECASE)
+
 def _run(cmd, cwd=''):
     logger.debug("Running command %s> %s" % (cwd,cmd))
-    return bb.process.run('%s' % cmd, cwd=cwd)
+    result = subprocess.run(cmd, cwd=cwd or None, shell=True, capture_output=True,
+                            text=True, errors='replace')
+    if result.returncode != 0:
+        raise bb.process.ExecutionError(cmd, result.returncode, result.stdout, result.stderr)
+    return (result.stdout, result.stderr)
 
 def _get_srctree(tmpdir):
     srctree = tmpdir
@@ -194,7 +235,7 @@ def _extract_new_source(newpv, srctree, no_patch, srcrev, srcbranch, branch, kee
         (stdout, _) = __run('git submodule --quiet foreach \'echo $sm_path\'')
         paths += [os.path.join(srctree, p) for p in stdout.splitlines()]
         checksums = {}
-        _, _, _, _, _, params = bb.fetch2.decodeurl(uri)
+        _, _, _, _, _, params = bb.fetch.decodeurl(uri)
         srcsubdir_rel = params.get('destsuffix', 'git')
         if not srcbranch:
             check_branch, check_branch_err = __run('git branch -r --contains %s' % srcrev)
@@ -235,7 +276,9 @@ def _extract_new_source(newpv, srctree, no_patch, srcrev, srcbranch, branch, kee
             if item in ['.git', 'oe-local-files']:
                 continue
             itempath = os.path.join(srctree, item)
-            if os.path.isdir(itempath):
+            if os.path.islink(itempath):
+                os.remove(itempath)
+            elif os.path.isdir(itempath):
                 shutil.rmtree(itempath)
             else:
                 os.remove(itempath)
@@ -256,7 +299,7 @@ def _extract_new_source(newpv, srctree, no_patch, srcrev, srcbranch, branch, kee
 
         useroptions = []
         oe.patch.GitApplyTree.gitCommandUserOptions(useroptions, d=rd)
-        __run('git %s commit -q -m "Commit of upstream changes at version %s" --allow-empty' % (' '.join(useroptions), newpv))
+        __run('git %s commit -q -m "Commit of upstream changes at version %s" --allow-empty' % (shlex.join(useroptions), newpv))
         __run('git tag -f --no-sign devtool-base-%s' % newpv)
 
     revs = {}
@@ -350,8 +393,8 @@ def _create_new_recipe(newpv, checksums, srcrev, srcbranch, srcsubdir_old, srcsu
         new_src_uri = []
         for entry in src_uri:
             try:
-                scheme, network, path, user, passwd, params = bb.fetch2.decodeurl(entry)
-            except bb.fetch2.MalformedUrl as e:
+                scheme, network, path, user, passwd, params = bb.fetch.decodeurl(entry)
+            except bb.fetch.MalformedUrl as e:
                 raise DevtoolError("Could not decode SRC_URI: {}".format(e))
             if replacing and scheme in ['git', 'gitsm']:
                 branch = params.get('branch', 'master')
@@ -364,7 +407,7 @@ def _create_new_recipe(newpv, checksums, srcrev, srcbranch, srcsubdir_old, srcsu
                         break
                     else:
                         params['branch'] = srcbranch
-                        entry = bb.fetch2.encodeurl((scheme, network, path, user, passwd, params))
+                        entry = bb.fetch.encodeurl((scheme, network, path, user, passwd, params))
                         changed = True
                 replacing = False
             new_src_uri.append(entry)
@@ -383,7 +426,7 @@ def _create_new_recipe(newpv, checksums, srcrev, srcbranch, srcsubdir_old, srcsu
     newnames = []
     addnames = []
     for newentry in new_src_uri:
-        _, _, _, _, _, params = bb.fetch2.decodeurl(newentry)
+        _, _, _, _, _, params = bb.fetch.decodeurl(newentry)
         if 'name' in params:
             newnames.append(params['name'])
             if newentry not in old_src_uri:
@@ -419,7 +462,7 @@ def _create_new_recipe(newpv, checksums, srcrev, srcbranch, srcsubdir_old, srcsu
         newvalues['SRC_URI[%smd5sum]' % nameprefix] = None
         oldsums.remove('md5sum')
         if not oldsums:
-            oldsums = ["%ssum" % s for s in bb.fetch2.SHOWN_CHECKSUM_LIST]
+            oldsums = ["%ssum" % s for s in bb.fetch.SHOWN_CHECKSUM_LIST]
 
     for checksum in oldsums:
         newvalues['SRC_URI[%s%s]' % (nameprefix, checksum)] = checksums[checksum]
@@ -529,6 +572,173 @@ def _run_recipe_upgrade_extra_tasks(pn, rd, tinfoil):
         if not res:
             raise DevtoolError('Running extra recipe upgrade task %s for %s failed' % (task, pn))
 
+def _resolve_rst_includes(content, srctree):
+    """Resolve RST .. include:: directives by reading files from the source tree."""
+    result = []
+    for line in content.splitlines(True):
+        m = re.match(r'^\.\.\s+include::\s+(.+)$', line)
+        if m:
+            basename = os.path.basename(m.group(1).strip())
+            # Search for the file in the source tree
+            for dirpath, _, filenames in os.walk(srctree):
+                if basename in filenames:
+                    fpath = os.path.join(dirpath, basename)
+                    try:
+                        with open(fpath, 'r', errors='replace') as f:
+                            result.append(f.read())
+                        break
+                    except OSError:
+                        pass
+            else:
+                result.append(line)
+            continue
+        result.append(line)
+    return ''.join(result)
+
+
+_GIT_LOG_COMMIT_RE = re.compile(r'^commit ([0-9a-f]{7,40})\b.*$', re.MULTILINE)
+
+def _diff_git_log_changelog(old_content, new_content):
+    """Diff a ChangeLog that is itself `git log` output (e.g. nghttp2),
+    regenerated wholesale on every release. New commits get prepended, so
+    old ones shift position even though unchanged, which a textual diff
+    would wrongly show as removed/added lines. Compare commit hashes
+    instead: hashes already in old_content are just moved, anything else
+    is new. Returns the new commits' subject lines as one string, or
+    None if either file doesn't look like git log output."""
+    old_hashes = set(_GIT_LOG_COMMIT_RE.findall(old_content))
+    new_commits = _GIT_LOG_COMMIT_RE.split(new_content)[1:]  # [hash, block, hash, block, ...]
+    if not old_hashes or not new_commits:
+        return None
+
+    subjects = []
+    for commit_hash, block in zip(new_commits[0::2], new_commits[1::2]):
+        if commit_hash in old_hashes:
+            continue
+        # `git log` separates headers (Author:, Date:, etc.) from the
+        # commit message with a blank line; drop the leading blank line
+        # left over from splitting on "commit <hash>", then skip the
+        # headers up to the next blank line to get just the message.
+        lines = block.splitlines()
+        while lines and not lines[0].strip():
+            lines.pop(0)
+        blank_at = next((i for i, l in enumerate(lines) if not l.strip()), len(lines))
+        message_lines = [l.strip() for l in lines[blank_at:] if l.strip()]
+        # Skip the 'Merge pull request ...' line GitHub adds as the first
+        # message line of a merge commit; the actual change subject is the
+        # next line, and keeping the merge line would duplicate it.
+        subject = next((l for l in message_lines if not l.startswith('Merge pull request ')), None)
+        if subject and (not subjects or subjects[-1] != subject):
+            subjects.append(subject)
+    return '\n'.join(subjects) if subjects else None
+
+
+def _extract_changelog(srctree, pn, old_ver, new_ver, old_tag, new_tag, workspace_path, is_git_source):
+    """Extract changelog between old and new version using devtool git tags."""
+    changelog_content = None
+    changelog_fname = None
+
+    # Try to find a changelog file that changed between versions
+    try:
+        stdout, _ = _run('git diff --name-only %s %s' % (old_tag, new_tag), srctree)
+        changed_files = [f.strip() for f in stdout.splitlines() if f.strip()]
+        # Exclude bundled/vendored dependencies; their changelogs are not
+        # relevant to this recipe's own version bump.
+        changed_files = [f for f in changed_files if not _VENDORED_PATH_RE.search(f)]
+
+        # First pass: collect per-version release notes that changed
+        # Matches files with a version number whose path suggests release notes
+        # (e.g. Documentation/releases/v2.42-ReleaseNotes, docs/relnotes/2.53.0.adoc)
+        parts = []
+        source_files = []
+        for fname in changed_files:
+            if not re.search(r'\d+\.\d+', fname):
+                continue
+            if re.search(r'(releas|relnote|change|news|migrat)', fname, re.IGNORECASE):
+                try:
+                    file_content, _ = _run('git show %s' % shlex.quote('%s:%s' % (new_tag, fname)), srctree)
+                except bb.process.ExecutionError:
+                    try:
+                        file_content, _ = _run('git show %s' % shlex.quote('%s:%s' % (old_tag, fname)), srctree)
+                    except bb.process.ExecutionError:
+                        continue
+                if file_content.strip():
+                    parts.append(file_content.strip())
+                    source_files.append(fname)
+        if parts:
+            changelog_content = '\n\n'.join(parts)
+            changelog_fname = ', '.join(source_files)
+
+        # Second pass: pick the largest standard changelog file (NEWS, ChangeLog, etc.)
+        if not changelog_content:
+            for fname in changed_files:
+                basename = os.path.basename(fname).lower()
+                if basename in _CHANGELOG_BASENAMES:
+                    candidate = None
+                    try:
+                        old_file, _ = _run('git show %s' % shlex.quote('%s:%s' % (old_tag, fname)), srctree)
+                        new_file, _ = _run('git show %s' % shlex.quote('%s:%s' % (new_tag, fname)), srctree)
+                        candidate = _diff_git_log_changelog(old_file, new_file)
+                    except bb.process.ExecutionError:
+                        pass
+                    if candidate is None:
+                        diff_out, _ = _run('git diff %s %s -- %s' % (old_tag, new_tag, shlex.quote(fname)), srctree)
+                        added_lines = [line[1:] for line in diff_out.splitlines()
+                                       if line.startswith('+') and not line.startswith('+++')]
+                        candidate = '\n'.join(added_lines) if added_lines else None
+                    if candidate and (not changelog_content or len(candidate) > len(changelog_content)):
+                        changelog_content = candidate
+                        changelog_fname = fname
+    except bb.process.ExecutionError as e:
+        logger.warning('Changelog file extraction failed: %s' % str(e))
+
+    # For git sources, fall back to git log if no changelog file was found
+    if not changelog_content and is_git_source:
+        try:
+            stdout, _ = _run('git log --oneline %s..%s' % (old_tag, new_tag), srctree)
+            if stdout.strip():
+                changelog_content = stdout.strip()
+        except bb.process.ExecutionError as e:
+            logger.warning('Changelog git log extraction failed: %s' % str(e))
+
+    if not changelog_content:
+        return None
+
+    # Resolve RST .. include:: directives and strip comment blocks.
+    # Only applied to .rst files to avoid mangling plain-text changelogs.
+    if changelog_fname and any(f.endswith('.rst') for f in changelog_fname.split(', ')):
+        changelog_content = _resolve_rst_includes(changelog_content, srctree)
+        # Remove RST comments (.. without ::) and their indented continuation lines
+        filtered = []
+        in_comment = False
+        for line in changelog_content.splitlines(True):
+            if line.startswith('..') and '::' not in line:
+                in_comment = True
+            elif in_comment and (line.startswith('   ') or line.strip() == ''):
+                pass
+            else:
+                in_comment = False
+                filtered.append(line)
+        changelog_content = ''.join(filtered)
+
+    # Clean up content for readability and commit message use
+    changelog_content = re.sub(r'\n{3,}', '\n\n', changelog_content).strip()
+    if not changelog_content:
+        return None
+
+    changelog_dir = os.path.join(workspace_path, 'changelogs')
+    bb.utils.mkdirhier(changelog_dir)
+    changelog_path = os.path.join(changelog_dir, '%s.txt' % pn)
+    with open(changelog_path, 'w') as f:
+        f.write('Changelog for %s: %s -> %s\n' % (pn, old_ver, new_ver))
+        if changelog_fname:
+            f.write('Source: %s\n' % changelog_fname)
+        f.write('\n')
+        f.write(changelog_content)
+        f.write('\n')
+
+    return changelog_path
+
 def upgrade(args, config, basepath, workspace):
     """Entry point for the devtool 'upgrade' subcommand"""
 
@@ -560,7 +770,7 @@ def upgrade(args, config, basepath, workspace):
 
         # try to automatically discover latest version and revision if not provided on command line
         if not args.version and not args.srcrev:
-            version_info = oe.recipeutils.get_recipe_upstream_version(rd)
+            version_info = oe.recipeutils.get_recipe_upstream_version(rd, args.stable)
             if version_info['version'] and not version_info['version'].endswith("new-commits-available"):
                 args.version = version_info['version']
             if version_info['revision']:
@@ -610,6 +820,18 @@ def upgrade(args, config, basepath, workspace):
 
         logger.info('Upgraded source extracted to %s' % srctree)
         logger.info('New recipe is %s' % rf)
+
+        # Extract changelog between versions using the tags created by
+        # _extract_new_source(): devtool-base-new for git, devtool-base-<pv> for tarballs
+        is_git = old_srcrev is not None
+        newpv = args.version or rd.getVar('PV')
+        new_tag = 'devtool-base-new' if is_git else 'devtool-base-%s' % newpv
+        changelog_file = _extract_changelog(srctree, pn, old_ver, newpv,
+                                            'devtool-base', new_tag,
+                                            config.workspace_path, is_git)
+        if changelog_file:
+            logger.info('Changelog extracted to %s' % changelog_file)
+
         if license_diff:
             logger.info('License checksums have been updated in the new recipe; please refer to it for the difference between the old and the new license texts.')
         preferred_version = rd.getVar('PREFERRED_VERSION_%s' % rd.getVar('PN'))
@@ -626,7 +848,7 @@ def latest_version(args, config, basepath, workspace):
         rd = parse_recipe(config, tinfoil, args.recipename, True)
         if not rd:
             return 1
-        version_info = oe.recipeutils.get_recipe_upstream_version(rd)
+        version_info = oe.recipeutils.get_recipe_upstream_version(rd, args.stable)
         # "new-commits-available" is an indication that upstream never issues version tags
         if not version_info['version'].endswith("new-commits-available"):
             logger.info("Current version: {}".format(version_info['current_version']))
@@ -649,7 +871,7 @@ def check_upgrade_status(args, config, basepath, workspace):
                                                                "cannot be updated due to: %s" %(recipe['no_upgrade_reason']) if recipe['no_upgrade_reason'] else ""))
     if not args.recipe:
         logger.info("Checking the upstream status for all recipes may take a few minutes")
-    results = oe.recipeutils.get_recipe_upgrade_status(args.recipe)
+    results = oe.recipeutils.get_recipe_upgrade_status(args.recipe, args.stable)
     for recipegroup in results:
         upgrades = [r for r in recipegroup if r['status'] != 'MATCH']
         currents = [r for r in recipegroup if r['status'] == 'MATCH']
@@ -673,6 +895,7 @@ def register_commands(subparsers, context):
                                            group='starting')
     parser_upgrade.add_argument('recipename', help='Name of recipe to upgrade (just name - no version, path or extension)')
     parser_upgrade.add_argument('srctree',  nargs='?', help='Path to where to extract the source tree. If not specified, a subdirectory of %s will be used.' % defsrctree)
+    parser_upgrade.add_argument('--stable', action="store_true", help='Only consider stable upstream releases')
     parser_upgrade.add_argument('--version', '-V', help='Version to upgrade to (PV). If omitted, latest upstream version will be determined and used, if possible.')
     parser_upgrade.add_argument('--srcrev', '-S', help='Source revision to upgrade to (useful when fetching from an SCM such as git)')
     parser_upgrade.add_argument('--srcbranch', '-B', help='Branch in source repository containing the revision to use (if fetching from an SCM such as git)')
@@ -690,11 +913,13 @@ def register_commands(subparsers, context):
                                                   description='Queries the upstream server for what the latest upstream release is (for git, tags are checked, for tarballs, a list of them is obtained, and one with the highest version number is reported)',
                                                   group='info')
     parser_latest_version.add_argument('recipename', help='Name of recipe to query (just name - no version, path or extension)')
+    parser_latest_version.add_argument('--stable', action="store_true", help='Only consider stable upstream releases')
     parser_latest_version.set_defaults(func=latest_version)
 
     parser_check_upgrade_status = subparsers.add_parser('check-upgrade-status', help="Report upgradability for multiple (or all) recipes",
                                                         description="Prints a table of recipes together with versions currently provided by recipes, and latest upstream versions, when there is a later version available",
                                                         group='info')
     parser_check_upgrade_status.add_argument('recipe', help='Name of the recipe to report (omit to report upgrade info for all recipes)', nargs='*')
+    parser_check_upgrade_status.add_argument('--stable', action="store_true", help='Only consider stable upstream releases')
     parser_check_upgrade_status.add_argument('--all', '-a', help='Show all recipes, not just recipes needing upgrade', action="store_true")
     parser_check_upgrade_status.set_defaults(func=check_upgrade_status)

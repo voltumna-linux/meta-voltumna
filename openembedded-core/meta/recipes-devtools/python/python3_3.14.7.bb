@@ -15,26 +15,16 @@ SRC_URI = "http://www.python.org/ftp/python/${PV}/Python-${PV}.tar.xz \
            file://reformat_sysconfig.py \
            file://0001-Makefile.pre-use-qemu-wrapper-when-gathering-profile.patch \
            file://0001-test_locale.py-correct-the-test-output-format.patch \
-           file://0001-Skip-failing-tests-due-to-load-variability-on-YP-AB.patch \
-           file://0001-test_ctypes.test_find-skip-without-tools-sdk.patch \
            file://makerace.patch \
            file://0001-sysconfig.py-use-platlibdir-also-for-purelib.patch \
            file://0001-Lib-pty.py-handle-stdin-I-O-errors-same-way-as-maste.patch \
            file://valid-dists.patch \
            file://0001-Avoid-shebang-overflow-on-python-config.py.patch \
            file://0001-Update-test_sysconfig-for-posix_user-purelib.patch \
-           file://0001-skip-no_stdout_fileno-test-due-to-load-variability.patch \
-           file://0001-test_storlines-skip-due-to-load-variability.patch \
-           file://0001-test_shutdown-skip-problematic-test.patch \
-           file://0001-test_deadlock-skip-problematic-test.patch \
-           file://0001-test_active_children-skip-problematic-test.patch \
-           file://0001-test_readline-skip-limited-history-test.patch \
-           file://0001-test_cmd-skip-bang-completion-test.patch \
-           file://0001-test_pyrepl-skip-test_unix_console.test_cursor_back_.patch \
-           file://0001-test_sysconfig-skip-test_sysconfig.test_sysconfigdat.patch \
-           file://0001-Skip-flaky-test_default_timeout-tests.patch \
-           file://0001-test_only_active_thread-skip-problematic-test.patch \
            file://0001-prefer-valid-entrypoints.patch \
+           file://0001-gh-146207-Add-support-for-OpenSSL-4.0.0.patch \
+           file://0002-gh-148292-Update-_ssl._SSLSocket-for-OpenSSL-4.patch \
+           file://0003-gh-148292-Remove-shutdown-test-in-test_ssl.test_got_eof.patch \
            "
 SRC_URI:append:class-native = " \
            file://0001-Lib-sysconfig.py-use-prefix-value-from-build-configu.patch \
@@ -44,6 +34,10 @@ SRC_URI[sha256sum] = "3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66b
 
 # exclude pre-releases for both python 2.x and 3.x
 UPSTREAM_CHECK_REGEX = "[Pp]ython-(?P<pver>\d+(\.\d+)+).tar"
+
+# Python publishes bugfix/security-only releases on its per-minor
+# maintenance branches.
+inherit upstream-stable-release-point
 
 CVE_PRODUCT = "python:python python_software_foundation:python cpython"
 
@@ -251,7 +245,76 @@ do_install:append:class-nativesdk () {
     create_wrapper ${D}${bindir}/python${PYTHON_MAJMIN} TERMINFO_DIRS='${sysconfdir}/terminfo:/etc/terminfo:/usr/share/terminfo:/usr/share/misc/terminfo:/lib/terminfo' PYTHONNOUSERSITE='1'
 }
 
-SKIPPED_TESTS = "--ignore test.test_os.test_os.TimerfdTests.test_timerfd_TFD_TIMER_ABSTIME"
+# Tests failing due to load variability. Bugs were opened at
+# https://bugzilla.yoctoproject.org/ to track some of these:
+# 14296 (test_many_processes, test_process_time, test_thread_time, test_wait_integer)
+# 14933 (test_storlines)
+# 15120 (test_input_no_stdout_fileno)
+# 15131 (*TestBarrier.test_timeout)
+# 15177 (test_thread_time)
+# 15743 (test.test_os.test_os.TimerfdTests.test_timerfd_TFD_TIMER_ABSTIME)
+# 15885 (test_default_timeout)
+SKIPPED_TESTS = " \
+    --ignore *TestBarrier.test_timeout \
+    --ignore ExecutorDeadlockTest \
+    --ignore ExecutorShutdownTest \
+    --ignore ProcessPoolShutdownTest \
+    --ignore ThreadPoolShutdownTest \
+    --ignore test.test_os.test_os.TimerfdTests.test_timerfd_TFD_TIMER_ABSTIME \
+    --ignore test_active_children \
+    --ignore test_default_timeout \
+    --ignore test_input_no_stdout_fileno \
+    --ignore test_many_processes \
+    --ignore test_only_active_thread \
+    --ignore test_process_time \
+    --ignore test_storlines \
+    --ignore test_thread_time \
+    --ignore test_wait_integer \
+    --ignore test_write_read_append \
+"
+
+# We build Python3 with editline support by default, which has tab completion
+# but not bang completion. test_bang_completion_without_do_shell() passes if
+# building with readline, but we don't want to change the default, so skip the
+# test.
+# https://github.com/python/cpython/issues/150922
+SKIPPED_TESTS += " \
+    --ignore test_bang_completion_without_do_shell \
+"
+
+# Also fails with editline instead of readline. See:
+# https://github.com/python/cpython/issues/123018
+SKIPPED_TESTS += " \
+    --ignore test_write_read_limited_history \
+"
+
+# In 3.14+ PyREPL's uses terminfo instead of curses. ICH1, is not in the
+# resulting terminal capabilities, in an "optimization" occurring from PyREPL's
+# side that causes test_cursor_back_write() to fail. Specifically, the test
+# tests the following writes in sequence:
+#
+# 1. b"1"
+# 2. TERM_CAPABILITIES["cub"] + b":1"
+# 3. ANY, b"2"
+#
+# The first two writes are read correctly, but the result for the third
+# write is seeing the equivalent of:
+#
+# ANY, b"21"
+SKIPPED_TESTS += " \
+    --ignore test_cursor_back_write \
+"
+
+# Needs IMAGE_FEATURE += \"tools-sdk\"
+SKIPPED_TESTS += " \
+    --ignore test_find_library_with_gcc \
+    --ignore test_find_library_with_ld \
+"
+
+# Fails due to differences in CFLAGS as as modified during build
+SKIPPED_TESTS += " \
+    --ignore test_sysconfigdata_json \
+"
 
 # Fails with segfault
 # Bugzilla YP 16182 (test_tracemalloc_track_race)
@@ -259,7 +322,24 @@ SKIPPED_TESTS += " \
     --ignore test.test_tracemalloc.TestCAPI.test_tracemalloc_track_race \
 "
 
-SKIPPED_TESTS:append:class-target:libc-musl = " \
+# Intermittent failure under load - the remote pdb attach test is timing
+# sensitive and fails on loaded autobuilder hosts (CPython #130363)
+# Bugzilla YP 16201, 16412
+SKIPPED_TESTS += " \
+    --ignore test.test_remote_pdb.PdbAttachTestCase.test_attach_to_process_with_colors \
+    --ignore test.test_remote_pdb.PdbAttachTestCase.test_attach_to_process_without_colors \
+"
+
+# Intermittent failure under load - this asyncio taskgroup test assumes
+# scheduled tasks finish within a fixed sleep, which does not hold on
+# loaded autobuilder hosts under QEMU emulation where timer callbacks are
+# delayed. Part of the broader timing-sensitive test class (CPython #130363).
+# Bugzilla YP 15564
+SKIPPED_TESTS += " \
+    --ignore test.test_asyncio.test_taskgroups.TestTaskGroup.test_taskgroup_23 \
+"
+
+SKIPPED_TESTS:append:libc-musl = " \
     -x test__locale \
     -x test_c_locale_coercion \
     -x test_locale \
@@ -268,6 +348,7 @@ SKIPPED_TESTS:append:class-target:libc-musl = " \
     -x test_threading \
     --ignore test.test_strptime.StrptimeTests.test_date_locale2 \
     --ignore test.test_ctypes.test_dlerror.TestNullDlsym.test_null_dlsym \
+    --ignore test.test_multiprocessing_fork.test_processes.WithProcessesTestProcess.test_interrupt \
 "
 
 

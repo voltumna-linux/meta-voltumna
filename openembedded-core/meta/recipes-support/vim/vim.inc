@@ -16,33 +16,10 @@ SRC_URI = "git://github.com/vim/vim.git;branch=master;protocol=https;tag=v${PV} 
            file://disable_acl_header_check.patch \
            file://0001-src-Makefile-improve-reproducibility.patch \
            file://no-path-adjust.patch \
-           file://CVE-2026-44656.patch \
-           file://CVE-2026-41411.patch \
-           file://CVE-2026-45130.patch \
-           file://CVE-2026-46483.patch \
-           file://CVE-2026-52858.patch \
-           file://CVE-2026-52859.patch \
-           file://CVE-2026-52860.patch \
-           file://CVE-2026-42307.patch \
-           file://CVE-2026-43961.patch \
-           file://CVE-2026-47162.patch \
-           file://CVE-2026-47167.patch \
-           file://CVE-2026-55892.patch \
-           file://CVE-2026-57452.patch \
-           file://CVE-2026-55693.patch \
-           file://CVE-2026-55895.patch \
-           file://CVE-2026-57451.patch \
-           file://CVE-2026-57453.patch \
-           file://CVE-2026-57454.patch \
-           file://CVE-2026-57455.patch \
-           file://CVE-2026-57456.patch \
-           file://CVE-2026-59856.patch \
-           file://CVE-2026-59857.patch \
-           file://CVE-2026-59858.patch \
            "
 
-PV .= ".0340"
-SRCREV = "6addd6c101117706bc9b3609d3a418e26e92618f"
+PV .= ".0993"
+SRCREV = "ffce1ce58dd3d08110c35c8af61ad2555b344569"
 
 # Do not consider .z in x.y.z, as that is updated with every commit
 UPSTREAM_CHECK_GITTAGREGEX = "(?P<pver>\d+\.\d+)\.0"
@@ -51,7 +28,7 @@ UPSTREAM_VERSION_UNKNOWN = "1"
 
 VIMDIR = "vim${@d.getVar('PV').split('.')[0]}${@d.getVar('PV').split('.')[1]}"
 
-inherit autotools-brokensep update-alternatives mime-xdg pkgconfig
+inherit autotools-brokensep update-alternatives pkgconfig
 
 CLEANBROKEN = "1"
 
@@ -75,11 +52,12 @@ do_configure () {
 }
 
 PACKAGECONFIG ??= "\
-    ${@bb.utils.filter('DISTRO_FEATURES', 'acl selinux', d)} \
-    ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'x11', '', d)} \
+    ${@bb.utils.filter('DISTRO_FEATURES', 'acl selinux x11', d)} \
+    desktop \
     nls \
 "
 
+PACKAGECONFIG[desktop] = ""
 PACKAGECONFIG[gtkgui] = "--enable-gui=gtk3,--enable-gui=no,gtk+3"
 PACKAGECONFIG[acl] = "--enable-acl,--disable-acl,acl,"
 PACKAGECONFIG[x11] = "--with-x,--without-x,xt,"
@@ -88,6 +66,8 @@ PACKAGECONFIG[selinux] = "--enable-selinux,--disable-selinux,libselinux,"
 PACKAGECONFIG[elfutils] = "--enable-elf-check,,elfutils,"
 PACKAGECONFIG[nls] = "--enable-nls,--disable-nls,,"
 PACKAGECONFIG[sound] = "--enable-canberra,--disable-canberra,canberra,"
+
+inherit_defer ${@bb.utils.contains('PACKAGECONFIG', 'desktop', 'mime-xdg', '', d)}
 
 EXTRA_OECONF = " \
     --disable-gpm \
@@ -122,7 +102,7 @@ do_install() {
     chmod -x ${D}${datadir}/${BPN}/${VIMDIR}/tools/mve.awk
     chmod -x ${D}${datadir}/${BPN}/${VIMDIR}/tools/*.pl
     chmod -x ${D}${datadir}/${BPN}/${VIMDIR}/tools/*.py
-    
+
     # Install example vimrc from runtime files
     install -m 0644 runtime/vimrc_example.vim ${D}/${datadir}/${BPN}/vimrc
 
@@ -134,6 +114,11 @@ do_install() {
 	# drag make vim go into visual mode and there is no right click menu),
 	# delete the block.
 	sed -i '/the mouse works just fine/,+4d' ${D}/${datadir}/${BPN}/vimrc
+    fi
+
+    if ${@bb.utils.contains('PACKAGECONFIG', 'desktop', 'false', 'true', d)}; then
+        rm -f ${D}${datadir}/applications/vim.desktop
+        rm -f ${D}${datadir}/applications/gvim.desktop
     fi
 }
 

@@ -45,7 +45,7 @@ SECTION = "libs/multimedia"
 # libdbus is a system library that is covered by the "special exception" in
 # GPLv2's section 3, and therefore libdbus's GPL license doesn't affect
 # PulseAudio.
-LICENSE = "LGPL-2.1-or-later & MIT & BSD-3-Clause"
+LICENSE = "BSD-3-Clause AND LGPL-2.1-or-later AND MIT"
 
 LIC_FILES_CHKSUM = "file://LICENSE;md5=0e5cd938de1a7a53ea5adac38cc10c39 \
                     file://GPL;md5=4325afd396febcb659c36b49533135d4 \
@@ -172,6 +172,7 @@ PACKAGES =+ "\
              libpulse-simple \
              libpulsecommon \
              libpulsecore \
+             ${PN}-pactl \
              ${PN}-pa-info \
              ${PN}-server \
              ${PN}-misc \
@@ -200,8 +201,9 @@ FILES:libpulse-mainloop-glib = "${libdir}/libpulse-mainloop-glib.so.*"
 
 FILES:${PN}-dev += "${datadir}/vala"
 FILES:${PN}-bin += "${sysconfdir}/default/volatiles/04_pulse"
+FILES:${PN}-pactl = "${bindir}/pactl"
 FILES:${PN}-pa-info = "${bindir}/pa-info"
-FILES:${PN}-server = "${bindir}/pulseaudio ${bindir}/start-* ${sysconfdir} ${bindir}/pactl */udev/rules.d/*.rules */*/udev/rules.d/*.rules ${systemd_user_unitdir}/*"
+FILES:${PN}-server = "${bindir}/pulseaudio ${bindir}/start-* ${sysconfdir} */udev/rules.d/*.rules */*/udev/rules.d/*.rules ${systemd_user_unitdir}/*"
 FILES:${PN}-server += "${datadir}/dbus-1/system.d/pulseaudio-system.conf"
 
 #SYSTEMD_PACKAGES = "${PN}-server"
@@ -297,4 +299,6 @@ RDEPENDS:pulseaudio-server += "${@bb.utils.contains('DISTRO_FEATURES', 'x11', \
                                   bb.utils.contains('DISTRO_FEATURES', 'systemd', 'pulseaudio-module-systemd-login', 'pulseaudio-module-console-kit', d), \
                                   '', d)}"
 
+CVE_STATUS[CVE-2020-15710] = "not-applicable-platform: specific to Ubuntu"
+CVE_STATUS[CVE-2020-16123] = "not-applicable-platform: specific to Ubuntu"
 CVE_STATUS[CVE-2024-11586] = "not-applicable-platform: specific to Ubuntu 16.04"

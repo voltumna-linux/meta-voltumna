@@ -1,7 +1,7 @@
 SUMMARY = "Provides cryptographic recipes and primitives to python developers"
 HOMEPAGE = "https://cryptography.io/"
 SECTION = "devel/python"
-LICENSE = "Apache-2.0 | BSD-3-Clause"
+LICENSE = "Apache-2.0 OR BSD-3-Clause"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=8c3617db4fb6fae01f1d253ab91511e4 \
                     file://LICENSE.APACHE;md5=4e168cce331e5c827d4c2b68a6200e1b \
                     file://LICENSE.BSD;md5=5ae30ba4123bc4f2fa49aa0b0dce887b \
@@ -11,10 +11,9 @@ LDSHARED += "-pthread"
 # NOTE: Make sure to keep this recipe at the same version as python3-cryptography-vectors
 #       Upgrade both recipes at the same time
 require python3-cryptography-common.inc
-SRC_URI[sha256sum] = "e4cfd68c5f3e0bfdad0d38e023239b96a2fe84146481852dffbcca442c245aa5"
+SRC_URI[sha256sum] = "5dd9bda1c12b4162f6ff568eeb5e0ff956c28d14406e875cfe8a63a2d414ff20"
 
 SRC_URI += "file://0001-pyproject.toml-remove-benchmark-disable-option.patch \
-            file://0002-Fix-installing-stray-files-into-site-packages.patch \
             file://check-memfree.py \
             file://run-ptest \
            "
@@ -27,6 +26,8 @@ PACKAGECONFIG ??= ""
 PACKAGECONFIG[legacy-openssl] = ",,,openssl-ossl-module-legacy"
 
 export CRYPTOGRAPHY_BUILD_OPENSSL_NO_LEGACY = "${@bb.utils.contains('PACKAGECONFIG', 'legacy-openssl', '0', '1', d)}"
+
+TARGET_CFLAGS:append = " -I${STAGING_INCDIR}/python${PYTHON_BASEVERSION}"
 
 DEPENDS += " \
     python3-cffi-native \
@@ -69,10 +70,6 @@ do_install_ptest() {
     cp -rf ${S}/tests/hazmat/* ${D}${PTEST_PATH}/tests/hazmat/
     cp -r ${S}/pyproject.toml ${D}${PTEST_PATH}/
 }
-
-FILES:${PN}-dbg += " \
-    ${PYTHON_SITEPACKAGES_DIR}/${SRCNAME}/hazmat/bindings/.debug \
-"
 
 CVE_PRODUCT = "cryptography.io:cryptography pyca:cryptography"
 

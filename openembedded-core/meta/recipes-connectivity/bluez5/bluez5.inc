@@ -2,13 +2,11 @@ SUMMARY = "Linux Bluetooth Stack Userland V5"
 DESCRIPTION = "Linux Bluetooth stack V5 userland components.  These include a system configurations, daemons, tools and system libraries."
 HOMEPAGE = "http://www.bluez.org"
 SECTION = "libs"
-LICENSE = "GPL-2.0-or-later & LGPL-2.1-or-later"
+LICENSE = "GPL-2.0-or-later AND LGPL-2.1-or-later"
 LIC_FILES_CHKSUM = "file://COPYING;md5=12f884d2ae1ff87c09e5b7ccc2c4ca7e \
                     file://COPYING.LIB;md5=fb504b67c50331fc78734fed90fb0e09 \
                     file://src/main.c;beginline=1;endline=24;md5=0ad83ca0dc37ab08af448777c581e7ac"
 DEPENDS = "dbus glib-2.0"
-PROVIDES += "bluez-hcidump"
-RPROVIDES:${PN} += "bluez-hcidump"
 
 PACKAGECONFIG ??= "obex-profiles \
     readline \
@@ -68,13 +66,8 @@ SRC_URI = "${KERNELORG_MIRROR}/linux/bluetooth/bluez-${PV}.tar.xz \
            file://init \
            file://run-ptest \
            file://0001-tests-add-a-target-for-building-tests-without-runnin.patch \
-           file://0001-Revert-shared-shell-Don-t-init-input-for-non-interac.patch \
-           file://0001-tools-Work-around-broken-stdin-handling-in-home-made.patch \
-           file://0001-gatt-client-Fix-use-after-free-caused-by-reentrant-c.patch \
-           file://0001-transport-Fix-set-volume-failure-with-invalid-device.patch \
-           file://0001-advertising-Fix-sending-extra-bytes-with-MGMT_OP_ADD.patch \
-           file://0001-src-device-Fix-stored-gatt-cache-DB-Hash-value-no.patch    \
-           file://0001-profile-Set-L2CAP-IMTU-for-OBEX-profile-listeners.patch \
+           file://0001-adapter-restrict-delta-0-RSSI-to-proximity-filters.patch \
+           file://0001-gobex-Fix-ABORT-response-being-discarded.patch \
            "
 S = "${UNPACKDIR}/bluez-${PV}"
 
@@ -90,7 +83,7 @@ EXTRA_OECONF = "\
   --without-zsh-completion-dir \
 "
 
-CFLAGS += "-DFIRMWARE_DIR='"${nonarch_base_libdir}/firmware"'"
+CFLAGS += "-DFIRMWARE_DIR='"${firmwaredir}"'"
 
 # bluez5 builds a large number of useful utilities but does not
 # install them.  Specify which ones we want put into ${PN}-noinst-tools.

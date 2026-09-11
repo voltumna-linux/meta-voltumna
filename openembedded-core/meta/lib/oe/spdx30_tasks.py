@@ -6,12 +6,14 @@
 
 import json
 import oe.cve_check
+import oe.license
 import oe.packagedata
 import oe.patch
 import oe.sbom30
+import oe.sdk
 import oe.spdx30
 import oe.spdx_common
-import oe.sdk
+import oe.spdx_license
 import os
 import re
 import urllib.parse
@@ -37,101 +39,52 @@ def set_timestamp_now(d, o, prop):
 def add_license_expression(
     d, objset, license_expression, license_data, search_objsets=[]
 ):
-    simple_license_text = {}
     license_text_map = {}
+    pn = d.getVar("PN")
 
-    def add_license_text(name):
-        nonlocal objset
-        nonlocal simple_license_text
-
-        if name in simple_license_text:
-            return simple_license_text[name]
-
-        for o in [objset] + search_objsets:
-            lic = o.find_filter(
-                oe.spdx30.simplelicensing_SimpleLicensingText,
-                name=name,
-            )
-
-            if lic is not None:
-                simple_license_text[name] = lic
-                return lic
-
-        lic = objset.add(
-            oe.spdx30.simplelicensing_SimpleLicensingText(
-                _id=objset.new_spdxid("license-text", name),
-                creationInfo=objset.doc.creationInfo,
-                name=name,
-            )
-        )
-        objset.set_element_alias(lic)
-        simple_license_text[name] = lic
-
-        if name == "PD":
-            lic.simplelicensing_licenseText = "Software released to the public domain"
-            return lic
-
-        # Seach for the license in COMMON_LICENSE_DIR and LICENSE_PATH
-        for directory in [d.getVar("COMMON_LICENSE_DIR")] + (
-            d.getVar("LICENSE_PATH") or ""
-        ).split():
-            try:
-                with (Path(directory) / name).open(errors="replace") as f:
-                    lic.simplelicensing_licenseText = f.read()
-                    return lic
-
-            except FileNotFoundError:
-                pass
-
-        # If it's not SPDX or PD, then NO_GENERIC_LICENSE must be set
-        filename = d.getVarFlag("NO_GENERIC_LICENSE", name)
-        if filename:
-            filename = d.expand("${S}/" + filename)
-            with open(filename, errors="replace") as f:
-                lic.simplelicensing_licenseText = f.read()
-                return lic
-        else:
-            bb.fatal("Cannot find any text for license %s" % name)
-
-    def convert(l):
+    def walk_license(node):
         nonlocal license_text_map
 
-        if l == "(" or l == ")":
-            return l
+        if isinstance(node, oe.spdx_license.LicenseRef):
+            if node.ident not in license_text_map:
+                lic = None
+                for o in [objset] + search_objsets:
+                    lic = o.find_filter(
+                        oe.spdx30.simplelicensing_SimpleLicensingText,
+                        name=node.name,
+                    )
+                    if lic:
+                        break
 
-        if l == "&":
-            return "AND"
+                if lic is None:
+                    p, _ = oe.license.get_license_path(d, node)
+                    if p is None:
+                        bb.fatal(f"{pn}: No generic license file exists for: {node.ident} in any provider")
+                        return
 
-        if l == "|":
-            return "OR"
+                    with open(p, errors="replace") as f:
+                        lic_text = f.read()
 
-        if l == "CLOSED":
-            return "NONE"
+                    lic = objset.add(
+                        oe.spdx30.simplelicensing_SimpleLicensingText(
+                            _id=objset.new_spdxid("license-text", node.name),
+                            creationInfo=objset.doc.creationInfo,
+                            name=node.name,
+                            simplelicensing_licenseText=lic_text,
+                        )
+                    )
+                    objset.set_element_alias(lic)
 
-        spdx_license = d.getVarFlag("SPDXLICENSEMAP", l) or l
-        if spdx_license in license_data["licenses"]:
-            return spdx_license
+                license_text_map[node.ident] = lic
 
-        spdx_license = "LicenseRef-" + l
-        if spdx_license not in license_text_map:
-            license_text_map[spdx_license] = oe.sbom30.get_element_link_id(
-                add_license_text(l)
-            )
+        for child in node.children:
+            walk_license(child)
 
-        return spdx_license
+    s = oe.license.parse_legacy_license(d, license_expression)
+    if s is None:
+        return None
 
-    lic_split = (
-        license_expression.replace("(", " ( ")
-        .replace(")", " ) ")
-        .replace("|", " | ")
-        .replace("&", " & ")
-        .split()
-    )
-    spdx_license_expression = " ".join(convert(l) for l in lic_split)
-
-    o = objset.new_license_expression(
-        spdx_license_expression, license_data, license_text_map
-    )
+    o = objset.new_license_expression(s.to_string(), license_data, license_text_map)
     objset.set_element_alias(o)
     return o
 
@@ -382,7 +335,6 @@ def collect_dep_sources(dep_objsets, dest):
             index_sources_by_hash(e.to, dest)
 
 
-
 def _generate_git_purl(d, download_location, srcrev):
     """Generate a Package URL for a Git source from its download location.
 
@@ -392,27 +344,29 @@ def _generate_git_purl(d, download_location, srcrev):
 
     Returns the PURL string or None if no mapping matches.
     """
-    if not download_location or not download_location.startswith('git+'):
+    if not download_location or not download_location.startswith("git+"):
         return None
 
     git_url = download_location[4:]  # Remove 'git+' prefix
 
     # Default handler: github.com
     git_purl_handlers = {
-        'github.com': 'pkg:github',
+        "github.com": "pkg:github",
     }
 
     # Custom PURL mappings from SPDX_GIT_PURL_MAPPINGS
     # Format: "domain1:purl_type1 domain2:purl_type2"
-    custom_mappings = d.getVar('SPDX_GIT_PURL_MAPPINGS')
+    custom_mappings = d.getVar("SPDX_GIT_PURL_MAPPINGS")
     if custom_mappings:
         for mapping in custom_mappings.split():
-            parts = mapping.split(':', 1)
+            parts = mapping.split(":", 1)
             if len(parts) == 2:
                 git_purl_handlers[parts[0]] = parts[1]
                 bb.debug(2, f"Added custom Git PURL mapping: {parts[0]} -> {parts[1]}")
             else:
-                bb.warn(f"Invalid SPDX_GIT_PURL_MAPPINGS entry: {mapping} (expected format: domain:purl_type)")
+                bb.warn(
+                    f"Invalid SPDX_GIT_PURL_MAPPINGS entry: {mapping} (expected format: domain:purl_type)"
+                )
 
     try:
         parsed = urllib.parse.urlparse(git_url)
@@ -425,11 +379,14 @@ def _generate_git_purl(d, download_location, srcrev):
 
     for domain, purl_type in git_purl_handlers.items():
         if hostname == domain:
-            path = parsed.path.strip('/')
-            path_parts = path.split('/')
+            # oe.spdx_common.fetch_data_to_uri() appends "@<rev>" to the
+            # download location, which must not become part of the
+            # repository name
+            path = parsed.path.strip("/").partition("@")[0]
+            path_parts = path.split("/")
             if len(path_parts) >= 2:
                 owner = path_parts[0]
-                repo = path_parts[1].replace('.git', '')
+                repo = path_parts[1].removesuffix(".git")
                 return f"{purl_type}/{owner}/{repo}@{srcrev}"
             break
 
@@ -448,12 +405,12 @@ def _enrich_source_package(d, dl, fd, file_name, primary_purpose):
 
     if fd.type == "git":
         # Use full SHA-1 from fd.revision
-        srcrev = getattr(fd, 'revision', None)
-        if srcrev and srcrev not in {'${AUTOREV}', 'AUTOINC', 'INVALID'}:
+        srcrev = getattr(fd, "revision", None)
+        if srcrev and srcrev not in {"${AUTOREV}", "AUTOINC", "INVALID"}:
             version = srcrev
 
         # Generate PURL for Git hosting services
-        download_location = getattr(dl, 'software_downloadLocation', None)
+        download_location = getattr(dl, "software_downloadLocation", None)
         if version and download_location:
             purl = _generate_git_purl(d, download_location, version)
 
@@ -464,12 +421,12 @@ def _enrich_source_package(d, dl, fd, file_name, primary_purpose):
         dl.software_packageUrl = purl
 
     # Add VCS external reference for Git repositories
-    download_location = getattr(dl, 'software_downloadLocation', None)
+    download_location = getattr(dl, "software_downloadLocation", None)
     if download_location and isinstance(download_location, str):
-        if download_location.startswith('git+'):
+        if download_location.startswith("git+"):
             git_url = download_location[4:]
-            if '@' in git_url:
-                git_url = git_url.split('@')[0]
+            if "@" in git_url:
+                git_url = git_url.split("@")[0]
 
             dl.externalRef = dl.externalRef or []
             dl.externalRef.append(
@@ -480,12 +437,11 @@ def _enrich_source_package(d, dl, fd, file_name, primary_purpose):
             )
 
 
-
 def add_download_files(d, objset):
     inputs = set()
 
     urls = d.getVar("SRC_URI").split()
-    fetch = bb.fetch2.Fetch(urls, d)
+    fetch = bb.fetch.Fetch(urls, d)
 
     for download_idx, src_uri in enumerate(urls):
         fd = fetch.ud[src_uri]
@@ -547,8 +503,10 @@ def add_download_files(d, objset):
             _enrich_source_package(d, dl, fd, file_name, primary_purpose)
 
             if fd.method.supports_checksum(fd):
-                # TODO Need something better than hard coding this
-                for checksum_id in ["sha256", "sha1"]:
+                for checksum_id in bb.fetch.CHECKSUM_LIST:
+                    if checksum_id not in oe.spdx30.HashAlgorithm.NAMED_INDIVIDUALS:
+                        continue
+
                     expected_checksum = getattr(fd, "%s_expected" % checksum_id, None)
                     if expected_checksum is None:
                         continue
@@ -584,6 +542,15 @@ def set_purposes(d, element, *var_names, force_purposes=[]):
     element.software_additionalPurpose = [
         getattr(oe.spdx30.software_SoftwarePurpose, p) for p in purposes[1:]
     ]
+
+
+def add_custom_annotations(d, objset, obj):
+    for var in (d.getVar("SPDX_CUSTOM_ANNOTATION_VARS") or "").split():
+        objset.new_annotation(
+            obj,
+            "%s=%s" % (var, d.getVar(var)),
+            oe.spdx30.AnnotationType.other,
+        )
 
 
 def set_purls(spdx_package, purls):
@@ -636,6 +603,8 @@ def create_recipe_spdx(d):
         ext = oe.sbom30.OERecipeExtension()
         ext.is_native = True
         recipe.extension.append(ext)
+
+    add_custom_annotations(d, recipe_objset, recipe)
 
     set_purls(recipe, (d.getVar("SPDX_PACKAGE_URLS") or "").split())
 
@@ -724,8 +693,9 @@ def create_recipe_spdx(d):
 
             if status == "Patched":
                 spdx_vex = recipe_objset.new_vex_patched_relationship(
-                    [spdx_cve_id], [recipe],
-                    notes=": ".join(v for v in (detail, description) if v)
+                    [spdx_cve_id],
+                    [recipe],
+                    notes=": ".join(v for v in (detail, description) if v),
                 )
                 patches = []
                 for idx, filepath in enumerate(resources):
@@ -751,8 +721,9 @@ def create_recipe_spdx(d):
 
             elif status == "Unpatched":
                 recipe_objset.new_vex_unpatched_relationship(
-                    [spdx_cve_id], [recipe],
-                    notes=": ".join(v for v in (detail, description) if v)
+                    [spdx_cve_id],
+                    [recipe],
+                    notes=": ".join(v for v in (detail, description) if v),
                 )
             elif status == "Ignored":
                 spdx_vex = recipe_objset.new_vex_ignored_relationship(
@@ -835,12 +806,7 @@ def create_spdx(d):
 
     build_objset.set_is_native(is_native)
 
-    for var in (d.getVar("SPDX_CUSTOM_ANNOTATION_VARS") or "").split():
-        build_objset.new_annotation(
-            build,
-            "%s=%s" % (var, d.getVar(var)),
-            oe.spdx30.AnnotationType.other,
-        )
+    add_custom_annotations(d, build_objset, build)
 
     build_inputs = set()
 
@@ -852,11 +818,18 @@ def create_spdx(d):
     recipe_spdx_license = add_license_expression(
         d, build_objset, d.getVar("LICENSE"), license_data, [recipe_objset]
     )
-    build_objset.new_relationship(
-        source_files,
-        oe.spdx30.RelationshipType.hasDeclaredLicense,
-        [oe.sbom30.get_element_link_id(recipe_spdx_license)],
-    )
+    if recipe_spdx_license:
+        build_objset.new_relationship(
+            source_files,
+            oe.spdx30.RelationshipType.hasDeclaredLicense,
+            [oe.sbom30.get_element_link_id(recipe_spdx_license)],
+        )
+    else:
+        build_objset.new_relationship(
+            source_files,
+            oe.spdx30.RelationshipType.hasDeclaredLicense,
+            None,
+        )
 
     dep_sources = {}
     if oe.spdx_common.process_sources(d) and include_sources:
@@ -873,7 +846,6 @@ def create_spdx(d):
             lambda filepath: [oe.spdx30.software_SoftwarePurpose.source],
             license_data,
             ignore_dirs=[".git"],
-            ignore_top_level_dirs=["temp"],
             archive=None,
         )
         build_inputs |= files
@@ -1012,11 +984,18 @@ def create_spdx(d):
             else:
                 package_spdx_license = recipe_spdx_license
 
-            pkg_objset.new_relationship(
-                [spdx_package],
-                oe.spdx30.RelationshipType.hasDeclaredLicense,
-                [oe.sbom30.get_element_link_id(package_spdx_license)],
-            )
+            if package_spdx_license:
+                pkg_objset.new_relationship(
+                    [spdx_package],
+                    oe.spdx30.RelationshipType.hasDeclaredLicense,
+                    [oe.sbom30.get_element_link_id(package_spdx_license)],
+                )
+            else:
+                pkg_objset.new_relationship(
+                    [spdx_package],
+                    oe.spdx30.RelationshipType.hasDeclaredLicense,
+                    None,
+                )
 
             # Add concluded license relationship if manually set
             # Only add when license analysis has been explicitly performed
@@ -1027,12 +1006,12 @@ def create_spdx(d):
                 concluded_spdx_license = add_license_expression(
                     d, build_objset, concluded_license_str, license_data
                 )
-
-                pkg_objset.new_relationship(
-                    [spdx_package],
-                    oe.spdx30.RelationshipType.hasConcludedLicense,
-                    [oe.sbom30.get_element_link_id(concluded_spdx_license)],
-                )
+                if concluded_spdx_license:
+                    pkg_objset.new_relationship(
+                        [spdx_package],
+                        oe.spdx30.RelationshipType.hasConcludedLicense,
+                        [oe.sbom30.get_element_link_id(concluded_spdx_license)],
+                    )
 
             bb.debug(1, "Adding package files to SPDX for package %s" % pkg_name)
             package_files, excluded_files = add_package_files(
@@ -1058,7 +1037,11 @@ def create_spdx(d):
 
             if include_sources:
                 debug_sources |= get_package_sources_from_debug(
-                    d, package, package_files, dep_sources, source_hash_cache,
+                    d,
+                    package,
+                    package_files,
+                    dep_sources,
+                    source_hash_cache,
                     excluded_files=excluded_files,
                 )
 
@@ -1127,9 +1110,13 @@ def create_spdx(d):
 
 def create_package_spdx(d):
     deploydir = Path(d.getVar("SPDXRUNTIMEDEPLOY"))
+    pkgdatadir = Path(d.getVar('PKGDATA_DIR'))
 
     direct_deps = oe.spdx_common.collect_direct_deps(d, "do_create_spdx")
 
+    # providers[package_name] = pkg_name, where:
+    # - package_name is the name in the recipe in PACKAGES/RDEPENDS, and
+    # - pkg_name is the final name given by the package manager.
     providers = oe.spdx_common.collect_package_providers(d, direct_deps)
     pkg_arch = d.getVar("SSTATE_PKGARCH")
 
@@ -1183,26 +1170,24 @@ def create_package_spdx(d):
             if dep not in providers:
                 continue
 
-            (dep, _) = providers[dep]
+            dep_pkg_name, _ = providers[dep]
 
-            if not oe.packagedata.packaged(dep, localdata):
+            if not os.path.exists(pkgdatadir / "runtime-reverse" / dep_pkg_name):
+                bb.debug(1, f"pkg_name {dep_pkg_name}, package {dep} missing for {package}")
                 continue
 
-            dep_pkg_data = oe.packagedata.read_subpkgdata_dict(dep, d)
-            dep_pkg = dep_pkg_data["PKG"]
-
-            if dep in dep_package_cache:
-                dep_spdx_package = dep_package_cache[dep]
+            if dep_pkg_name in dep_package_cache:
+                dep_spdx_package = dep_package_cache[dep_pkg_name]
             else:
-                bb.debug(1, "Searching for %s" % dep_pkg)
+                bb.debug(1, "Searching for %s" % dep_pkg_name)
                 dep_spdx_package, _ = oe.sbom30.find_root_obj_in_jsonld(
                     d,
                     "packages-staging",
-                    "package-" + dep_pkg,
+                    "package-" + dep_pkg_name,
                     oe.spdx30.software_Package,
                     software_primaryPurpose=oe.spdx30.software_SoftwarePurpose.install,
                 )
-                dep_package_cache[dep] = dep_spdx_package
+                dep_package_cache[dep_pkg_name] = dep_spdx_package
 
             runtime_spdx_deps.add(dep_spdx_package)
             seen_deps.add(dep)
@@ -1421,7 +1406,7 @@ def create_rootfs_spdx(d):
 def create_image_spdx(d):
     import oe.sbom30
 
-    image_deploy_dir = Path(d.getVar("IMGDEPLOYDIR"))
+    image_deploy_dir = Path(d.getVar("DEPLOY_DIR_IMAGE"))
     manifest_path = Path(d.getVar("IMAGE_OUTPUT_MANIFEST"))
     spdx_work_dir = Path(d.getVar("SPDXIMAGEWORK"))
 
@@ -1453,17 +1438,17 @@ def create_image_spdx(d):
             image_path = image_deploy_dir / image_filename
             if os.path.isdir(image_path):
                 a, _ = add_package_files(
-                        d,
-                        objset,
-                        image_path,
-                        lambda file_counter: objset.new_spdxid(
-                            "imagefile", str(file_counter)
-                        ),
-                        lambda filepath: [],
-                        license_data=None,
-                        ignore_dirs=[],
-                        ignore_top_level_dirs=[],
-                        archive=None,
+                    d,
+                    objset,
+                    image_path,
+                    lambda file_counter: objset.new_spdxid(
+                        "imagefile", str(file_counter)
+                    ),
+                    lambda filepath: [],
+                    license_data=None,
+                    ignore_dirs=[],
+                    ignore_top_level_dirs=[],
+                    archive=None,
                 )
                 artifacts.extend(a)
             else:
@@ -1476,7 +1461,11 @@ def create_image_spdx(d):
                             oe.spdx30.Hash(
                                 algorithm=oe.spdx30.HashAlgorithm.sha256,
                                 hashValue=bb.utils.sha256_file(image_path),
-                            )
+                            ),
+                            oe.spdx30.Hash(
+                                algorithm=oe.spdx30.HashAlgorithm.sha512,
+                                hashValue=bb.utils.sha512_file(image_path),
+                            ),
                         ],
                     )
                 )

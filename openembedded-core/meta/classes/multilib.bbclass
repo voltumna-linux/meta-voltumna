@@ -32,7 +32,7 @@ python multilib_virtclass_handler () {
             d.setVar(name + "_MULTILIB_ORIGINAL", val)
 
     # We nearly don't need this but dependencies on NON_MULTILIB_RECIPES don't work without it
-    d.setVar("SSTATE_ARCHS_TUNEPKG", "${@all_multilib_tune_values(d, 'TUNE_PKGARCH')}")
+    d.setVar("SSTATE_ARCHS_TUNEPKG", "${@oe.utils.all_multilib_tune_values(d, 'TUNE_PKGARCH')}")
 
     overrides = e.data.getVar("OVERRIDES", False)
     pn = e.data.getVar("PN", False)
@@ -74,7 +74,7 @@ python multilib_virtclass_handler () {
 
     # Expand this since this won't work correctly once we set a multilib into place
     d.setVar("ALL_MULTILIB_PACKAGE_ARCHS", d.getVar("ALL_MULTILIB_PACKAGE_ARCHS"))
- 
+
     override = ":virtclass-multilib-" + variant
 
     skip_msg = d.getVarFlag('SKIP_RECIPE', d.getVar('PN'))
@@ -210,6 +210,22 @@ def reset_alternative_priority(d):
                 reset_priority = int(alt_priority_name) - reset_gap
                 bb.debug(1, '%s: Setting ALTERNATIVE_PRIORITY[%s] to %s' % (pkg, alt_name, reset_priority))
                 d.setVarFlag('ALTERNATIVE_PRIORITY', alt_name, reset_priority)
+
+# The processes in do_package can add to the PACKAGES list and there can be variable overrides
+# which are then exposed, but would not renamed by the original class extend rename code. We
+# therefore have to rerun the rename operation after PACKAGES is updated
+# renameVar is effectively a no-op on unset variables
+PACKAGESPLITFUNCS:append = " do_rename_package_variables"
+
+python do_rename_package_variables() {
+    variant = d.getVar("BBEXTENDVARIANT")
+    prefixes = (d.getVar("MULTILIB_VARIANTS") or "").split()
+    if variant and prefixes:
+        import oe.classextend
+        # Extend package variables for the given variant
+        clsextend = oe.classextend.ClassExtender(variant, prefixes, d)
+        clsextend.rename_package_variables((d.getVar("PACKAGEVARS") or "").split())
+}
 
 PACKAGEFUNCS:append = " do_package_qa_multilib"
 
