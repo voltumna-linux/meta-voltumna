@@ -17,8 +17,7 @@
 #
 # As verified boot depends on fitImage generation, following is also required:
 #
-#   KERNEL_CLASSES ?= " kernel-fitimage "
-#   KERNEL_IMAGETYPE ?= "fitImage"
+#   KERNEL_CLASSES += "kernel-fit-extra-artifacts"
 #
 # The signature support is limited to the use of CONFIG_OF_SEPARATE in U-Boot.
 #
@@ -102,6 +101,9 @@ UBOOT_FIT_TEE_IMAGE ?= "tee-raw.bin"
 
 # User specific settings
 UBOOT_FIT_USER_SETTINGS ?= ""
+
+# U-Boot fitImage configuration description
+UBOOT_FIT_CONF_DESC ?= "Boot with signed U-Boot FIT"
 
 # Sets the firmware property to select the image to boot first.
 # If not set, the first entry in "loadables" is used instead.
@@ -425,7 +427,10 @@ EOF
         };
 EOF
 	if [ "${UBOOT_FIT_TEE}" = "1" ] ; then
-		conf_loadables="\"tee\", ${conf_loadables}"
+		# Listed behind U-Boot: an SPL handing off to the ARM Trusted
+		# Firmware only describes the images it loaded to the next stage
+		# once it has loaded the one it appends the device tree to.
+		conf_loadables="${conf_loadables}, \"tee\""
 		uboot_fitimage_tee
 	fi
 
@@ -452,7 +457,7 @@ EOF
     configurations {
         default = "conf";
         conf {
-            description = "Boot with signed U-Boot FIT";
+            description = "${UBOOT_FIT_CONF_DESC}";
             ${conf_firmware}
             loadables = ${conf_loadables};
             fdt = "fdt";
@@ -472,21 +477,25 @@ EOF
 	if [ "${SPL_SIGN_ENABLE}" = "1" ] ; then
 		if [ -n "${SPL_DTB_BINARY}" ] ; then
 			#
-			# Sign the U-boot FIT image and add public key to SPL dtb
+			# Sign the U-boot FIT image and add public key to SPL dtb.
+			# Work on a copy of the DTB so that the compile output is
+			# never modified in-place.  Without this, sequential test
+			# runs that reuse the same work directory accumulate public
+			# key nodes from previous runs, causing mkimage to require
+			# all of them when verifying the conf signature.
 			#
+			cp ${SPL_DIR}/${SPL_DTB_BINARY} ${SPL_DIR}/${SPL_DTB_SIGNED}
 			${UBOOT_MKIMAGE_SIGN} \
 				${@'-D "${SPL_MKIMAGE_DTCOPTS}"' if len('${SPL_MKIMAGE_DTCOPTS}') else ''} \
 				-F -k "${SPL_SIGN_KEYDIR}" \
-				-K "${SPL_DIR}/${SPL_DTB_BINARY}" \
+				-K "${SPL_DIR}/${SPL_DTB_SIGNED}" \
 				-r ${UBOOT_FITIMAGE_BINARY} \
 				${SPL_MKIMAGE_SIGN_ARGS}
 
 			# Verify the U-boot FIT image and SPL dtb
 			${UBOOT_FIT_CHECK_SIGN} \
-				-k "${SPL_DIR}/${SPL_DTB_BINARY}" \
+				-k "${SPL_DIR}/${SPL_DTB_SIGNED}" \
 				-f ${UBOOT_FITIMAGE_BINARY}
-
-			cp ${SPL_DIR}/${SPL_DTB_BINARY} ${SPL_DIR}/${SPL_DTB_SIGNED}
 		else
 			# Sign the U-boot FIT image
 			${UBOOT_MKIMAGE_SIGN} \

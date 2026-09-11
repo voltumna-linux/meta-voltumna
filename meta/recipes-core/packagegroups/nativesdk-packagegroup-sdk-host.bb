@@ -9,12 +9,11 @@ inherit_defer nativesdk
 
 PACKAGEGROUP_DISABLE_COMPLEMENTARY = "1"
 
-# autoconf pulls in nativesdk-perl but perl-module-integer is needed to 
+# autoconf pulls in nativesdk-perl but perl-module-integer is needed to
 # build some recent linux kernels (5.14+) for arm
 RDEPENDS:${PN} = "\
     nativesdk-pkgconfig \
-    nativesdk-qemu \
-    nativesdk-qemu-helper \
+    ${@'nativesdk-qemu nativesdk-qemu-helper' if d.getVar('SDK_ARCH') in ['x86_64', 'aarch64', 'ppc64', 'ppc64le', 'riscv64', 'loongarch64', 'mips64', 's390x', 'sparc64'] else ''} \
     nativesdk-pseudo \
     nativesdk-unfs3 \
     nativesdk-opkg \

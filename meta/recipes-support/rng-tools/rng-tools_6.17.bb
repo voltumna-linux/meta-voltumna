@@ -6,7 +6,7 @@ LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263"
 DEPENDS = "openssl libcap"
 
-SRC_URI = "git://github.com/nhorman/rng-tools.git;branch=master;protocol=https \
+SRC_URI = "git://github.com/nhorman/rng-tools.git;branch=master;protocol=https;tag=v${PV} \
            file://init \
            file://default \
            file://rng-tools.service \
@@ -32,8 +32,6 @@ INITSCRIPT_PARAMS:${PN}-service = "start 03 2 3 4 5 . stop 30 0 6 1 ."
 
 SYSTEMD_PACKAGES = "${PN}-service"
 SYSTEMD_SERVICE:${PN}-service = "rng-tools.service"
-
-CFLAGS += " -DJENT_CONF_ENABLE_INTERNAL_TIMER "
 
 PACKAGES =+ "${PN}-service"
 

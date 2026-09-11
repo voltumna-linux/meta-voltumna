@@ -5,13 +5,14 @@
 #
 
 import re
+import shlex
 import shutil
 import subprocess
 from oe.package_manager import *
 from oe.package_manager.common_deb_ipk import OpkgDpkgPM
 
 class OpkgIndexer(Indexer):
-    def write_index(self):
+    def write_index(self, skip_checksums=False):
         arch_vars = ["ALL_MULTILIB_PACKAGE_ARCHS",
                      "SDK_PACKAGE_ARCHS",
                      ]
@@ -43,8 +44,9 @@ class OpkgIndexer(Indexer):
                 if not os.path.exists(pkgs_file):
                     open(pkgs_file, "w").close()
 
-                index_cmds.add('%s --checksum md5 --checksum sha256 -r %s -p %s -m %s %s' %
-                                  (opkg_index_cmd, pkgs_file, pkgs_file, pkgs_dir, opkg_index_cmd_extra_params))
+                checksum_args = '' if skip_checksums else '--checksum md5 --checksum sha256 '
+                index_cmds.add('%s %s-r %s -p %s -m %s %s' %
+                                  (opkg_index_cmd, checksum_args, pkgs_file, pkgs_file, pkgs_dir, opkg_index_cmd_extra_params))
 
                 index_sign_files.add(pkgs_file)
 
@@ -69,18 +71,18 @@ class PMPkgsList(PkgsList):
         config_file = d.getVar("IPKGCONF_TARGET")
 
         self.opkg_cmd = bb.utils.which(os.getenv('PATH'), "opkg")
-        self.opkg_args = "-f %s -o %s " % (config_file, rootfs_dir)
-        self.opkg_args += self.d.getVar("OPKG_ARGS")
+        self.opkg_args = ['-f', config_file, '-o', rootfs_dir]
+        self.opkg_args.extend(shlex.split(self.d.getVar("OPKG_ARGS")))
 
     def list_pkgs(self, format=None):
-        cmd = "%s %s status" % (self.opkg_cmd, self.opkg_args)
+        cmd = [self.opkg_cmd] + self.opkg_args + ['status']
 
         # opkg returns success even when it printed some
         # "Collected errors:" report to stderr. Mixing stderr into
         # stdout then leads to random failures later on when
         # parsing the output. To avoid this we need to collect both
         # output streams separately and check for empty stderr.
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         cmd_output, cmd_stderr = p.communicate()
         cmd_output = cmd_output.decode("utf-8")
         cmd_stderr = cmd_stderr.decode("utf-8")
@@ -102,8 +104,12 @@ class OpkgPM(OpkgDpkgPM):
         self.deploy_dir = oe.path.join(self.d.getVar('WORKDIR'), ipk_repo_workdir)
         self.deploy_lock_file = os.path.join(self.deploy_dir, "deploy.lock")
         self.opkg_cmd = bb.utils.which(os.getenv('PATH'), "opkg")
-        self.opkg_args = "--volatile-cache -f %s -t %s -o %s " % (self.config_file, self.d.expand('${T}/ipktemp/') ,target_rootfs)
-        self.opkg_args += self.d.getVar("OPKG_ARGS")
+        self.from_feeds = (self.d.getVar('BUILD_IMAGES_FROM_FEEDS') or "") == "1"
+        self._skip_checksums = self.d.getVar('PACKAGE_FEED_SIGN') != '1' and not self.from_feeds
+        self.opkg_args = ['--volatile-cache', '-f', config_file, '-t', self.d.expand('${T}/ipktemp/'), '-o', target_rootfs]
+        self.opkg_args.extend(shlex.split(self.d.getVar("OPKG_ARGS")))
+        if self._skip_checksums:
+            self.opkg_args.append('--force-checksum')
 
         if prepare_index:
             create_packages_dir(self.d, self.deploy_dir, d.getVar("DEPLOY_DIR_IPK"), "package_write_ipk", filterbydependencies)
@@ -115,7 +121,6 @@ class OpkgPM(OpkgDpkgPM):
         if not os.path.exists(self.d.expand('${T}/saved')):
             bb.utils.mkdirhier(self.d.expand('${T}/saved'))
 
-        self.from_feeds = (self.d.getVar('BUILD_IMAGES_FROM_FEEDS') or "") == "1"
         if self.from_feeds:
             self._create_custom_config()
         else:
@@ -262,10 +267,10 @@ class OpkgPM(OpkgDpkgPM):
     def update(self):
         self.deploy_dir_lock()
 
-        cmd = "%s %s update" % (self.opkg_cmd, self.opkg_args)
+        cmd = [self.opkg_cmd] + self.opkg_args + ['update']
 
         try:
-            subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT)
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             self.deploy_dir_unlock()
             bb.fatal("Unable to update the package index files. Command '%s' "
@@ -277,15 +282,17 @@ class OpkgPM(OpkgDpkgPM):
         if not pkgs:
             return
 
-        cmd = "%s %s" % (self.opkg_cmd, self.opkg_args)
+        cmd = [self.opkg_cmd] + self.opkg_args
         for exclude in (self.d.getVar("PACKAGE_EXCLUDE") or "").split():
-            cmd += " --add-exclude %s" % exclude
+            cmd.append('--add-exclude')
+            cmd.append(exclude)
         for bad_recommendation in (self.d.getVar("BAD_RECOMMENDATIONS") or "").split():
-            cmd += " --add-ignore-recommends %s" % bad_recommendation
+            cmd.append('--add-ignore-recommends')
+            cmd.append(bad_recommendation)
         if hard_depends_only:
-            cmd += " --no-install-recommends"
-        cmd += " install "
-        cmd += " ".join(pkgs)
+            cmd.append('--no-install-recommends')
+        cmd.append('install')
+        cmd.extend(pkgs)
 
         os.environ['D'] = self.target_rootfs
         os.environ['OFFLINE_ROOT'] = self.target_rootfs
@@ -296,8 +303,8 @@ class OpkgPM(OpkgDpkgPM):
 
         try:
             bb.note("Installing the following packages: %s" % ' '.join(pkgs))
-            bb.note(cmd)
-            output = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
+            bb.note(str(cmd))
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
             bb.note(output)
             failed_pkgs = []
             for line in output.split('\n'):
@@ -328,15 +335,13 @@ class OpkgPM(OpkgDpkgPM):
             return
 
         if with_dependencies:
-            cmd = "%s %s --force-remove --force-removal-of-dependent-packages remove %s" % \
-                (self.opkg_cmd, self.opkg_args, ' '.join(pkgs))
+            cmd = [self.opkg_cmd] + self.opkg_args + ['--force-remove', '--force-removal-of-dependent-packages', 'remove'] + pkgs
         else:
-            cmd = "%s %s --force-depends remove %s" % \
-                (self.opkg_cmd, self.opkg_args, ' '.join(pkgs))
+            cmd = [self.opkg_cmd] + self.opkg_args + ['--force-depends', 'remove'] + pkgs
 
         try:
-            bb.note(cmd)
-            output = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT).decode("utf-8")
+            bb.note(str(cmd))
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
             bb.note(output)
         except subprocess.CalledProcessError as e:
             bb.fatal("Unable to remove packages. Command '%s' "
@@ -345,7 +350,7 @@ class OpkgPM(OpkgDpkgPM):
     def write_index(self):
         self.deploy_dir_lock()
 
-        result = self.indexer.write_index()
+        result = self.indexer.write_index(skip_checksums=self._skip_checksums)
 
         self.deploy_dir_unlock()
 
@@ -379,21 +384,19 @@ class OpkgPM(OpkgDpkgPM):
         temp_opkg_dir = os.path.join(temp_rootfs, opkg_lib_dir, 'opkg')
         bb.utils.mkdirhier(temp_opkg_dir)
 
-        opkg_args = "-f %s -o %s " % (self.config_file, temp_rootfs)
-        opkg_args += self.d.getVar("OPKG_ARGS")
+        opkg_args = ['-f', self.config_file, '-o', temp_rootfs]
+        opkg_args.extend(shlex.split(self.d.getVar("OPKG_ARGS")))
 
-        cmd = "%s %s update" % (self.opkg_cmd, opkg_args)
+        cmd = [self.opkg_cmd] + opkg_args + ['update']
         try:
-            subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             bb.fatal("Unable to update. Command '%s' "
                      "returned %d:\n%s" % (cmd, e.returncode, e.output.decode("utf-8")))
 
         # Dummy installation
-        cmd = "%s %s --noaction install %s " % (self.opkg_cmd,
-                                                opkg_args,
-                                                ' '.join(pkgs))
-        proc = subprocess.run(cmd, capture_output=True, encoding="utf-8", shell=True)
+        cmd = [self.opkg_cmd] + opkg_args + ['--noaction', 'install'] + pkgs
+        proc = subprocess.run(cmd, capture_output=True, encoding="utf-8")
         if proc.returncode:
             bb.fatal("Unable to dummy install packages. Command '%s' "
                      "returned %d:\n%s" % (cmd, proc.returncode, proc.stderr))
@@ -427,7 +430,7 @@ class OpkgPM(OpkgDpkgPM):
         """
         Returns a dictionary with the package info.
         """
-        cmd = "%s %s info %s" % (self.opkg_cmd, self.opkg_args, pkg)
+        cmd = [self.opkg_cmd] + self.opkg_args + ['info', pkg]
         pkg_info = self._common_package_info(cmd)
 
         pkg_arch = pkg_info[pkg]["arch"]

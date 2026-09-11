@@ -30,6 +30,8 @@ PTESTS_FAST = "\
     json-glib \
     libarchive \
     libassuan \
+    libatomic-ops \
+    libcap \
     libcheck \
     libconfig \
     libconvert-asn1-perl \
@@ -38,7 +40,6 @@ PTESTS_FAST = "\
     libksba \
     libmd \
     libnl \
-    libpcre \
     libpcre2 \
     librsvg \
     libsolv \
@@ -57,6 +58,7 @@ PTESTS_FAST = "\
     libxml-simple-perl \
     libxml2 \
     libxmlb \
+    libxslt \
     libyaml \
     logrotate \
     lua \
@@ -70,6 +72,7 @@ PTESTS_FAST = "\
     python3-attrs \
     python3-bcrypt \
     python3-calver \
+    python3-certifi \
     python3-hypothesis \
     python3-idna \
     python3-jinja2 \
@@ -83,10 +86,12 @@ PTESTS_FAST = "\
     python3-pluggy \
     python3-pefile \
     python3-pyasn1 \
+    python3-pyopenssl \
     python3-pytz \
     python3-pyyaml \
     python3-rpds-py \
     python3-trove-classifiers \
+    python3-vcs-versioning \
     python3-uritools \
     python3-wcwidth \
     python3-webcolors \
@@ -98,6 +103,7 @@ PTESTS_FAST = "\
     slang \
     utfcpp \
     wayland \
+    wget \
     xz \
     zlib \
 "
@@ -120,6 +126,7 @@ PTESTS_SLOW = "\
     gettext \
     glib-2.0 \
     gnutls \
+    go \
     gstreamer1.0 \
     less \
     libevent \
@@ -144,6 +151,7 @@ PTESTS_SLOW = "\
     tcl \
     tcl8 \
     util-linux \
+    zstd \
 "
 
 # python3 ptests hang on qemuriscv64

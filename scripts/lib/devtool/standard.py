@@ -1200,6 +1200,10 @@ def _get_patchset_revs(srctree, recipe_path, initial_rev=None, force_patch_refre
     commits = {}
     patches = []
     initial_revs = {}
+    if initial_rev:
+        # A user-specified override applies to the main repo ("."); the
+        # parse loop below leaves it in place of the recorded value
+        initial_revs["."] = initial_rev
     with open(recipe_path, 'r') as f:
         for line in f:
             pattern = r'^#\s.*\s(.*):\s([0-9a-fA-F]+)$'
@@ -1433,7 +1437,6 @@ def _export_local_files(srctree, rd, destdir, srctreebase):
     # recipe space).
     existing_files = oe.recipeutils.get_recipe_local_files(rd)
 
-    new_set = None
     updated = OrderedDict()
     added = OrderedDict()
     removed = OrderedDict()
@@ -1457,13 +1460,17 @@ def _export_local_files(srctree, rd, destdir, srctreebase):
         if os.path.exists(os.path.join(fullfile, ".git")):
             # submodules handled elsewhere
             continue
-        if f not in existing_files:
+        if f not in existing_files and os.path.exists(fullfile):
             added[f] = {}
+            parentdir = os.path.normpath(os.path.join(destdir, f, os.pardir))
+            if not os.path.isdir(parentdir):
+                os.makedirs(parentdir)
+
             if os.path.isdir(os.path.join(srctree, f)):
                 shutil.copytree(fullfile, os.path.join(destdir, f))
             else:
                 shutil.copy2(fullfile, os.path.join(destdir, f))
-        elif not os.path.exists(fullfile):
+        elif f in existing_files and not os.path.exists(fullfile):
             removed[f] = existing_files[f]
         elif f in existing_files:
             updated[f] = {'path' : existing_files[f]}
@@ -1530,7 +1537,18 @@ def _update_recipe_srcrev(recipename, workspace, srctree, rd, appendlayerdir, wi
     old_srcrev = rd.getVar('SRCREV') or ''
     if old_srcrev == "INVALID":
             raise DevtoolError('Update mode srcrev is only valid for recipe fetched from an SCM repository')
-    old_srcrev = {'.': old_srcrev}
+    autorev = old_srcrev == 'AUTOINC'
+    if autorev:
+        # SRCREV is set to "${AUTOREV}" so there is no fixed revision to
+        # use as the base for exporting patches; use the initial revision(s)
+        # recorded when the source tree was set up, as patch mode does
+        append = workspace[recipename]['bbappend']
+        old_srcrev, _, _, _ = _get_patchset_revs(srctree, append)
+        if not old_srcrev:
+            raise DevtoolError('Unable to find the initial revision of the '
+                               'source tree for %s in the workspace' % recipename)
+    else:
+        old_srcrev = {'.': old_srcrev}
 
     # Get HEAD revision
     try:
@@ -1545,7 +1563,8 @@ def _update_recipe_srcrev(recipename, workspace, srctree, rd, appendlayerdir, wi
     destpath = None
     remove_files = []
     patchfields = {}
-    patchfields['SRCREV'] = srcrev
+    if not autorev:
+        patchfields['SRCREV'] = srcrev
     orig_src_uri = rd.getVar('SRC_URI', False) or ''
     srcuri = orig_src_uri.split()
     tempdir = tempfile.mkdtemp(prefix='devtool')
@@ -1800,7 +1819,7 @@ def _guess_recipe_update_mode(srctree, rdata):
     """Guess the recipe update mode to use"""
     import bb.process
     src_uri = (rdata.getVar('SRC_URI') or '').split()
-    git_uris = [uri for uri in src_uri if uri.startswith('git://')]
+    git_uris = [uri for uri in src_uri if uri.startswith(('git://', 'gitsm://'))]
     if not git_uris:
         return 'patch'
     # Just use the first URI for now
@@ -1815,7 +1834,14 @@ def _guess_recipe_update_mode(srctree, rdata):
                                cwd=srctree)
     remote_brs = [branch.strip() for branch in stdout.splitlines()]
     if 'origin/' + upstr_branch in remote_brs:
-        return 'srcrev'
+        # Local commits in a submodule need exporting as patches, but do not
+        # move the parent HEAD off the upstream branch, so only guess srcrev
+        # if every submodule checkout matches the revision its parent records
+        # ('+') and none has merge conflicts ('U')
+        stdout, _ = bb.process.run('git submodule status --recursive',
+                                   cwd=srctree)
+        if not any(line.startswith(('+', 'U')) for line in stdout.splitlines()):
+            return 'srcrev'
 
     return 'patch'
 
@@ -2045,6 +2071,14 @@ def _reset(recipes, no_clean, remove_work, config, basepath, workspace):
                 os.rmdir(srctreebase)
 
         clean_preferred_provider(pn, config.workspace_path)
+
+        # Clean up changelog if present
+        changelog_file = os.path.join(config.workspace_path, 'changelogs', '%s.txt' % pn)
+        if os.path.exists(changelog_file):
+            os.remove(changelog_file)
+            changelog_dir = os.path.dirname(changelog_file)
+            if not os.listdir(changelog_dir):
+                os.rmdir(changelog_dir)
 
 def reset(args, config, basepath, workspace):
     """Entry point for the devtool 'reset' subcommand"""

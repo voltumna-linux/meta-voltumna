@@ -35,6 +35,11 @@ modprobedir ??= "${@bb.utils.contains('DISTRO_FEATURES', 'systemd', '${nonarch_b
 
 KERNEL_SPLIT_MODULES ?= "1"
 PACKAGESPLITFUNCS =+ "split_kernel_module_packages"
+# Order matters:
+# 1. Strip the modules
+# 2. Re-sign the modules (if enabled)
+# 3. Split the packages
+PACKAGESPLITFUNCS =+ "post_strip_kernel_modules_signing"
 
 KERNEL_MODULES_META_PACKAGE ?= "${@ d.getVar("KERNEL_PACKAGE_NAME") or "kernel" }-modules"
 
@@ -42,13 +47,37 @@ KERNEL_MODULE_PACKAGE_PREFIX ?= ""
 KERNEL_MODULE_PACKAGE_SUFFIX ?= "-${KERNEL_VERSION}"
 KERNEL_MODULE_PROVIDE_VIRTUAL ?= "1"
 
+# This function supports both in-tree and out-of-tree modules.
+post_strip_kernel_modules_signing(){
+    # Read .config values to determine if module auto-signing is enabled
+    is_modules="$(${STAGING_KERNEL_DIR}/scripts/config --file ${KBUILD_OUTPUT}/.config --state MODULES)"
+    is_module_sig="$(${STAGING_KERNEL_DIR}/scripts/config --file ${KBUILD_OUTPUT}/.config --state MODULE_SIG)"
+    is_module_sig_all="$(${STAGING_KERNEL_DIR}/scripts/config --file ${KBUILD_OUTPUT}/.config --state MODULE_SIG_ALL)"
+
+    if [ "$is_modules" = "y" ] && [ "$is_module_sig" = "y" ] && [ "$is_module_sig_all" = "y" ]; then
+        # Sign modules under ${PKGD}, with M= if out-of-tree module.
+        # Out-of-tree module Makefiles invoke the kernel Makefile by appending M= (the module directory) to MAKEFLAGS.
+        # However, they usually do not provide a modules_sign target. Therefore, the kernel modules_sign target has to
+        # be invoked manually after retrieving M= variable from package source code Makefile.
+        oe_runmake \
+            -C ${KBUILD_OUTPUT}  \
+            MODLIB=${PKGD}${KERNEL_MODULE_INSTALL_PREFIX} \
+            ${@'M=%s' % '${S}' if not "virtual/kernel" in d.getVar('PROVIDES') else ''} \
+            modules_sign
+    fi
+}
+
 python split_kernel_module_packages () {
     import re
 
-    modinfoexp = re.compile("([^=]+)=(.*)")
+    modinfoexp = re.compile(r"([^=]+)=\s*(.+)")
 
     def extract_modinfo(file):
-        import tempfile, subprocess
+        """
+        Extract the module metadata from the specified file,
+        returning a dictionary of fields to list of string values.
+        """
+        import collections, tempfile, subprocess
         tempfile.tempdir = d.getVar("WORKDIR")
         compressed = re.match( r'.*\.(gz|xz|zst)$', file)
         tf = tempfile.mkstemp()
@@ -78,12 +107,12 @@ python split_kernel_module_packages () {
         os.unlink(tmpfile)
         if compressed:
             os.unlink(tmpkofile)
-        vals = {}
+        vals = collections.defaultdict(list)
         for i in l:
             m = modinfoexp.match(i)
             if not m:
                 continue
-            vals[m.group(1)] = m.group(2)
+            vals[m.group(1)].append(m.group(2))
         return vals
 
     def handle_conf_files(d, basename, pkg):
@@ -185,6 +214,9 @@ python split_kernel_module_packages () {
 
 
     def frob_metadata(file, pkg, pattern, format, basename):
+        if "/.debug/" in file:
+            return
+
         vals = extract_modinfo(file)
         dvar = d.getVar('PKGD')
 
@@ -192,12 +224,12 @@ python split_kernel_module_packages () {
 
         if "description" in vals:
             old_desc = d.getVar('DESCRIPTION:' + pkg) or ""
-            d.setVar('DESCRIPTION:' + pkg, old_desc + "; " + vals["description"])
+            d.setVar('DESCRIPTION:' + pkg, old_desc + "; " + vals["description"][0])
 
         rdepends = bb.utils.explode_dep_versions2(d.getVar('RDEPENDS:' + pkg) or "")
         modinfo_deps = []
-        if "depends" in vals and vals["depends"] != "":
-            for dep in vals["depends"].split(","):
+        for deps in vals.get("depends", []):
+            for dep in deps.split(","):
                 on = legitimize_package_name(dep)
                 dependency_pkg = format % on
                 modinfo_deps.append(dependency_pkg)

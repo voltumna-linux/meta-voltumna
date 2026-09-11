@@ -46,7 +46,7 @@ ERROR_QA ?= "\
     ${CHECKLAYER_REQUIRED_TESTS}"
 
 # Add usrmerge QA check based on distro feature
-ERROR_QA:append = "${@bb.utils.contains('DISTRO_FEATURES', 'usrmerge', ' usrmerge', '', d)}"
+ERROR_QA:append = " ${@bb.utils.filter('DISTRO_FEATURES', 'usrmerge', d)}"
 WARN_QA:append:layer-core = " missing-metadata missing-maintainer"
 
 FAKEROOT_QA = "host-user-contaminated"
@@ -83,25 +83,22 @@ QAPATHTEST[shebang-size] = "package_qa_check_shebang_size"
 def package_qa_check_shebang_size(path, name, d, elf):
     global cpath
 
+    # From kernel 5.1 onwards (specifically linux 6eb3c3d0a52dc ("exec: increase
+    # BINPRM_BUF_SIZE to 256")) the shebang buffer was increased from 128 bytes
+    # to 256 bytes.
+    BINPRM_BUF_SIZE = 256
+
     if elf or cpath.islink(path) or not cpath.isfile(path):
         return
 
     try:
         with open(path, 'rb') as f:
-            stanza = f.readline(130)
+            stanza = f.readline(BINPRM_BUF_SIZE * 2)
+            if stanza.startswith(b'#!') and len(stanza) > BINPRM_BUF_SIZE:
+                oe.qa.handle_error("shebang-size", "%s: %s maximum shebang size exceeded, the maximum size is %d" % (name, package_qa_clean_path(path, d, name), BINPRM_BUF_SIZE), d)
+                return
     except IOError:
-        return
-
-    if stanza.startswith(b'#!'):
-        try:
-            stanza.decode("utf-8")
-        except UnicodeDecodeError:
-            #If it is not a text file, it is not a script
-            return
-
-        if len(stanza) > 129:
-            oe.qa.handle_error("shebang-size", "%s: %s maximum shebang size exceeded, the maximum size is 128." % (name, package_qa_clean_path(path, d, name)), d)
-            return
+        pass
 
 QAPATHTEST[libexec] = "package_qa_check_libexec"
 def package_qa_check_libexec(path,name, d, elf):
@@ -439,11 +436,16 @@ def package_qa_check_buildpaths(path, name, d, elf):
         return
 
     tmpdir = bytes(d.getVar('TMPDIR'), encoding="utf-8")
+    homedir = bytes(os.environ.get('HOME', ''), encoding="utf-8")
+    buildpaths_skip = (d.getVar("OEQA_BUILDPATHS_SKIP") or "").split()
     with open(path, 'rb') as f:
         file_content = f.read()
         if tmpdir in file_content:
             path = package_qa_clean_path(path, d, name)
             oe.qa.handle_error("buildpaths", "File %s in package %s contains reference to TMPDIR" % (path, name), d)
+        if homedir and homedir in file_content and not any(path.startswith(homedir.decode()) for path in buildpaths_skip):
+            path = package_qa_clean_path(path, d, name)
+            oe.qa.handle_error("buildpaths", "File %s in package %s contains a reference to the build host HOME directory. If upstream hardcodes a directory path that matches your home, you can set OEQA_BUILDPATHS_SKIP = \"%s\" in the recipe." % (path, name, homedir.decode()), d)
 
 
 QAPATHTEST[xorg-driver-abi] = "package_qa_check_xorg_driver_abi"
@@ -728,6 +730,10 @@ def qa_check_staged(path,d):
     workdir = os.path.join(tmpdir, "work")
     recipesysroot = d.getVar("RECIPE_SYSROOT")
 
+    # package_qa_check_shebang_size needs the global cpath to be already created
+    global cpath
+    cpath = oe.cachedpath.CachedPath()
+
     if bb.data.inherits_class("native", d) or bb.data.inherits_class("cross", d):
         pkgconfigcheck = workdir
     else:
@@ -771,10 +777,7 @@ def qa_check_staged(path,d):
                         oe.qa.handle_error("pkgconfig", error_msg, d)
 
             if not skip_shebang_size:
-                global cpath
-                cpath = oe.cachedpath.CachedPath()
                 package_qa_check_shebang_size(path, "", d, None)
-                cpath = None
 
 # Walk over all files in a directory and call func
 def package_qa_walk(checkfuncs, package, d):
@@ -988,8 +991,8 @@ def package_qa_check_unlisted_pkg_lics(package, d):
     if not pkg_lics:
         return
 
-    recipe_lics_set = oe.license.list_licenses(d.getVar('LICENSE'))
-    package_lics = oe.license.list_licenses(pkg_lics)
+    recipe_lics_set = oe.license.list_licenses(d.getVar('LICENSE'), d)
+    package_lics = oe.license.list_licenses(pkg_lics, d)
     unlisted = package_lics - recipe_lics_set
     if unlisted:
         oe.qa.handle_error("unlisted-pkg-lics",
@@ -1111,7 +1114,7 @@ python do_package_qa () {
     import oe.packagedata
 
     # Check for obsolete license references in main LICENSE (packages are checked below for any changes)
-    main_licenses = oe.license.list_licenses(d.getVar('LICENSE'))
+    main_licenses = oe.license.list_licenses(d.getVar('LICENSE'), d)
     obsolete = set(oe.license.obsolete_license_list()) & main_licenses
     if obsolete:
         oe.qa.handle_error("obsolete-license", "Recipe LICENSE includes obsolete licenses %s" % ' '.join(obsolete), d)
@@ -1220,9 +1223,7 @@ addtask do_package_qa_setscene
 
 python do_qa_sysroot() {
     bb.note("QA checking do_populate_sysroot")
-    sysroot_destdir = d.expand('${SYSROOT_DESTDIR}')
-    for sysroot_dir in d.expand('${SYSROOT_DIRS}').split():
-        qa_check_staged(sysroot_destdir + sysroot_dir, d)
+    qa_check_staged(d.getVar("SYSROOT_DESTDIR"), d)
     oe.qa.exit_with_message_if_errors("do_populate_sysroot for this recipe installed files with QA issues", d)
 }
 do_populate_sysroot[postfuncs] += "do_qa_sysroot"
@@ -1332,7 +1333,7 @@ python do_qa_patch() {
 
     # Detect cargo-based tests
     elif os.path.exists(os.path.join(srcdir, "Cargo.toml")) and (
-        match_line_in_files(srcdir, "**/*.rs", r'\s*#\s*\[\s*test\s*\]') or 
+        match_line_in_files(srcdir, "**/*.rs", r'\s*#\s*\[\s*test\s*\]') or
         match_line_in_files(srcdir, "**/*.rs", r'\s*#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]')
     ):
         oe.qa.handle_error("unimplemented-ptest", "%s: cargo-based tests detected" % d.getVar('PN'), d)

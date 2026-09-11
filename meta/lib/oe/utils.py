@@ -7,6 +7,7 @@
 import subprocess
 import traceback
 import errno
+import os
 
 import bb.parse
 from bb import multiprocessing
@@ -169,47 +170,6 @@ def set_class_filter(var, features_var, filter_var, d):
             defaults = defaults.replace(issue, "")
             bb.warn("Unexpanded variable %s in %s is not recommended" % (issue, var))
     d.setVar(var, '${@oe.utils.class_filter_features("' + defaults + '", "' + features_var + '", "' + filter_var + '", d)}')
-
-def all_distro_features(d, features, truevalue="1", falsevalue=""):
-    """
-    Returns truevalue if *all* given features are set in DISTRO_FEATURES,
-    else falsevalue. The features can be given as single string or anything
-    that can be turned into a set.
-
-    This is a shorter, more flexible version of
-    bb.utils.contains("DISTRO_FEATURES", features, truevalue, falsevalue, d).
-
-    Without explicit true/false values it can be used directly where
-    Python expects a boolean:
-       if oe.utils.all_distro_features(d, "foo bar"):
-           bb.fatal("foo and bar are mutually exclusive DISTRO_FEATURES")
-
-    With just a truevalue, it can be used to include files that are meant to be
-    used only when requested via DISTRO_FEATURES:
-       require ${@ oe.utils.all_distro_features(d, "foo bar", "foo-and-bar.inc")
-    """
-    return bb.utils.contains("DISTRO_FEATURES", features, truevalue, falsevalue, d)
-
-def any_distro_features(d, features, truevalue="1", falsevalue=""):
-    """
-    Returns truevalue if at least *one* of the given features is set in DISTRO_FEATURES,
-    else falsevalue. The features can be given as single string or anything
-    that can be turned into a set.
-
-    This is a shorter, more flexible version of
-    bb.utils.contains_any("DISTRO_FEATURES", features, truevalue, falsevalue, d).
-
-    Without explicit true/false values it can be used directly where
-    Python expects a boolean:
-       if not oe.utils.any_distro_features(d, "foo bar"):
-           bb.fatal("foo, bar or both must be set in DISTRO_FEATURES")
-
-    With just a truevalue, it can be used to include files that are meant to be
-    used only when requested via DISTRO_FEATURES:
-       require ${@ oe.utils.any_distro_features(d, "foo bar", "foo-or-bar.inc")
-
-    """
-    return bb.utils.contains_any("DISTRO_FEATURES", features, truevalue, falsevalue, d)
 
 def parallel_make_value(pm):
     """
@@ -474,10 +434,12 @@ def get_host_gcc_version(d, taskcontextonly=False):
         # datastore PATH does not contain session PATH as set by environment-setup-...
         # this breaks the install-buildtools use-case
         # env["PATH"] = d.getVar("PATH")
-        output = subprocess.check_output("gcc --version", \
-                    shell=True, env=env, stderr=subprocess.STDOUT).decode("utf-8")
+        output = subprocess.check_output(["gcc", "--version"], \
+                    env=env, stderr=subprocess.STDOUT).decode("utf-8")
     except subprocess.CalledProcessError as e:
         bb.fatal("Error running gcc --version: %s" % (e.output.decode("utf-8")))
+    except OSError as e:
+        bb.fatal("Error running gcc --version: %s" % e)
 
     match = re.match(r".* (\d+\.\d+)\.\d+.*", output.split('\n')[0])
     if not match:
@@ -554,9 +516,6 @@ def touch(filename):
 # Used by allarch recipes and other cases where arch independence is needed
 #
 def make_arch_independent(d):
-    # No need for virtual/libc or a cross compiler
-    d.setVar("INHIBIT_DEFAULT_DEPS","1")
-
     # Set these to a common set of values, we shouldn't be using them other that for WORKDIR directory
     # naming anyway
     d.setVar("baselib", "lib")
@@ -594,4 +553,89 @@ def make_arch_independent(d):
     d.appendVarFlag("do_package", "vardepsexclude", " package_do_shlibs")
 
     d.setVar("qemu_wrapper_cmdline", "def qemu_wrapper_cmdline(data, rootfs_path, library_paths):\n    return 'false'")
+
+def base_set_filespath(path, d):
+    filespath = []
+    extrapaths = (d.getVar("FILESEXTRAPATHS") or "")
+    # Remove default flag which was used for checking
+    extrapaths = extrapaths.replace("__default:", "")
+    # Don't prepend empty strings to the path list
+    if extrapaths != "":
+        path = extrapaths.split(":") + path
+    # The ":" ensures we have an 'empty' override
+    overrides = (":" + (d.getVar("FILESOVERRIDES") or "")).split(":")
+    overrides.reverse()
+    for o in overrides:
+        for p in path:
+            if p != "":
+                filespath.append(os.path.join(p, o))
+    return ":".join(filespath)
+
+def check_app_exists(app, d):
+    app = d.expand(app).split()[0].strip()
+    path = d.getVar('PATH')
+    return bool(bb.utils.which(path, app))
+
+def all_multilib_tune_values(d, var, unique = True, need_split = True, delim = ' '):
+    """Return a string of all ${var} in all multilib tune configuration"""
+    values = []
+    variants = (d.getVar("MULTILIB_VARIANTS") or "").split() + ['']
+    for item in variants:
+        localdata = get_multilib_datastore(item, d)
+        # We need WORKDIR to be consistent with the original datastore
+        localdata.setVar("WORKDIR", d.getVar("WORKDIR"))
+        value = localdata.getVar(var) or ""
+        if value != "":
+            if need_split:
+                for item in value.split(delim):
+                    values.append(item)
+            else:
+                values.append(value)
+    if unique:
+        #we do this to keep order as much as possible
+        ret = []
+        for value in values:
+            if not value in ret:
+                ret.append(value)
+    else:
+        ret = values
+    return " ".join(ret)
+
+def all_multilib_tune_list(vars, d):
+    """
+    Return a list of ${VAR} for each variable VAR in vars from each
+    multilib tune configuration.
+    Is safe to be called from a multilib recipe/context as it can
+    figure out the original tune and remove the multilib overrides.
+    """
+    values = {}
+    for v in vars:
+        values[v] = []
+    values['ml'] = ['']
+
+    variants = (d.getVar("MULTILIB_VARIANTS") or "").split() + ['']
+    for item in variants:
+        localdata = oe.utils.get_multilib_datastore(item, d)
+        values[v].append(localdata.getVar(v))
+        values['ml'].append(item)
+    return values
+
+def extend_variants(d, var, extend, delim=':'):
+    """Return a string of all bb class extend variants for the given extend"""
+    variants = []
+    whole = d.getVar(var) or ""
+    for ext in whole.split():
+        eext = ext.split(delim)
+        if len(eext) > 1 and eext[0] == extend:
+            variants.append(eext[1])
+    return " ".join(variants)
+
+def multilib_pkg_extend(d, pkg):
+    variants = (d.getVar("MULTILIB_VARIANTS") or "").split()
+    if not variants:
+        return pkg
+    pkgs = pkg
+    for v in variants:
+        pkgs = pkgs + " " + v + "-" + pkg
+    return pkgs
 
