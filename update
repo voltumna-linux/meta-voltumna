@@ -1,11 +1,11 @@
 #!/bin/sh
-git subtree pull --prefix=bitbake https://git.openembedded.org/bitbake.git 2.18 --squash
-git subtree pull --prefix=meta-mingw https://git.yoctoproject.org/meta-mingw wrynose --squash
-git subtree pull --prefix=meta-openembedded https://git.openembedded.org/meta-openembedded wrynose --squash
-git subtree pull --prefix=meta-dpdk https://git.yoctoproject.org/meta-dpdk wrynose --squash
-git subtree pull --prefix=meta-tango https://github.com/voltumna-linux/meta-tango.git wrynose --squash
-git subtree pull --prefix=openembedded-core https://git.openembedded.org/openembedded-core wrynose --squash
-git subtree pull --prefix=meta-clang https://github.com/kraj/meta-clang.git wrynose --squash
-git subtree pull --prefix=meta-clang-revival https://github.com/zboszor/meta-clang-revival.git wrynose --squash
-git subtree pull --prefix=meta-virtualization https://git.yoctoproject.org/meta-virtualization.git wrynose --squash
-git subtree pull --prefix=meta-python-ai https://github.com/zboszor/meta-python-ai.git wrynose --squash
+git subtree pull --prefix=bitbake https://git.openembedded.org/bitbake.git master --squash
+git subtree pull --prefix=meta-mingw https://git.yoctoproject.org/meta-mingw master --squash
+git subtree pull --prefix=meta-openembedded https://git.openembedded.org/meta-openembedded master --squash
+git subtree pull --prefix=meta-dpdk https://git.yoctoproject.org/meta-dpdk master --squash
+git subtree pull --prefix=meta-tango https://github.com/voltumna-linux/meta-tango.git master --squash
+git subtree pull --prefix=openembedded-core https://git.openembedded.org/openembedded-core master --squash
+git subtree pull --prefix=meta-clang https://github.com/kraj/meta-clang.git master --squash
+git subtree pull --prefix=meta-clang-revival https://github.com/zboszor/meta-clang-revival.git main --squash
+git subtree pull --prefix=meta-virtualization https://git.yoctoproject.org/meta-virtualization.git master --squash
+git subtree pull --prefix=meta-python-ai https://github.com/zboszor/meta-python-ai.git master --squash
