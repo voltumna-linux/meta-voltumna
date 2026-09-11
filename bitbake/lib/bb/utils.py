@@ -529,6 +529,9 @@ def lockfile(name, shared=False, retry=True, block=False):
 
     Returns the locked file descriptor in case of success, ``None`` otherwise.
     """
+    if not name:
+        return None
+
     basename = os.path.basename(name)
     if len(basename) > 255:
         root, ext = os.path.splitext(basename)
@@ -584,6 +587,14 @@ def lockfile(name, shared=False, retry=True, block=False):
         if not retry:
             return None
 
+# We have to drop the existing lock to avoid deadlocks
+def lockfile_to_exclusive(lf):
+    if not lf:
+        return
+    name = lf.name
+    unlockfile(lf)
+    return lockfile(name)
+
 def unlockfile(lf):
     """
     Unlock a file locked using ``bb.utils.lockfile()``.
@@ -594,6 +605,9 @@ def unlockfile(lf):
 
     No return value.
     """
+    if not lf:
+        return
+
     try:
         # If we had a shared lock, we need to promote to exclusive before
         # removing the lockfile. Attempt this, ignore failures.
@@ -1303,8 +1317,8 @@ def contains(variable, checkvalues, truevalue, falsevalue, d):
        not a subset of variable.
     -  ``d``: the data store.
 
-    Returns ``True`` if the variable contains the values specified, ``False``
-    otherwise.
+    Returns ``truevalue`` if the variable contains the values specified,
+    ``falsevalue`` otherwise.
     """
 
     val = d.getVar(variable)
@@ -1333,8 +1347,8 @@ def contains_any(variable, checkvalues, truevalue, falsevalue, d):
        not a subset of variable.
     -  ``d``: the data store.
 
-    Returns ``True`` if the variable contains any of the values specified,
-    ``False`` otherwise.
+    Returns ``truevalue`` if the variable contains any of the values specified,
+    ``falsevalue`` otherwise.
     """
     val = d.getVar(variable)
     if not val:
@@ -2067,7 +2081,7 @@ def disable_network(uid=None, gid=None):
         f.write("%s %s 1" % (gid, gid))
 
 def export_proxies(d):
-    from bb.fetch2 import get_fetcher_environment
+    from bb.fetch import get_fetcher_environment
     """ export common proxies variables from datastore to environment """
     newenv = get_fetcher_environment(d)
     for v in newenv:
@@ -2305,5 +2319,5 @@ def is_path_on_nfs(path):
             path = os.path.dirname(path)
 
     import bb.process
-    fstype = bb.process.run("stat -f -c %T {}".format(path))[0].strip()
+    fstype = bb.process.run(['stat', '-f', '-c', '%T', path])[0].strip()
     return fstype == "nfs"
