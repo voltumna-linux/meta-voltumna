@@ -5,7 +5,7 @@ and VRRP, with alpha support for EIGRP and NHRP."
 HOMEPAGE = "https://frrouting.org/"
 SECTION = "net"
 
-LICENSE = "GPL-2.0-only & LGPL-2.1-only"
+LICENSE = "GPL-2.0-only AND LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://doc/licenses/GPL-2.0;md5=b234ee4d69f5fce4486a80fdaf4a4263 \
                     file://doc/licenses/LGPL-2.1;md5=4fbd65380cdd255951079008b364516c"
 
@@ -66,6 +66,14 @@ LDFLAGS:append:mips = " -latomic"
 LDFLAGS:append:mipsel = " -latomic"
 LDFLAGS:append:powerpc = " -latomic"
 LDFLAGS:append:riscv32 = " -latomic"
+
+# configure links -latomic whenever the toolchain merely has it
+# (AC_CHECK_LIB([atomic],[main])) rather than when it is needed. buildtools ships
+# libatomic, so clippy gets a DT_NEEDED that the loader cannot resolve later:
+# BUILD_LDFLAGS has no --as-needed, there is no libatomic-native, and uninative
+# only rewrites the interpreter. Hosts without a system libatomic then fail with
+# "clippy: error while loading shared libraries: libatomic.so.1".
+LDFLAGS:append:class-native = " -Wl,--as-needed"
 
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE:${PN} = "frr.service"

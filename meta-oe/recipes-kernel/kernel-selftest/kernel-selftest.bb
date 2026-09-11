@@ -4,7 +4,7 @@ LICENSE = "GPL-2.0-only"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=bbea815ee2795b2f4230826c0c6b8814"
 
-DEPENDS = "rsync-native llvm-native"
+DEPENDS = "rsync-native llvm-native libcap"
 
 S = "${UNPACKDIR}"
 
@@ -45,17 +45,73 @@ PACKAGECONFIG[mm] = ",,libcap liburing numactl, libgcc bash"
 do_patch[depends] += "virtual/kernel:do_shared_workdir"
 do_compile[depends] += "virtual/kernel:do_install"
 
-inherit linux-kernel-base module-base kernel-arch ptest siteinfo
+inherit module-base kernel-arch ptest siteinfo
 
 DEBUG_PREFIX_MAP:remove = "-fcanon-prefix-map"
 
 TEST_LIST = "\
     ${@bb.utils.filter('PACKAGECONFIG', 'bpf firmware mm', d)} \
+    acct \
+    breakpoints \
+    cachestat \
+    cgroup \
+    clone3 \
+    core \
+    coredump \
     cpufreq \
     cpu-hotplug \
-    rtc \
+    dmabuf-heaps \
+    efivarfs \
+    filelock \
+    filesystems \
+    filesystems/binderfs \
+    filesystems/epoll \
+    fpu \
+    ftrace \
+    futex \
+    gpio \
+    ipc \
+    kcmp \
+    kvm \
+    landlock \
+    locking \
+    lsm \
+    membarrier \
+    mincore \
+    mount \
+    mount_setattr \
+    move_mount_set_group \
+    mseal_system_mappings \
+    namespaces \
+    net \
+    net/mptcp \
+    pidfd \
+    pid_namespace \
+    proc \
+    ptrace \
     ptp \
+    rlimits \
+    rseq \
+    rtc \
+    sched \
+    seccomp \
+    signal \
+    size \
+    splice \
+    sync \
+    syscall_user_dispatch \
+    sysctl \
+    tc-testing \
+    timens \
     timers \
+    tmpfs \
+    tpm2 \
+    tty \
+    uevent \
+    user_events \
+    vDSO \
+    watchdog \
+    zram \
 "
 EXTRA_OEMAKE = '\
     CROSS_COMPILE=${TARGET_PREFIX} \
@@ -72,6 +128,8 @@ EXTRA_OEMAKE:append:toolchain-clang = "\
     HOSTCC="clang -unwindlib=libgcc -rtlib=libgcc -stdlib=libstdc++ ${BUILD_CFLAGS} ${BUILD_LDFLAGS} -Wno-error=unused-command-line-argument" \
     HOSTLD="clang ${BUILD_LDFLAGS} -unwindlib=libgcc -rtlib=libgcc -stdlib=libstdc++" \
 "
+
+CLEANBROKEN = "1"
 
 KERNEL_SELFTEST_SRC ?= "Makefile \
                         include \
@@ -111,12 +169,12 @@ either install it and add it to HOSTTOOLS, or add clang-native from meta-clang t
     sed -i -e '/mrecord-mcount/d' ${S}/Makefile
     sed -i -e '/Wno-alloc-size-larger-than/d' ${S}/Makefile
     sed -i -e '/Wno-alloc-size-larger-than/d' ${S}/scripts/Makefile.*
-    
+
     # Add kernel headers to CFLAGS to fix PTP selftest compilation
     # Required for PTP_MASK_CLEAR_ALL and PTP_MASK_EN_SINGLE definitions
     # introduced in kernel v6.7 (commit c5a445b)
     export CFLAGS="${CFLAGS} -I${STAGING_KERNEL_BUILDDIR}/usr/include"
-    
+
     oe_runmake -C ${S}/tools/testing/selftests TARGETS="${TEST_LIST}"
 }
 
@@ -161,7 +219,7 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 FILES:${PN} += "/usr/kernel-selftest"
 
-RDEPENDS:${PN} += "python3 perl perl-module-io-handle"
+RDEPENDS:${PN} += "python3 perl perl-module-io-handle bash libcap libgcc"
 
 INSANE_SKIP:${PN} += "libdir"
 

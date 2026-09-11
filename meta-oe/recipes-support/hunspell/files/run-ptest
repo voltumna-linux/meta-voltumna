@@ -1,0 +1,35 @@
+#!/bin/bash
+
+cd tests
+
+# skip utf8 non-BMP(Basic Multilingual Plane) 
+SKIP_TESTS="utf8_nonbmp"
+
+tests=$(ls *.dic 2>/dev/null | sed 's/\.dic$//')
+
+if [ -z "$tests" ]; then
+    echo "SKIP: No test files found"
+    exit 0
+fi
+
+for test in $tests; do
+    if echo "$SKIP_TESTS" | grep -qw "$test"; then
+        continue
+    fi
+
+    # Capture test.sh output rather than discarding it: on failure it
+    # reports which check failed and which words were misrecognised,
+    # which is the only usable diagnostic when running on target.
+    output=$(./test.sh "$test" 2>&1)
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        echo "PASS: $test"
+    elif [ $status -eq 3 ]; then
+        echo "SKIP: $test"
+    else
+        echo "FAIL: $test"
+        # Indent so ptest-runner does not mistake diagnostics for results.
+        printf '%s\n' "$output" | sed 's/^/    /'
+    fi
+done

@@ -43,7 +43,7 @@ Notes
   to the PACKAGECONFIG value for the php recipe in order to enable it.
   See here for info on how to do that:
 
-  http://www.yoctoproject.org/docs/current/ref-manual/ref-manual.html#var-PACKAGECONFIG
+  https://docs.yoctoproject.org/ref-manual/variables.html#term-PACKAGECONFIG
 
 
 Maintenance
@@ -54,10 +54,11 @@ with '[meta-webserver]' in the subject.
 
 When sending single patches, please use something like:
 ```
-git send-email -M -1 --to openembedded-devel@lists.openembedded.org --subject-prefix="meta-webserver][wrynose][PATCH"
+git send-email -M -1 --to openembedded-devel@lists.openembedded.org --subject-prefix="meta-webserver][PATCH"
 ```
 
-Layer maintainer: Anuj Mittal <anuj.mittal@oss.qualcomm.com>
+Layer maintainer: Derek Straka <derek@asterius.io>
+
 
 License
 -------
