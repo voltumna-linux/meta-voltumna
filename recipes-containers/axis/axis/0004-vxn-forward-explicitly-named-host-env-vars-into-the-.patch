@@ -1,0 +1,77 @@
+From dd261a14069bacd373595fab3758ee0eecdd5b0b Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Wed, 12 Aug 2026 21:04:45 +0000
+Subject: [PATCH 04/10] vxn: forward explicitly-named host env vars into the
+ DomU
+
+The vxn sandbox delivers container env via a base64 blob on the input disk.
+AXIS strips secrets (ANTHROPIC_API_KEY) from the collected SandboxConfig.env,
+so a direct-key workflow had no way to get the key into the container.
+
+Add VXN_FORWARD_ENV: a comma-separated list of host env var names read from
+the launching environment and appended to the container env blob (alongside
+the collected config env). This is an explicit, documented opt-in -- nothing
+is forwarded unless named -- so the default secret-stripping behavior is
+preserved.
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ crates/axis-sandbox/src/linux/vxn.rs | 37 +++++++++++++++++++++-------
+ 1 file changed, 28 insertions(+), 9 deletions(-)
+
+diff --git a/crates/axis-sandbox/src/linux/vxn.rs b/crates/axis-sandbox/src/linux/vxn.rs
+index b958e76..d17fd95 100644
+--- a/crates/axis-sandbox/src/linux/vxn.rs
++++ b/crates/axis-sandbox/src/linux/vxn.rs
+@@ -89,7 +89,8 @@ impl VxnSandbox {
+             NetworkMode::Proxy => {
+                 return Err(SandboxError::Unsupported(
+                     "vxn backend does not yet enforce 'proxy' network mode; set \
+-                     network.mode to 'block' or 'allow' (strict-proxy is a TODO)"
++                     network.mode to 'block' or 'allow' (managed-inference/proxy \
++                     support is a TODO -- see axis-integration.md)"
+                         .into(),
+                 ));
+             }
+@@ -100,15 +101,33 @@ impl VxnSandbox {
+         // guest sources it before exec -- so secret values (e.g. ANTHROPIC_API_KEY)
+         // never ride the DomU kernel cmdline. Flag goes among the run options,
+         // before the image (the image parser ignores `--*` flags).
+-        if !config.env.is_empty() {
+-            let mut s = String::new();
+-            for (k, v) in &config.env {
+-                s.push_str(k);
+-                s.push('=');
+-                s.push_str(v);
+-                s.push('\n');
++        // Env for the DomU = AXIS-collected config.env, PLUS host vars explicitly
++        // named in VXN_FORWARD_ENV. The latter is a KNOWING operator opt-in that
++        // re-introduces vars AXIS strips from the sandbox (e.g. ANTHROPIC_API_KEY)
++        // for the direct-key path: the agent talks to the provider directly rather
++        // than via AXIS's managed-inference proxy. Acceptable because the DomU is a
++        // VM boundary -- the key stays within this one sandbox, not shared with the
++        // host or other sandboxes. Explicit and documented, never silent: nothing
++        // is forwarded unless the operator names it in VXN_FORWARD_ENV.
++        let mut env_lines = String::new();
++        for (k, v) in &config.env {
++            env_lines.push_str(k);
++            env_lines.push('=');
++            env_lines.push_str(v);
++            env_lines.push('\n');
++        }
++        if let Ok(list) = std::env::var("VXN_FORWARD_ENV") {
++            for k in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
++                if let Ok(v) = std::env::var(k) {
++                    env_lines.push_str(k);
++                    env_lines.push('=');
++                    env_lines.push_str(&v);
++                    env_lines.push('\n');
++                }
+             }
+-            argv.push(format!("--env-b64={}", b64(s.as_bytes())));
++        }
++        if !env_lines.is_empty() {
++            argv.push(format!("--env-b64={}", b64(env_lines.as_bytes())));
+         }
+ 
+         // TODO(vxn/axis): filesystem deny/allow -> DomU mount set; rw workspace

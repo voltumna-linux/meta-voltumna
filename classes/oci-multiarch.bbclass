@@ -72,6 +72,16 @@ deltask do_packagedata
 
 # Generate mcdepends at parse time
 python __anonymous() {
+    # This class only makes sense on the mcextend variants where MCNAME is
+    # set (recipes typically define OCI_MULTIARCH_RECIPE = "${MCNAME}" and
+    # rely on BBCLASSEXTEND to generate per-image variants). The base recipe
+    # -- parsed before any mcextend runs -- has an empty MCNAME, so
+    # OCI_MULTIARCH_RECIPE resolves to the literal "${MCNAME}" and the rest
+    # of this function has nothing meaningful to do. Skip cleanly so
+    # inheriting recipes don't need their own duplicate guard.
+    if not d.getVar('MCNAME'):
+        raise bb.parse.SkipRecipe("oci-multiarch: requires MCNAME (mcextend variant)")
+
     recipe = d.getVar('OCI_MULTIARCH_RECIPE')
     platforms = d.getVar('OCI_MULTIARCH_PLATFORMS')
 

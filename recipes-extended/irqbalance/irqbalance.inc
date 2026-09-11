@@ -28,12 +28,13 @@ EXTRA_OECONF = "--program-transform-name= \
 
 # let the recipes or appends define options
 #
-PACKAGECONFIG ?= "${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'systemd', '', d)}"
+PACKAGECONFIG ?= "${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'systemd', '', d)} ui"
 # enable,disable,depends,rdepends
 #
 PACKAGECONFIG[numa] = "--enable-numa,--disable-numa,numactl,"
 PACKAGECONFIG[libcap-ng] = "--with-libcap-ng,--without-libcap-ng,libcap-ng,"
 PACKAGECONFIG[systemd] = "--with-systemd --with-pkgconfdir=${sysconfdir},--with-pkgconfdir=${sysconfdir},systemd,"
+PACKAGECONFIG[ui] = "--with-irqbalance-ui,--without-irqbalance-ui,ncurses,"
 
 do_install () {
         oe_runmake 'DESTDIR=${D}' install

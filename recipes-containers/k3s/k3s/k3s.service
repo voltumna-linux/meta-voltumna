@@ -34,7 +34,10 @@ ExecStartPre=-/sbin/modprobe overlay
 # Create flannel subnet.env if not present — k3s's embedded flannel
 # controller expects this file for CNI plugin configuration
 ExecStartPre=/bin/sh -c 'mkdir -p /run/flannel && test -f /run/flannel/subnet.env || echo "FLANNEL_NETWORK=10.42.0.0/16\nFLANNEL_SUBNET=10.42.0.1/24\nFLANNEL_MTU=1450\nFLANNEL_IPMASQ=true" > /run/flannel/subnet.env'
-ExecStart=/usr/local/bin/k3s server
+# Containerd v2's CRI plugin requires the fully qualified image reference
+# for the sandbox (pause) image. The k3s default "rancher/mirrored-pause:3.6"
+# is a short name that containerd v2 cannot resolve from its image store.
+ExecStart=/usr/local/bin/k3s server --pause-image docker.io/rancher/mirrored-pause:3.6
 # Avoid any delay due to this service when the system is rebooting or shutting
 # down by using the k3s-killall.sh script to kill all of the running k3s
 # services and containers

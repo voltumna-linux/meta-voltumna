@@ -22,15 +22,15 @@ RDEPENDS:${PN} = " \
 "
 
 SRC_URI = " \
-    git://github.com/containers/skopeo;branch=release-1.22;protocol=https;destsuffix=git/src/github.com/containers/skopeo \
+    git://github.com/containers/skopeo;branch=main;protocol=https;destsuffix=git/src/go.podman.io/skopeo \
     file://0001-makefile-add-GOBUILDFLAGS-to-go-build-call.patch \
 "
 
-SRCREV = "267465e170820673de25149378284fb352daa65e"
-PV = "1.22.2+git"
+SRCREV = "1feb123afffeff312ec7fa20018c9fed23b4828a"
+PV = "1.23.0+git"
 GO_IMPORT = "import"
 
-S = "${UNPACKDIR}/git/src/github.com/containers/skopeo"
+S = "${UNPACKDIR}/git/src/go.podman.io/skopeo"
 
 inherit goarch
 inherit pkgconfig

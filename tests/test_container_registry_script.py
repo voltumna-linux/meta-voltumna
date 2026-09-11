@@ -1497,7 +1497,7 @@ class TestVcontainerSecureRegistry:
             "Should not base64 encode CA cert for kernel cmdline"
 
     def test_vrunner_daemon_sets_9p(self):
-        """Test that daemon mode sets _9p=1 in kernel cmdline."""
+        """Test that daemon mode sets up virtio-9p share and _9p=1."""
         script = Path("/opt/bruce/poky/meta-virtualization/recipes-containers/"
                       "vcontainer/files/vrunner.sh")
         if not script.exists():
@@ -1505,26 +1505,24 @@ class TestVcontainerSecureRegistry:
 
         content = script.read_text()
 
-        # Find the daemon mode block and check for _9p=1
-        # The daemon block should contain both virtfs and _9p=1
+        # Find the daemon mode block and check for 9p setup
         lines = content.split('\n')
         in_daemon_block = False
-        daemon_has_virtfs = False
-        daemon_has_9p = False
+        daemon_has_9p_opts = False
+        daemon_has_9p_flag = False
         for line in lines:
-            if 'DAEMON_MODE" = "start"' in line or "DAEMON_MODE\" = \"start\"" in line:
+            if 'DAEMON_MODE" = "start"' in line or 'DAEMON_MODE = "start"' in line:
                 in_daemon_block = True
             if in_daemon_block:
-                if "virtfs" in line and "DAEMON_SHARE_DIR" in line:
-                    daemon_has_virtfs = True
+                if "hv_build_9p_opts" in line and "DAEMON_SHARE_DIR" in line:
+                    daemon_has_9p_opts = True
                 if "_9p=1" in line:
-                    daemon_has_9p = True
-                # Detect end of the if block (next top-level statement)
-                if line.startswith("fi") and in_daemon_block and daemon_has_virtfs:
+                    daemon_has_9p_flag = True
+                if line.startswith("fi") and in_daemon_block and daemon_has_9p_opts:
                     break
 
-        assert daemon_has_virtfs, "Daemon mode should set up virtio-9p share"
-        assert daemon_has_9p, "Daemon mode should set _9p=1 in kernel cmdline"
+        assert daemon_has_9p_opts, "Daemon mode should set up virtio-9p share via hv_build_9p_opts"
+        assert daemon_has_9p_flag, "Daemon mode should set _9p=1 in kernel cmdline"
 
     def test_vrunner_nondaemon_ca_cert_virtio9p(self):
         """Test that non-daemon mode creates virtio-9p share for CA cert."""
@@ -1536,8 +1534,8 @@ class TestVcontainerSecureRegistry:
         content = script.read_text()
         assert "CA_SHARE_DIR" in content, \
             "Non-daemon mode should create CA_SHARE_DIR for virtio-9p"
-        assert "cashare" in content, \
-            "Should add virtio-9p device for CA cert sharing"
+        assert "hv_build_9p_opts" in content and "CA_SHARE_DIR" in content, \
+            "Should set up virtio-9p device for CA cert sharing via hv_build_9p_opts"
 
     def test_vdkr_init_reads_ca_from_share(self):
         """Test that vdkr-init.sh reads CA cert from /mnt/share/ca.crt."""

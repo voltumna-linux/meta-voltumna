@@ -1,3 +1,33 @@
 #!/bin/sh
 
-make -C tests -k check-TESTS
+PTEST_DIR="/usr/lib/libvirt/ptest/tests"
+export LD_LIBRARY_PATH="${PTEST_DIR}:${LD_LIBRARY_PATH}"
+PASS=0
+FAIL=0
+SKIP=0
+
+run_test() {
+    tname="$1"
+    tpath="$2"
+    "$tpath" >/dev/null 2>&1
+    rc=$?
+    case $rc in
+        0)  echo "PASS: $tname"; PASS=$((PASS + 1)) ;;
+        77) echo "SKIP: $tname"; SKIP=$((SKIP + 1)) ;;
+        *)  echo "FAIL: $tname"; FAIL=$((FAIL + 1)) ;;
+    esac
+}
+
+# Skip run-ptest (self), commandhelper and qemucapsprobe are middleware
+# used by other test cases, not test cases themselves.
+for t in $(find ${PTEST_DIR} -maxdepth 1 -type f -executable ! -name "*.so" ! -name "run-ptest" ! -name "commandhelper" ! -name "qemucapsprobe"); do
+    run_test "$(basename $t)" "$t"
+done
+
+# Summary
+echo ""
+echo "=== Test Summary ==="
+echo "PASS: $PASS"
+echo "FAIL: $FAIL"
+echo "SKIP: $SKIP"
+echo "TOTAL: $((PASS + FAIL + SKIP))"

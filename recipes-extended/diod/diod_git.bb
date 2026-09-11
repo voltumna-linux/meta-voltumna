@@ -9,7 +9,7 @@ LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=59530bdf33659b29e73d4adb9f9f6552"
 
 PV = "1.1.0+git"
-SRCREV = "a8c55f0dd3ad9debc0e77b29ebde6e991d99d55d"
+SRCREV = "de51d1ee1bd5ccf1d8c16b96227c8bb03ec50106"
 SRC_URI = "git://github.com/chaos/diod.git;protocol=https;branch=master \
            file://diod \
            file://diod.conf \

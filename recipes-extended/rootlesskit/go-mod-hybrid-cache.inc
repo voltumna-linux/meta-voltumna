@@ -23,5 +23,4 @@ GO_MODULE_CACHE_DATA = '[\
 {"module":"k8s.io/client-go","version":"v0.27.1","vcs_hash":"d8cb327a6cf85947e3515d2775887d5eb0e5d9d6b7be7de6f424ab66c68f529e","timestamp":"2023-04-14T17:59:34Z","subdir":"","vcs_ref":"refs/tags/v0.27.1"},\
 {"module":"k8s.io/kube-openapi","version":"v0.0.0-20230308215209-15aac26d736a","vcs_hash":"49f9eb8e8845e769ef3ccfdcb4ca6e8e9bde781e5def8cc569ac3a87c60f48b4","timestamp":"2023-03-08T21:52:09Z","subdir":"","vcs_ref":""},\
 {"module":"k8s.io/utils","version":"v0.0.0-20230209194617-a36077c30491","vcs_hash":"9ba85d7841a41edf920055546b30fa3be1bebdd03d41ce31f6324497d389c77c","timestamp":"2023-02-09T19:46:17Z","subdir":"","vcs_ref":""},\
-{"module":"sigs.k8s.io/json","version":"v0.0.0-20221116044647-bc3834ca7abd","vcs_hash":"75caa32e3677fcec80221cbc877ff77fe39daae57f9bb7addb78b26f595031fe","timestamp":"2022-11-16T04:46:47Z","subdir":"","vcs_ref":""},\
 {"module":"sigs.k8s.io/structured-merge-diff/v4","version":"v4.2.3","vcs_hash":"bc2e4a8d89d0a1f71bc2b1fdbbab5474f352fdd9309d1dd9d5463e78ec217fb5","timestamp":"1970-01-01T00:00:00Z","subdir":"","vcs_ref":""}]'

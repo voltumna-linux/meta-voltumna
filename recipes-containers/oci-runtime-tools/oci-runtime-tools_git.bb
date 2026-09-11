@@ -7,7 +7,7 @@ SRC_URI = "git://github.com/opencontainers/runtime-tools.git;branch=master;proto
            file://0001-build-use-for-cross-compiler.patch \
            "
 
-SRCREV = "0105384f68e16803891d0a17d9067b1def6a2778"
+SRCREV = "8a4db579f5c88af5a0d036fad34bddc9c1f703f3"
 PV = "0.9.0+git"
 GO_IMPORT = "import"
 

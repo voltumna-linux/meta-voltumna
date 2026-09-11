@@ -12,7 +12,7 @@ DEPENDS = " \
 
 SRC_URI = "git://gitlab.com/virt-viewer/virt-viewer.git;protocol=https;branch=master"
 
-SRCREV = "e07dbc915b320f70c6857ea845a67f2843848825"
+SRCREV = "a634fa8d9fbc59b093f2f07110b2c867f622599d"
 PV = "11.0+git"
 
 REQUIRED_DISTRO_FEATURES = "opengl"

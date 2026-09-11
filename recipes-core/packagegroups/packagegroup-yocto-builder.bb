@@ -68,6 +68,7 @@ RDEPENDS:packagegroup-yocto-builder-toolchain = "\
     diffutils \
     git \
     git-perltools \
+    ca-certificates \
     python3 \
     python3-modules \
     perl \
@@ -87,6 +88,10 @@ RDEPENDS:packagegroup-yocto-builder-toolchain = "\
     zstd \
     rpcsvc-proto \
     ${@bb.utils.contains('TCLIBC', 'glibc', 'glibc-utils', '', d)} \
+    ${@bb.utils.contains('TCLIBC', 'glibc', 'glibc-dev', '', d)} \
+    libgcc-dev \
+    libatomic-dev \
+    libgomp \
 "
 
 # Layer 3: Yocto-specific tools + utilities
@@ -124,4 +129,8 @@ RDEPENDS:packagegroup-yocto-builder-extras = "\
     ncurses \
     ncurses-terminfo-base \
     subversion \
+    locale-base-en-us \
+    python3-websockets \
+    util-linux-flock \
+    util-linux-getopt \
 "

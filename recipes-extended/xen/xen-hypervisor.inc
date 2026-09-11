@@ -7,7 +7,7 @@ DESCRIPTION = "The Xen hypervisor"
 # to build the different components. eg. 32-bit tools and a 64-bit hypervisor.
 
 # The Xen hypervisor has a narrower compatible platform range than the Xen tools
-COMPATIBLE_HOST = '(x86_64.*).*-linux|aarch64.*-linux|arm-.*-linux-gnueabi'
+COMPATIBLE_HOST = '(x86_64.*).*-linux|aarch64.*-linux'
 
 inherit deploy python3native cml1
 

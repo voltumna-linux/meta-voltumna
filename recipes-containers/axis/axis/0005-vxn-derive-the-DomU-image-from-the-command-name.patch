@@ -1,0 +1,43 @@
+From 868486833ad89d55516dee375575722e0a6504ce Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Fri, 14 Aug 2026 03:43:24 +0000
+Subject: [PATCH 05/10] vxn: derive the DomU image from the command name
+
+The vxn image was VXN_BASE_IMAGE or a fixed default base, so
+`axis run --policy vxn -- claude` could not bring up the agent without
+extra setup. For vxn the tool IS the image: derive it from the command
+name when VXN_BASE_IMAGE is unset (`-- claude` -> image "claude", which
+vxn auto-provisions from its recipe on first run). VXN_BASE_IMAGE stays
+the escape hatch for running a command in a base image
+(VXN_BASE_IMAGE=alpine axis run -- echo hi).
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ crates/axis-sandbox/src/linux/vxn.rs | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/crates/axis-sandbox/src/linux/vxn.rs b/crates/axis-sandbox/src/linux/vxn.rs
+index d17fd95..70ebc98 100644
+--- a/crates/axis-sandbox/src/linux/vxn.rs
++++ b/crates/axis-sandbox/src/linux/vxn.rs
+@@ -72,8 +72,18 @@ impl VxnSandbox {
+         }
+ 
+         let vxn_bin = std::env::var("VXN_BIN").unwrap_or_else(|_| DEFAULT_VXN_BIN.to_string());
+-        let base_image =
+-            std::env::var("VXN_BASE_IMAGE").unwrap_or_else(|_| DEFAULT_BASE_IMAGE.to_string());
++        // Image: VXN_BASE_IMAGE if set, else derive it from the command name --
++        // for vxn the tool IS the image (`axis run -- claude` -> image "claude",
++        // which vxn auto-provisions from its recipe on first run). VXN_BASE_IMAGE
++        // is the escape hatch for "run a command in a base image"
++        // (VXN_BASE_IMAGE=alpine axis run -- echo hi).
++        let base_image = std::env::var("VXN_BASE_IMAGE").unwrap_or_else(|_| {
++            std::path::Path::new(&config.command)
++                .file_name()
++                .and_then(|s| s.to_str())
++                .map(str::to_string)
++                .unwrap_or_else(|| DEFAULT_BASE_IMAGE.to_string())
++        });
+ 
+         let mut argv = vec![vxn_bin, "run".to_string(), "--rm".to_string()];
+ 

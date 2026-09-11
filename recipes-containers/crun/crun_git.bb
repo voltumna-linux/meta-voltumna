@@ -3,11 +3,11 @@ LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263"
 PRIORITY = "optional"
 
-SRCREV_crun = "393509db566bedea037d1599c5a58b896f5d3b01"
-SRCREV_libocispec = "8b07b619df73a113f7721f1c7ce24f2572b04cea"
-SRCREV_ispec = "a4c6ade7bb82b316d45391f572727a63e268b252"
-SRCREV_rspec = "6f7b71c2d216403715f7364ac88dec88d9da989c"
-SRCREV_yajl = "f344d21280c3e4094919fd318bc5ce75da91fc06"
+SRCREV_crun = "ba38286f7d232be8087dbd393315bb05018da68c"
+SRCREV_libocispec = "872b8b0b7ccb1a121601ede0dcac8c6b8a1008a6"
+SRCREV_ispec = "af26a05fba5ee648512f4ea3c9fda1fcc1b6d6dc"
+SRCREV_rspec = "6999a89a76a0329f440d5740497bedb9dd431297"
+SRCREV_yajl = "6bc5219389fd2752631682b0a8368e6d8218a8c5"
 
 SRCREV_FORMAT = "crun_rspec"
 SRC_URI = "git://github.com/containers/crun.git;branch=main;name=crun;protocol=https \
@@ -17,11 +17,9 @@ SRC_URI = "git://github.com/containers/crun.git;branch=main;name=crun;protocol=h
            git://github.com/containers/yajl.git;branch=main;name=yajl;destsuffix=${BB_GIT_DEFAULT_DESTSUFFIX}/libocispec/yajl;protocol=https \
            file://0001-libocispec-correctly-parse-JSON-schema-references.patch;patchdir=libocispec \
            file://0002-libocispec-fix-array-items-parsing.patch;patchdir=libocispec \
-           file://CVE-2026-30892.patch \
-           file://CVE-2026-47766.patch \
           "
 
-PV = "1.26.0+git"
+PV = "1.29.1+git"
 
 inherit autotools-brokensep pkgconfig features_check
 
@@ -46,7 +44,7 @@ PACKAGECONFIG[man] = ",,go-md2man-native"
 PACKAGECONFIG[seccomp] = "--enable-seccomp,--disable-seccomp,libseccomp"
 PACKAGECONFIG[systemd] = "--enable-systemd,--disable-systemd,systemd"
 
-DEPENDS = "m4-native"
+DEPENDS = "m4-native json-c"
 DEPENDS:append:libc-musl = " argp-standalone"
 
 do_configure:prepend () {

@@ -13,19 +13,16 @@ Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
  plugins/cuda/Makefile | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/plugins/cuda/Makefile b/plugins/cuda/Makefile
-index cc3d98ac9..aac9027a7 100644
---- a/plugins/cuda/Makefile
-+++ b/plugins/cuda/Makefile
+Index: criu-4.2+git/plugins/cuda/Makefile
+===================================================================
+--- criu-4.2+git.orig/plugins/cuda/Makefile
++++ criu-4.2+git/plugins/cuda/Makefile
 @@ -19,7 +19,7 @@ all: $(DEPS_CUDA)
  
  cuda_plugin.so: cuda_plugin.c
  	$(call msg-gen, $@)
--	$(Q) $(CC) $(PLUGIN_CFLAGS) $(shell $(COMPEL) includes) $^ -o $@ $(PLUGIN_INCLUDE) $(PLUGIN_LDFLAGS)
-+	$(Q) $(CC) $(PLUGIN_CFLAGS) $(DEBUG_PREFIX_MAP) $(shell $(COMPEL) includes) $^ -o $@ $(PLUGIN_INCLUDE) $(PLUGIN_LDFLAGS)
+-	$(Q) $(CC) $(PLUGIN_CFLAGS) $(DEFINES) $(shell $(COMPEL) includes) $^ -o $@ $(PLUGIN_INCLUDE) $(PLUGIN_LDFLAGS)
++	$(Q) $(CC) $(PLUGIN_CFLAGS) $(DEBUG_PREFIX_MAP) $(DEFINES) $(shell $(COMPEL) includes) $^ -o $@ $(PLUGIN_INCLUDE) $(PLUGIN_LDFLAGS)
  
  clean:
  	$(call msg-clean, $@)
--- 
-2.43.0
-

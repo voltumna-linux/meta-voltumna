@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: Copyright (C) 2025 Bruce Ashfield
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# vxn-podman-api.service
+# ===========================================================================
+# Serves podman's REST API (both the libpod API and the Docker-compatible API)
+# on a TCP socket, so host-side docker/podman tooling -- reached via the
+# qemu-xen backend's host-local port-forward and `vxn vexpose` -- can drive
+# dom0's podman, which uses vxn-oci-runtime to create Xen PV DomUs.
+#
+# Security: the listener is 0.0.0.0:2375 inside dom0 and UNAUTHENTICATED, but
+# it is only reachable from the host via the qemu-xen hostfwd, which binds the
+# host's 127.0.0.1 (see vrunner-backend-qemu-xen.sh). Intended for dev/demo
+# use. Note DomUs on xenbr0 can also reach dom0:2375 -- acceptable for a demo;
+# bind to a specific dom0 interface if that matters.
+#
+# Opt-in: shipped in the vxn-podman-api package; add it to the image only when
+# you want the exposed API. Not pulled in by the base vxn package, so a dom0
+# without it is byte-identical to before.
+
+[Unit]
+Description=Podman API (docker-compatible) on TCP for host-side vxn tooling
+Documentation=man:podman-system-service(1)
+After=network.target
+
+[Service]
+# --time=0 keeps the service alive (no idle exit); serves both APIs.
+ExecStart=/usr/bin/podman system service --time=0 tcp://0.0.0.0:2375
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

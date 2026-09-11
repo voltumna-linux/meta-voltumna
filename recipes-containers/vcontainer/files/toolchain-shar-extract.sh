@@ -319,6 +319,11 @@ echo ""
 echo "Then run:"
 echo "  \$ vdkr-<arch> images      # Docker"
 echo "  \$ vpdmn-<arch> images     # Podman"
+# vxn is opt-in (VCONTAINER_INCLUDE_VXN); show it only when it was bundled.
+# The payload is already extracted above, so we detect it by the wrapper.
+if [ -f "$target_sdk_dir/vxn" ]; then
+	echo "  \$ vxn-<arch> run --rm alpine echo hi   # Docker for Xen (boots a dom0 VM under QEMU)"
+fi
 echo ""
 
 exit 0

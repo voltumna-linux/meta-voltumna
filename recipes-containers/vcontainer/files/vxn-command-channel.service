@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: Copyright (C) 2025 Bruce Ashfield
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# vxn-command-channel.service
+# ===========================================================================
+# Runs the dom0-side command responder for transparent host-side vxn (mode 1).
+#
+# The host (WSL/Linux) boots this Xen dom0 image under QEMU with a
+# virtio-serial port named "vdkr" and drives commands into dom0 over it. This
+# unit binds the responder to that port so `vxn run ... ` on the host is
+# executed here in dom0 (which turns it into a Xen PV DomU).
+#
+# ConditionPathExists gates the unit on the port actually being attached: on a
+# plain runqemu/boot-xen.sh boot (no host command channel) the port is absent
+# and the unit stays inactive rather than error-looping. Under the qemu-xen
+# backend the port is present from power-on.
+#
+# After docker/NAT: a dispatched command typically does `docker run`, which
+# needs dockerd and the dom0 NAT router up to give the DomU network.
+
+[Unit]
+Description=vxn dom0 command channel (virtio-serial responder)
+After=docker.service xen-dom0-nat.service network-online.target
+Wants=docker.service
+ConditionPathExists=/dev/virtio-ports/vdkr
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/vxn-command-channel.sh --port /dev/virtio-ports/vdkr
+# on-failure (not always): a clean idle/SHUTDOWN exit(0) must not respawn; a
+# genuine crash should. Pairs with the responder's exit(0)-when-no-port path.
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

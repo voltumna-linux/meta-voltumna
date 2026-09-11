@@ -1,0 +1,9 @@
+# NAT mode (XEN_DOM0_NETWORK = "nat"): the physical/virtio uplink.
+# dom0's outbound interface, gets an address from the upstream (QEMU slirp,
+# or a real DHCP server).  NOT enslaved into xenbr0 -- dom0 routes/NATs
+# between xenbr0 (DomU network) and this uplink.
+[Match]
+Name=eth* en*
+
+[Network]
+DHCP=yes

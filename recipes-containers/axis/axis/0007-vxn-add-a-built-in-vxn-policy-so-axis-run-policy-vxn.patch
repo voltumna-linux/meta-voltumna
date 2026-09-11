@@ -1,0 +1,77 @@
+From a1df6bdd65c9f8d57ae1812290f73cc174cb2561 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Thu, 13 Aug 2026 17:39:06 +0000
+Subject: [PATCH 07/10] vxn: add a built-in `vxn` policy so `axis run --policy
+ vxn` works
+
+The built-in policy names (minimal, coding-agent, gpu-agent) did not
+include vxn, so selecting the vxn backend by policy name was impossible --
+it required passing a full policy-file path, unlike every other backend.
+
+Add a canonical policies/vxn.yaml and resolve `vxn` in resolve_policy_yaml
+so the backend is selectable by name like the others; the not-found error
+lists it too. The policy defaults network to allow because the vxn tier is
+for interactive agents whose OAuth/API calls need egress out of the box; a
+file policy still covers block/proxy or stricter rules.
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ crates/axis-cli/src/main.rs |  3 ++-
+ policies/vxn.yaml           | 32 ++++++++++++++++++++++++++++++++
+ 2 files changed, 34 insertions(+), 1 deletion(-)
+ create mode 100644 policies/vxn.yaml
+
+diff --git a/crates/axis-cli/src/main.rs b/crates/axis-cli/src/main.rs
+index 583736c..39265f5 100644
+--- a/crates/axis-cli/src/main.rs
++++ b/crates/axis-cli/src/main.rs
+@@ -926,9 +926,10 @@ fn resolve_policy_yaml(policy: &std::path::Path) -> anyhow::Result<String> {
+         "minimal" => include_str!("../../../policies/minimal.yaml"),
+         "coding-agent" => include_str!("../../../policies/coding-agent.yaml"),
+         "gpu-agent" => include_str!("../../../policies/gpu-agent.yaml"),
++        "vxn" => include_str!("../../../policies/vxn.yaml"),
+         _ => {
+             return Err(anyhow::anyhow!(
+-                "policy '{name}' not found; use a file path or one of: minimal, coding-agent, gpu-agent"
++                "policy '{name}' not found; use a file path or one of: minimal, coding-agent, gpu-agent, vxn"
+             ));
+         }
+     };
+diff --git a/policies/vxn.yaml b/policies/vxn.yaml
+new file mode 100644
+index 0000000..375b114
+--- /dev/null
++++ b/policies/vxn.yaml
+@@ -0,0 +1,32 @@
++version: 1
++name: vxn
++
++# The vxn provider runs the command inside a Xen DomU (VM isolation -- separate
++# kernel, not just namespaces). Selected by `axis run --policy vxn -- <tool>`.
++#
++# Network is ALLOWED so interactive agents work out of the box (e.g. claude's
++# OAuth login + API). For a no-egress run, use a file policy with
++# `network.mode: block`. `proxy` (managed inference) is not yet enforced by the
++# vxn backend and fails closed.
++runtime:
++  provider: vxn
++
++# NOTE: for vxn these become DomU mounts, not host-fs Landlock rules -- the agent
++# runs against the DomU's own rootfs, so the VM boundary already denies the host
++# fs. Fine-grained in-DomU enforcement of these paths is the nested-enforcement
++# TODO; kept here to document intent.
++filesystem:
++  read_only:
++    - /usr
++    - /lib
++    - /lib64
++  read_write:
++    - "{workspace}"
++
++process:
++  max_processes: 0
++  max_memory_mb: 0
++  cpu_rate_percent: 0
++
++network:
++  mode: allow

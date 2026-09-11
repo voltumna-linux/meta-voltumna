@@ -84,6 +84,28 @@ hv_skip_state_disk() {
 #
 # The host resolves the OCI entrypoint using jq (available on Dom0)
 # so the guest doesn't need jq to determine what to execute.
+# Stage per-run env (#20) onto the input disk as .vxn-env/env (0600). Mirrors the
+# .vxn-ca staging; the guest sources it before exec. Never on any kernel cmdline.
+_stage_vxn_env() {
+    [ -n "$VXN_ENV_B64" ] || return 0
+    mkdir -p "$1/.vxn-env" 2>/dev/null || return 0
+    printf '%s' "$VXN_ENV_B64" | base64 -d > "$1/.vxn-env/env" 2>/dev/null
+    chmod 600 "$1/.vxn-env/env" 2>/dev/null || true
+    log "INFO" "Staged per-run env for the container ($(grep -c . "$1/.vxn-env/env" 2>/dev/null || echo 0) var(s))"
+}
+
+# Stage the per-run enforcement policy (#31) onto the input disk as
+# .vxn-policy/policy (0600). Mirrors _stage_vxn_env; vxn-init reads it and
+# applies the limits (Phase 1: cgroup v2 memory/pids/cpu) before exec. Off any
+# kernel cmdline.
+_stage_vxn_policy() {
+    [ -n "$VXN_POLICY_B64" ] || return 0
+    mkdir -p "$1/.vxn-policy" 2>/dev/null || return 0
+    printf '%s' "$VXN_POLICY_B64" | base64 -d > "$1/.vxn-policy/policy" 2>/dev/null
+    chmod 600 "$1/.vxn-policy/policy" 2>/dev/null || true
+    log "INFO" "Staged per-run enforcement policy ($(grep -c . "$1/.vxn-policy/policy" 2>/dev/null || echo 0) directive(s))"
+}
+
 hv_prepare_container() {
     # Skip if user already provided --input
     [ -n "$INPUT_PATH" ] && return 0
@@ -92,6 +114,37 @@ hv_prepare_container() {
     case "$DOCKER_CMD" in
         *" run "*)  ;;
         *)          return 0 ;;
+    esac
+
+    # Secret-safe per-run env (#20): AXIS passes container env as
+    # --env-b64=<base64(KEY=VAL\n...)>. Pull it out of DOCKER_CMD HERE in dom0 so
+    # the values are staged onto the per-run input disk (.vxn-env/env, like
+    # .vxn-ca below) and STRIPPED from the command -- they never reach the
+    # container DomU's kernel cmdline. The guest sources /mnt/input/.vxn-env/env
+    # before exec. (The base64 value is transiently in dom0's argv here -- the
+    # trusted control plane, like `docker run -e` on a host; a ssh/9p channel that
+    # avoids dom0 argv entirely is a hardening follow-up.)
+    VXN_ENV_B64=""
+    case "$DOCKER_CMD" in
+        *--env-b64=*)
+            VXN_ENV_B64=$(printf '%s' "$DOCKER_CMD" | grep -oE '\-\-env-b64=[A-Za-z0-9+/=]+' | head -1)
+            VXN_ENV_B64="${VXN_ENV_B64#--env-b64=}"
+            DOCKER_CMD=$(printf '%s' "$DOCKER_CMD" | sed -E 's/ *--env-b64=[A-Za-z0-9+/=]+//')
+            ;;
+    esac
+
+    # Nested enforcement (#31): AXIS passes the enforcement-relevant policy subset
+    # as --policy-b64=<base64(KEY=VAL\n...)>. Same treatment as --env-b64 -- stage
+    # it on the per-run input disk (.vxn-policy/policy) and STRIP it from the
+    # command so it never reaches the DomU kernel cmdline. vxn-init applies it
+    # (Phase 1: cgroup resource limits) before exec, inside the guest.
+    VXN_POLICY_B64=""
+    case "$DOCKER_CMD" in
+        *--policy-b64=*)
+            VXN_POLICY_B64=$(printf '%s' "$DOCKER_CMD" | grep -oE '\-\-policy-b64=[A-Za-z0-9+/=]+' | head -1)
+            VXN_POLICY_B64="${VXN_POLICY_B64#--policy-b64=}"
+            DOCKER_CMD=$(printf '%s' "$DOCKER_CMD" | sed -E 's/ *--policy-b64=[A-Za-z0-9+/=]+//')
+            ;;
     esac
 
     # Check for skopeo
@@ -157,11 +210,87 @@ hv_prepare_container() {
         return 0
     fi
 
-    log "INFO" "Pulling OCI image: $image"
+    # Local rootfs directory: when the "image" is an absolute path to a
+    # directory that looks like a root filesystem (has bin/ or usr/), use it
+    # directly as the container rootfs instead of pulling from a registry. Lets
+    # `vxn run <dir>` run any local rootfs/bundle (e.g. a `vxn bundle` output).
+    # The input disk builder (vrunner.sh) turns a dir into an ext4 image via
+    # `mke2fs -d`, and the guest direct-mounts it.
+    case "$image" in
+        /*)
+            if [ -d "$image" ] && { [ -d "$image/bin" ] || [ -d "$image/usr" ]; }; then
+                INPUT_PATH="$image"
+                INPUT_TYPE="dir"
+                log "INFO" "Using local rootfs directly: $image"
+                # DomU still inherits dom0's corporate CA(s) (same as the pull
+                # path) so the container trusts a TLS-intercepting proxy.
+                if ls /usr/local/share/ca-certificates/*.crt >/dev/null 2>&1; then
+                    mkdir -p "$image/.vxn-ca"
+                    cp /usr/local/share/ca-certificates/*.crt "$image/.vxn-ca/" 2>/dev/null || true
+                    log "INFO" "Staged dom0 CA cert(s) for the container trust store"
+                fi
+                _stage_vxn_env "$image"
+                _stage_vxn_policy "$image"
+                return 0
+            fi
+            ;;
+    esac
+
+    # Provisioned rootfs (vxn provision <name>): a bare image name resolving to a
+    # cached rootfs at ~/.vxn/rootfs/<name>. Direct-mount it (no OCI, no
+    # registry) and apply the recorded ENTRYPOINT/CMD so `vxn run <name>` runs the
+    # tool. Checked BEFORE the OCI cache/registry path so a provisioned name wins;
+    # names that were never provisioned fall through to the OCI path unchanged.
+    local prov_cache="${VXN_ROOTFS_CACHE:-$HOME/.vxn/rootfs}"
+    if [ -d "$prov_cache/$image" ] && { [ -d "$prov_cache/$image/bin" ] || [ -d "$prov_cache/$image/usr" ]; }; then
+        INPUT_PATH="$prov_cache/$image"
+        INPUT_TYPE="dir"
+        log "INFO" "Using provisioned rootfs: $image"
+        local P_ENTRYPOINT="" P_CMD="" P_WORKDIR="" P_ENV="" _rc=""
+        [ -f "$prov_cache/$image.conf" ] && . "$prov_cache/$image.conf"
+        # entrypoint + (user command if given, else the recorded CMD)
+        _rc="$P_ENTRYPOINT"
+        if [ -n "$user_cmd" ]; then _rc="$_rc${_rc:+ }$user_cmd"
+        elif [ -n "$P_CMD" ]; then _rc="$_rc${_rc:+ }$P_CMD"; fi
+        [ -n "$_rc" ] && { DOCKER_CMD="$_rc"; log "INFO" "Provisioned command: $_rc"; }
+        if ls /usr/local/share/ca-certificates/*.crt >/dev/null 2>&1; then
+            mkdir -p "$INPUT_PATH/.vxn-ca"
+            cp /usr/local/share/ca-certificates/*.crt "$INPUT_PATH/.vxn-ca/" 2>/dev/null || true
+        fi
+        _stage_vxn_env "$INPUT_PATH"
+        _stage_vxn_policy "$INPUT_PATH"
+        return 0
+    fi
 
     local oci_dir="$TEMP_DIR/oci-image"
     local skopeo_log="$TEMP_DIR/skopeo.log"
-    if skopeo copy "docker://$image" "oci:$oci_dir:latest" > "$skopeo_log" 2>&1; then
+
+    # Local image cache (#28): if this image was previously `vxn pull`ed or
+    # `vxn load`ed, reuse it instead of hitting the registry every run. The cache
+    # (~/.vxn/images) is the same store the frontend's pull/load/ls/rm/tag ops
+    # populate -- refs/<normalized-name, / -> _> symlinks a content-addressed
+    # store/sha256/<digest> OCI dir. hv_prepare_container runs in the same dom0
+    # as those ops, so it sees the same cache. On a hit we copy the cached OCI
+    # into oci_dir and skip the network pull; the CA + per-run env (#20) +
+    # entrypoint resolution below run unchanged either way. The runner doesn't
+    # source the frontend, so name normalization is inlined here to match
+    # vcontainer-common.sh's vxn_normalize_image_name.
+    local vxn_cache="${VXN_IMAGE_CACHE:-$HOME/.vxn/images}"
+    local cache_name="$image"
+    case "$cache_name" in
+        *.*/*) ;;                                    # has registry (dot before /)
+        */*)   cache_name="docker.io/$cache_name" ;; # namespace, no registry
+        *)     cache_name="docker.io/library/$cache_name" ;;
+    esac
+    case "$cache_name" in *:*) ;; *) cache_name="$cache_name:latest" ;; esac
+    local cache_ref="$vxn_cache/refs/$(printf '%s' "$cache_name" | tr '/' '_')"
+
+    if [ -L "$cache_ref" ] && [ -d "$cache_ref" ]; then
+        log "INFO" "Using cached image: $cache_name (no registry pull)"
+        cp -a "$(readlink -f "$cache_ref")" "$oci_dir"
+        INPUT_PATH="$oci_dir"
+        INPUT_TYPE="oci"
+    elif skopeo copy "docker://$image" "oci:$oci_dir:latest" > "$skopeo_log" 2>&1; then
         INPUT_PATH="$oci_dir"
         INPUT_TYPE="oci"
         log "INFO" "OCI image pulled to $oci_dir"
@@ -172,6 +301,53 @@ hv_prepare_container() {
         done < "$skopeo_log"
         exit 1
     fi
+
+    # Extract the OCI layers into a flat rootfs HERE (dom0 side, ample disk) so
+    # the input disk carries the READY rootfs and the guest DIRECT-MOUNTS it rw
+    # (vxn-init find_container_rootfs bin/usr path -- the same path `vxn run
+    # <dir>` uses). Shipping the OCI blobs and unpacking in the guest instead
+    # overflows the DomU's RAM tmpfs: the DomU root is read-only, so extraction
+    # lands in RAM, and a 512MB DomU truncated a ~300MB binary, which then
+    # SIGBUSed when mmap'd. Extracting on dom0 also skips a slow guest-boot
+    # unpack. (Layers apply in order; OCI whiteouts are not processed -- same
+    # basic behavior the guest extractor had, fine for additive images.)
+    local rootfs_dir="$TEMP_DIR/rootfs"
+    mkdir -p "$rootfs_dir"
+    local _mdigest _mfile _ldigest _lfile
+    _mdigest=$(jq -r '.manifests[0].digest' "$oci_dir/index.json" 2>/dev/null)
+    _mfile="$oci_dir/blobs/${_mdigest/://}"
+    if ! command -v jq >/dev/null 2>&1 || [ ! -f "$_mfile" ]; then
+        log "ERROR" "cannot read OCI manifest to extract layers for $image"
+        exit 1
+    fi
+    for _ldigest in $(jq -r '.layers[].digest' "$_mfile" 2>/dev/null); do
+        _lfile="$oci_dir/blobs/${_ldigest/://}"
+        [ -f "$_lfile" ] || { log "ERROR" "layer blob missing: $_ldigest"; exit 1; }
+        # Do NOT silence tar: an out-of-space extract is exactly what truncated
+        # the binary in the guest; fail loudly instead.
+        if ! tar -xf "$_lfile" -C "$rootfs_dir" 2>"$TEMP_DIR/tar.log"; then
+            log "ERROR" "layer extract failed ($_ldigest):"
+            while IFS= read -r _tl; do log "ERROR" "  tar: $_tl"; done < "$TEMP_DIR/tar.log"
+            exit 1
+        fi
+    done
+    # The ready rootfs is now the input; the guest direct-mounts it (no RAM
+    # unpack). Overrides the INPUT_PATH=oci_dir set in the pull/cache-hit block.
+    INPUT_PATH="$rootfs_dir"
+    INPUT_TYPE="dir"
+
+    # DomU inherits dom0's corporate CA(s): stage them INTO the rootfs so the
+    # guest init installs them into the container trust store (containers doing
+    # their own TLS/network ops then trust a proxy CA too). With the rootfs as
+    # the input disk, .vxn-ca / .vxn-env sit at its root, where the guest already
+    # looks (/mnt/input/.vxn-ca, /mnt/input/.vxn-env).
+    if ls /usr/local/share/ca-certificates/*.crt >/dev/null 2>&1; then
+        mkdir -p "$rootfs_dir/.vxn-ca"
+        cp /usr/local/share/ca-certificates/*.crt "$rootfs_dir/.vxn-ca/" 2>/dev/null || true
+        log "INFO" "Staged dom0 CA cert(s) for the container trust store"
+    fi
+    _stage_vxn_env "$rootfs_dir"
+    _stage_vxn_policy "$rootfs_dir"
 
     # Resolve entrypoint from OCI config on the host (jq available here).
     # Rewrite DOCKER_CMD so the guest receives the actual command to exec,
@@ -284,6 +460,56 @@ hv_build_vm_cmd() {
     HV_OPTS=""
 }
 
+# ============================================================================
+# Static IP allocation (VXN_NET_MODE=static, the default)
+# ============================================================================
+# Pick a unique address on the DomU bridge subnet and hand it to the guest on
+# the kernel cmdline, so the guest configures statically and skips the ~3s
+# udhcpc round-trip. Range is OUTSIDE dnsmasq's DHCP pool (10.0.100.50-200) so
+# static leases never collide with DHCP leases. Leases are atomic (mkdir) and
+# self-cleaning: a lease whose owning domain is no longer running is reaped and
+# reused, so a crashed/killed container never permanently leaks its address --
+# and the single hardcoded DHCP fallback in the guest (which every DomU shares,
+# hence collides) is avoided entirely. If the pool is exhausted or mode!=static,
+# emit nothing and the guest falls back to DHCP.
+#
+# NOTE: currently inlined here; the same logic is added to vxn-oci-runtime for
+# the docker/podman/ctr path. Extract to a shared vxn-ipam helper if it grows.
+VXN_IPAM_DIR="${VXN_IPAM_DIR:-/var/lib/vxn-ipam}"
+VXN_NET_BASE="${VXN_NET_BASE:-10.0.100}"          # /24 base (hosts .START-.END)
+VXN_NET_RANGE_START="${VXN_NET_RANGE_START:-201}" # outside dnsmasq pool .50-.200
+VXN_NET_RANGE_END="${VXN_NET_RANGE_END:-254}"
+VXN_NET_GW="${VXN_NET_GW:-10.0.100.1}"
+VXN_NET_DNS="${VXN_NET_DNS:-10.0.100.1}"
+VXN_NET_PREFIXLEN="${VXN_NET_PREFIXLEN:-24}"
+
+# vxn_ipam_alloc <owner-domain-name> -> echoes an IP, or nothing if exhausted.
+vxn_ipam_alloc() {
+    local id="$1" ip lease owner n
+    # Explicit pin wins (VXN_NET_IP=10.0.100.210 for a deterministic address).
+    [ -n "${VXN_NET_IP:-}" ] && { echo "$VXN_NET_IP"; return 0; }
+    mkdir -p "$VXN_IPAM_DIR" 2>/dev/null || return 0
+    # Reap stale leases: owner domain no longer known to xl.
+    for lease in "$VXN_IPAM_DIR/$VXN_NET_BASE".*; do
+        [ -d "$lease" ] || continue
+        owner=$(cat "$lease/owner" 2>/dev/null)
+        [ -n "$owner" ] && ! xl domid "$owner" >/dev/null 2>&1 && rm -rf "$lease"
+    done
+    # Claim the first free slot -- mkdir is atomic, so concurrent allocs can't
+    # both win the same address.
+    n="$VXN_NET_RANGE_START"
+    while [ "$n" -le "$VXN_NET_RANGE_END" ]; do
+        ip="$VXN_NET_BASE.$n"
+        if mkdir "$VXN_IPAM_DIR/$ip" 2>/dev/null; then
+            echo "$id" > "$VXN_IPAM_DIR/$ip/owner" 2>/dev/null
+            echo "$ip"
+            return 0
+        fi
+        n=$((n + 1))
+    done
+    return 0   # pool exhausted -> caller emits nothing -> guest DHCPs
+}
+
 # Internal: write Xen domain config file
 _write_xen_config() {
     local kernel_append="$1"
@@ -317,6 +543,42 @@ _write_xen_config() {
     local xen_memory="${VXN_MEMORY:-512}"
     local xen_vcpus="${VXN_VCPUS:-2}"
 
+    # DomU kernel cmdline additions, based on where the SDK is running:
+    #   * AMD auto-detect: the guest kernel's print_s5_reset_status_mmio initcall
+    #     does a raw ioread32 on AMD FCH MMIO (0xFED803C0) -- valid on AMD bare
+    #     metal, but unmapped in a Xen PV DomU -> page fault in PID 1 ->
+    #     "Attempted to kill init" panic. Blacklisting it is a no-op on Intel
+    #     (never called there). Key off dom0's CPU vendor: dom0 runs -cpu host,
+    #     so it sees the real host -- AMD on an AMD laptop, Intel on the build
+    #     box. The proper fix is guarding that initcall in the DomU kernel (TODO);
+    #     this is the no-kernel-rebuild workaround.
+    #   * VXN_DOMU_CMDLINE_EXTRA: arbitrary extra DomU cmdline (dom0 env / config).
+    local domu_extra=""
+    if grep -qi "AuthenticAMD" /proc/cpuinfo 2>/dev/null; then
+        domu_extra="$domu_extra initcall_blacklist=print_s5_reset_status_mmio"
+    fi
+
+    # Static IP (VXN_NET_MODE=static, default): allocate an address and emit it
+    # on the guest cmdline so the guest skips udhcpc. Only when networking is on;
+    # empty allocation (pool exhausted) or VXN_NET_MODE=dhcp -> guest DHCPs.
+    if [ "$NETWORK" = "true" ] && [ "${VXN_NET_MODE:-static}" = "static" ]; then
+        local _vxn_ip
+        _vxn_ip=$(vxn_ipam_alloc "$HV_DOMNAME")
+        if [ -n "$_vxn_ip" ]; then
+            domu_extra="$domu_extra ${CMDLINE_PREFIX}_ip=$_vxn_ip ${CMDLINE_PREFIX}_gw=$VXN_NET_GW ${CMDLINE_PREFIX}_prefixlen=$VXN_NET_PREFIXLEN ${CMDLINE_PREFIX}_dns=$VXN_NET_DNS"
+            log "INFO" "Static IP allocated: $_vxn_ip (gw $VXN_NET_GW)"
+        fi
+    fi
+
+    [ -n "${VXN_DOMU_CMDLINE_EXTRA:-}" ] && domu_extra="$domu_extra $VXN_DOMU_CMDLINE_EXTRA"
+
+    # Initial terminal geometry for interactive runs (captured in
+    # hv_start_vm_foreground). The guest's vxn-init.sh applies it to hvc0 via
+    # stty before exec so full-screen TUIs aren't clipped to 80x25.
+    if [ -n "${_VXN_WIN_ROWS:-}" ] && [ -n "${_VXN_WIN_COLS:-}" ]; then
+        domu_extra="$domu_extra vcontainer.rows=$_VXN_WIN_ROWS vcontainer.cols=$_VXN_WIN_COLS"
+    fi
+
     cat > "$config_path" <<XENEOF
 # Auto-generated Xen domain config for vxn
 name = "$HV_DOMNAME"
@@ -326,7 +588,7 @@ vcpus = $xen_vcpus
 
 kernel = "$KERNEL_IMAGE"
 ramdisk = "$INITRAMFS"
-extra = "console=hvc0 quiet loglevel=0 init=/init vcontainer.blk=xvd vcontainer.init=/vxn-init.sh $kernel_append"
+extra = "console=hvc0 quiet loglevel=0 init=/init vcontainer.blk=xvd vcontainer.init=/vxn-init.sh$domu_extra $kernel_append"
 
 disk = [ $disk_array ]
 vif = [ $vif_array ]
@@ -368,7 +630,9 @@ hv_start_vm_background() {
     _write_xen_config "$kernel_append" "$HV_XEN_CFG"
 
     # Create the domain
+    [ "${VXN_TIMING:-0}" = "1" ] && echo "DTIME xlcreate_start $(date +%s.%N)" >&2
     xl create "$HV_XEN_CFG" >> "$log_file" 2>&1
+    [ "${VXN_TIMING:-0}" = "1" ] && echo "DTIME xlcreate_done $(date +%s.%N)" >&2
 
     # Xen domains don't have a PID on Dom0 — xl manages them by name.
     # For daemon mode, start a lightweight monitor process that stays alive
@@ -422,11 +686,35 @@ hv_start_vm_background() {
 hv_start_vm_foreground() {
     local kernel_append="$1"
 
+    # Capture the controlling terminal's window size so the guest can set its
+    # hvc0 geometry before exec. xl console shuttles raw bytes but never relays
+    # winsize into the guest, so the guest tty otherwise defaults to 80x25 and
+    # full-screen TUIs (claude's Ink UI) render clipped. ssh -tt already sized
+    # this pty (config-a) / it's the real terminal (config-b), so `stty size`
+    # here reads the correct dimensions. Best-effort, integers only (the values
+    # ride the kernel cmdline -- reject anything non-numeric). _VXN_WIN_* are
+    # read by _write_xen_config below (same shell).
+    _VXN_WIN_ROWS=""; _VXN_WIN_COLS=""
+    if [ -t 0 ]; then
+        _vxn_sz=$(stty size 2>/dev/null)   # "rows cols"
+        _vxn_r=${_vxn_sz%% *}; _vxn_c=${_vxn_sz##* }
+        case "$_vxn_r$_vxn_c" in
+            ''|*[!0-9]*) ;;                 # non-numeric -> leave unset
+            *) [ "$_vxn_r" -gt 0 ] && [ "$_vxn_c" -gt 0 ] && { _VXN_WIN_ROWS=$_vxn_r; _VXN_WIN_COLS=$_vxn_c; } ;;
+        esac
+    fi
+
     HV_XEN_CFG="${TEMP_DIR:-/tmp}/vxn-$$.cfg"
     _write_xen_config "$kernel_append" "$HV_XEN_CFG"
 
-    # Create domain and attach console
-    xl create -c "$HV_XEN_CFG"
+    # Create domain and attach console. Filter xl's cosmetic "Parsing config
+    # from <file>" banner off stderr while leaving genuine create errors (also
+    # on stderr) visible on the interactive console; stdin/stdout stay wired to
+    # the terminal for the guest console. This is the -it path -- the background
+    # path (hv_start_vm) already redirects to a log file, so only this one leaked
+    # the banner to the user. bash process substitution keeps the filter to the
+    # single stream without disturbing the tty.
+    xl create -c "$HV_XEN_CFG" 2> >(grep -v '^Parsing config from ' >&2)
 }
 
 hv_is_vm_running() {

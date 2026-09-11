@@ -14,6 +14,13 @@ OCI_LAYERS = "\
     app:packages:curl \
 "
 
+# Note: no IMAGE_INSTALL needed for the packages listed above.
+# image-oci.bbclass walks OCI_LAYERS at parse time and folds every
+# package named in a ":packages:" layer into IMAGE_INSTALL automatically,
+# so do_rootfs's recrdeptask builds them. A recipe only needs to set
+# IMAGE_INSTALL itself for packages that are NOT named in any layer
+# (e.g. packages consumed only by a rootfs postprocess fixup).
+
 # Use CMD so `docker run image /bin/sh` works as expected
 OCI_IMAGE_CMD = "/bin/sh -c 'echo Hello from multi-layer container && curl --version'"
 
@@ -24,12 +31,6 @@ inherit image-oci
 IMAGE_FEATURES = ""
 IMAGE_LINGUAS = ""
 NO_RECOMMENDATIONS = "1"
-
-# IMAGE_INSTALL triggers package builds via do_rootfs recrdeptask.
-# Even for multi-layer mode, list packages here to ensure they're built.
-# The PM will install them directly to layers from DEPLOY_DIR_IPK.
-# Note: IMAGE_ROOTFS is still created but ignored for packages layers.
-IMAGE_INSTALL = "base-files base-passwd netbase busybox curl"
 
 # Allow build with or without a specific kernel
 IMAGE_CONTAINER_NO_DUMMY = "1"

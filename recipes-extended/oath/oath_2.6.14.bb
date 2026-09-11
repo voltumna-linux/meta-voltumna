@@ -1,4 +1,4 @@
-LICENSE = "GPL-3.0-only & LGPL-2.1-only"
+LICENSE = "GPL-3.0-only AND LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=1ebbd3e34237af26da5dc08a4e440464"
 
 SRC_URI = "http://download.savannah.nongnu.org/releases/oath-toolkit/oath-toolkit-${PV}.tar.gz"

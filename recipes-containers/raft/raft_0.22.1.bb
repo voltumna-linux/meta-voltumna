@@ -6,7 +6,7 @@ HOMEPAGE = "https://github.com/cowsql/raft"
 LICENSE = "LGPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=51b0baf3ea280222685bbfd862de758b"
 
-SRCREV = "9edb176a7924ce2b943cb56552366dc4b5a1a6b7"
+SRCREV = "148951f79a1ed529d6f112661a3067494f1a0917"
 SRC_URI = "git://github.com/cowsql/raft.git;branch=main;protocol=https"
 
 PV = "0.22.1"

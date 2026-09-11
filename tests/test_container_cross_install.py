@@ -8,17 +8,22 @@ These tests verify that container-cross-install correctly bundles
 OCI containers into Yocto images.
 
 Run with:
-    pytest tests/test_container_cross_install.py -v
+    pytest tests/test_container_cross_install.py -v --poky-dir /opt/bruce/poky
 
-Run boot tests (requires built image):
-    pytest tests/test_container_cross_install.py::TestBundledContainersBoot -v
+Full coverage (builds + boots with both docker and podman profiles):
+    pytest tests/test_container_cross_install.py -v --poky-dir /opt/bruce/poky --container-profiles docker,podman
+
+Single profile only:
+    pytest tests/test_container_cross_install.py -v --poky-dir /opt/bruce/poky --container-profiles docker
 
 Environment variables:
     POKY_DIR: Path to poky directory (default: /opt/bruce/poky)
     BUILD_DIR: Path to build directory (default: $POKY_DIR/build)
     MACHINE: Target machine (default: qemux86-64)
 
-Note: These tests require a configured Yocto build environment.
+Note: Boot tests (TestBundledContainersBoot, TestCustomServiceFileBoot) build
+container-image-host with each --container-profiles profile, boot it, and
+verify containers are present and runnable. No local.conf editing required.
 """
 
 import os
@@ -87,26 +92,55 @@ def meta_virt_dir(poky_dir):
     return path
 
 
-def run_bitbake(build_dir, recipe, task=None, extra_args=None, timeout=1800):
-    """Run a bitbake command."""
-    cmd = ["bitbake"]
+def run_bitbake(build_dir, recipe, task=None, extra_args=None, extra_vars=None, timeout=1800):
+    """Run a bitbake command within the Yocto environment.
+
+    Args:
+        build_dir: Path to build directory
+        recipe: Recipe or mc:target to build
+        task: Optional task (e.g., 'rootfs')
+        extra_args: Optional list of extra bitbake arguments
+        extra_vars: Optional dict of variable overrides (written to a
+                    temporary conf file and passed via -R)
+        timeout: Command timeout in seconds
+    """
+    import tempfile
+
+    bb_cmd = "bitbake"
     if task:
-        cmd.extend(["-c", task])
-    cmd.append(recipe)
+        bb_cmd += f" -c {task}"
+
+    # Write variable overrides to a temporary conf file
+    conf_file = None
+    if extra_vars:
+        conf_file = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.conf', prefix='pytest-bbvars-',
+            dir=str(build_dir / "conf"), delete=False)
+        for var, val in extra_vars.items():
+            conf_file.write(f'{var} = "{val}"\n')
+        conf_file.close()
+        bb_cmd += f" -R {conf_file.name}"
+
+    bb_cmd += f" {recipe}"
     if extra_args:
-        cmd.extend(extra_args)
+        bb_cmd += " " + " ".join(extra_args)
 
-    env = os.environ.copy()
-    env["BUILDDIR"] = str(build_dir)
+    poky_dir = build_dir.parent
+    full_cmd = f"bash -c 'cd {poky_dir} && source oe-init-build-env {build_dir} >/dev/null 2>&1 && {bb_cmd}'"
 
-    result = subprocess.run(
-        cmd,
-        cwd=build_dir,
-        env=env,
-        timeout=timeout,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            full_cmd,
+            shell=True,
+            cwd=build_dir,
+            timeout=timeout,
+            capture_output=True,
+            text=True,
+        )
+    finally:
+        if conf_file:
+            os.unlink(conf_file.name)
+
     return result
 
 
@@ -298,13 +332,13 @@ class TestVdkrRecipes:
         assert len(installers) > 0, f"No SDK installer found in {sdk_deploy}"
 
     def test_vdkr_initramfs_create(self, build_dir):
-        """Test vdkr-initramfs-create builds."""
-        result = run_bitbake(build_dir, "vdkr-initramfs-create")
+        """Test vdkr-initramfs-create builds via multiconfig."""
+        result = run_bitbake(build_dir, "mc:vruntime-x86-64:vdkr-initramfs-create")
         assert result.returncode == 0, f"Build failed: {result.stderr}"
 
     def test_vpdmn_initramfs_create(self, build_dir):
-        """Test vpdmn-initramfs-create builds."""
-        result = run_bitbake(build_dir, "vpdmn-initramfs-create")
+        """Test vpdmn-initramfs-create builds via multiconfig."""
+        result = run_bitbake(build_dir, "mc:vruntime-x86-64:vpdmn-initramfs-create")
         assert result.returncode == 0, f"Build failed: {result.stderr}"
 
 
@@ -438,6 +472,10 @@ class RunqemuSession:
 
             # Get everything before the prompt
             raw_output = self.child.before
+
+            # Strip OSC and other escape sequences from output
+            raw_output = re.sub(r'\x1b\]3008;[^\x07\x1b]*(?:\x07|\x1b\\)', '', raw_output)
+            raw_output = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', raw_output)
 
             # Parse: split by newlines, skip command echo (first line), take the rest
             lines = raw_output.replace('\r', '').split('\n')
@@ -587,6 +625,64 @@ def runqemu_session(request, poky_dir, build_dir, machine, check_rootfs_freshnes
         yield session
     finally:
         session.stop()
+
+
+def _get_container_profiles(request):
+    """Parse --container-profiles option into a list."""
+    return [p.strip() for p in request.config.getoption("--container-profiles").split(",")]
+
+
+@pytest.fixture(scope="class", params=["docker", "podman"])
+def profiled_session(request, poky_dir, build_dir, machine):
+    """
+    Fixture that builds container-image-host with a specific CONTAINER_PROFILE,
+    boots it, and provides a session for testing.
+
+    Parametrized over profiles from --container-profiles (default: docker,podman).
+    Each profile gets a full build → boot → test cycle.
+    """
+    profile = request.param
+    profiles = _get_container_profiles(request)
+    if profile not in profiles:
+        pytest.skip(f"Profile {profile} not in --container-profiles={','.join(profiles)}")
+
+    if not PEXPECT_AVAILABLE:
+        pytest.skip("pexpect not installed. Run: pip install pexpect")
+
+    image = request.config.getoption("--image")
+    fstype = request.config.getoption("--image-fstype")
+    timeout = request.config.getoption("--boot-timeout")
+    use_kvm = not request.config.getoption("--no-kvm")
+
+    # Build the image with this profile
+    result = run_bitbake(
+        build_dir, image,
+        extra_vars={"CONTAINER_PROFILE": profile},
+        timeout=3600,
+    )
+    if result.returncode != 0:
+        pytest.fail(f"Build failed for profile {profile}: {result.stderr}")
+
+    session = RunqemuSession(poky_dir, build_dir, machine, image,
+                             fstype=fstype, use_kvm=use_kvm, timeout=timeout)
+    session.container_profile = profile
+
+    try:
+        session.start()
+        yield session
+    finally:
+        session.stop()
+
+
+@pytest.fixture(scope="class")
+def profiled_containers(profiled_session, build_dir, machine):
+    """Detect containers in the booted image for the active profile."""
+    image = "container-image-host"
+    result = _detect_containers_from_rootfs(build_dir, machine, image)
+    if not result:
+        result = {'docker': [], 'podman': []}
+    result['profile'] = profiled_session.container_profile
+    return result
 
 
 def _detect_containers_from_rootfs(build_dir, machine, image):
@@ -775,135 +871,75 @@ class TestBundledContainersBoot:
     """
     Boot tests to verify bundled containers are visible.
 
-    These tests boot the actual Yocto image and verify that
-    `docker images` or `podman images` shows the bundled containers.
-
-    Prerequisites:
-        - Image must be built with BUNDLED_CONTAINERS configured
-        - pexpect must be installed: pip install pexpect
+    Parametrized over container profiles (--container-profiles, default: docker,podman).
+    For each profile, builds container-image-host with that CONTAINER_PROFILE,
+    boots the image, and verifies the profile's containers are present and runnable.
 
     Run with:
         pytest tests/test_container_cross_install.py::TestBundledContainersBoot -v
 
     Options:
-        --image IMAGE          Image name to boot (default: core-image-minimal)
+        --container-profiles   Profiles to test (default: docker,podman)
+        --image IMAGE          Image name to boot (default: container-image-host)
         --machine MACHINE      Machine to use (default: qemux86-64)
         --boot-timeout SECS    Timeout for boot (default: 120)
     """
 
     @pytest.mark.slow
     @pytest.mark.boot
-    def test_system_boots(self, runqemu_session):
+    @pytest.mark.container_profile
+    def test_system_boots(self, profiled_session):
         """Test that the system boots successfully."""
-        assert runqemu_session.booted, "System failed to boot"
+        assert profiled_session.booted, \
+            f"System failed to boot with profile {profiled_session.container_profile}"
 
-        # Basic sanity check
-        output = runqemu_session.run_command('uname -a')
+        output = profiled_session.run_command('uname -a')
         assert 'Linux' in output, f"Unexpected uname output: {output}"
 
     @pytest.mark.slow
     @pytest.mark.boot
-    def test_docker_images_visible(self, runqemu_session, bundled_containers_config):
-        """Test that bundled Docker containers are visible."""
-        expected = bundled_containers_config['docker']
-        if not expected:
-            pytest.skip("No Docker containers in bundle packages or BUNDLED_CONTAINERS")
+    @pytest.mark.container_profile
+    def test_containers_visible(self, profiled_session, profiled_containers):
+        """Test that bundled containers are visible for the active profile."""
+        profile = profiled_session.container_profile
+        runtime = profile  # docker or podman
 
-        # Check if docker is available
-        output = runqemu_session.run_command('which docker')
-        if '/docker' not in output:
-            pytest.skip("docker not installed in image")
+        output = profiled_session.run_command(f'which {runtime}')
+        assert f'/{runtime}' in output, \
+            f"{runtime} not installed in image (profile={profile})"
 
-        # Get docker images
-        output = runqemu_session.run_command('docker images', timeout=30)
-        print(f"docker images output:\n{output}")
+        output = profiled_session.run_command(f'{runtime} images', timeout=30)
+        print(f"{runtime} images output ({profile}):\n{output}")
 
-        # Verify each expected container is present
-        missing = []
-        for container in expected:
-            if container not in output:
-                missing.append(container)
+        expected = profiled_containers.get(runtime, [])
+        assert expected, \
+            f"No {runtime} containers detected in rootfs (profile={profile})"
 
-        assert not missing, f"Missing Docker containers: {missing}\nOutput:\n{output}"
+        missing = [c for c in expected if c not in output]
+        assert not missing, \
+            f"Missing {runtime} containers: {missing}\nOutput:\n{output}"
 
     @pytest.mark.slow
     @pytest.mark.boot
-    def test_podman_images_visible(self, runqemu_session, bundled_containers_config):
-        """Test that bundled Podman containers are visible."""
-        expected = bundled_containers_config['podman']
-        if not expected:
-            pytest.skip("No Podman containers in bundle packages or BUNDLED_CONTAINERS")
+    @pytest.mark.container_profile
+    def test_run_bundled_container(self, profiled_session, profiled_containers):
+        """Test that a bundled container can actually run."""
+        profile = profiled_session.container_profile
+        runtime = profile
 
-        # Check if podman is available
-        output = runqemu_session.run_command('which podman')
-        if '/podman' not in output:
-            pytest.skip("podman not installed in image")
+        expected = profiled_containers.get(runtime, [])
+        assert expected, \
+            f"No {runtime} containers detected in rootfs (profile={profile})"
 
-        # Get podman images
-        output = runqemu_session.run_command('podman images', timeout=30)
-        print(f"podman images output:\n{output}")
-
-        # Verify each expected container is present
-        missing = []
-        for container in expected:
-            if container not in output:
-                missing.append(container)
-
-        assert not missing, f"Missing Podman containers: {missing}\nOutput:\n{output}"
-
-    @pytest.mark.slow
-    @pytest.mark.boot
-    def test_docker_run_bundled_container(self, runqemu_session, bundled_containers_config):
-        """Test that a bundled Docker container can actually run."""
-        expected = bundled_containers_config['docker']
-        if not expected:
-            pytest.skip("No Docker containers configured")
-
-        # Check if docker is available
-        output = runqemu_session.run_command('which docker')
-        if '/docker' not in output:
-            pytest.skip("docker not installed in image")
-
-        # Try to run the first bundled container with a simple command
-        # Use --entrypoint to override any image entrypoint, otherwise
-        # images with entrypoint like ["sh"] would interpret the command
-        # as a script argument rather than executing the binary directly
         container = expected[0]
-        output = runqemu_session.run_command(
-            f'docker run --rm --entrypoint /bin/echo {container}:latest "CONTAINER_WORKS"',
+        output = profiled_session.run_command(
+            f'{runtime} run --rm --entrypoint /bin/echo {container}:latest "CONTAINER_WORKS"',
             timeout=60
         )
-        print(f"docker run output:\n{output}")
+        print(f"{runtime} run output ({profile}):\n{output}")
 
         assert 'CONTAINER_WORKS' in output, \
-            f"Container {container} failed to run.\nOutput:\n{output}"
-
-    @pytest.mark.slow
-    @pytest.mark.boot
-    def test_podman_run_bundled_container(self, runqemu_session, bundled_containers_config):
-        """Test that a bundled Podman container can actually run."""
-        expected = bundled_containers_config['podman']
-        if not expected:
-            pytest.skip("No Podman containers in bundle packages or BUNDLED_CONTAINERS")
-
-        # Check if podman is available
-        output = runqemu_session.run_command('which podman')
-        if '/podman' not in output:
-            pytest.skip("podman not installed in image")
-
-        # Try to run the first bundled container with a simple command
-        # Use --entrypoint to override any image entrypoint, otherwise
-        # images with entrypoint like ["sh"] would interpret the command
-        # as a script argument rather than executing the binary directly
-        container = expected[0]
-        output = runqemu_session.run_command(
-            f'podman run --rm --entrypoint /bin/echo {container}:latest "CONTAINER_WORKS"',
-            timeout=60
-        )
-        print(f"podman run output:\n{output}")
-
-        assert 'CONTAINER_WORKS' in output, \
-            f"Container {container} failed to run.\nOutput:\n{output}"
+            f"Container {container} failed to run with {runtime}.\nOutput:\n{output}"
 
 
 # ============================================================================
@@ -932,6 +968,22 @@ class TestCustomServiceFileSupport:
             "CONTAINER_SERVICE_FILE_MAP variable not found"
         assert "install_custom_service" in content, \
             "install_custom_service function not found"
+
+    def test_bundle_class_unpack_enabled(self, meta_virt_dir):
+        """Test that do_unpack is NOT disabled in container-bundle.bbclass.
+
+        Custom service files use SRC_URI file:// entries which require
+        do_unpack to run. If do_unpack[noexec] = "1" is set, the files
+        never reach UNPACKDIR and CONTAINER_SERVICE_FILE references fail.
+        """
+        class_file = meta_virt_dir / "classes" / "container-bundle.bbclass"
+        content = class_file.read_text()
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            assert 'do_unpack[noexec]' not in stripped, \
+                "do_unpack must not be noexec — custom service files need SRC_URI unpacking"
 
     def test_bundle_class_has_service_file_support(self, meta_virt_dir):
         """Test that container-bundle.bbclass includes CONTAINER_SERVICE_FILE support."""
@@ -983,118 +1035,74 @@ class TestCustomServiceFileBoot:
     """
     Boot tests for custom service files.
 
-    These tests verify that custom service files are properly installed
-    and enabled in the booted system.
+    Parametrized over container profiles — verifies that autostart services
+    (Docker systemd units or Podman Quadlet files) are correctly installed
+    and enabled for each profile.
     """
 
     @pytest.mark.slow
     @pytest.mark.boot
-    def test_systemd_services_directory_exists(self, runqemu_session):
+    @pytest.mark.container_profile
+    def test_systemd_services_directory_exists(self, profiled_session):
         """Test that systemd service directories exist."""
-        output = runqemu_session.run_command('ls -la /lib/systemd/system/ | head -5')
+        output = profiled_session.run_command('ls -la /lib/systemd/system/ | head -n 5')
         assert 'systemd' in output or 'total' in output, \
             "Systemd system directory not accessible"
 
     @pytest.mark.slow
     @pytest.mark.boot
-    def test_container_services_present(self, runqemu_session, bundled_containers_config):
-        """Test that container service files are present (custom or generated)."""
-        docker_containers = bundled_containers_config.get('docker', [])
+    @pytest.mark.container_profile
+    def test_autostart_service_present(self, profiled_session):
+        """Test that autostart service files are present for the active profile."""
+        profile = profiled_session.container_profile
 
-        if not docker_containers:
-            pytest.skip("No Docker containers configured")
+        if profile == 'docker':
+            output = profiled_session.run_command(
+                'ls /lib/systemd/system/container-*.service 2>/dev/null || echo "NONE"')
+            assert 'NONE' not in output and '.service' in output, \
+                f"No Docker autostart service files found (profile={profile})"
 
-        # Check if docker is available
-        output = runqemu_session.run_command('which docker')
-        if '/docker' not in output:
-            pytest.skip("docker not installed in image")
-
-        # Check for container service files
-        output = runqemu_session.run_command('ls /lib/systemd/system/container-*.service 2>/dev/null || echo "NONE"')
-
-        if 'NONE' in output:
-            # No autostart services - check if any containers have autostart
-            pytest.skip("No container autostart services found (containers may not have autostart enabled)")
-
-        # Verify at least one service file exists
-        assert '.service' in output, \
-            f"No container service files found. Output: {output}"
+        elif profile == 'podman':
+            output = profiled_session.run_command(
+                'ls /etc/containers/systemd/*.container 2>/dev/null || echo "NONE"')
+            assert 'NONE' not in output and '.container' in output, \
+                f"No Podman Quadlet files found (profile={profile})"
 
     @pytest.mark.slow
     @pytest.mark.boot
-    def test_container_service_enabled(self, runqemu_session, bundled_containers_config):
-        """Test that container services are enabled (linked in wants directory)."""
-        docker_containers = bundled_containers_config.get('docker', [])
+    @pytest.mark.container_profile
+    def test_autostart_service_running(self, profiled_session):
+        """Test that the autostart container is actually running."""
+        profile = profiled_session.container_profile
+        runtime = profile
 
-        if not docker_containers:
-            pytest.skip("No Docker containers configured")
+        output = profiled_session.run_command(f'{runtime} ps', timeout=30)
+        print(f"{runtime} ps output ({profile}):\n{output}")
 
-        # Check for enabled services in multi-user.target.wants
-        output = runqemu_session.run_command(
-            'ls /etc/systemd/system/multi-user.target.wants/container-*.service 2>/dev/null || echo "NONE"'
-        )
-
-        if 'NONE' in output:
-            pytest.skip("No container autostart services enabled")
-
-        # Verify services are symlinked
-        assert '.service' in output, \
-            f"No enabled container services found. Output: {output}"
+        assert 'autostart-test-container' in output, \
+            f"autostart-test-container not running under {runtime} (profile={profile})\nOutput:\n{output}"
 
     @pytest.mark.slow
     @pytest.mark.boot
-    def test_custom_service_content(self, runqemu_session, bundled_containers_config):
-        """Test that custom service files have expected content markers."""
-        docker_containers = bundled_containers_config.get('docker', [])
+    @pytest.mark.container_profile
+    def test_autostart_service_content(self, profiled_session):
+        """Test that autostart service files have expected content."""
+        profile = profiled_session.container_profile
 
-        if not docker_containers:
-            pytest.skip("No Docker containers configured")
+        if profile == 'docker':
+            content = profiled_session.run_command(
+                'cat /lib/systemd/system/container-autostart-test-container.service')
+            assert '[Unit]' in content, \
+                f"Missing [Unit] section in docker service file.\nContent:\n{content}"
+            assert '[Service]' in content, \
+                f"Missing [Service] section in docker service file"
+            assert 'docker' in content.lower(), \
+                f"Service doesn't reference docker"
 
-        # Find a container service file
-        output = runqemu_session.run_command(
-            'ls /lib/systemd/system/container-*.service 2>/dev/null | head -1'
-        )
-
-        if not output or 'container-' not in output:
-            pytest.skip("No container service files found")
-
-        service_file = output.strip().split('\n')[0]
-
-        # Read the service file content
-        content = runqemu_session.run_command(f'cat {service_file}')
-
-        # Verify it has expected systemd service structure
-        assert '[Unit]' in content, f"Service file missing [Unit] section: {service_file}"
-        assert '[Service]' in content, f"Service file missing [Service] section: {service_file}"
-        assert '[Install]' in content, f"Service file missing [Install] section: {service_file}"
-
-        # Check for docker-related content
-        assert 'docker' in content.lower(), \
-            f"Service file doesn't reference docker: {content}"
-
-    @pytest.mark.slow
-    @pytest.mark.boot
-    def test_podman_quadlet_directory(self, runqemu_session, bundled_containers_config):
-        """Test Podman Quadlet directory exists for Podman containers."""
-        podman_containers = bundled_containers_config.get('podman', [])
-
-        if not podman_containers:
-            pytest.skip("No Podman containers configured")
-
-        # Check if podman is available
-        output = runqemu_session.run_command('which podman')
-        if '/podman' not in output:
-            pytest.skip("podman not installed in image")
-
-        # Check for Quadlet directory
-        output = runqemu_session.run_command('ls -la /etc/containers/systemd/ 2>/dev/null || echo "NONE"')
-
-        if 'NONE' in output:
-            pytest.skip("Quadlet directory not found (containers may not have autostart enabled)")
-
-        # Check for .container files
-        output = runqemu_session.run_command('ls /etc/containers/systemd/*.container 2>/dev/null || echo "NONE"')
-
-        if 'NONE' not in output:
-            assert '.container' in output, \
-                f"No Quadlet container files found. Output: {output}"
+        elif profile == 'podman':
+            content = profiled_session.run_command(
+                'cat /etc/containers/systemd/container-autostart-test-container.container')
+            assert '[Container]' in content, \
+                f"Missing [Container] section in podman quadlet file.\nContent:\n{content}"
+            assert 'Image=' in content, \
+                f"Missing Image= directive in podman quadlet file"

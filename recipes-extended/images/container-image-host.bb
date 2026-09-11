@@ -119,6 +119,7 @@ IMAGE_INSTALL = " \
     ${@bb.utils.contains_any('VIRTUAL-RUNTIME_container_engine','podman','packagegroup-podman','',d)}  \
     ${@bb.utils.contains_any('VIRTUAL-RUNTIME_container_engine','containerd','packagegroup-containerd','',d)}  \
     ${@bb.utils.contains_any('VIRTUAL-RUNTIME_container_engine','incus','incus','',d)}  \
+    ${@bb.utils.contains_any('VIRTUAL-RUNTIME_container_engine','lxc','packagegroup-lxc','',d)}  \
     ${@bb.utils.contains('VIRTUAL-RUNTIME_container_networking','cni','packagegroup-cni','',d)}  \
     ${@bb.utils.contains('VIRTUAL-RUNTIME_container_networking','netavark','packagegroup-netavark','',d)}  \
     ${@bb.utils.contains('IMAGE_FEATURES','container-tools','packagegroup-container-tools','',d)}  \

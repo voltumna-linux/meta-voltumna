@@ -13,10 +13,10 @@ EXCLUDE_FROM_WORLD = "1"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=412de458544c1cb6a2b512cd399286e2"
 
-SRCREV = "3c7d4fa013297b431da48eff821db7f2e8b90c27"
-PV = "4.2+git"
+SRCREV = "91d552257809d0e5c7148190e9aa0372f13b76a0"
+PV = "4.2.1+git"
 
-SRC_URI = "git://github.com/checkpoint-restore/criu.git;branch=master;protocol=https \
+SRC_URI = "git://github.com/checkpoint-restore/criu.git;branch=criu-dev;protocol=https \
            file://0001-criu-Skip-documentation-install.patch \
            file://0002-criu-Change-libraries-install-directory.patch \
            file://0003-crit-pycriu-build-and-install-wheels.patch \
@@ -55,6 +55,10 @@ export C_INCLUDE_PATH = "${STAGING_INCDIR}/libnl3"
 
 export BUILD_SYS
 export HOST_SYS
+# Upstream's scripts/nmk/scripts/tools.mk defaults HOSTCC to 'cc' (changed
+# from 'gcc' in criu commit 36c63ecb5). The native sysroot doesn't provide
+# an unprefixed 'cc', so set HOSTCC explicitly to bitbake's BUILD_CC.
+export HOSTCC = "${BUILD_CC}"
 export HOSTCFLAGS = "${BUILD_CFLAGS}"
 
 inherit python_setuptools_build_meta

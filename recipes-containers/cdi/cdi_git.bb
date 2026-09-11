@@ -6,7 +6,7 @@ LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://src/${GO_IMPORT}/LICENSE;md5=86d3f3a95c324c9479bd8986968f4327"
 
 PV = "1.1.0+git"
-SRCREV_cdi = "35765bd41b50a86aa3919eb352bc90321e010e68"
+SRCREV_cdi = "49ac08dcf160f5de366b6a8b574a51582b66b4cf"
 SRCREV_FORMAT = "cdi"
 SRC_URI = "git://github.com/cncf-tags/container-device-interface.git;protocol=https;name=cdi;branch=main;destsuffix=${GO_SRCURI_DESTSUFFIX} \
           "

@@ -1,0 +1,36 @@
+From c7cb6bf79fd73efed0e05bcbbf4bd34ab67afea2 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Fri, 14 Aug 2026 03:43:38 +0000
+Subject: [PATCH 06/10] vxn: add -it for interactive terminals
+
+When SandboxConfig.interactive_terminal is set (a tty `axis run`), add
+-it to the vxn argv. vxn routes -it over ssh-tt to the DomU console, and
+AXIS already runs the child with the terminal inherited (capture_output
+is false for `axis run`) and waits without stealing the tty, so the
+agent's TUI (e.g. claude's login/REPL) drives the real terminal.
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ crates/axis-sandbox/src/linux/vxn.rs | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/crates/axis-sandbox/src/linux/vxn.rs b/crates/axis-sandbox/src/linux/vxn.rs
+index 70ebc98..dae4e8e 100644
+--- a/crates/axis-sandbox/src/linux/vxn.rs
++++ b/crates/axis-sandbox/src/linux/vxn.rs
+@@ -87,6 +87,15 @@ impl VxnSandbox {
+ 
+         let mut argv = vec![vxn_bin, "run".to_string(), "--rm".to_string()];
+ 
++        // Interactive terminal (`axis run` under a tty): let vxn allocate an
++        // interactive session (-it). vxn routes -it over ssh-tt to dom0's DomU
++        // console; AXIS runs the child with the terminal inherited (capture_output
++        // is false for `axis run`) and waits without stealing the tty, so the
++        // agent's TUI (e.g. claude's login/REPL) drives the real terminal.
++        if config.interactive_terminal {
++            argv.push("-it".to_string());
++        }
++
+         // AXIS network policy -> the DomU's NIC.
+         //   Block -> --no-network (no vif at all; stronger than a netns)
+         //   Allow -> default bridge (leave the flag off)

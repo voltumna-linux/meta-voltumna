@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: Copyright (C) 2025 Bruce Ashfield
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# vxn-host-certs.service
+# ===========================================================================
+# Installs host-provided corporate CA certificate(s) into dom0's system trust
+# store at boot, from the read-only vxn_ca 9p share the host stages. Runs before
+# the container engine + the vxn command channel so the first image pull already
+# trusts a TLS-intercepting proxy's certificate. dom0 is ephemeral (boots from
+# the wic), so this re-runs every boot.
+
+[Unit]
+Description=vxn: install host-provided corporate CA certs into the dom0 trust store
+After=local-fs.target
+Before=docker.service containerd.service vxn-command-channel.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/vxn-host-certs.sh
+
+[Install]
+WantedBy=multi-user.target

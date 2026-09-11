@@ -273,6 +273,7 @@ DATA_DIR = CACHE_BASE_DIR
 CLONE_CACHE_DIR = SCRIPT_DIR / ".cache" / "repos"  # Repository clone cache
 VERIFY_BASE_DIR = CACHE_BASE_DIR / ".verify"
 LS_REMOTE_CACHE_PATH = DATA_DIR / "ls-remote-cache.json"
+DUMB_HTTP_CACHE_PATH = DATA_DIR / "dumb-http-urls.json"
 VERIFY_COMMIT_CACHE_PATH = DATA_DIR / "verify-cache.json"
 MODULE_REPO_OVERRIDES_PATH = DATA_DIR / "repo-overrides.json"
 # Manual overrides file - tracked in git, for permanent overrides when discovery fails
@@ -318,6 +319,9 @@ VERIFY_CACHE_MAX_AGE_DAYS = 30  # Re-verify commits older than this
 VERIFY_DETECTED_BRANCHES: Dict[Tuple[str, str], str] = {}  # (url, commit) -> branch_name
 VERIFY_FALLBACK_COMMITS: Dict[Tuple[str, str], str] = {}  # Maps (url, original_commit) -> fallback_commit
 VERIFY_FULL_REPOS: Set[str] = set()  # Track repos that have been fetched with full history
+DUMB_HTTP_URLS: Set[str] = set()  # URLs known to serve via dumb-HTTP (no shallow-fetch support)
+DUMB_HTTP_CACHE_DIRTY = False
+ORPHANED_COMMITS: Set[Tuple[str, str]] = set()  # (vcs_url, commit) whose commit is no longer upstream
 VERIFY_CORRECTIONS_APPLIED = False  # Track if any commit corrections were made
 MODULE_REPO_OVERRIDES: Dict[Tuple[str, Optional[str]], str] = {}  # Dynamic overrides from --set-repo
 MODULE_REPO_OVERRIDES_DIRTY = False
@@ -395,7 +399,7 @@ def configure_cache_paths(cache_dir: Optional[str], clone_cache_dir: Optional[st
         clone_cache_dir: Directory for git repository clones (default: scripts/.cache/repos)
     """
     global CACHE_BASE_DIR, DATA_DIR, CLONE_CACHE_DIR
-    global LS_REMOTE_CACHE_PATH, MODULE_METADATA_CACHE_PATH, VANITY_URL_CACHE_PATH
+    global LS_REMOTE_CACHE_PATH, DUMB_HTTP_CACHE_PATH, MODULE_METADATA_CACHE_PATH, VANITY_URL_CACHE_PATH
     global VERIFY_COMMIT_CACHE_PATH, MODULE_REPO_OVERRIDES_PATH
 
     # Configure JSON metadata cache directory
@@ -408,6 +412,7 @@ def configure_cache_paths(cache_dir: Optional[str], clone_cache_dir: Optional[st
     DATA_DIR = CACHE_BASE_DIR  # cache_dir IS the data directory now
 
     LS_REMOTE_CACHE_PATH = DATA_DIR / "ls-remote-cache.json"
+    DUMB_HTTP_CACHE_PATH = DATA_DIR / "dumb-http-urls.json"
     MODULE_METADATA_CACHE_PATH = DATA_DIR / "module-cache.json"
     VANITY_URL_CACHE_PATH = DATA_DIR / "vanity-url-cache.json"
     VERIFY_COMMIT_CACHE_PATH = DATA_DIR / "verify-cache.json"
@@ -794,17 +799,9 @@ def verify_commit_accessible(vcs_url: str, commit: str, ref_hint: str = "", vers
         # Only do shallow fetch if commit is not already present
         # Doing --depth=1 on an already-full repo causes git to re-process history (very slow on large repos)
         if not commit_present and ref_hint:
-            fetch_args = ["git", "fetch", "--depth=1", "origin", ref_hint]
-
             try:
-                subprocess.run(
-                    fetch_args,
-                    cwd=str(repo_dir),
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                    timeout=GIT_CMD_TIMEOUT,
-                    env=env,
+                _git_fetch_with_shallow_fallback(
+                    repo_dir, [ref_hint], env, vcs_url,
                 )
             except subprocess.TimeoutExpired:
                 print(f"  ⚠️  git fetch timeout ({GIT_CMD_TIMEOUT}s) for {vcs_url} {ref_hint or ''}")
@@ -824,15 +821,8 @@ def verify_commit_accessible(vcs_url: str, commit: str, ref_hint: str = "", vers
         if is_tag_ref and not commit_present:
             # Tagged version: try shallow fetch of the specific commit (only if not already present)
             try:
-                fetch_cmd = ["git", "fetch", "--depth=1", "origin", commit]
-                subprocess.run(
-                    fetch_cmd,
-                    cwd=str(repo_dir),
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                    timeout=GIT_CMD_TIMEOUT,
-                    env=env,
+                _git_fetch_with_shallow_fallback(
+                    repo_dir, [commit], env, vcs_url,
                 )
                 commit_fetched = True
 
@@ -846,14 +836,8 @@ def verify_commit_accessible(vcs_url: str, commit: str, ref_hint: str = "", vers
                     print(f"  → Tag commit not fetchable, checking if tag moved...")
                     try:
                         # Try fetching the tag again to see what it currently points to
-                        subprocess.run(
-                            ["git", "fetch", "--depth=1", "origin", ref_hint],
-                            cwd=str(repo_dir),
-                            check=True,
-                            capture_output=True,
-                            text=True,
-                            timeout=GIT_CMD_TIMEOUT,
-                            env=env,
+                        _git_fetch_with_shallow_fallback(
+                            repo_dir, [ref_hint], env, vcs_url,
                         )
 
                         # Check what commit the tag now points to
@@ -881,6 +865,11 @@ def verify_commit_accessible(vcs_url: str, commit: str, ref_hint: str = "", vers
                         # Can't fetch tag either - this is a real error
                         pass
 
+                # Tag-ref fetch failed with orphaned-commit error and the
+                # tag-moved fallback (if any) didn't rescue us. Record as
+                # orphaned so verify_module can classify it as skip vs. fail.
+                if _stderr_indicates_orphaned_commit(detail):
+                    ORPHANED_COMMITS.add((vcs_url, commit))
                 for lock_file in ["shallow.lock", "index.lock", "HEAD.lock"]:
                     lock_path = repo_dir / lock_file
                     if lock_path.exists():
@@ -1049,15 +1038,18 @@ def verify_commit_accessible(vcs_url: str, commit: str, ref_hint: str = "", vers
                     # Check if fallback commit exists
                     if not _commit_exists(fallback_commit):
                         print(f"  ⚠️  Fallback commit {fallback_commit[:12]} also not found!")
+                        ORPHANED_COMMITS.add((vcs_url, commit))
                         VERIFY_RESULTS[key] = False
                         return False
                 else:
-                    print(f"  ⚠️  Could not determine fallback commit")
+                    print(f"  ⚠️  Could not determine fallback commit for orphaned {commit[:12]}")
+                    ORPHANED_COMMITS.add((vcs_url, commit))
                     VERIFY_RESULTS[key] = False
                     return False
             else:
                 # Tagged version with bad commit - this shouldn't happen but fail gracefully
                 print(f"  ⚠️  Tagged version {version} has invalid commit {commit[:12]}")
+                ORPHANED_COMMITS.add((vcs_url, commit))
                 VERIFY_RESULTS[key] = False
                 return False
 
@@ -1087,14 +1079,8 @@ def verify_commit_accessible(vcs_url: str, commit: str, ref_hint: str = "", vers
                             print(f"     → Using current tag commit")
 
                             # Fetch the tag to update local repo
-                            subprocess.run(
-                                ["git", "fetch", "--depth=1", "origin", ref_hint],
-                                cwd=str(repo_dir),
-                                check=True,
-                                capture_output=True,
-                                text=True,
-                                timeout=GIT_CMD_TIMEOUT,
-                                env=env,
+                            _git_fetch_with_shallow_fallback(
+                                repo_dir, [ref_hint], env, vcs_url,
                             )
 
                             # Update to use current commit
@@ -1711,6 +1697,7 @@ def _execute(args: argparse.Namespace) -> int:
     )
     prune_metadata_cache()
     load_ls_remote_cache()
+    load_dumb_http_cache()
     load_vanity_url_cache()
 
     if args.dry_run:
@@ -2125,7 +2112,56 @@ def _execute(args: argparse.Namespace) -> int:
             if disc_cache and os.path.isdir(disc_cache):
                 license_db = _resolve_license_db(args.common_license_dir)
                 if license_db:
-                    lic_results = scan_module_licenses(modules, disc_cache, license_db)
+                    # Filter tier order (most accurate first):
+                    #   1. --build-targets: `go list -deps` on the recipe's
+                    #      actual build targets. Needed when do_compile builds
+                    #      multiple binaries spanning a wider import graph
+                    #      than the discovery's single BUILD_TARGET.
+                    #   2. GOMODCACHE walk: modules unpacked by `go build` of
+                    #      the discovery's BUILD_TARGET. Right when the
+                    #      discovery target's import set matches the recipe's.
+                    #   3. `go list -m all` (MVS-selected): full module graph
+                    #      including test/tool deps. Too wide for some recipes
+                    #      but better than no filter.
+                    selected_set = _get_imported_modules(
+                        source_dir=Path.cwd(),
+                        build_targets=args.build_targets,
+                        gomodcache=args.gomodcache,
+                    )
+                    if selected_set is not None:
+                        print(f"  Filtering to `go list -deps` set "
+                              f"(from --build-targets): "
+                              f"{len(selected_set)} modules")
+                    else:
+                        selected_set = _get_unpacked_modules(
+                            gomodcache=args.gomodcache,
+                        )
+                    if selected_set is None:
+                        # both build-targets and GOMODCACHE walk gave nothing
+                        pass  # fall through to MVS
+                    elif args.build_targets is None:
+                        # selected_set is from GOMODCACHE walk
+                        print(f"  Filtering to GOMODCACHE-unpacked set: "
+                              f"{len(selected_set)} modules")
+
+                    if selected_set is None:
+                        selected_set = _get_mvs_selected_modules(
+                            source_dir=Path.cwd(),
+                            gomodcache=args.gomodcache,
+                        )
+                        if selected_set is None:
+                            print("  Warning: could not determine selected "
+                                  "module set; scanning all modules (may "
+                                  "produce stale entries)")
+                        else:
+                            print(f"  Filtering to MVS-selected set "
+                                  f"(GOMODCACHE empty, fell back to "
+                                  f"`go list -m all`): "
+                                  f"{len(selected_set)} modules")
+                    lic_results = scan_module_licenses(
+                        modules, disc_cache, license_db,
+                        selected_set=selected_set,
+                    )
                     if lic_results:
                         write_license_inc(output_dir, lic_results)
                     else:
@@ -2255,6 +2291,109 @@ def save_ls_remote_cache() -> None:
         LS_REMOTE_CACHE_PATH.write_text(json.dumps(payload, indent=2, sort_keys=True))
     except Exception:
         pass
+
+
+def load_dumb_http_cache() -> None:
+    if not DUMB_HTTP_CACHE_PATH.exists():
+        return
+    try:
+        data = json.loads(DUMB_HTTP_CACHE_PATH.read_text())
+    except Exception:
+        return
+    if isinstance(data, list):
+        DUMB_HTTP_URLS.update(str(u) for u in data)
+
+
+def save_dumb_http_cache() -> None:
+    if not DUMB_HTTP_CACHE_DIRTY:
+        return
+    try:
+        DUMB_HTTP_CACHE_PATH.write_text(
+            json.dumps(sorted(DUMB_HTTP_URLS), indent=2)
+        )
+    except Exception:
+        pass
+
+
+def _mark_dumb_http(vcs_url: str) -> None:
+    """Record that a URL requires full (non-shallow) fetches."""
+    global DUMB_HTTP_CACHE_DIRTY
+    if vcs_url not in DUMB_HTTP_URLS:
+        DUMB_HTTP_URLS.add(vcs_url)
+        DUMB_HTTP_CACHE_DIRTY = True
+        print(f"  ℹ️  {vcs_url}: dumb-HTTP server (no shallow-fetch); using full clone from here on")
+
+
+def _stderr_indicates_dumb_http(stderr: str) -> bool:
+    if not stderr:
+        return False
+    return "dumb http transport does not support shallow capabilities" in stderr
+
+
+def _stderr_indicates_orphaned_commit(stderr: str) -> bool:
+    """
+    Detect the "commit no longer reachable upstream" pattern.
+
+    Happens when the upstream repo has force-pushed or regenerated history
+    (e.g. Google's auto-generated googleapis/go-genproto), leaving commits
+    referenced by Go proxy pseudo-versions orphaned. The proxy still serves
+    the module zip, but `git fetch` against the origin fails.
+    """
+    if not stderr:
+        return False
+    return (
+        "couldn't find remote ref" in stderr
+        or "not our ref" in stderr
+        or "upload-pack: not our ref" in stderr
+    )
+
+
+def _git_fetch_with_shallow_fallback(
+    repo_dir: Path,
+    ref_args: List[str],
+    env: Dict[str, str],
+    vcs_url: str,
+    timeout: int = GIT_CMD_TIMEOUT,
+) -> subprocess.CompletedProcess:
+    """
+    Run `git fetch --depth=1 origin <ref_args...>` inside repo_dir.
+
+    If the server doesn't speak the shallow-fetch capability (typical of
+    old dumb-HTTP servers behind Apache — e.g. software.sslmate.com), retry
+    without --depth=1 and remember the URL so subsequent calls skip the
+    shallow attempt entirely.
+
+    Raises subprocess.CalledProcessError for any non-shallow failure.
+    """
+    known_dumb = vcs_url in DUMB_HTTP_URLS
+    base = ["git", "fetch", "origin"] + list(ref_args)
+    if not known_dumb:
+        try:
+            return subprocess.run(
+                ["git", "fetch", "--depth=1", "origin"] + list(ref_args),
+                cwd=str(repo_dir),
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env,
+            )
+        except subprocess.CalledProcessError as exc:
+            stderr = exc.stderr if isinstance(exc.stderr, str) else ""
+            if not _stderr_indicates_dumb_http(stderr):
+                raise
+            _mark_dumb_http(vcs_url)
+    # Full fetch (either previously marked dumb, or shallow just failed).
+    # Dumb HTTP is slow; give it more headroom.
+    return subprocess.run(
+        base,
+        cwd=str(repo_dir),
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=timeout * 5,
+        env=env,
+    )
 
 
 def git_ls_remote(url: str, ref: str, *, debug: bool = False) -> Optional[str]:
@@ -2705,13 +2844,19 @@ def resolve_pseudo_version_commit(vcs_url: str, timestamp_str: str, short_commit
                     # Fetch failed, try to use existing clone anyway
                     pass
             else:
-                # Clone repository (bare clone for efficiency)
+                # Clone repository as a mirror so `git fetch --all` can later
+                # refresh refs. A plain `git clone --bare` does NOT install a
+                # remote.origin.fetch refspec, so subsequent `git fetch --all`
+                # exits 0 but updates nothing — the cache stays frozen at the
+                # initial clone, and pseudo-version expansion silently fails
+                # for any commit newer than the first clone time. --mirror
+                # sets up the refspec `+refs/*:refs/*` so fetches stay current.
                 if clone_dir.exists():
                     shutil.rmtree(clone_dir)
                 clone_dir.mkdir(parents=True, exist_ok=True)
 
                 subprocess.run(
-                    ['git', 'clone', '--bare', '--quiet', try_url, str(clone_dir)],
+                    ['git', 'clone', '--mirror', '--quiet', try_url, str(clone_dir)],
                     capture_output=True,
                     check=True,
                     timeout=300,  # 5 minute timeout
@@ -3951,6 +4096,55 @@ def generate_recipe(modules: List[Dict], source_dir: Path, output_dir: Optional[
         if excluded_count:
             print(f"\n⚙️  Excluded {excluded_count} modules matching: {', '.join(excluded_prefixes)}")
 
+    # Filter down to the module@version set referenced by the current go.sum.
+    #
+    # Per agent-files/go-mod-vcs/ARCHITECTURE.md ("Why go.sum is the Source
+    # of Truth"): go.sum is the authoritative declaration of required
+    # modules. extract-discovered-modules.py walks GOMODCACHE, which
+    # includes stale entries left over from a previous recipe build in
+    # the same workdir (e.g., bumping cosign v3.0.6 → v3.1.2 leaves the
+    # old dep graph's assertzapper@v0.3.2 in GOMODCACHE even though the
+    # new go.sum never references it). Verifying stale entries and
+    # emitting "Unable to verify ... add gomod://..." hints for a module
+    # the current build won't touch caused a real bug (2026-07-21 cosign
+    # sweep): operator followed the hint, added gomod://opa;version=v1.16.2
+    # (stale), which prefix-excluded the whole opa module and dropped the
+    # winner v1.17.1 too, and compile failed at MVS.
+    #
+    # Use parse_go_sum() (already established as the source-of-truth
+    # helper for the discovery-vs-go.sum reconciliation in the main flow
+    # at line ~1771). Both entry shapes matter:
+    #
+    #   github.com/foo v1.2.3 h1:<hash>            ← winner: full zip
+    #                                                Go imports at build
+    #   github.com/foo v1.1.0/go.mod h1:<hash>     ← "considered" version
+    #                                                Go reads its go.mod
+    #                                                during MVS resolution
+    #
+    # Keep BOTH. Dropping /go.mod losers (as an earlier attempt using
+    # `go list -m all` did) makes compile fail at "module lookup disabled
+    # by GOPROXY=off" for those losers' go.mods. Walking GOMODCACHE also
+    # can't tell "in current go.sum" from "leftover in cache from prior
+    # build" — parse_go_sum does exactly that check.
+    gosum_path = source_dir / "go.sum" if source_dir else Path("go.sum")
+    if gosum_path.exists():
+        gs_winners, gs_indirect = parse_go_sum(gosum_path)
+        selected_set = {f"{p}@{v}" for (p, v) in (gs_winners | gs_indirect)}
+        if selected_set:
+            before_count = len(modules)
+            modules = [
+                m for m in modules
+                if f"{m.get('module_path', '')}@{m.get('version', '')}" in selected_set
+            ]
+            dropped = before_count - len(modules)
+            if dropped:
+                print(f"\n⚙️  Filtered to go.sum-referenced set: "
+                      f"dropped {dropped} stale entries "
+                      f"(kept {len(modules)}). Every kept entry is a "
+                      f"module@version that appears in the current "
+                      f"go.sum either as a winner (full zip) or as a "
+                      f"/go.mod entry (considered by MVS).")
+
     total_modules = len(modules)
     if debug_limit is not None:
         print(f"\n⚙️  Debug limit active: validating first {debug_limit} modules (total list size {total_modules})")
@@ -4020,6 +4214,13 @@ def generate_recipe(modules: List[Dict], source_dir: Path, output_dir: Optional[
 
             # Verify commit is accessible
             if not verify_commit_accessible(vcs_url, commit_hash, ref_hint, module.get('version', ''), module.get('timestamp', '')):
+                # If verify recorded this as an orphaned upstream commit (the
+                # commit no longer exists in the origin repo and no fallback
+                # found), classify as 'skipped' so generation can proceed. The
+                # module will be excluded from git:// output; skipped modules
+                # are summarized at the end.
+                if (vcs_url, commit_hash) in ORPHANED_COMMITS:
+                    return ('skipped', module['module_path'], module['version'], commit_hash, vcs_url, 'orphaned upstream commit')
                 # PHASE MERGE: If verification fails and we have a ref, try auto-correction
                 if ref_hint and ref_hint.startswith("refs/"):
                     corrected_hash = correct_commit_hash_from_ref(vcs_url, commit_hash, ref_hint)
@@ -4073,9 +4274,42 @@ def generate_recipe(modules: List[Dict], source_dir: Path, output_dir: Optional[
                     save_verify_commit_cache(force=True)
                     print(f"  💾 Saved verification cache at {index}/{total_modules}")
 
-        # Separate corrected vs failed results
+        # Separate corrected vs failed vs skipped results
         corrected_results = [r for r in results if r and r[0] == 'corrected']
         failed_results = [r for r in results if r and r[0] == 'failed']
+        skipped_results = [r for r in results if r and r[0] == 'skipped']
+
+        # Drop orphaned/skipped modules from the modules list AND from
+        # vcs_repos so they don't get emitted as git:// SRC_URI entries.
+        # The build tolerates missing modules because do_compile deletes
+        # go.sum before compiling (see recipe do_compile), so orphaned
+        # /go.mod-only transitive references don't fail verification.
+        if skipped_results:
+            skip_keys = {(m_path, ver) for _, m_path, ver, _, _, _ in skipped_results}
+            before = len(modules)
+            modules = [
+                m for m in modules
+                if (m['module_path'], m['version']) not in skip_keys
+            ]
+            print(f"\n⚠️  Skipped {before - len(modules)} orphaned upstream commits (see summary below)")
+            # Feed into the shared SKIPPED_MODULES summary so the user sees them
+            for _, m_path, ver, _, _, reason in skipped_results:
+                SKIPPED_MODULES[(m_path, ver)] = reason
+            # Prune commit entries from vcs_repos that no longer have any modules
+            for _, m_path, ver, commit_hash, vcs_url, _ in skipped_results:
+                repo_key = repo_key_for_url(vcs_url)
+                commits = vcs_repos.get(repo_key, {}).get('commits', {})
+                if commit_hash in commits:
+                    commits[commit_hash]['modules'] = [
+                        mm for mm in commits[commit_hash]['modules']
+                        if (mm['module_path'], mm['version']) not in skip_keys
+                    ]
+                    if not commits[commit_hash]['modules']:
+                        del commits[commit_hash]
+            # Prune empty repos
+            for rk in list(vcs_repos.keys()):
+                if not vcs_repos[rk].get('commits'):
+                    del vcs_repos[rk]
 
         # Apply corrections back to modules list (needed for parallel execution)
         if corrected_results:
@@ -4106,7 +4340,8 @@ def generate_recipe(modules: List[Dict], source_dir: Path, output_dir: Optional[
         for _, module_path, version, commit_hash, vcs_url, ref_hint in failed_results:
             print(f"\n   - {module_path}@{version} ({commit_hash})")
             hint = f" {ref_hint}" if ref_hint else ""
-            print(f"     try: git fetch --depth=1 {vcs_url}{hint} {commit_hash}")
+            depth_flag = "" if vcs_url in DUMB_HTTP_URLS else " --depth=1"
+            print(f"     try: git fetch{depth_flag} {vcs_url}{hint} {commit_hash}")
             print()
             print(f"     Option 1: Exclude from VCS and fetch via Go module proxy instead.")
             print(f"               Add to your recipe (.bb):")
@@ -4370,6 +4605,22 @@ def load_discovered_modules(discovered_modules_path: Path) -> Optional[List[Dict
 
             print(f"  Expanded {expanded} short hashes, {failed} failed                    ")
 
+            # A 12-char vcs_hash left in any module will trip bitbake's git
+            # fetcher (sha1_re requires 40 chars) and trigger a confusing
+            # "Unable to resolve" parse error. Surface this even outside
+            # VERBOSE_MODE so the user catches it before the build fails.
+            if failed:
+                still_short = [m for m in short_hash_modules
+                               if len(m.get('vcs_hash', '')) != 40]
+                if still_short:
+                    print(f"\n⚠️  {len(still_short)} module(s) still have 12-char hashes after expansion:")
+                    for m in still_short[:10]:
+                        print(f"    - {m['module_path']}@{m.get('version', '')} ({m['vcs_hash']})")
+                    if len(still_short) > 10:
+                        print(f"    ... and {len(still_short) - 10} more")
+                    print(f"    These will cause bitbake parse errors. Common cause: a stale")
+                    print(f"    clone_cache_dir entry. Try: rm -rf {CLONE_CACHE_DIR}")
+
         # Filter out modules with empty vcs_hash - these are typically pre-Go 1.18
         # modules lacking Origin metadata (e.g. pre-release pseudo-versions) that
         # cannot be fetched from git. They are usually transitive dependencies that
@@ -4624,10 +4875,199 @@ def _find_module_zip(discovery_cache: str, module_path: str, version: str) -> Op
     return None
 
 
+def _get_imported_modules(source_dir: Optional[Path],
+                          build_targets: Optional[List[str]],
+                          gomodcache: Optional[str] = None
+                          ) -> Optional[Set[str]]:
+    """
+    Run `go list -deps` on the given build targets and return the set of
+    "module_path@version" strings that those targets actually import.
+
+    This is the most accurate filter when the recipe builds multiple binaries
+    that span a wider import graph than the discovery step's single
+    BUILD_TARGET. The discovery's GOMODCACHE walk only sees what
+    `go build <BUILD_TARGET>` populated, which can be a strict subset of
+    what the recipe's `do_compile` will actually unpack at build time.
+
+    Returns None if `go` is unavailable, source dir has no go.mod,
+    build_targets is empty, or `go list` fails.
+    """
+    if not build_targets:
+        return None
+    src = Path(source_dir or '.').resolve()
+    if not (src / 'go.mod').exists():
+        return None
+
+    env = os.environ.copy()
+    env['GOFLAGS'] = (env.get('GOFLAGS', '') + ' -mod=mod').strip()
+    # Same rationale as _get_mvs_selected_modules: do_generate_modules sets
+    # GOPROXY=off, but we need it on so go-list can resolve metadata and
+    # download a newer toolchain if go.mod requires it.
+    env['GOPROXY'] = env.get('GOPROXY_REAL',
+                             'https://proxy.golang.org,direct')
+    env.pop('GOTOOLCHAIN', None)
+    if gomodcache:
+        env['GOMODCACHE'] = gomodcache
+
+    cmd = ['go', 'list', '-deps',
+           '-f', '{{if .Module}}{{.Module.Path}}@{{.Module.Version}}{{end}}']
+    cmd.extend(build_targets)
+    try:
+        result = subprocess.run(cmd, cwd=str(src), env=env,
+                                capture_output=True, text=True,
+                                timeout=300, check=False)
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        print(f"  Note: 'go list -deps' could not be executed: {exc}")
+        return None
+    if result.returncode != 0:
+        print(f"  Note: 'go list -deps' exited {result.returncode}:")
+        for line in (result.stderr or '').strip().splitlines()[:5]:
+            print(f"    {line}")
+        return None
+
+    selected: Set[str] = set()
+    for line in result.stdout.strip().splitlines():
+        line = line.strip()
+        if line:
+            selected.add(line)
+    return selected if selected else None
+
+
+def _decode_go_module_path(encoded: str) -> str:
+    """Inverse of _encode_go_module_path: '!x' (where x is a lowercase
+    letter) → 'X'. Other characters pass through unchanged."""
+    result = []
+    i = 0
+    while i < len(encoded):
+        if (encoded[i] == '!' and i + 1 < len(encoded)
+                and 'a' <= encoded[i + 1] <= 'z'):
+            result.append(encoded[i + 1].upper())
+            i += 2
+        else:
+            result.append(encoded[i])
+            i += 1
+    return ''.join(result)
+
+
+def _get_unpacked_modules(gomodcache: Optional[str] = None
+                          ) -> Optional[Set[str]]:
+    """
+    Walk GOMODCACHE for unpacked module dirs and return them as the set of
+    "module_path@version" strings in **canonical** form (with uppercase
+    letters in the path, matching what `go list` produces and what
+    modules.json contains).
+
+    The on-disk layout uses Go's filesystem-safe encoding ('A-Z' → '!a-z')
+    so paths like `github.com/HdrHistogram/...` are stored at
+    `github.com/!hdr!histogram/...`. We decode back to canonical on read so
+    set membership against canonical-keyed modules.json entries works
+    uniformly. write_license_inc re-encodes when constructing the
+    filesystem path for LIC_FILES_CHKSUM.
+
+    This is the most accurate signal for "what bitbake will unpack at build
+    time" — it's exactly what `go build` populated for the discovery step,
+    and the recipe's SRC_URI entries will re-unpack the same set at build
+    time. Returns None if gomodcache is not set or empty.
+    """
+    cache = gomodcache or os.environ.get('GOMODCACHE')
+    if not cache or not os.path.isdir(cache):
+        return None
+    base = Path(cache)
+    selected: Set[str] = set()
+    # Walk; prune $GOMODCACHE/cache/ which holds zips and metadata, not
+    # unpacked module trees.
+    for root, dirs, _files in os.walk(base):
+        if Path(root) == base and 'cache' in dirs:
+            dirs.remove('cache')
+        for d in list(dirs):
+            if '@v' in d:
+                full = Path(root) / d
+                rel = str(full.relative_to(base))
+                # Decode FS-encoded path back to canonical. Only the
+                # path-before-@version uses the encoding; the version
+                # itself is left alone.
+                if '@' in rel:
+                    mpath, _, mver = rel.partition('@')
+                    rel = f"{_decode_go_module_path(mpath)}@{mver}"
+                else:
+                    rel = _decode_go_module_path(rel)
+                selected.add(rel)
+                dirs.remove(d)  # don't recurse into the module dir
+    return selected if selected else None
+
+
+def _get_mvs_selected_modules(source_dir: Optional[Path] = None,
+                              gomodcache: Optional[str] = None
+                              ) -> Optional[Set[str]]:
+    """
+    Return the set of MVS-selected modules as "module_path@version" strings,
+    using `go list -m all` from `source_dir` (defaults to CWD).
+
+    Returns None if `go` is unavailable, the source dir has no go.mod, or
+    `go list` fails for any other reason — in which case the caller should
+    fall back to scanning all modules.
+
+    Why this matters: the modules list passed to scan_module_licenses() is
+    derived from go.sum and includes every module version Go fetched for
+    hash verification, including unselected indirect-dep versions. Only the
+    MVS-selected subset is actually unpacked into pkg/mod/<module>@<version>/
+    at build time. Writing LIC_FILES_CHKSUM entries for unselected versions
+    causes do_populate_lic to fail with QA errors ("invalid file").
+    """
+    src = Path(source_dir or '.').resolve()
+    if not (src / 'go.mod').exists():
+        print(f"  Note: no go.mod at {src}, cannot determine MVS-selected set")
+        return None
+    env = os.environ.copy()
+    env['GOFLAGS'] = (env.get('GOFLAGS', '') + ' -mod=mod').strip()
+    # The bitbake do_generate_modules env sets GOPROXY=off, which prevents
+    # `go list -m all` from resolving transitive metadata and from downloading
+    # any toolchain version required by go.mod's `toolchain` directive.
+    # Override here so this helper can do its job — it does not compile or
+    # install anything, just lists modules.
+    env['GOPROXY'] = env.get('GOPROXY_REAL',
+                             'https://proxy.golang.org,direct')
+    env.pop('GOTOOLCHAIN', None)  # let it auto-resolve if go.mod needs newer
+    if gomodcache:
+        env['GOMODCACHE'] = gomodcache
+    try:
+        result = subprocess.run(
+            ['go', 'list', '-m', 'all'],
+            cwd=str(src),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        print(f"  Note: 'go list -m all' could not be executed: {exc}")
+        return None
+    if result.returncode != 0:
+        print(f"  Note: 'go list -m all' exited {result.returncode}:")
+        for line in (result.stderr or '').strip().splitlines()[:5]:
+            print(f"    {line}")
+        return None
+    selected: Set[str] = set()
+    for line in result.stdout.strip().splitlines():
+        parts = line.split()
+        # Main module is "module/path" with no version — skip
+        if len(parts) >= 2:
+            module_path, version = parts[0], parts[1]
+            selected.add(f"{module_path}@{version}")
+    return selected
+
+
 def scan_module_licenses(modules: List[Dict], discovery_cache: str,
-                         license_db: Dict[str, str]) -> Dict[str, Tuple[str, str, str]]:
+                         license_db: Dict[str, str],
+                         selected_set: Optional[Set[str]] = None
+                         ) -> Dict[str, Tuple[str, str, str]]:
     """
     Scan all modules for licenses using their discovery cache zips.
+
+    If `selected_set` is provided, modules whose "module_path@version" is
+    not in that set are skipped (they appear in go.sum but are not MVS-
+    selected, so they will not be unpacked at build time).
 
     Returns dict mapping "module_path@version" to (spdx_name, license_file, md5).
     Only the first license file per module (matching OE-core behavior).
@@ -4636,11 +5076,19 @@ def scan_module_licenses(modules: List[Dict], discovery_cache: str,
     scanned = 0
     no_zip = 0
     unknown = 0
+    skipped_unselected = 0
 
     for module in modules:
         module_path = module['module_path']
         version = module['version']
         key = f"{module_path}@{version}"
+
+        # Skip modules not selected by Go's MVS — they're in go.sum for hash
+        # verification but never unpacked into pkg/mod/<module>@<version>/,
+        # so a LIC_FILES_CHKSUM entry for them would fail do_populate_lic.
+        if selected_set is not None and key not in selected_set:
+            skipped_unselected += 1
+            continue
 
         zip_path = _find_module_zip(discovery_cache, module_path, version)
         if not zip_path:
@@ -4657,8 +5105,11 @@ def scan_module_licenses(modules: List[Dict], discovery_cache: str,
                 unknown += 1
         scanned += 1
 
-    print(f"\n  License scan: {len(results)} modules with licenses, "
-          f"{no_zip} missing zips, {unknown} unknown")
+    msg = (f"\n  License scan: {len(results)} modules with licenses, "
+           f"{no_zip} missing zips, {unknown} unknown")
+    if selected_set is not None:
+        msg += f", {skipped_unselected} skipped (not in selected set)"
+    print(msg)
     return results
 
 
@@ -4670,6 +5121,25 @@ def _fold_uri(uri: str) -> str:
 def _tidy_licenses(licenses: Set[str]) -> List[str]:
     """Sort and deduplicate license names."""
     return sorted(licenses - {'Unknown'}, key=str.casefold)
+
+
+def _encode_go_module_path(module_path: str) -> str:
+    """
+    Encode a Go module path the way Go's module cache stores it on disk.
+
+    Go's `golang.org/x/mod/module.EscapePath` replaces every ASCII uppercase
+    letter with '!' followed by its lowercase counterpart, to avoid clashes
+    on case-insensitive filesystems:
+
+        github.com/HdrHistogram/hdrhistogram-go
+          → github.com/!hdr!histogram/hdrhistogram-go
+
+    bitbake's do_populate_lic walks pkg/mod/<encoded-path>@<version>/ at
+    build time, so LIC_FILES_CHKSUM entries must use the encoded form or
+    they fail the "invalid file" QA check.
+    """
+    return ''.join('!' + c.lower() if 'A' <= c <= 'Z' else c
+                   for c in module_path)
 
 
 def write_license_inc(output_dir: Path, license_results: Dict[str, Tuple[str, str, str]]) -> Path:
@@ -4690,8 +5160,16 @@ def write_license_inc(output_dir: Path, license_results: Dict[str, Tuple[str, st
 
     for mod_ver, (spdx, lic_file, md5) in license_results.items():
         licenses.add(spdx)
+        # Encode the module-path portion of mod_ver — bitbake unpacks Go
+        # modules using Go's filesystem-safe encoding (uppercase → !lower).
+        # Version (after @) is left unchanged.
+        if '@' in mod_ver:
+            mpath, _, mver = mod_ver.partition('@')
+            encoded_mod_ver = f"{_encode_go_module_path(mpath)}@{mver}"
+        else:
+            encoded_mod_ver = _encode_go_module_path(mod_ver)
         # Build path matching OE-core format: pkg/mod/<module@version>/<file>
-        lic_path = f"pkg/mod/{mod_ver}/{lic_file}"
+        lic_path = f"pkg/mod/{encoded_mod_ver}/{lic_file}"
         encoded_spdx = urllib.parse.quote_plus(spdx)
         lic_entries.append(f"file://{lic_path};md5={md5};spdx={encoded_spdx}")
 
@@ -4704,7 +5182,11 @@ def write_license_inc(output_dir: Path, license_results: Dict[str, Tuple[str, st
         f.write("# Do not modify by hand. Regenerate with:\n")
         f.write("#   bitbake <recipe> -c discover_and_generate\n\n")
         if tidy:
-            f.write(f'LICENSE += "& {" & ".join(tidy)}"\n\n')
+            # SPDX-2 style: `AND` between identifiers, plus a leading `AND`
+            # since this file appends to whatever the recipe's LICENSE already
+            # declares. OE-core's license-format QA warns on the old bitbake
+            # boolean `&` operator (deprecated in favour of `AND`).
+            f.write(f'LICENSE += "AND {" AND ".join(tidy)}"\n\n')
         else:
             f.write('# No known licenses found\n\n')
         f.write('LIC_FILES_CHKSUM += "\\\n')
@@ -4846,6 +5328,18 @@ Examples:
         "--clean-gomodcache",
         action="store_true",
         help="Clean stale .info files in GOMODCACHE that lack VCS metadata (fixes 'module lookup disabled' errors)"
+    )
+
+    parser.add_argument(
+        "--build-target",
+        action='append',
+        default=None,
+        dest='build_targets',
+        help="Go build target used by the recipe's do_compile (e.g. './cmd/foo'). "
+             "Can be repeated. When set, the license scan filter is derived from "
+             "`go list -deps` on these targets — the most accurate signal for "
+             "'what bitbake will unpack at build time'. Takes precedence over the "
+             "GOMODCACHE walk."
     )
 
     parser.add_argument(
@@ -5004,6 +5498,7 @@ Examples:
         exit_code = 1
     finally:
         save_ls_remote_cache()
+        save_dumb_http_cache()
         save_metadata_cache()
         save_vanity_url_cache()
         save_verify_commit_cache()

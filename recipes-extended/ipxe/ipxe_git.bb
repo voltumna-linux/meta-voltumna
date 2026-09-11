@@ -7,7 +7,7 @@ LIC_FILES_CHKSUM = "file://../COPYING.GPLv2;md5=b234ee4d69f5fce4486a80fdaf4a4263
 # syslinux has this restriction
 COMPATIBLE_HOST:class-target = '(x86_64|i.86).*-(linux|freebsd.*)'
 
-SRCREV = "a0bf3f1cc85aa2e8853b66e59f26e8f398d9ed4e"
+SRCREV = "e6d0a97c05d238c17eeae5116cb6e9c0fc9fdb56"
 PV = "2.0.0+git"
 PR = "r0"
 

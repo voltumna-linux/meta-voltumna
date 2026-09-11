@@ -182,7 +182,7 @@ do_write_xen_qemuboot_dtb() {
     fi
 }
 
-addtask do_write_xen_qemuboot_dtb after do_write_qemuboot_conf before do_image
+addtask do_write_xen_qemuboot_dtb after do_write_qemuboot_conf before do_image_complete
 # Task dependency:
 # An expected common case is that the kernel for at least one of the initial
 # domains (eg. dom0) is deployed from the virtual/kernel recipe, so

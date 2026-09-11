@@ -203,6 +203,25 @@ def derive_vcs_info(module_path, version):
             }
             vcs_url = mappings.get(pkg_name, f"https://github.com/go-{pkg_name}/{pkg_name}")
 
+    elif module_path.startswith('golang.org/x/'):
+        # golang.org/x/* vanity imports live at go.googlesource.com/<pkg>.
+        # The Go proxy serves .info files with full Origin metadata for
+        # recent versions of these modules; older pseudo-versions in
+        # go.sum's transitive closure sometimes come back with only
+        # {"Version", "Time"} and no Origin at all. Without a URL derivation
+        # for this prefix, extract_modules skips them silently, and
+        # `go build` at compile time fails MVS resolution with:
+        #   requires golang.org/x/<pkg>@<pseudo-version>:
+        #       module lookup disabled by GOPROXY=off
+        # Example: golang.org/x/crypto@v0.0.0-20190426145343-a29dc8fdc734
+        # is required by aphistic/sweet's go.mod, but has no Origin in
+        # its proxy .info -- fetcher drops it, build then fails.
+        parts = module_path.split('/')
+        if len(parts) >= 3:
+            vcs_url = f"https://go.googlesource.com/{parts[2]}"
+            if len(parts) > 3:
+                subpath = '/'.join(parts[3:])
+
     elif module_path.startswith('google.golang.org/'):
         # google.golang.org vanity imports -> github.com/golang/*
         # google.golang.org/appengine -> github.com/golang/appengine

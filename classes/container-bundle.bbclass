@@ -120,8 +120,37 @@
 #
 # Remote containers:
 #   - Must have pinned digest via CONTAINER_DIGESTS
-#   - A licensing warning is emitted during fetch
+#   - A licensing warning is emitted during fetch (see CONTAINER_FLAGS_ACCEPTED
+#     below to acknowledge specific containers and downgrade to a build log
+#     note for SBOM/audit purposes)
 #   - Fetched using skopeo-native in do_fetch phase
+#
+# Acknowledging third-party container licenses:
+#   The licensing warning fires on every parse of a recipe that bundles a
+#   remote container, to remind integrators they're shipping content they
+#   did not build from source. To acknowledge a specific container — after
+#   reviewing its license and confirming you have redistribution rights —
+#   add the container URL to CONTAINER_FLAGS_ACCEPTED in local.conf or your
+#   distro config:
+#
+#     CONTAINER_FLAGS_ACCEPTED += "docker.io/library/alpine"
+#     CONTAINER_FLAGS_ACCEPTED += "docker.io/library/busybox"
+#
+#   The URL may include or omit the :tag (matching is on the base URL,
+#   so accepting "docker.io/library/alpine" covers alpine:3.19, alpine:3.20,
+#   etc.). A "*" wildcard accepts all third-party containers — convenient
+#   for distros that have a global review process, riskier as a casual
+#   opt-in.
+#
+#   When the container URL is in CONTAINER_FLAGS_ACCEPTED, the fetch still
+#   logs a bb.note recording that an acknowledged third-party container
+#   was pulled, so it stays visible in the build log / sbom audit trail.
+#   The warning only fires for unacknowledged URLs.
+#
+#   Recipes should NOT pre-accept their own container licenses — that
+#   defeats the warning's purpose. Acceptance belongs in the integration
+#   layer (local.conf, distro config) where the maintainer evaluating
+#   the redistribution risk actually makes the call.
 #
 # Local containers:
 #   - Must be container IMAGE recipes (inherit image-oci)
@@ -318,11 +347,11 @@ python __anonymous() {
     d.setVar('_CONTAINER_SERVICE_FILE_MAP', ';'.join(service_mappings))
 }
 
-# S must be a real directory
-S = "${WORKDIR}/sources"
+S = "${UNPACKDIR}/sources"
 B = "${WORKDIR}/build"
 
-do_unpack[noexec] = "1"
+# do_unpack must run so that file:// SRC_URI entries (custom service files
+# referenced by CONTAINER_SERVICE_FILE) are extracted into UNPACKDIR.
 do_patch[noexec] = "1"
 do_configure[noexec] = "1"
 
@@ -372,10 +401,29 @@ python do_fetch_containers() {
                      f"Add: CONTAINER_DIGESTS[{sanitized_key}] = \"sha256:...\"\n"
                      f"Get digest with: skopeo inspect docker://{url} | jq -r '.Digest'")
 
-        # Emit licensing warning
-        bb.warn(f"Fetching third-party container: {url}\n"
-                f"Ensure you have rights to redistribute this container in your image.\n"
-                f"Check the container's license terms before distribution.")
+        # Licensing acknowledgement check.
+        # If the integrator has explicitly acknowledged this container (or
+        # everything, via the "*" wildcard) in CONTAINER_FLAGS_ACCEPTED,
+        # demote the warning to an audit-trail note. Otherwise warn loudly
+        # and tell the user exactly what to add to silence it.
+        accepted = set((d.getVar('CONTAINER_FLAGS_ACCEPTED') or '').split())
+        # Strip any :tag or @digest so accepting "docker.io/library/alpine"
+        # covers every tag of that container.
+        url_base = url.rsplit(':', 1)[0] if ':' in url.split('/')[-1] else url
+        url_base = url_base.split('@', 1)[0]
+
+        if '*' in accepted or url in accepted or url_base in accepted:
+            bb.note(f"Fetching third-party container (license acknowledged "
+                    f"via CONTAINER_FLAGS_ACCEPTED): {url}")
+        else:
+            bb.warn(f"Fetching third-party container: {url}\n"
+                    f"Ensure you have rights to redistribute this container "
+                    f"in your image. Check the container's license terms "
+                    f"before distribution.\n"
+                    f"To acknowledge this container and silence this warning "
+                    f"(downgrades to a bb.note for build-log/SBOM audit), "
+                    f"add to local.conf or your distro config:\n"
+                    f'  CONTAINER_FLAGS_ACCEPTED += "{url_base}"')
 
         # Strip tag from URL when using digest (skopeo doesn't support both)
         # e.g., docker.io/library/busybox:1.36 -> docker.io/library/busybox

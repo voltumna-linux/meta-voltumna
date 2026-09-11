@@ -594,6 +594,159 @@ vxn_image_cache_inspect() {
     }' "$config_file"
 }
 
+# ============================================================================
+# vxn provision: assemble a rootfs from a mini-Dockerfile, dom0-side, no docker.
+# Supports FROM / COPY / RUN / ENV / WORKDIR / ENTRYPOINT / CMD (the subset the
+# claude-demo image uses). FROM is skopeo-pulled + extracted; RUN runs in a
+# chroot with proc/sys/dev + resolv.conf and dom0 network; the assembled rootfs
+# is cached at ~/.vxn/rootfs/<name> with a sidecar <name>.conf recording
+# ENTRYPOINT/CMD/WORKDIR/ENV for the run path. Runs where hypervisor=xen (dom0).
+# ============================================================================
+VXN_ROOTFS_CACHE="${VXN_ROOTFS_CACHE:-$HOME/.vxn/rootfs}"
+
+# Extract an OCI layout's layers into a flat rootfs (mirrors the dom0 extract in
+# vrunner-backend-xen.sh). $1=oci_dir $2=target
+_vxn_oci_extract() {
+    local oci_dir="$1" target="$2" mdigest mfile ldigest lfile
+    mkdir -p "$target"
+    mdigest=$(jq -r '.manifests[0].digest' "$oci_dir/index.json" 2>/dev/null)
+    mfile="$oci_dir/blobs/${mdigest/://}"
+    [ -f "$mfile" ] || { echo "provision: OCI manifest not found" >&2; return 1; }
+    for ldigest in $(jq -r '.layers[].digest' "$mfile" 2>/dev/null); do
+        lfile="$oci_dir/blobs/${ldigest/://}"
+        [ -f "$lfile" ] || { echo "provision: layer blob missing: $ldigest" >&2; return 1; }
+        tar -xf "$lfile" -C "$target" 2>/dev/null || { echo "provision: layer extract failed" >&2; return 1; }
+    done
+}
+
+# Run a RUN step in a chroot of the rootfs, with the mounts + resolv.conf apt/
+# curl/network need. $1=rootfs, rest=command.
+_vxn_provision_run() {
+    local rootfs="$1"; shift
+    local rc
+    cp -f /etc/resolv.conf "$rootfs/etc/resolv.conf" 2>/dev/null || true
+    mount -t proc proc "$rootfs/proc" 2>/dev/null || true
+    mount -t sysfs sys "$rootfs/sys" 2>/dev/null || true
+    mount -o bind /dev "$rootfs/dev" 2>/dev/null || true   # -o bind: busybox-safe
+    # Reset TMPDIR to the chroot's OWN /tmp: the provision build exports
+    # TMPDIR=~/.vxn/tmp (disk-backed dom0 scratch), which does NOT exist inside
+    # the chroot -- update-ca-certificates' mktemp then fails ("No such file or
+    # directory"). DEBIAN_FRONTEND=noninteractive: `vxn ssh` gives the chroot a
+    # tty, so apt's debconf would otherwise go interactive; docker build has no
+    # tty and never prompts. Both harmless for non-apt RUN steps.
+    chroot "$rootfs" /usr/bin/env DEBIAN_FRONTEND=noninteractive TMPDIR=/tmp \
+        /bin/sh -c "$*"; rc=$?
+    umount "$rootfs/dev" "$rootfs/sys" "$rootfs/proc" 2>/dev/null || true
+    return $rc
+}
+
+# Normalize a Dockerfile ENTRYPOINT/CMD: ["a","b"] -> a b ; else verbatim.
+_vxn_exec_form() {
+    case "$1" in
+        "["*"]") printf '%s' "$1" | jq -r 'if type=="array" then join(" ") else . end' 2>/dev/null ;;
+        *)       printf '%s' "$1" ;;
+    esac
+}
+
+# Interpret a mini-Dockerfile into a cached rootfs + config sidecar.
+# $1=name $2=Dockerfile $3=context-dir
+_vxn_provision_build() {
+    local name="$1" dockerfile="$2" context="${3:-.}"
+    command -v skopeo >/dev/null 2>&1 || { echo "provision: skopeo required (run in dom0)" >&2; return 1; }
+    command -v jq     >/dev/null 2>&1 || { echo "provision: jq required" >&2; return 1; }
+    [ -f "$dockerfile" ] || { echo "provision: build file not found: $dockerfile" >&2; return 1; }
+
+    local rootfs="$VXN_ROOTFS_CACHE/$name" conf="$VXN_ROOTFS_CACHE/$name.conf"
+    mkdir -p "$VXN_ROOTFS_CACHE"; rm -rf "$rootfs" "$conf"
+    export TMPDIR="${TMPDIR:-$HOME/.vxn/tmp}"; mkdir -p "$TMPDIR"
+
+    local from_done=0 p_entrypoint="" p_cmd="" p_workdir="" p_env="" acc="" line instr rest
+    while IFS= read -r line || [ -n "$line" ]; do
+        line="${line%$'\r'}"
+        if [ -n "$acc" ]; then line="$acc $line"; acc=""; else
+            case "$line" in \#*|"") continue ;; esac
+        fi
+        case "$line" in *\\) acc="${line%\\}"; continue ;; esac
+        instr=$(printf '%s' "$line" | awk '{print $1}')
+        rest="${line#"$instr"}"; rest="${rest# }"
+        case "$instr" in
+            FROM)
+                local oci="$TMPDIR/prov-from.$$"; rm -rf "$oci"
+                echo "provision: FROM $rest"
+                skopeo copy "docker://$(vxn_normalize_image_name "$rest")" "oci:$oci:latest" >/dev/null 2>&1 \
+                    || { echo "provision: FROM pull failed: $rest" >&2; return 1; }
+                _vxn_oci_extract "$oci" "$rootfs" || return 1
+                rm -rf "$oci"; from_done=1 ;;
+            COPY)
+                [ "$from_done" = 1 ] || { echo "provision: COPY before FROM" >&2; return 1; }
+                local src dst
+                src=$(printf '%s' "$rest" | awk '{print $1}')
+                dst=$(printf '%s' "$rest" | awk '{print $2}')
+                mkdir -p "$rootfs/${dst#/}"
+                cp -a "$context/$src/." "$rootfs/${dst#/}/" 2>/dev/null \
+                    || echo "provision: COPY $src (empty/absent, skipped)" >&2 ;;
+            RUN)
+                [ "$from_done" = 1 ] || { echo "provision: RUN before FROM" >&2; return 1; }
+                echo "provision: RUN $rest"
+                _vxn_provision_run "$rootfs" "$rest" \
+                    || { echo "provision: RUN failed: $rest" >&2; return 1; } ;;
+            ENV)     p_env="$p_env${p_env:+ }$rest" ;;
+            WORKDIR) p_workdir="$rest" ;;
+            ENTRYPOINT) p_entrypoint=$(_vxn_exec_form "$rest") ;;
+            CMD)        p_cmd=$(_vxn_exec_form "$rest") ;;
+            *) echo "provision: ignoring unsupported instruction: $instr" >&2 ;;
+        esac
+    done < "$dockerfile"
+    [ "$from_done" = 1 ] || { echo "provision: no FROM in build file" >&2; return 1; }
+
+    { echo "P_ENTRYPOINT='$p_entrypoint'"; echo "P_CMD='$p_cmd'"
+      echo "P_WORKDIR='$p_workdir'"; echo "P_ENV='$p_env'"; } > "$conf"
+    echo "provision: cached '$name' rootfs at $rootfs"
+}
+
+# Auto-provision: if <name> is a known dom0 recipe and not yet built, build it
+# BEFORE the launch dispatch -- so `vxn run <name>` (and `axis run -- <name>`)
+# work with nothing more, zero setup, in BOTH topologies:
+#   - qemu-xen (config-a, nested SDK): host pre-step. Query/build in the
+#     persistent dom0 over a plain (non-tt) ssh -- deliberately NOT on the
+#     interactive `-tt` session, whose PTY dropped mid-build under the heavy
+#     chroot. Runs to completion, then the interactive launch dispatches.
+#   - xen (config-b, in a real dom0): build LOCALLY, in-process. No ssh, no -tt
+#     drop risk -- it's a local terminal, so the inline build precedes the
+#     `xl create -c` launch just fine.
+# Recipes live in dom0 (user-added ~/.vxn/recipes/<name>/, shipped
+# /usr/share/vxn/recipes/<name>/). Both paths defer to `provision <name>`, which
+# resolves that same registry.
+_vxn_autoprovision() {
+    local name="$1"
+    case "${VCONTAINER_HYPERVISOR:-}" in
+        qemu-xen)
+            # Already built in dom0?
+            _vxn_ssh_dom0 -- "[ -d \"\$HOME/.vxn/rootfs/$name\" ]" </dev/null >/dev/null 2>&1 && return 0
+            # A recipe for it in dom0's registry?
+            _vxn_ssh_dom0 -- "for d in \"\$HOME/.vxn/recipes/$name\" /usr/share/vxn/recipes/$name; do [ -f \"\$d/Vxnfile\" ] || [ -f \"\$d/Dockerfile\" ] && exit 0; done; exit 1" </dev/null >/dev/null 2>&1 || return 0
+            ;;
+        xen)
+            # Already built locally?
+            [ -d "$VXN_ROOTFS_CACHE/$name" ] && return 0
+            # A recipe for it in the local registry?
+            _ap_found=0
+            for _apd in "$HOME/.vxn/recipes/$name" "/usr/share/vxn/recipes/$name"; do
+                { [ -f "$_apd/Vxnfile" ] || [ -f "$_apd/Dockerfile" ]; } && { _ap_found=1; break; }
+            done
+            [ "$_ap_found" = 1 ] || return 0
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+    echo -e "${CYAN}[$VCONTAINER_RUNTIME_NAME]${NC} '$name' not provisioned; building it (first run, one-time)..." >&2
+    # qemu-xen: host relays a plain (non-tt) ssh to dom0. xen: builds in-process.
+    # Either way `provision <name>` resolves the dom0 recipe registry.
+    "$0" provision "$name" </dev/null || {
+        echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} auto-provision of '$name' failed" >&2; return 1; }
+}
+
 show_usage() {
     local PROG_NAME=$(basename "$0")
     local RUNTIME_UPPER=$(echo "$VCONTAINER_RUNTIME_CMD" | sed 's/./\U&/')
@@ -1236,6 +1389,149 @@ list_port_forwards() {
     done < "$pf_file"
 }
 
+# POSIX single-quote each argument so a payload survives one round of shell
+# word-splitting/re-parsing. The mode-1 dispatch relays a command string across
+# multiple hops (host -> responder shell -> dom0's vxn -> per-container DomU
+# daemon), and each hop shell-executes it. Flattening argv with ${arr[*]} drops
+# quoting, so a payload like `sh -c 'A; B'` gets split at the bare ';' and the
+# tail runs in the wrong context (dom0 instead of the DomU). Quoting each arg
+# ('...' with embedded ' escaped as '\'') keeps `sh -c 'A; B'` a single token
+# through one re-parse; the flatten points quote once per hop. Works with any
+# POSIX shell (the responder may be dash/busybox, not bash -- so no printf %q).
+_vxn_quote() {
+    local out='' a
+    for a in "$@"; do
+        a=${a//\'/\'\\\'\'}
+        out="${out:+$out }'$a'"
+    done
+    printf '%s' "$out"
+}
+
+# Build the arg string for a dispatched command. Quoting is needed ONLY on the
+# qemu-xen (mode-1) host hop, where the dom0 responder shell-executes the
+# relayed `vxn <verb> ...` string -- there an unquoted ';' in `sh -c 'A; B'`
+# splits and runs the tail in dom0. The direct xen backend (running in dom0)
+# and the qemu backend instead consume the command as a RAW string
+# (word-count+cut / base64), where literal single-quotes would break parsing
+# (the image would read as "'--rm'"). So quote only for qemu-xen; otherwise
+# flatten plainly (original behaviour).
+_vxn_args() {
+    if [ "${VCONTAINER_HYPERVISOR:-}" = "qemu-xen" ]; then
+        _vxn_quote "$@"
+    else
+        local IFS=' '
+        printf '%s' "$*"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# ssh into the QEMU-hosted dom0 (qemu-xen backend only).
+#
+# The reliable interactive path: rather than tunnelling a PTY through the
+# marker command channel, ssh -tt to dom0 and let dom0's native vxn do the
+# interactive work (xl create -c). Reuses the SDK keypair that vrunner staged
+# and dom0 installed into authorized_keys. Ensures the dom0 daemon is up first.
+#
+# Usage: _vxn_ssh_dom0 [ssh opts ...] -- [remote command ...]
+#   No remote command -> interactive login shell in dom0.
+_vxn_ssh_dom0() {
+    # Must match vrunner.sh setup_ssh_key_share's default exactly (not
+    # DEFAULT_STATE_DIR, which a STATE_DIR override would move out from under
+    # the staging side). VXN_SSH_KEY overrides both.
+    local key="${VXN_SSH_KEY:-$HOME/.${VCONTAINER_RUNTIME_NAME}/id_${VCONTAINER_RUNTIME_NAME}}"
+    local port="${VXN_SSH_PORT:-18022}"
+
+    # dom0 holds the sshd we forward to; auto-start it if needed.
+    if ! daemon_is_running; then
+        echo -e "${CYAN}[$VCONTAINER_RUNTIME_NAME]${NC} Starting dom0..." >&2
+        if ! "$RUNNER" $(build_runner_args) --daemon-start; then
+            echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} Failed to start dom0" >&2
+            return 1
+        fi
+    fi
+
+    if [ ! -f "$key" ]; then
+        echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} SDK ssh key not found ($key)." >&2
+        echo "  It is generated on dom0 start; restart the daemon so it is created and injected:" >&2
+        echo "    $VCONTAINER_RUNTIME_NAME vmemres stop && $VCONTAINER_RUNTIME_NAME vmemres start" >&2
+        return 1
+    fi
+
+    local ssh_opts=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --) shift; break ;;
+            *) ssh_opts="$ssh_opts $1"; shift ;;
+        esac
+    done
+
+    # StrictHostKeyChecking/UserKnownHostsFile off: dom0 is ephemeral, its host
+    # key changes every boot, and it's reached only over the local forward.
+    ssh $ssh_opts \
+        -i "$key" \
+        -p "$port" \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o LogLevel=ERROR \
+        -o PasswordAuthentication=no \
+        -o IdentitiesOnly=yes \
+        root@127.0.0.1 "$@"
+}
+
+# Forward container-DomU tunables set on the HOST across the ssh hop to dom0's
+# vxn. These are read by vrunner-backend-xen.sh, which runs IN dom0, so a
+# host-set value is otherwise silently dropped -- e.g. `VXN_MEMORY=1280 vxn run`
+# on the host had no effect (the container DomU used the dom0 default), which is
+# the trap the claude SIGBUS fix hit. ssh does not forward env, so emit a
+# `VAR='val' ...` prefix for the remote login shell to consume before `vxn run`.
+# Whitelist ONLY -- never forward arbitrary host env. Values are single-quoted
+# (with ' -> '\'' escaping) so spaces in VXN_DOMU_CMDLINE_EXTRA survive the
+# remote shell parse.
+_vxn_env_prefix() {
+    local v esc out=""
+    for v in VXN_MEMORY VXN_VCPUS VXN_NET_MODE VXN_DOMU_CMDLINE_EXTRA; do
+        [ -n "${!v}" ] || continue
+        esc=$(printf '%s' "${!v}" | sed "s/'/'\\\\''/g")
+        out="$out$v='$esc' "
+    done
+    printf '%s' "$out"
+}
+
+# Ensure an ssh_config 'vxn-dom0' Host alias carrying the SDK key + port, so
+# `DOCKER_HOST=ssh://vxn-dom0` authenticates. docker's ssh:// connection helper
+# has no key env var (it just runs `ssh`), so the identity must live in
+# ssh_config. Idempotent: replaces any prior vxn block. (podman is simpler --
+# it takes CONTAINER_SSHKEY directly, so it doesn't need this.)
+_vexpose_ensure_ssh_alias() {
+    local key="$1" port="$2"
+    local cfg="$HOME/.ssh/config"
+    mkdir -p "$HOME/.ssh" 2>/dev/null; chmod 700 "$HOME/.ssh" 2>/dev/null
+    touch "$cfg" 2>/dev/null
+    # Strip any prior vxn block, then PREPEND a fresh one. ssh_config uses the
+    # FIRST value per keyword, so an existing 'Host *' block (User/IdentityFile)
+    # earlier in the file would otherwise override our alias -- putting ours at
+    # the top makes it win.
+    local rest
+    rest=$(sed '/# >>> vxn vexpose >>>/,/# <<< vxn vexpose <<</d' "$cfg" 2>/dev/null)
+    {
+        cat <<VXNSSHCFG
+# >>> vxn vexpose >>>
+Host vxn-dom0
+    HostName 127.0.0.1
+    Port $port
+    User root
+    IdentityFile $key
+    IdentitiesOnly yes
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR
+# <<< vxn vexpose <<<
+VXNSSHCFG
+        printf '%s\n' "$rest"
+    } > "$cfg"
+    chmod 600 "$cfg" 2>/dev/null
+}
+
 # Helper function to run command via daemon or regular mode
 run_runtime_command() {
     local runtime_cmd="$1"
@@ -1796,8 +2092,186 @@ case "$COMMAND" in
         fi
         ;;
 
+    provision)
+        # vxn provision <name> [-f <Vxnfile>] [<context-dir>]
+        # Assemble a rootfs from a mini-Dockerfile dom0-side (no docker) and cache
+        # it at ~/.vxn/rootfs/<name>; `vxn run <name>` then direct-mounts it.
+        _p_name=""; _p_dockerfile=""; _p_context=""
+        i=0
+        while [ $i -lt ${#COMMAND_ARGS[@]} ]; do
+            arg="${COMMAND_ARGS[$i]}"
+            case "$arg" in
+                -f|--file) i=$((i + 1)); _p_dockerfile="${COMMAND_ARGS[$i]}" ;;
+                *) if [ -z "$_p_name" ]; then _p_name="$arg"
+                   elif [ -z "$_p_context" ]; then _p_context="$arg"; fi ;;
+            esac
+            i=$((i + 1))
+        done
+        [ -n "$_p_name" ] || {
+            echo "usage: $VCONTAINER_RUNTIME_NAME provision <name> [[-f <Vxnfile>] <context-dir>]" >&2; exit 1; }
+        # Bare `vxn provision <name>` (no -f, no context) resolves the dom0 recipe
+        # registry; an explicit -f/context builds from that instead.
+        _p_from_registry=0
+        [ -z "$_p_dockerfile" ] && [ -z "$_p_context" ] && _p_from_registry=1
+        [ -n "$_p_dockerfile" ] && [ -z "$_p_context" ] && _p_context="$(dirname "$_p_dockerfile")"
+        # Default build file: Vxnfile (our documented subset), else Dockerfile
+        # (back-compat -- we parse the same FROM/COPY/RUN/ENV/WORKDIR/ENTRYPOINT/
+        # CMD subset either way; the name just doesn't over-promise Docker syntax).
+        if [ -n "$_p_context" ] && [ -z "$_p_dockerfile" ]; then
+            if [ -f "$_p_context/Vxnfile" ]; then _p_dockerfile="$_p_context/Vxnfile"
+            else _p_dockerfile="$_p_context/Dockerfile"; fi
+        fi
+
+        if [ "${VCONTAINER_HYPERVISOR:-}" = "qemu-xen" ]; then
+            if [ "$_p_from_registry" = 1 ]; then
+                # Bare name: dom0 resolves its own recipe registry. NON-interactive
+                # (plain ssh, not -tt) so the heavy chroot build never runs on an
+                # interactive PTY -- that dropped the connection mid-build.
+                _vxn_ssh_dom0 -- "vxn provision $_p_name" </dev/null
+                exit $?
+            fi
+            # Explicit context: tar it and stream to dom0, run `vxn provision`
+            # there, clean up. Dockerfile referenced by basename inside the
+            # transported context (like docker, keep it in the context dir).
+            [ -f "$_p_dockerfile" ] || {
+                echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} build file not found: $_p_dockerfile" >&2; exit 1; }
+            _dfbase=$(basename "$_p_dockerfile")
+            _vxn_ssh_dom0 -- true </dev/null || {
+                echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} cannot reach dom0" >&2; exit 1; }
+            _dom0_ctx="/var/rh/vxn-provision-$$"
+            tar -C "$_p_context" -cf - . | _vxn_ssh_dom0 -- \
+                "mkdir -p $_dom0_ctx && tar -C $_dom0_ctx -xf - && vxn provision $_p_name -f $_dom0_ctx/$_dfbase $_dom0_ctx; _rc=\$?; rm -rf $_dom0_ctx; exit \$_rc"
+            exit $?
+        fi
+        [ "${VCONTAINER_HYPERVISOR:-}" = "xen" ] || vxn_unsupported "provision"
+        # dom0: resolve the recipe registry for a bare name.
+        if [ "$_p_from_registry" = 1 ]; then
+            for _rd in "$HOME/.vxn/recipes/$_p_name" "/usr/share/vxn/recipes/$_p_name"; do
+                for _rf in Vxnfile Dockerfile; do
+                    [ -f "$_rd/$_rf" ] && { _p_context="$_rd"; _p_dockerfile="$_rd/$_rf"; break 2; }
+                done
+            done
+            [ -n "$_p_context" ] || {
+                echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} no recipe for '$_p_name' (looked in ~/.vxn/recipes and /usr/share/vxn/recipes)" >&2; exit 1; }
+        fi
+        _vxn_provision_build "$_p_name" "$_p_dockerfile" "$_p_context"
+        exit $?
+        ;;
+
     load)
-        [ "${VCONTAINER_HYPERVISOR:-}" = "xen" ] && vxn_unsupported "load"
+        if [ "${VCONTAINER_HYPERVISOR:-}" = "qemu-xen" ]; then
+            # Host side of the nested SDK: the image cache lives in dom0 (that's
+            # where `vxn run` pulls), and the cache ops only run under
+            # hypervisor=xen, so relay the archive to dom0's `vxn load` over ssh
+            # -- streaming it on stdin, exactly like `docker save <img> | vpm
+            # load`. Works for a piped archive or `-i <file>`; an explicit
+            # name:tag is forwarded so dom0 stores it under that ref. dom0's vxn
+            # (hypervisor=xen) does the skopeo ingest into ~/.vxn/images.
+            _vxn_load_file=""
+            _vxn_load_name=""
+            i=0
+            while [ $i -lt ${#COMMAND_ARGS[@]} ]; do
+                arg="${COMMAND_ARGS[$i]}"
+                case "$arg" in
+                    -i|--input) i=$((i + 1)); _vxn_load_file="${COMMAND_ARGS[$i]}" ;;
+                    *) [ -z "$_vxn_load_name" ] && _vxn_load_name="$arg" ;;
+                esac
+                i=$((i + 1))
+            done
+            if [ -z "$_vxn_load_file" ] && [ -t 0 ]; then
+                echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} load needs an archive: 'vxn load -i <file>' or 'docker save <img> | vxn load'" >&2
+                exit 1
+            fi
+            if [ -n "$_vxn_load_file" ]; then
+                [ -f "$_vxn_load_file" ] || {
+                    echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} File not found: $_vxn_load_file" >&2; exit 1; }
+                _vxn_ssh_dom0 -- vxn load ${_vxn_load_name:+"$_vxn_load_name"} < "$_vxn_load_file"
+            else
+                _vxn_ssh_dom0 -- vxn load ${_vxn_load_name:+"$_vxn_load_name"}
+            fi
+            exit $?
+        fi
+        if [ "${VCONTAINER_HYPERVISOR:-}" = "xen" ]; then
+            # vxn: load a local image archive into the ~/.vxn/images cache so
+            # `vxn run <image>` can use it WITHOUT a registry -- the mirror of
+            # `docker load` / `vpm load`. The cache lives wherever vxn runs
+            # (host-side when nested under QEMU, dom0 when in dom0), same side as
+            # the pull/ls/rm/tag cache ops above, and the run-path cache-hit
+            # feeds the cached OCI dir into the DomU via the existing --input
+            # transport. Accepts either `-i <file>` or a piped archive
+            # (`docker save <img> | vxn load`).
+            command -v skopeo >/dev/null 2>&1 || {
+                echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} load requires skopeo" >&2; exit 1; }
+            # dom0's default /tmp (and /var/tmp) are small RAM tmpfs; a
+            # multi-hundred-MB archive plus its OCI expansion overflow them ("No
+            # space left on device"). Route all temp files through the
+            # disk-backed cache filesystem -- ~/.vxn holds the image store, so its
+            # parent is real disk. mktemp and skopeo both honor TMPDIR.
+            TMPDIR="$(dirname "$VXN_IMAGE_CACHE")/tmp"
+            mkdir -p "$TMPDIR" 2>/dev/null
+            export TMPDIR
+            _vxn_load_file=""
+            _vxn_load_name=""
+            i=0
+            while [ $i -lt ${#COMMAND_ARGS[@]} ]; do
+                arg="${COMMAND_ARGS[$i]}"
+                case "$arg" in
+                    -i|--input) i=$((i + 1)); _vxn_load_file="${COMMAND_ARGS[$i]}" ;;
+                    # first non-flag positional is an explicit name:tag override
+                    *) [ -z "$_vxn_load_name" ] && _vxn_load_name="$arg" ;;
+                esac
+                i=$((i + 1))
+            done
+            # No -i: read the archive from stdin (docker save <img> | vxn load).
+            # Spool to a temp file -- we read it twice (manifest + skopeo).
+            _vxn_load_tmp=""
+            if [ -z "$_vxn_load_file" ]; then
+                if [ -t 0 ]; then
+                    echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} load needs an archive: 'vxn load -i <file>' or 'docker save <img> | vxn load'" >&2
+                    exit 1
+                fi
+                _vxn_load_tmp="$(mktemp)"
+                cat > "$_vxn_load_tmp"
+                _vxn_load_file="$_vxn_load_tmp"
+            fi
+            if [ ! -f "$_vxn_load_file" ]; then
+                echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} File not found: $_vxn_load_file" >&2
+                [ -n "$_vxn_load_tmp" ] && rm -f "$_vxn_load_tmp"
+                exit 1
+            fi
+            # Derive the image name from the archive's RepoTags when not given.
+            # docker-save (docker-archive) carries manifest.json with RepoTags;
+            # nameless saves (or OCI-layout tars with only index.json) fall
+            # through to the explicit-name requirement below.
+            if [ -z "$_vxn_load_name" ]; then
+                # Pull the first RepoTags entry: "RepoTags":["claude-demo:latest"]
+                # -> claude-demo:latest. Strip up to the opening [" and after the
+                # closing ". (An earlier `grep -o '"[^"]*:[^"]*"'` mis-matched the
+                # `":["` between the key and the value, caching under a bogus name.)
+                _vxn_load_name=$(tar xOf "$_vxn_load_file" manifest.json 2>/dev/null \
+                    | grep -o '"RepoTags":\[[^]]*\]' \
+                    | sed 's/.*\["//; s/".*//')
+            fi
+            if [ -z "$_vxn_load_name" ]; then
+                echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} cannot determine image name from archive; pass one: 'vxn load -i <file> <name:tag>'" >&2
+                [ -n "$_vxn_load_tmp" ] && rm -f "$_vxn_load_tmp"
+                exit 1
+            fi
+            _vxn_normalized=$(vxn_normalize_image_name "$_vxn_load_name")
+            echo "Loading $_vxn_normalized..."
+            _vxn_tmpoci="$(mktemp -d)/oci-image"
+            if skopeo copy "docker-archive:$_vxn_load_file" "oci:$_vxn_tmpoci:latest" 2>&1; then
+                vxn_image_cache_store "$_vxn_load_name" "$_vxn_tmpoci"
+                echo "Loaded: $_vxn_normalized"
+                _vxn_load_rc=0
+            else
+                echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} Failed to load $_vxn_normalized" >&2
+                _vxn_load_rc=1
+            fi
+            rm -rf "$(dirname "$_vxn_tmpoci")"
+            [ -n "$_vxn_load_tmp" ] && rm -f "$_vxn_load_tmp"
+            exit $_vxn_load_rc
+        fi
         # runtime load -i <file>
         # Parse -i argument
         INPUT_FILE=""
@@ -2049,7 +2523,7 @@ case "$COMMAND" in
             esac
         fi
         # Commands that work with existing images
-        run_runtime_command "$VCONTAINER_RUNTIME_CMD $COMMAND ${COMMAND_ARGS[*]}"
+        run_runtime_command "$VCONTAINER_RUNTIME_CMD $COMMAND $(_vxn_args "${COMMAND_ARGS[@]}")"
         ;;
 
     # Container lifecycle commands
@@ -2286,15 +2760,15 @@ case "$COMMAND" in
                 # Use daemon interactive mode - keeps daemon running
                 [ "$VERBOSE" = "true" ] && echo -e "${CYAN}[$VCONTAINER_RUNTIME_NAME]${NC} Using daemon interactive mode" >&2
                 RUNNER_ARGS=$(build_runner_args)
-                "$RUNNER" $RUNNER_ARGS --daemon-interactive -- "$VCONTAINER_RUNTIME_CMD exec ${EXEC_ARGS[*]}"
+                "$RUNNER" $RUNNER_ARGS --daemon-interactive -- "$VCONTAINER_RUNTIME_CMD exec $(_vxn_args "${EXEC_ARGS[@]}")"
             else
                 # No daemon running, use regular QEMU
                 RUNNER_ARGS=$(build_runner_args)
-                "$RUNNER" $RUNNER_ARGS -- "$VCONTAINER_RUNTIME_CMD exec ${EXEC_ARGS[*]}"
+                "$RUNNER" $RUNNER_ARGS -- "$VCONTAINER_RUNTIME_CMD exec $(_vxn_args "${EXEC_ARGS[@]}")"
             fi
         else
             # Non-interactive exec via daemon
-            run_runtime_command "$VCONTAINER_RUNTIME_CMD exec ${EXEC_ARGS[*]}"
+            run_runtime_command "$VCONTAINER_RUNTIME_CMD exec $(_vxn_args "${EXEC_ARGS[@]}")"
         fi
         ;;
 
@@ -2864,6 +3338,25 @@ case "$COMMAND" in
             exit 1
         fi
 
+        # Auto-provision: if the image is a known dom0 recipe not yet built, build
+        # it here, BEFORE the launch dispatch below -- so `vxn run <name>` /
+        # `axis run -- <name>` work with nothing more, in both topologies
+        # (qemu-xen host pre-step over ssh, or xen in-process in dom0; the
+        # function self-selects). Non-recipe names fall through unchanged.
+        if [ "${VCONTAINER_HYPERVISOR:-}" = "qemu-xen" ] || [ "${VCONTAINER_HYPERVISOR:-}" = "xen" ]; then
+            _ap_img=""; _ap_skip=false
+            for arg in "${COMMAND_ARGS[@]}"; do
+                if [ "$_ap_skip" = true ]; then _ap_skip=false; continue; fi
+                case "$arg" in
+                    --rm|-d|--detach|-i|-t|-it|--privileged|--interactive|--tty|--no-network) ;;
+                    -e|--env|-p|--publish|-v|--volume|--name|--network|-w|--workdir|--entrypoint|-m|--memory|--cpus) _ap_skip=true ;;
+                    -*) ;;
+                    *) _ap_img="$arg"; break ;;
+                esac
+            done
+            [ -n "$_ap_img" ] && { _vxn_autoprovision "$_ap_img" || exit 1; }
+        fi
+
         # vxn (Xen): ephemeral mode by default.
         # Detached mode (-d) uses per-container DomU with daemon loop instead.
         if [ "${VCONTAINER_HYPERVISOR:-}" = "xen" ]; then
@@ -2946,15 +3439,51 @@ case "$COMMAND" in
         # Use bridge networking (Docker's default) - each container gets 172.17.0.x IP
         # User can override with --network=host for legacy behavior
         RUN_NETWORK_OPTS=""
-        if [ "$RUN_HAS_NETWORK" = "false" ]; then
+        if [ "$NETWORK" = "false" ] && [ "$VCONTAINER_RUNTIME_CMD" = "vxn" ]; then
+            # Thread the host `--no-network` into the dispatched `vxn run` string
+            # so the dom0-side container DomU drops its vif (#26). dom0's vxn
+            # already gates the vif on NETWORK (vrunner-backend-xen.sh drops it to
+            # vif=[] when false), but the daemon dispatch never encoded the flag,
+            # so the per-run intent was lost and the container came up networked
+            # despite `network.mode: block`. vxn-only: the dispatched runtime
+            # understands `--no-network` (docker/podman use `--network=none` and
+            # are driven by their own engines, untouched here). `--no-network` was
+            # consumed from COMMAND_ARGS on the host, so there is no double-flag.
+            RUN_NETWORK_OPTS="--no-network"
+        elif [ "$RUN_HAS_NETWORK" = "false" ]; then
             RUN_NETWORK_OPTS="--dns=10.0.2.3 --dns=8.8.8.8"
             [ "$VERBOSE" = "true" ] && echo -e "${CYAN}[$VCONTAINER_RUNTIME_NAME]${NC} Using default bridge networking" >&2
         fi
 
         if [ "$INTERACTIVE" = "true" ]; then
-            RUNTIME_CMD="$VCONTAINER_RUNTIME_CMD run -it $RUN_NETWORK_OPTS ${COMMAND_ARGS[*]}"
+            RUNTIME_CMD="$VCONTAINER_RUNTIME_CMD run -it $RUN_NETWORK_OPTS $(_vxn_args "${COMMAND_ARGS[@]}")"
         else
-            RUNTIME_CMD="$VCONTAINER_RUNTIME_CMD run $RUN_NETWORK_OPTS ${COMMAND_ARGS[*]}"
+            RUNTIME_CMD="$VCONTAINER_RUNTIME_CMD run $RUN_NETWORK_OPTS $(_vxn_args "${COMMAND_ARGS[@]}")"
+        fi
+
+        # qemu-xen (transparent SDK): -it can't ride the marker command channel
+        # (it isn't a PTY). Route interactive over `ssh -tt` to dom0's native
+        # vxn, which does interactive via `xl create -c` -- the same dom0 engine
+        # the non-interactive channel drives. RUNTIME_CMD is already
+        # `vxn run -it '<quoted args>'`, sized for a single remote shell parse.
+        if [ "$INTERACTIVE" = "true" ] && [ "${VCONTAINER_HYPERVISOR:-}" = "qemu-xen" ]; then
+            _vxn_ssh_dom0 -tt -- "$(_vxn_env_prefix)$RUNTIME_CMD"
+            exit $?
+        fi
+
+        # qemu-xen non-interactive: run in the PERSISTENT dom0 over ssh -- the same
+        # hypervisor-agnostic transport the interactive path above uses, minus the
+        # PTY. The default $RUNNER path boots a FRESH nested dom0 per run, whose
+        # ~/.vxn/images cache is empty, so `vxn run` there always re-pulls from a
+        # registry and `vxn load`/`vxn pull` are never seen. The persistent dom0 is
+        # the single runtime host that HOLDS the cache, so dispatch runs into it
+        # (this is exactly what `vxn ssh -- vxn run` does, which hits the cache).
+        # Detached (-d) keeps its own path below -- it must return a container id,
+        # not stream stdout.
+        if [ "$INTERACTIVE" != "true" ] && [ "$RUN_IS_DETACHED" != "true" ] \
+           && [ "${VCONTAINER_HYPERVISOR:-}" = "qemu-xen" ]; then
+            _vxn_ssh_dom0 -- "$(_vxn_env_prefix)$RUNTIME_CMD"
+            exit $?
         fi
 
         if [ "$INTERACTIVE" = "true" ]; then
@@ -3063,7 +3592,7 @@ case "$COMMAND" in
                     # Generate a random name like docker does
                     RUN_CONTAINER_NAME="$(cat /proc/sys/kernel/random/uuid | cut -c1-12)"
                     # Update COMMAND_ARGS to include the generated name
-                    RUNTIME_CMD="$VCONTAINER_RUNTIME_CMD run --name=$RUN_CONTAINER_NAME $RUN_NETWORK_OPTS ${COMMAND_ARGS[*]}"
+                    RUNTIME_CMD="$VCONTAINER_RUNTIME_CMD run --name=$RUN_CONTAINER_NAME $RUN_NETWORK_OPTS $(_vxn_args "${COMMAND_ARGS[@]}")"
                 fi
 
                 # Add port forwards via QMP and register them
@@ -3118,6 +3647,83 @@ case "$COMMAND" in
 
     # Memory resident subcommand: <tool> memres start|stop|restart|status
     # vmemres is the preferred name (v prefix for tool-specific commands)
+    vexpose)
+        # Expose the guest container-engine API (podman/docker-compat) to the
+        # host, so standard docker/podman-compatible tooling drives it -- for
+        # vxn/qemu-xen that means dom0's engine, which uses vxn-oci-runtime to
+        # create Xen DomUs. The qemu-xen backend forwards the engine's TCP API
+        # to the host's 127.0.0.1:${VXN_API_PORT} at daemon boot; this command
+        # just emits the client env (with the API-version pin that sidesteps
+        # podman's /version quirk). Usage:
+        #   eval "$(vxn vexpose env --export)"
+        #   docker run --network=none --rm alpine echo hi
+        API_PORT="${VXN_API_PORT:-2375}"
+        API_URL="tcp://localhost:${API_PORT}"
+        VEXPOSE_SUB="${COMMAND_ARGS[0]:-}"
+
+        if ! daemon_is_running; then
+            echo -e "${YELLOW}[$VCONTAINER_RUNTIME_NAME]${NC} No memres daemon running for $TARGET_ARCH." >&2
+            echo -e "${YELLOW}[$VCONTAINER_RUNTIME_NAME]${NC} Start one first: $VCONTAINER_RUNTIME_NAME vmemres start" >&2
+        fi
+
+        # Transport: for qemu-xen use ssh:// to dom0's engine socket -- it
+        # carries the API stream (incl. the interactive attach hijack) over ssh,
+        # which the TCP docker-compat API cannot. So `docker run -it` /
+        # `podman run -it` work from the host after sourcing this. Native-xen
+        # (already in dom0) uses the local socket.
+        VEXPOSE_KEY="${VXN_SSH_KEY:-$HOME/.vxn/id_vxn}"
+        VEXPOSE_PORT="${VXN_SSH_PORT:-18022}"
+
+        case "$VEXPOSE_SUB" in
+            env)
+                if [ "${VCONTAINER_HYPERVISOR:-}" = "qemu-xen" ]; then
+                    # docker: needs the key in ssh_config (no key env var); set
+                    # up the alias, point DOCKER_HOST at it.
+                    _vexpose_ensure_ssh_alias "$VEXPOSE_KEY" "$VEXPOSE_PORT"
+                    echo "export DOCKER_HOST=ssh://vxn-dom0"
+                    # podman: takes the key directly.
+                    echo "export CONTAINER_HOST=ssh://root@127.0.0.1:${VEXPOSE_PORT}"
+                    echo "export CONTAINER_SSHKEY=${VEXPOSE_KEY}"
+                    echo "# vxn: docker/podman now target dom0's engine over ssh." >&2
+                    echo "# vxn: build LOCALLY first (this shell's docker is now remote)." >&2
+                else
+                    echo "unset DOCKER_HOST CONTAINER_HOST 2>/dev/null || true"
+                fi
+                ;;
+            *)
+                echo "Drive dom0's container engine from the host over ssh:"
+                echo "  eval \"\$($VCONTAINER_RUNTIME_NAME vexpose env)\""
+                echo "  docker run -it --rm alpine echo hi     # or: podman run -it ..."
+                echo ""
+                echo "Notes:"
+                echo "  - ssh:// transport -> interactive (-it) attach works (unlike the TCP API)"
+                echo "  - no --network=none needed (vxn-podman-config sets netns=none; the"
+                echo "    DomU is networked via its xenbr0 vif)"
+                echo "  - this shell's 'docker' is now REMOTE (dom0); build images in a"
+                echo "    separate shell, then load with: docker save <img> | vpm load"
+                echo "  - key: ~/.vxn/id_vxn (override VXN_SSH_KEY); port VXN_SSH_PORT (18022)"
+                ;;
+        esac
+        exit 0
+        ;;
+
+    ssh)
+        # Open an interactive ssh session into the QEMU-hosted dom0 (or run a
+        # command there). This is the substrate the transparent interactive
+        # (-it) path uses; exposed directly for dom0 debugging/inspection.
+        # Only meaningful for qemu-xen (native-xen vxn already runs in dom0).
+        if [ "${VCONTAINER_HYPERVISOR:-}" != "qemu-xen" ]; then
+            echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} 'ssh' connects to the QEMU-hosted dom0; only valid with the qemu-xen backend" >&2
+            exit 1
+        fi
+        if [ ${#COMMAND_ARGS[@]} -gt 0 ]; then
+            _vxn_ssh_dom0 -tt -- "${COMMAND_ARGS[@]}"
+        else
+            _vxn_ssh_dom0 -tt --
+        fi
+        exit $?
+        ;;
+
     memres|vmemres)
         if [ ${#COMMAND_ARGS[@]} -lt 1 ]; then
             echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} memres requires a subcommand: start, stop, restart, status, list" >&2
@@ -3128,6 +3734,7 @@ case "$COMMAND" in
 
         # Parse memres-specific options (after the subcommand)
         MEMRES_ARGS=("${COMMAND_ARGS[@]:1}")
+        MEMRES_FORCE=""
         i=0
         while [ $i -lt ${#MEMRES_ARGS[@]} ]; do
             arg="${MEMRES_ARGS[$i]}"
@@ -3140,6 +3747,10 @@ case "$COMMAND" in
                         exit 1
                     fi
                     PORT_FORWARDS+=("${MEMRES_ARGS[$i]}")
+                    ;;
+                -f|--force)
+                    # Skip graceful shutdown -- for a wedged/reboot-looping guest.
+                    MEMRES_FORCE="--force"
                     ;;
             esac
             i=$((i + 1))
@@ -3193,7 +3804,7 @@ case "$COMMAND" in
                 if [ -f "$pf_file" ]; then
                     rm -f "$pf_file"
                 fi
-                "$RUNNER" $RUNNER_ARGS --daemon-stop
+                "$RUNNER" $RUNNER_ARGS --daemon-stop $MEMRES_FORCE
                 ;;
             restart)
                 # Stop if running and clear port forward registry
@@ -3201,7 +3812,7 @@ case "$COMMAND" in
                 if [ -f "$pf_file" ]; then
                     rm -f "$pf_file"
                 fi
-                "$RUNNER" $RUNNER_ARGS --daemon-stop 2>/dev/null || true
+                "$RUNNER" $RUNNER_ARGS --daemon-stop $MEMRES_FORCE 2>/dev/null || true
 
                 # Clean if --clean was passed
                 for arg in "${COMMAND_ARGS[@]:1}"; do

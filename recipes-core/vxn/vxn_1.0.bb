@@ -50,7 +50,7 @@ HOMEPAGE = "https://git.yoctoproject.org/meta-virtualization/"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-inherit features_check
+inherit features_check systemd
 REQUIRED_DISTRO_FEATURES = "xen"
 
 # Host scripts + guest init scripts (all from the vcontainer files dir)
@@ -69,6 +69,14 @@ SRC_URI = "\
     file://vctr \
     file://vdkr.sh \
     file://vpdmn.sh \
+    file://vxn-command-channel.sh \
+    file://vxn-command-channel.service \
+    file://vxn-podman-api.service \
+    file://vxn-host-certs.sh \
+    file://vxn-host-certs.service \
+    file://vxn-authorized-keys.sh \
+    file://vxn-authorized-keys.service \
+    file://vxn-recipes/claude/Vxnfile \
 "
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/../../recipes-containers/vcontainer/files:"
@@ -80,6 +88,7 @@ B = "${WORKDIR}/build"
 RDEPENDS:${PN} = "\
     xen-tools-xl \
     xen-tools-xenstore \
+    xen-tools-xen-9pfsd \
     bash \
     jq \
     socat \
@@ -137,14 +146,21 @@ VXN_MC_DEPLOY = "${TOPDIR}/tmp-${VXN_MULTICONFIG}/deploy/images/${MACHINE}"
 # ===========================================================================
 
 python () {
-    mc = d.getVar('VXN_MULTICONFIG')
+    to_mc = d.getVar('VXN_MULTICONFIG')
+    from_mc = d.getVar('BB_CURRENT_MC') or ""
     runtime = d.getVar('VXN_RUNTIME')
     bbmulticonfig = (d.getVar('BBMULTICONFIG') or "").split()
-    if mc in bbmulticonfig:
+    if to_mc in bbmulticonfig:
+        # mcdepends form is 'mc:FROM:TO:pn:task'. FROM must equal the
+        # multiconfig vxn itself is built in (runqueue only applies the dep
+        # when mc == frommc), so it has to be BB_CURRENT_MC — not empty.
+        # Empty only matches a default-config 'bitbake vxn'; when vxn is pulled
+        # in as 'mc:vxn-x86-64:vxn' (vcontainer-tarball SDK path) the empty form
+        # never fires and the vruntime blobs never build first.
         mcdeps = ' '.join([
-            'mc::%s:%s-tiny-initramfs-image:do_image_complete' % (mc, runtime),
-            'mc::%s:%s-rootfs-image:do_image_complete' % (mc, runtime),
-            'mc::%s:virtual/kernel:do_deploy' % mc,
+            'mc:%s:%s:%s-tiny-initramfs-image:do_image_complete' % (from_mc, to_mc, runtime),
+            'mc:%s:%s:%s-rootfs-image:do_image_complete' % (from_mc, to_mc, runtime),
+            'mc:%s:%s:virtual/kernel:do_deploy' % (from_mc, to_mc),
         ])
         d.setVarFlag('do_compile', 'mcdepends', mcdeps)
 }
@@ -190,11 +206,18 @@ do_compile() {
     rm -rf "${UNSQUASH_DIR}"
 
     # --- Kernel ---
-    KERNEL_FILE="${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE_VXN}"
+    # The DomU guest kernel comes from the vruntime MC (same as the initramfs
+    # and rootfs above); it carries Xen PV guest support via vxn.cfg. Sourcing
+    # from DEPLOY_DIR_IMAGE only happened to work when vxn was built in the main
+    # config, where the current deploy dir held a compatible kernel; in an
+    # isolated multiconfig (e.g. vxn-x86-64) it does not, and vxn would package
+    # without a kernel. bbfatal (not bbwarn) so a missing kernel fails the build
+    # instead of silently producing an unbootable vxn.
+    KERNEL_FILE="${MC_DEPLOY}/${KERNEL_IMAGETYPE_VXN}"
     if [ -f "${KERNEL_FILE}" ]; then
         cp "${KERNEL_FILE}" ${B}/kernel
     else
-        bbwarn "Kernel not found at ${KERNEL_FILE}"
+        bbfatal "Kernel not found at ${KERNEL_FILE}. Build with: bitbake mc:${VXN_MULTICONFIG}:virtual/kernel"
     fi
 }
 
@@ -223,6 +246,30 @@ do_install() {
     # Install vctr convenience wrapper
     install -m 0755 ${S}/vctr ${D}${bindir}/vctr
 
+    # dom0 command-channel responder + its systemd unit (transparent host-side
+    # vxn, mode 1). The responder binds to the virtio-serial port the qemu-xen
+    # backend attaches; the unit is ConditionPathExists-gated so it stays
+    # inactive on plain boots where no channel is present.
+    install -m 0755 ${S}/vxn-command-channel.sh ${D}${bindir}/vxn-command-channel.sh
+    install -d ${D}${systemd_system_unitdir}
+    install -m 0644 ${S}/vxn-command-channel.service ${D}${systemd_system_unitdir}/vxn-command-channel.service
+
+    # Podman TCP API service (vxn-podman-api sub-package): exposes dom0's
+    # podman (docker-compat) API for host-side `vxn vexpose` tooling.
+    install -m 0644 ${S}/vxn-podman-api.service ${D}${systemd_system_unitdir}/vxn-podman-api.service
+
+    # Host CA cert installer: installs corporate proxy root CA(s) (staged on the
+    # vxn_ca 9p share) into dom0's trust store at boot, so skopeo/docker pulls
+    # trust a TLS-intercepting proxy.
+    install -m 0755 ${S}/vxn-host-certs.sh ${D}${bindir}/vxn-host-certs.sh
+    install -m 0644 ${S}/vxn-host-certs.service ${D}${systemd_system_unitdir}/vxn-host-certs.service
+
+    # SSH authorized_keys installer: injects the SDK's public key (staged on the
+    # vxn_sshkey 9p share) into dom0 root's authorized_keys at boot, so the
+    # transparent SDK can `ssh -tt` into dom0 for interactive (-it) containers.
+    install -m 0755 ${S}/vxn-authorized-keys.sh ${D}${bindir}/vxn-authorized-keys.sh
+    install -m 0644 ${S}/vxn-authorized-keys.service ${D}${systemd_system_unitdir}/vxn-authorized-keys.service
+
     # Docker/Podman CLI frontends (sub-packages)
     install -m 0755 ${S}/vdkr.sh ${D}${bindir}/vdkr
     install -m 0755 ${S}/vpdmn.sh ${D}${bindir}/vpdmn
@@ -238,9 +285,18 @@ do_install() {
     printf '{\n  "runtimes": {\n    "vxn": {\n      "path": "/usr/bin/vxn-oci-runtime"\n    }\n  },\n  "default-runtime": "vxn",\n  "iptables": false\n}\n' \
         > ${D}${sysconfdir}/docker/daemon.json
 
-    # Podman config: register vxn-oci-runtime (vxn-podman-config sub-package)
+    # Podman config: register vxn-oci-runtime (vxn-podman-config sub-package).
+    # netns="none": default every `podman run` to --network=none. A vxn
+    # container is a Xen DomU that does its own networking via a xenbr0 vif
+    # (vxn-oci-runtime), so podman's own netns/netavark path is both unwanted
+    # and unusable here (dom0's kernel lacks the nft NAT modules netavark
+    # needs). Defaulting netns to none means `podman run <image>` works with no
+    # --network=none flag and the container is still networked (via the vif).
+    # NOTE: this is global, so `podman build` RUN steps get no network -- build
+    # images with a normal engine (or `podman build --network=host`), then run
+    # them under vxn. See docs/TODO.
     install -d ${D}${sysconfdir}/containers/containers.conf.d
-    printf '[engine]\nruntime = "vxn"\n\n[engine.runtimes]\nvxn = ["/usr/bin/vxn-oci-runtime"]\n' \
+    printf '[containers]\nnetns = "none"\n\n[engine]\nruntime = "vxn"\n\n[engine.runtimes]\nvxn = ["/usr/bin/vxn-oci-runtime"]\n' \
         > ${D}${sysconfdir}/containers/containers.conf.d/50-vxn-runtime.conf
 
     # Install shared scripts into libdir
@@ -249,6 +305,14 @@ do_install() {
     install -m 0755 ${S}/vrunner-backend-xen.sh ${D}${libdir}/vxn/
     install -m 0755 ${S}/vrunner-backend-qemu.sh ${D}${libdir}/vxn/
     install -m 0644 ${S}/vcontainer-common.sh ${D}${libdir}/vxn/
+
+    # Ship provision recipes, pre-positioned in dom0 so `vxn run <name>` /
+    # `axis run --policy vxn -- <name>` auto-provisions with no setup in an
+    # installed SDK. A recipe is instructions (it fetches the tool at provision
+    # time), not the tool itself -- same as the layer's other third-party-fetch
+    # container recipes. ${datadir}/vxn/ is already in FILES:${PN}.
+    install -d ${D}${datadir}/vxn/recipes/claude
+    install -m 0644 ${S}/vxn-recipes/claude/Vxnfile ${D}${datadir}/vxn/recipes/claude/Vxnfile
 
     # Install blobs from do_compile output
     install -d ${D}${datadir}/vxn/${BLOB_ARCH}
@@ -276,17 +340,24 @@ do_install() {
 }
 
 # Sub-packages for CLI frontends and native runtime config
-PACKAGES =+ "${PN}-vdkr ${PN}-vpdmn ${PN}-docker-config ${PN}-podman-config"
+PACKAGES =+ "${PN}-vdkr ${PN}-vpdmn ${PN}-docker-config ${PN}-podman-config ${PN}-podman-api"
 
 FILES:${PN}-vdkr = "${bindir}/vdkr"
 FILES:${PN}-vpdmn = "${bindir}/vpdmn"
 FILES:${PN}-docker-config = "${sysconfdir}/docker/daemon.json"
 FILES:${PN}-podman-config = "${sysconfdir}/containers/containers.conf.d/50-vxn-runtime.conf"
+FILES:${PN}-podman-api = "${systemd_system_unitdir}/vxn-podman-api.service"
 
 RDEPENDS:${PN}-vdkr = "${PN} bash"
 RDEPENDS:${PN}-vpdmn = "${PN} bash"
-RDEPENDS:${PN}-docker-config = "${PN} docker"
+RDEPENDS:${PN}-docker-config = "${PN} docker virtual-runc"
 RDEPENDS:${PN}-podman-config = "${PN} podman"
+RDEPENDS:${PN}-podman-api = "${PN} ${PN}-podman-config podman"
+
+# vxn-podman-api ships an enabled-by-default systemd service; declare it a
+# systemd package so the unit is enabled at rootfs time.
+SYSTEMD_PACKAGES += "${PN}-podman-api"
+SYSTEMD_SERVICE:${PN}-podman-api = "vxn-podman-api.service"
 
 # daemon.json conflicts with docker-registry-config (only one provider)
 RCONFLICTS:${PN}-docker-config = "docker-registry-config"
@@ -297,11 +368,23 @@ FILES:${PN} = "\
     ${bindir}/vxn-sendtty \
     ${bindir}/containerd-shim-vxn-v2 \
     ${bindir}/vctr \
+    ${bindir}/vxn-command-channel.sh \
+    ${bindir}/vxn-host-certs.sh \
+    ${bindir}/vxn-authorized-keys.sh \
     ${libexecdir}/vxn/ \
     ${sysconfdir}/containerd/config.toml \
     ${libdir}/vxn/ \
     ${datadir}/vxn/ \
+    ${systemd_system_unitdir}/vxn-command-channel.service \
+    ${systemd_system_unitdir}/vxn-host-certs.service \
+    ${systemd_system_unitdir}/vxn-authorized-keys.service \
 "
+
+# Command-channel responder is enabled by default but ConditionPathExists-gated
+# (inactive unless the qemu-xen backend attaches the vdkr virtio-serial port).
+# vxn-host-certs installs corporate CA(s) into the dom0 trust store at boot
+# (no-op when no CA share is attached).
+SYSTEMD_SERVICE:${PN} = "vxn-command-channel.service vxn-host-certs.service vxn-authorized-keys.service"
 
 # Blobs are large binary files
 INSANE_SKIP:${PN} += "already-stripped"

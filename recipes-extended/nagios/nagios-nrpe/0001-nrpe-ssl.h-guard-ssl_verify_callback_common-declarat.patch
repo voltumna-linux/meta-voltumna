@@ -1,0 +1,35 @@
+From: Bruce Ashfield <bruce.ashfield@gmail.com>
+Date: Tue Jun  2 00:00:00 2026 +0000
+Subject: [PATCH] nrpe-ssl.h: guard ssl_verify_callback_common declaration with
+ HAVE_SSL
+
+The declaration of ssl_verify_callback_common() uses X509_STORE_CTX, an
+OpenSSL type, but lives outside the existing `#ifdef HAVE_SSL` block in
+include/nrpe-ssl.h. The header is included unconditionally by
+src/check_nrpe.c and src/nrpe.c, so when --disable-ssl is configured (no
+HAVE_SSL, no openssl headers pulled in by callers), the compiler hits
+the undeclared `X509_STORE_CTX *` parameter and fails:
+
+  include/nrpe-ssl.h:47:50: error: unknown type name 'X509_STORE_CTX'
+
+The function itself is only ever defined inside `#ifdef HAVE_SSL` (in
+src/nrpe.c and src/check_nrpe.c), so the matching guard on the
+prototype is the natural fix. The other SSL-typed externs in this header
+(meth, ctx, sslprm) are already correctly wrapped in HAVE_SSL.
+
+Upstream-Status: Submitted [will forward to nrpe upstream]
+
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ include/nrpe-ssl.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+--- a/include/nrpe-ssl.h
++++ b/include/nrpe-ssl.h
+@@ -44,4 +44,6 @@ void ssl_set_protocol_version(SslVer ssl_proto_ver, unsigned long *ssl_opts);
+ void ssl_log_startup(int server);
+ int ssl_load_certificates(void);
+ int ssl_set_ciphers(void);
++#ifdef HAVE_SSL
+ int ssl_verify_callback_common(int preverify_ok, X509_STORE_CTX * ctx, int is_invalid);
++#endif

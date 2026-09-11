@@ -157,7 +157,14 @@ parse_cmdline() {
     RUNTIME_DAEMON="0"
     RUNTIME_9P="0"  # virtio-9p available for fast I/O
     RUNTIME_AUTH="0"  # registry auth config (config.json / auth.json) available on dedicated 9p share
+    RUNTIME_CA="0"    # host CA certificate(s) available on a dedicated 9p share (corporate proxy roots)
     RUNTIME_IDLE_TIMEOUT="1800"  # Default: 30 minutes
+    # Static network config from the host (skips udhcpc when RUNTIME_IP is set).
+    # Empty => fall back to the per-HV_TYPE path (Xen DHCP / QEMU slirp static).
+    RUNTIME_IP=""       # <prefix>_ip=<addr>       e.g. 10.0.100.201
+    RUNTIME_GW=""       # <prefix>_gw=<addr>       e.g. 10.0.100.1
+    RUNTIME_PREFIXLEN="24"  # <prefix>_prefixlen=<n>  CIDR mask length
+    RUNTIME_DNS=""      # <prefix>_dns=<addr>[,addr] DNS server(s), comma-separated
 
     for param in $(cat /proc/cmdline); do
         case "$param" in
@@ -191,6 +198,21 @@ parse_cmdline() {
             ${VCONTAINER_RUNTIME_PREFIX}_auth=*)
                 RUNTIME_AUTH="${param#${VCONTAINER_RUNTIME_PREFIX}_auth=}"
                 ;;
+            ${VCONTAINER_RUNTIME_PREFIX}_ca=*)
+                RUNTIME_CA="${param#${VCONTAINER_RUNTIME_PREFIX}_ca=}"
+                ;;
+            ${VCONTAINER_RUNTIME_PREFIX}_ip=*)
+                RUNTIME_IP="${param#${VCONTAINER_RUNTIME_PREFIX}_ip=}"
+                ;;
+            ${VCONTAINER_RUNTIME_PREFIX}_gw=*)
+                RUNTIME_GW="${param#${VCONTAINER_RUNTIME_PREFIX}_gw=}"
+                ;;
+            ${VCONTAINER_RUNTIME_PREFIX}_prefixlen=*)
+                RUNTIME_PREFIXLEN="${param#${VCONTAINER_RUNTIME_PREFIX}_prefixlen=}"
+                ;;
+            ${VCONTAINER_RUNTIME_PREFIX}_dns=*)
+                RUNTIME_DNS="${param#${VCONTAINER_RUNTIME_PREFIX}_dns=}"
+                ;;
         esac
     done
 
@@ -219,12 +241,6 @@ parse_cmdline() {
 # ============================================================================
 
 detect_disks() {
-    log "Waiting for block devices..."
-    sleep 2
-
-    log "Block devices (${HV_TYPE:-qemu}, /dev/${BLK_PREFIX}*):"
-    [ "$QUIET_BOOT" = "0" ] && ls -la /dev/${BLK_PREFIX}* 2>/dev/null || log "No /dev/${BLK_PREFIX}* devices"
-
     # Determine which disk is input and which is state
     # Drive layout (rootfs is always the first block device, mounted by preinit as /):
     #   QEMU: /dev/vda, /dev/vdb, /dev/vdc
@@ -241,6 +257,23 @@ detect_disks() {
     elif [ "$RUNTIME_INPUT" != "none" ]; then
         INPUT_DISK="/dev/${BLK_PREFIX}b"
     fi
+
+    # Wait for the disks we actually use to appear, rather than a blind fixed
+    # sleep (was: sleep 2). blkfront devices settle within tens of ms under Xen
+    # PV/PVH; poll fast, bounded to ~3s so a genuinely missing disk still falls
+    # through to the mount error paths instead of hanging.
+    log "Waiting for block devices..."
+    _wait_dev="${INPUT_DISK:-$STATE_DISK}"
+    if [ -n "$_wait_dev" ]; then
+        _i=0
+        while [ ! -b "$_wait_dev" ] && [ "$_i" -lt 300 ]; do
+            sleep 0.01
+            _i=$((_i + 1))
+        done
+    fi
+
+    log "Block devices (${HV_TYPE:-qemu}, /dev/${BLK_PREFIX}*):"
+    [ "$QUIET_BOOT" = "0" ] && ls -la /dev/${BLK_PREFIX}* 2>/dev/null || log "No /dev/${BLK_PREFIX}* devices"
 }
 
 # ============================================================================
@@ -316,6 +349,42 @@ unmount_auth_share() {
     rmdir "$AUTH_SHARE_MOUNT" 2>/dev/null || true
 }
 
+# Install host-provided CA certificate(s) into the guest's SYSTEM trust store --
+# the native way an OS admin adds a corporate root CA (update-ca-certificates),
+# which docker/skopeo then honour automatically. Certs arrive on a dedicated
+# read-only 9p share staged by the host (setup_ca_share). MUST run before the
+# container engine starts. The guest is ephemeral, so this re-runs every boot.
+# Gated on the ${prefix}_ca=1 cmdline flag (RUNTIME_CA).
+CA_SHARE_MOUNT="/mnt/ca-certs"
+install_host_ca_certs() {
+    [ "${RUNTIME_CA:-0}" = "1" ] || return 0
+
+    local tag="${VCONTAINER_RUNTIME_NAME}_ca"
+    mkdir -p "$CA_SHARE_MOUNT"
+    if ! mount -t 9p \
+        -o trans=${NINE_P_TRANSPORT},version=9p2000.L,cache=none,ro,nosuid,nodev,noexec \
+        "$tag" "$CA_SHARE_MOUNT" 2>/dev/null; then
+        log "WARNING: could not mount CA 9p share ($tag)"
+        rmdir "$CA_SHARE_MOUNT" 2>/dev/null || true
+        return 1
+    fi
+
+    local n=0 f
+    mkdir -p /usr/local/share/ca-certificates
+    for f in "$CA_SHARE_MOUNT"/*.crt; do
+        [ -f "$f" ] || continue
+        cp "$f" "/usr/local/share/ca-certificates/$(basename "$f")" && n=$((n + 1))
+    done
+
+    if [ "$n" -gt 0 ]; then
+        update-ca-certificates >/dev/null 2>&1
+        log "Installed $n host CA certificate(s) into the system trust store"
+    fi
+
+    umount "$CA_SHARE_MOUNT" 2>/dev/null || umount -l "$CA_SHARE_MOUNT" 2>/dev/null || true
+    rmdir "$CA_SHARE_MOUNT" 2>/dev/null || true
+}
+
 # ============================================================================
 # Network Configuration
 # ============================================================================
@@ -339,20 +408,30 @@ configure_networking() {
             # Bring up the interface
             ip link set "$NET_IFACE" up
 
-            if [ "$HV_TYPE" = "xen" ]; then
-                # Xen bridge networking: use DHCP or static config
-                # Try DHCP first if udhcpc is available
+            # Static config from the host cmdline (<prefix>_ip=...) is the FAST
+            # path -- no udhcpc round-trip. Used by all backends whenever the
+            # host allocates an address (VXN_NET_MODE=static, the default). When
+            # unset, fall through to the per-HV_TYPE path (Xen DHCP / QEMU slirp).
+            if [ -n "$RUNTIME_IP" ]; then
+                log "Static IP from host: $RUNTIME_IP/$RUNTIME_PREFIXLEN gw ${RUNTIME_GW:-none}"
+                ip addr add "$RUNTIME_IP/$RUNTIME_PREFIXLEN" dev "$NET_IFACE"
+                [ -n "$RUNTIME_GW" ] && ip route add default via "$RUNTIME_GW"
+            elif [ "$HV_TYPE" = "xen" ]; then
+                # Xen bridge networking: DHCP (dnsmasq on the bridge), with a
+                # static fallback. The fallback is a single host-.15 on the DomU
+                # subnet -- concurrent DomUs that hit it collide, so the static
+                # path above is preferred; this only catches "no DHCP, no host IP".
                 if command -v udhcpc >/dev/null 2>&1; then
                     log "Requesting IP via DHCP (Xen bridge)..."
                     udhcpc -i "$NET_IFACE" -t 5 -T 3 -q 2>/dev/null || {
                         log "DHCP failed, using static fallback"
-                        ip addr add 10.0.0.15/24 dev "$NET_IFACE"
-                        ip route add default via 10.0.0.1
+                        ip addr add 10.0.100.15/24 dev "$NET_IFACE"
+                        ip route add default via 10.0.100.1
                     }
                 else
-                    # Static fallback for Xen bridge
-                    ip addr add 10.0.0.15/24 dev "$NET_IFACE"
-                    ip route add default via 10.0.0.1
+                    # Static fallback for Xen bridge (correct DomU subnet)
+                    ip addr add 10.0.100.15/24 dev "$NET_IFACE"
+                    ip route add default via 10.0.100.1
                 fi
             else
                 # QEMU slirp provides:
@@ -366,7 +445,12 @@ configure_networking() {
             # Configure DNS
             mkdir -p /etc
             rm -f /etc/resolv.conf
-            if [ "$HV_TYPE" = "xen" ]; then
+            if [ -n "$RUNTIME_DNS" ]; then
+                # Host-provided DNS (comma-separated) -> one nameserver per line
+                echo "$RUNTIME_DNS" | tr ',' '\n' | while IFS= read -r _ns; do
+                    [ -n "$_ns" ] && echo "nameserver $_ns"
+                done > /etc/resolv.conf
+            elif [ "$HV_TYPE" = "xen" ]; then
                 cat > /etc/resolv.conf << 'DNSEOF'
 nameserver 8.8.8.8
 nameserver 1.1.1.1
@@ -379,24 +463,11 @@ nameserver 1.1.1.1
 DNSEOF
             fi
 
-            sleep 1
-
-            # Verify connectivity
-            local gw_ip
-            gw_ip=$(ip route | awk '/default/{print $3}' | head -n 1)
-            log "Testing network connectivity..."
-            if [ -n "$gw_ip" ] && ping -c 1 -W 3 "$gw_ip" >/dev/null 2>&1; then
-                log "  Gateway ($gw_ip): OK"
-            else
-                log "  Gateway: FAILED"
-            fi
-
-            if ping -c 1 -W 3 8.8.8.8 >/dev/null 2>&1; then
-                log "  External (8.8.8.8): OK"
-            else
-                log "  External (8.8.8.8): FAILED (may be filtered)"
-            fi
-
+            # NOTE: the post-config `sleep 1` and the two `ping -W 3` connectivity
+            # probes (gateway + 8.8.8.8) were removed from the boot path -- they
+            # were diagnostics only, and each failed ping blocked up to 3s
+            # (~7s total worst case). Networking is already configured above; the
+            # container's own traffic is the real connectivity test.
             local my_ip
             my_ip=$(ip -4 addr show "$NET_IFACE" 2>/dev/null | awk '/inet /{print $2}' | head -n 1)
             log "Network configured: $NET_IFACE ($my_ip)"
@@ -765,9 +836,18 @@ graceful_shutdown() {
         [ -b "$dev" ] && blockdev --flushbufs "$dev" 2>/dev/null || true
     done
     sync
-    sleep 2
+    # Post-flush settle margin: only needed when a state disk was in use. The
+    # sync + blockdev --flushbufs + sync above already commit buffers; this
+    # extra margin guards the state-disk half-commit failure mode (commits
+    # 664dc7e8 / 23438ae4 / 1c1fb6d1). Ephemeral runs (no state disk, the common
+    # vxn case) skip it (was: unconditional sleep 2).
+    [ "$RUNTIME_STATE" = "disk" ] && sleep 2
 
     log "=== ${VCONTAINER_RUNTIME_NAME} Complete ==="
-    # Use reboot -f which works with QEMU's -no-reboot flag to exit cleanly
-    reboot -f
+    # Use reboot -f which works with QEMU's -no-reboot flag to exit cleanly.
+    # Redirect its output so busybox's userspace "Rebooting." line doesn't reach
+    # the user's terminal on a clean exit (the kernel's "reboot: Restarting
+    # system." is already gated by the interactive console-level drop). The
+    # reboot(2) syscall the applet performs is unaffected by the redirect.
+    reboot -f >/dev/null 2>&1
 }

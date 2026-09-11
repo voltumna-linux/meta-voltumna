@@ -92,8 +92,13 @@ class BootimgBiosXenPlugin(BootimgPcbiosPlugin):
             kernel_args = "label=boot root=%s %s" % \
                           (creator.rootdev, kernel_append)
 
-            syslinux_conf += "  APPEND /xen.gz %s --- /vmlinuz %s" % \
-                             (xen_args, kernel_args)
+            # The pcbios parent installs the dom0 kernel on the boot partition
+            # under its KERNEL_IMAGETYPE name (e.g. bzImage), so reference that
+            # here rather than a hardcoded /vmlinuz which would not be found.
+            kernel = get_bitbake_var("KERNEL_IMAGETYPE") or "vmlinuz"
+
+            syslinux_conf += "  APPEND /xen.gz %s --- /%s %s" % \
+                             (xen_args, kernel, kernel_args)
 
             initrd = source_params.get('initrd')
             if initrd:

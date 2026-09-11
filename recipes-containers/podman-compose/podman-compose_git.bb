@@ -4,10 +4,10 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=b234ee4d69f5fce4486a80fdaf4a4263"
 
 inherit python_setuptools_build_meta
 
-PV = "1.5.0+git"
+PV = "1.6.0+git"
 SRC_URI = "git://github.com/containers/podman-compose.git;branch=main;protocol=https"
 
-SRCREV = "f7eeda1a3db10952424af6a5b0501c269ebe3f0d"
+SRCREV = "e3df10472e194ab6d547b5ad25542c5c79e1a5fb"
 
 DEPENDS += "python3-pyyaml-native"
 

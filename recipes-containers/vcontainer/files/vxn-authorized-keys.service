@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: Copyright (C) 2025 Bruce Ashfield
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# vxn-authorized-keys.service
+# ===========================================================================
+# Installs the SDK's ssh public key into dom0 root's authorized_keys at boot,
+# from the read-only vxn_sshkey 9p share the host stages. This enables the
+# transparent SDK to route interactive containers (`vxn -it run`) over
+# `ssh -tt` to dom0's native vxn. Ordered before the command channel (the
+# host's readiness signal) so the key is present before the host first ssh's.
+# dom0 is ephemeral (boots from the wic), so this re-runs every boot.
+
+[Unit]
+Description=vxn: install the SDK ssh public key into dom0 root authorized_keys
+After=local-fs.target
+Before=vxn-command-channel.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/vxn-authorized-keys.sh
+
+[Install]
+WantedBy=multi-user.target
