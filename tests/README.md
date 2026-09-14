@@ -18,6 +18,56 @@ pip install pytest pytest-timeout pexpect
 
 ---
 
+## Building the test SDK (repeatable)
+
+The SDK-based tests (vdkr / vpdmn, and the vxn dom0 tests) run against an
+extracted vcontainer standalone SDK passed via `--vdkr-dir`. To produce that SDK
+reproducibly -- the full runtime set, and independent of your dev `local.conf`
+-- use the helper:
+
+```bash
+tests/build-vcontainer-sdk.sh
+# builds vdkr + vpdmn + vxn (x86_64 + aarch64) in an ISOLATED build dir,
+# extracts to /tmp/vcontainer, and prints the --vdkr-dir to use.
+```
+
+It reuses your current layer stack (copies `bblayers.conf`) and inherits cache
+settings from your existing build's `local.conf` (`DL_DIR`/`SSTATE_DIR`/mirrors
+are picked up, not hardcoded), but writes its own minimal `local.conf` from the
+composable `conf/distro/include/vcontainer-sdk-*.conf` profiles, so
+container-package selection is deterministic regardless of what your dev
+`local.conf` carries. Override `DEV_BUILD`, `SDK_BUILD_DIR`, or `SDK_EXTRACT_DIR`
+as needed.
+
+Then run the SDK-based tests against the extracted dir:
+
+```bash
+pytest tests/test_vdkr.py tests/test_vpdmn.py -v --vdkr-dir /tmp/vcontainer
+```
+
+The manual build steps below still work if you prefer to drive it yourself.
+
+### dom0 engine flavors (docker / podman)
+
+docker-moby and podman both own `/usr/bin/docker`, so they cannot share one
+rootfs -- each engine is a separate dom0 image. The helper's SDK profile ships
+**both** blobs (`vxn-blobs/<arch>/xen-dom0-docker.wic` and `xen-dom0-podman.wic`),
+and `boot-xen.sh` picks one at launch (one dom0 is active per boot; relaunch to
+switch):
+
+```bash
+./boot-xen.sh                    # docker dom0 (default)
+./boot-xen.sh --flavor podman    # podman dom0
+# env equivalents: VXN_DOM0_FLAVOR=podman, VXN_SNAPSHOT=1 (clean throwaway boot)
+```
+
+The xen test suite boots the docker dom0 for most tests and the podman dom0 for
+`TestXenPodmanBackend`; a docker-only SDK skips the podman tests cleanly. All
+fixtures boot with `snapshot=on`, so a crashed or mutated run can't poison the
+blob for the next run. To build a docker-only test SDK, drop the
+`vcontainer-sdk-vxn-podman-x86-64.conf` require from `build-vcontainer-sdk.sh`
+(or set `VXN_DOM0_FLAVORS = "docker"`).
+
 ## vdkr Tests
 
 ### Prerequisites

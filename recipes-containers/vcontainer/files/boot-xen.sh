@@ -30,6 +30,24 @@ MEM="${VXN_MEM:-4096}"
 SSH_PORT="${VXN_SSH_PORT:-18022}"
 EXTRA_QEMU="${VXN_QEMU_EXTRA:-}"
 
+# Which dom0 engine flavor to boot (docker|podman|...). One dom0 is active per
+# launch (a Xen host has a single dom0); switch flavor = relaunch with the other.
+FLAVOR="${VXN_DOM0_FLAVOR:-docker}"
+# snapshot=on: QEMU writes to a throwaway overlay and discards it on exit, so
+# each boot starts from the pristine blob (used by the test fixtures so a crashed
+# or mutated run can't poison the next). Off by default = persistent dom0.
+SNAPSHOT="${VXN_SNAPSHOT:-0}"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --flavor)    FLAVOR="$2"; shift 2 ;;
+        --flavor=*)  FLAVOR="${1#*=}"; shift ;;
+        --snapshot)  SNAPSHOT=1; shift ;;
+        --)          shift; break ;;
+        *)           break ;;
+    esac
+done
+
 # --- pick the QEMU binary: prefer the SDK's nativesdk qemu, else host -------
 QEMU=""
 for cand in \
@@ -42,10 +60,28 @@ if [ -z "$QEMU" ]; then
     exit 1
 fi
 
-# --- locate the Xen dom0 wic blob for this arch ----------------------------
+# --- locate the Xen dom0 wic blob for this arch + flavor --------------------
+# Resolution order: VXN_IMAGE > xen-dom0-<flavor>.wic > (docker default:
+# xen-dom0-docker.wic > legacy xen-dom0.wic > any *.wic). A non-docker flavor
+# that isn't present is a hard error (don't silently boot the wrong engine).
 WIC="${VXN_IMAGE:-}"
 if [ -z "$WIC" ]; then
-    WIC="$(ls -1 "${SCRIPT_DIR}/vxn-blobs/${ARCH}"/*.wic 2>/dev/null | head -1 || true)"
+    BLOB_DIR="${SCRIPT_DIR}/vxn-blobs/${ARCH}"
+    FLAVOR_WIC="${BLOB_DIR}/xen-dom0-${FLAVOR}.wic"
+    if [ -f "$FLAVOR_WIC" ]; then
+        WIC="$FLAVOR_WIC"
+    elif [ "$FLAVOR" != "docker" ]; then
+        echo "error: dom0 flavor '${FLAVOR}' not found: ${FLAVOR_WIC}" >&2
+        avail="$(ls "${BLOB_DIR}"/xen-dom0-*.wic 2>/dev/null | sed 's#.*/xen-dom0-##;s#\.wic##' | tr '\n' ' ')"
+        echo "       flavors in this SDK: ${avail:-none}" >&2
+        echo "       rebuild with VXN_DOM0_FLAVORS=\"docker ${FLAVOR}\" to include it" >&2
+        exit 1
+    else
+        for cand in "${BLOB_DIR}/xen-dom0-docker.wic" "${BLOB_DIR}/xen-dom0.wic"; do
+            [ -f "$cand" ] && { WIC="$cand"; break; }
+        done
+        [ -n "$WIC" ] || WIC="$(ls -1 "${BLOB_DIR}"/*.wic 2>/dev/null | head -1 || true)"
+    fi
 fi
 if [ -z "$WIC" ] || [ ! -f "$WIC" ]; then
     echo "error: Xen dom0 image (.wic) not found under vxn-blobs/${ARCH}/" >&2
@@ -80,7 +116,13 @@ NET_OPTS=(
     -device "virtio-net-pci,netdev=net0"
 )
 
-echo "boot-xen: booting ${WIC##*/}  (${VCPUS} vCPU, ${MEM} MB)"
+DRIVE_OPTS="file=${WIC},format=raw,if=ide"
+if [ "${SNAPSHOT}" = "1" ]; then
+    DRIVE_OPTS="${DRIVE_OPTS},snapshot=on"
+fi
+
+echo "boot-xen: booting ${WIC##*/}  (flavor=${FLAVOR}, ${VCPUS} vCPU, ${MEM} MB)"
+[ "${SNAPSHOT}" = "1" ] && echo "boot-xen: snapshot mode -- writes discarded on exit (clean boot)"
 echo "boot-xen: dom0 SSH reachable at localhost:${SSH_PORT} once up"
 echo "boot-xen: console follows; run 'vxn' inside dom0.  Ctrl-A X to quit QEMU."
 echo
@@ -89,7 +131,7 @@ exec "$QEMU" \
     "${ACCEL_OPTS[@]}" \
     "${MACHINE_OPTS[@]}" \
     -smp "${VCPUS}" -m "${MEM}" \
-    -drive "file=${WIC},format=raw,if=ide" \
+    -drive "${DRIVE_OPTS}" \
     "${NET_OPTS[@]}" \
     -nographic -serial mon:stdio \
     ${EXTRA_QEMU}

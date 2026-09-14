@@ -76,6 +76,12 @@ PODMAN_FEATURES ?= "docker"
 
 PACKAGECONFIG ?= ""
 PACKAGECONFIG[rootless] = ",,,fuse-overlayfs slirp4netns,,"
+# Optional public CA bundle for verifying TLS against public registries. OFF by
+# default -- podman has shipped without ca-certificates for some time and we keep
+# that default; enable it per-config where a registry pull is expected (e.g. the
+# vxn podman dom0 sets PACKAGECONFIG:append:pn-podman = " ca-certs"). Mirrors the
+# optional-packageconfig approach docker uses (commit 39d09524), never a hard dep.
+PACKAGECONFIG[ca-certs] = ",,,ca-certificates"
 
 do_compile() {
 	cd ${S}/src

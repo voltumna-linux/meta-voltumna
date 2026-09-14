@@ -74,33 +74,49 @@ class XenRunner:
     xen-image-minimal via runqemu.
     """
 
-    def __init__(self, poky_dir, build_dir, machine, use_kvm=True, timeout=120):
-        self.poky_dir = Path(poky_dir)
-        self.build_dir = Path(build_dir)
-        self.machine = machine
+    def __init__(self, vdkr_dir, arch="x86_64", use_kvm=True, timeout=120,
+                 flavor="docker", snapshot=True, ssh_port=18022):
+        self.vdkr_dir = Path(vdkr_dir)
+        self.arch = arch
         self.use_kvm = use_kvm
         self.timeout = timeout
+        # Which dom0 engine flavor to boot (docker|podman); selects the
+        # xen-dom0-<flavor>.wic blob via boot-xen.sh.
+        self.flavor = flavor
+        # Distinct SSH host-forward port per flavor: the docker and podman dom0s
+        # are both module-scoped and can be alive at once, so they must not both
+        # bind the same hostfwd port (QEMU would fail to start the second one).
+        self.ssh_port = ssh_port
+        # snapshot: boot with QEMU snapshot=on so writes are discarded on exit.
+        # A crashed or mutated run then can't poison the blob for the next run.
+        self.snapshot = snapshot
         self.child = None
         self.booted = False
 
     def start(self):
-        """Start runqemu and wait for login prompt."""
+        """Boot the SDK's vxn dom0 via boot-xen.sh and wait for the login prompt."""
         if not PEXPECT_AVAILABLE:
             raise RuntimeError("pexpect not installed. Run: pip install pexpect")
 
-        kvm_opt = "kvm" if self.use_kvm else ""
+        # boot-xen.sh (shipped in the SDK) auto-finds vxn-blobs/<arch>/*.wic,
+        # picks the SDK's bundled qemu, and runs -nographic -serial mon:stdio.
+        # It uses KVM automatically when /dev/kvm is writable. VXN_MEM gives the
+        # dom0 headroom for the nested vxn/vctr guests. Booting the shipped dom0
+        # (not a fresh bitbake) keeps these tests independent of local.conf.
+        snap = "1" if self.snapshot else "0"
         cmd = (
-            f"bash -c 'cd {self.poky_dir} && "
-            f"source oe-init-build-env {self.build_dir} >/dev/null 2>&1 && "
-            f"runqemu {self.machine} xen-image-minimal wic nographic slirp {kvm_opt} "
-            f"qemuparams=\"-m 4096\"'"
+            f"bash -c 'cd {self.vdkr_dir} && "
+            f"VXN_ARCH={self.arch} VXN_MEM=4096 VXN_SSH_PORT={self.ssh_port} "
+            f"VXN_DOM0_FLAVOR={self.flavor} VXN_SNAPSHOT={snap} ./boot-xen.sh'"
         )
 
-        print(f"Starting runqemu (Xen): {cmd}")
+        print(f"Booting SDK dom0 (boot-xen.sh): {cmd}")
         self.child = pexpect.spawn(cmd, encoding='utf-8', timeout=self.timeout)
 
-        # Log output for debugging
-        self.child.logfile_read = open('/tmp/runqemu-xen-test.log', 'w')
+        # Log output for debugging (per-flavor so a second dom0's boot log does
+        # not clobber the first's).
+        self.log_path = f'/tmp/boot-xen-test-{self.flavor}.log'
+        self.child.logfile_read = open(self.log_path, 'w')
 
         # Wait for login prompt
         try:
@@ -113,7 +129,13 @@ class XenRunner:
 
             if index == 0:
                 self.child.sendline('root')
-                self.child.expect([r'root@', r'#', r'\$'], timeout=30)
+                # Some images (empty-root-password) still show a Password: prompt
+                # and accept a bare Enter; others drop straight to a shell.
+                pw = self.child.expect(
+                    [r'Password:', r'root@', r'#', r'\$'], timeout=30)
+                if pw == 0:
+                    self.child.sendline('')  # empty root password
+                    self.child.expect([r'root@', r'#', r'\$'], timeout=30)
                 self.booted = True
             elif index == 1:
                 self.booted = True
@@ -234,63 +256,106 @@ def machine(request):
 
 
 @pytest.fixture(scope="module")
-def xen_image(build_dir):
-    """Build xen-image-minimal with required distro features + docker engine.
+def xen_dom0(vdkr_dir, request):
+    """The vxn dom0 shipped in the standalone SDK (vxn-blobs/<arch>/*.wic +
+    boot-xen.sh).
 
-    Self-contained: the fixture installs the container engine + runtime config
-    itself (docker-moby + vxn-docker-config: daemon.json wiring vxn-oci-runtime
-    as Docker's default runtime, iptables=false), so TestXenDockerBackend
-    actually exercises the docker+vxn path instead of silently skipping when
-    docker happens not to be in the ambient image. Previously this relied on a
-    developer's local.conf pulling docker/podman in, which is not reproducible.
+    The vxn tests boot the dom0 from the SDK -- built reproducibly by
+    tests/build-vcontainer-sdk.sh -- rather than rebuilding xen-image-minimal in
+    the dev build. That keeps them independent of the dev local.conf (which may
+    carry podman-in-dom0 lines that collide with docker-moby at do_rootfs). The
+    SDK dom0 carries vxn + containerd + docker-moby + vxn-docker-config, so it
+    covers the vxn-standalone, vctr, and docker->vxn paths. To (re)build it:
 
-    NB: assumes a clean local.conf -- do NOT also force podman in via
-    `IMAGE_INSTALL:append:pn-xen-image-minimal += "... vxn-podman-config"`,
-    since podman-docker and docker-moby both provide /usr/bin/docker and will
-    conflict at do_rootfs.
+        tests/build-vcontainer-sdk.sh
     """
-    result = _run_bitbake(
-        build_dir, "xen-image-minimal",
-        extra_vars={
-            "DISTRO_FEATURES:append": " xen vxn",
-            "IMAGE_INSTALL:append:pn-xen-image-minimal":
-                " docker-moby vxn-docker-config",
-        },
-    )
-    if result.returncode != 0:
-        pytest.fail(f"Xen image build failed: {result.stderr}")
+    arch = request.config.getoption("--arch")
+    wics = list((vdkr_dir / "vxn-blobs" / arch).glob("*.wic"))
+    if not (vdkr_dir / "boot-xen.sh").exists() or not wics:
+        pytest.skip(
+            f"no vxn dom0 in the SDK at {vdkr_dir} (vxn-blobs/{arch}/*.wic + "
+            f"boot-xen.sh); build it with tests/build-vcontainer-sdk.sh")
+    return vdkr_dir
 
 
-@pytest.fixture(scope="module")
-def xen_session(request, poky_dir, build_dir, machine, xen_image):
-    """
-    Module-scoped fixture that builds xen-image-minimal and boots it
-    once for all tests.
+def _boot_xen_session(request, xen_dom0, flavor, prepull=None):
+    """Boot a vxn dom0 of the given engine flavor (module-scoped generator).
 
-    Skips if pexpect is not available or boot fails.
+    Skips only for genuine can't-run conditions (pexpect missing, KVM absent, or
+    the requested flavor's blob not shipped in this SDK). A boot failure when KVM
+    IS available is a real regression and FAILS -- never hidden behind a skip.
+
+    prepull: optional command run once after boot to warm the image cache, so the
+    first real test doesn't pay a cold registry pull inside its own timeout.
     """
     if not PEXPECT_AVAILABLE:
         pytest.skip("pexpect not installed. Run: pip install pexpect")
 
-    # Check that the .wic image exists
-    deploy_dir = build_dir / "tmp" / "deploy" / "images" / machine
-    wic_files = list(deploy_dir.glob("xen-image-minimal-*.rootfs.wic"))
-    if not wic_files:
-        pytest.skip(f"xen-image-minimal .wic image not found in {deploy_dir}")
+    # KVM is mandatory: the vxn dom0 is x86-64-v3-tuned, so under TCG's qemu64
+    # CPU init crashes on an invalid opcode (no AVX/etc.) and never reaches a
+    # login. Skip with an actionable reason rather than boot-crash into a
+    # misleading login timeout.
+    if not os.access("/dev/kvm", os.W_OK):
+        pytest.skip(
+            "vxn dom0 requires KVM: /dev/kvm is not writable. Add your user to "
+            "the 'kvm' group (sudo usermod -aG kvm $USER; then re-login). The "
+            "dom0 is x86-64-v3-tuned and crashes under TCG.")
+
+    arch = request.config.getoption("--arch")
+
+    # A non-docker flavor needs its own blob; a single-flavor (docker) SDK won't
+    # have it. boot-xen.sh handles the docker fallback (legacy xen-dom0.wic), so
+    # only gate the explicit non-docker case.
+    if flavor != "docker":
+        blob = Path(xen_dom0) / "vxn-blobs" / arch / f"xen-dom0-{flavor}.wic"
+        if not blob.exists():
+            pytest.skip(
+                f"no {flavor} dom0 blob in this SDK ({blob.name}); rebuild with "
+                f'VXN_DOM0_FLAVORS="docker {flavor}" '
+                f"(tests/build-vcontainer-sdk.sh ships both)")
 
     timeout = request.config.getoption("--boot-timeout")
     use_kvm = not request.config.getoption("--no-kvm")
 
-    runner = XenRunner(poky_dir, build_dir, machine,
-                       use_kvm=use_kvm, timeout=timeout)
+    # Distinct hostfwd port per flavor so a docker + podman dom0 alive at the same
+    # time (both module-scoped) don't collide on 18022.
+    ssh_port = 18022 if flavor == "docker" else 18023
+
+    runner = XenRunner(xen_dom0, arch=arch, use_kvm=use_kvm, timeout=timeout,
+                       flavor=flavor, snapshot=True, ssh_port=ssh_port)
 
     try:
         runner.start()
+        if prepull:
+            # Warm the image cache once (generous timeout) so the first real test
+            # doesn't cold-pull inside its own shorter timeout. Best-effort: any
+            # failure surfaces in the actual test, not as a fixture error.
+            runner.run_command(prepull, timeout=300)
         yield runner
     except RuntimeError as e:
-        pytest.skip(f"Failed to boot Xen image: {e}")
+        # KVM is present (checked above) -- a boot failure here is a real
+        # regression, so fail loudly instead of skipping.
+        log_path = getattr(runner, 'log_path', f'/tmp/boot-xen-test-{flavor}.log')
+        pytest.fail(f"SDK {flavor} dom0 failed to boot with KVM available: {e}\n"
+                    f"See {log_path} for the dom0 console output.")
     finally:
         runner.stop()
+
+
+@pytest.fixture(scope="module")
+def xen_session(request, xen_dom0):
+    """The docker-flavored vxn dom0 (default), booted once per module."""
+    yield from _boot_xen_session(request, xen_dom0, "docker")
+
+
+@pytest.fixture(scope="module")
+def xen_session_podman(request, xen_dom0):
+    """The podman-flavored vxn dom0 -- a separate blob (docker/podman can't
+    share a rootfs). Skips cleanly on a docker-only SDK. Pre-pulls alpine so the
+    first `podman run` doesn't cold-pull over the registry inside its own timeout
+    (the podman dom0 has its own empty cache, unlike the docker one)."""
+    yield from _boot_xen_session(request, xen_dom0, "podman",
+                                 prepull="podman pull alpine 2>&1")
 
 
 # ============================================================================
@@ -785,7 +850,7 @@ class TestXenVxnImageCache:
 def _docker_available(xen_session):
     """Check Docker is installed and running, skip if not.
 
-    With the self-contained xen_image fixture docker-moby is installed, so a
+    The SDK dom0 (vxn-x86-64.conf) ships docker-moby + vxn-docker-config, so a
     'not installed' skip now signals a real problem (engine config missing). If
     the service merely has not started yet, start it before skipping.
     """
@@ -891,23 +956,23 @@ class TestXenPodmanBackend:
     because Podman bridge networking is incompatible with VM runtimes.
     """
 
-    def test_podman_run_echo(self, xen_session):
+    def test_podman_run_echo(self, xen_session_podman):
         """podman run --network=none executes in a Xen DomU."""
-        _podman_available(xen_session)
-        _check_xen_free_memory(xen_session)
+        _podman_available(xen_session_podman)
+        _check_xen_free_memory(xen_session_podman)
 
-        output = xen_session.run_command(
+        output = xen_session_podman.run_command(
             'podman run --network=none --rm alpine echo hello-from-podman 2>&1',
             timeout=120)
         assert 'hello-from-podman' in output, \
             f"Expected 'hello-from-podman':\n{output}"
 
-    def test_podman_run_os_release(self, xen_session):
+    def test_podman_run_os_release(self, xen_session_podman):
         """podman run sees the Alpine container filesystem."""
-        _podman_available(xen_session)
-        _check_xen_free_memory(xen_session)
+        _podman_available(xen_session_podman)
+        _check_xen_free_memory(xen_session_podman)
 
-        output = xen_session.run_command(
+        output = xen_session_podman.run_command(
             'podman run --network=none --rm alpine cat /etc/os-release 2>&1',
             timeout=120)
         assert 'Alpine' in output, \

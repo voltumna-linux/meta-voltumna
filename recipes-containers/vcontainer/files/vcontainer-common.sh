@@ -2613,7 +2613,12 @@ case "$COMMAND" in
             cdir="$(vxn_container_dir "$cname")"
             if [ -d "$cdir" ] && vxn_container_is_running "$cname"; then
                 RUNNER_ARGS=$(build_runner_args)
-                "$RUNNER" $RUNNER_ARGS --daemon-socket-dir "$cdir" --state-dir "$cdir" --daemon-send -- "cat /tmp/entrypoint.log 2>/dev/null"
+                # The entrypoint log lives on the DomU root, not in the container
+                # chroot -- a plain `cat /tmp/entrypoint.log` runs chroot'd (in the
+                # daemon loop) and reads the container's nonexistent copy (always
+                # empty). Use the DomU-side sentinel the daemon handles without
+                # chroot.
+                "$RUNNER" $RUNNER_ARGS --daemon-socket-dir "$cdir" --state-dir "$cdir" --daemon-send -- "===ENTRYPOINT_LOG==="
                 exit $?
             fi
             echo "Container $cname not running" >&2

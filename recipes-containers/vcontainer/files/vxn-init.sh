@@ -877,6 +877,21 @@ run_vxn_daemon_mode() {
                 continue
             fi
 
+            # `vxn logs`: the entrypoint log lives on the DomU root
+            # (/tmp/entrypoint.log, written by exec_in_container_background with a
+            # redirect OUTSIDE the chroot), so it must be read WITHOUT chroot. The
+            # generic exec below chroots into the container rootfs and would miss
+            # it (reading the container's nonexistent /tmp/entrypoint.log ->
+            # always empty). Handle the sentinel here, DomU-side.
+            if [ "$CMD" = "===ENTRYPOINT_LOG===" ]; then
+                echo "===OUTPUT_START==="
+                cat /tmp/entrypoint.log 2>/dev/null
+                echo "===OUTPUT_END==="
+                echo "===EXIT_CODE=0==="
+                echo "===END==="
+                continue
+            fi
+
             log "Executing: $CMD"
 
             # Execute command in container rootfs (or host rootfs if no container)
