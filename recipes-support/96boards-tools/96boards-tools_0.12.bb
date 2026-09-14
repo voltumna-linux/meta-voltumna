@@ -27,4 +27,5 @@ INITSCRIPT_NAME = "resize-disk"
 INITSCRIPT_PARAMS = "start 99 5 2 . stop 20 0 1 6 ."
 
 SYSTEMD_SERVICE:${PN} = "resize-helper.service"
-RDEPENDS:${PN} += "e2fsprogs-resize2fs gptfdisk parted util-linux udev"
+RDEPENDS:${PN} += "e2fsprogs-resize2fs parted util-linux udev"
+ALLOW_EMPTY:${PN}-dev = "1"
