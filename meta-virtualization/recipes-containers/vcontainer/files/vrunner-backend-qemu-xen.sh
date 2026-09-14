@@ -58,13 +58,21 @@ hv_setup_arch() {
             ;;
     esac
 
-    # Locate the Xen dom0 wic blob.  VXN_IMAGE overrides; otherwise prefer the
-    # canonical name the SDK tarball installs, then any *.wic in the arch dir.
+    # Locate the Xen dom0 wic blob.  VXN_IMAGE overrides; otherwise pick the
+    # requested engine flavor (VXN_DOM0_FLAVOR, default docker), then the docker
+    # blob, then the legacy single-blob name, then any *.wic. Deterministic so a
+    # multi-flavor SDK (xen-dom0-docker.wic + xen-dom0-podman.wic) never boots a
+    # random flavor via glob head -1.
+    WIC_FLAVOR="${VXN_DOM0_FLAVOR:-docker}"
     WIC_IMAGE="${VXN_IMAGE:-}"
     if [ -z "$WIC_IMAGE" ]; then
-        if [ -f "$BLOB_DIR/$TARGET_ARCH/xen-dom0.wic" ]; then
-            WIC_IMAGE="$BLOB_DIR/$TARGET_ARCH/xen-dom0.wic"
-        else
+        for cand in \
+            "$BLOB_DIR/$TARGET_ARCH/xen-dom0-${WIC_FLAVOR}.wic" \
+            "$BLOB_DIR/$TARGET_ARCH/xen-dom0-docker.wic" \
+            "$BLOB_DIR/$TARGET_ARCH/xen-dom0.wic"; do
+            if [ -f "$cand" ]; then WIC_IMAGE="$cand"; break; fi
+        done
+        if [ -z "$WIC_IMAGE" ]; then
             WIC_IMAGE="$(ls -1 "$BLOB_DIR/$TARGET_ARCH"/*.wic 2>/dev/null | head -1 || true)"
         fi
     fi
@@ -100,18 +108,22 @@ hv_check_accel() {
 
 hv_find_command() {
     if ! command -v "$HV_CMD" >/dev/null 2>&1; then
-        for path in \
-            "${STAGING_BINDIR_NATIVE:-}" \
-            "/usr/bin"; do
-            if [ -n "$path" ] && [ -x "$path/$HV_CMD" ]; then
-                HV_CMD="$path/$HV_CMD"
+        # Not on PATH: search STAGING_BINDIR_NATIVE, then the SDK's bundled
+        # nativesdk qemu under sysroots/*/usr/bin (same place boot-xen.sh looks),
+        # so this works without sourcing the SDK env, then /usr/bin last.
+        for cand in \
+            "${STAGING_BINDIR_NATIVE:+$STAGING_BINDIR_NATIVE/$HV_CMD}" \
+            "${SCRIPT_DIR:-$PWD}"/sysroots/*/usr/bin/"$HV_CMD" \
+            "/usr/bin/$HV_CMD"; do
+            if [ -n "$cand" ] && [ -x "$cand" ]; then
+                HV_CMD="$cand"
                 break
             fi
         done
     fi
 
     if ! command -v "$HV_CMD" >/dev/null 2>&1 && [ ! -x "$HV_CMD" ]; then
-        log "ERROR" "QEMU not found: $HV_CMD"
+        log "ERROR" "QEMU not found: $HV_CMD (looked on PATH, STAGING_BINDIR_NATIVE, SDK sysroots, /usr/bin)"
         exit 1
     fi
     log "DEBUG" "Using QEMU: $HV_CMD"

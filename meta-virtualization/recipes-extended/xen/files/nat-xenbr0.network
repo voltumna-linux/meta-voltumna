@@ -13,3 +13,14 @@ IPMasquerade=ipv4
 IPForward=yes
 ConfigureWithoutCarrier=yes
 LinkLocalAddressing=no
+
+[Link]
+# xenbr0 is an internal, initially port-less bridge -- DomU vifs attach only at
+# container launch, so at boot it sits at no-carrier and never becomes
+# "routable". Left at the default (RequiredForOnline=yes), systemd-networkd-
+# wait-online treats it as a required link and blocks network-online.target
+# until its ~120s timeout. That stalls every unit that Wants=network-online.target
+# -- most visibly docker.service, whose dockerd then does not start for ~2 minutes
+# (looks like a daemon "hang"). The uplink (nat-uplink.network) is what actually
+# gates connectivity; this internal bridge must not gate online.
+RequiredForOnline=no

@@ -311,10 +311,42 @@ def _cleanup_stale_test_state():
                     pass
 
 
+def _force_clean_test_memres():
+    """Stop any memres running in the test state dirs and remove them, so the
+    destructive memres tests (memres start/stop/restart) start from a clean
+    slate. A killed pytest run leaves a detached memres VM whose daemon.pid
+    still points at a live process -- which _cleanup_stale_test_state() skips
+    (it only clears DEAD+corrupt state) -- so that orphan would otherwise
+    collide with test_memres_start ("already running") and cascade."""
+    for state_base in [TEST_STATE_BASE, VPDMN_TEST_STATE_BASE]:
+        sp = Path(state_base)
+        if not sp.exists():
+            continue
+        for arch_dir in sp.glob("*"):
+            daemon_pid = arch_dir / "daemon.pid"
+            if daemon_pid.exists():
+                try:
+                    pid = int(daemon_pid.read_text().strip())
+                    if Path(f"/proc/{pid}").exists():
+                        os.kill(pid, signal.SIGKILL)
+                except (ValueError, OSError):
+                    pass
+        shutil.rmtree(sp, ignore_errors=True)
+    # kill any QEMU the daemon left holding the memres ports
+    _cleanup_orphan_qemu_on_ports()
+
+
 @pytest.fixture(scope="session", autouse=True)
-def cleanup_orphan_qemu():
+def cleanup_orphan_qemu(request):
     """Clean up orphan QEMU processes and stale test state at session start."""
     _cleanup_orphan_qemu_on_ports()
+    # When the destructive memres tests will run (not --skip-destructive), clear a
+    # live orphan memres from a prior killed run: _cleanup_stale_test_state() only
+    # removes DEAD+corrupt state, so a detached VM that survived a pytest SIGKILL
+    # would collide with test_memres_start. Force a clean slate in that case.
+    # With --skip-destructive the deliberately pre-started memres is left alone.
+    if not request.config.getoption("--skip-destructive"):
+        _force_clean_test_memres()
     _cleanup_stale_test_state()
     yield
     # Also clean up at end of session

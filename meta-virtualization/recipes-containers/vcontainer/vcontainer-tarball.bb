@@ -148,6 +148,15 @@ VCONTAINER_ARCHITECTURES ?= "x86_64 aarch64"
 # aarch64 Xen boots via a different mechanism and is a follow-up).
 VCONTAINER_INCLUDE_VXN ?= "0"
 
+# Which dom0 engine flavor(s) to build+ship when vxn is enabled. Each flavor is a
+# separate dom0 image (docker-moby and podman both own /usr/bin/docker and can't
+# coexist), shipped as vxn-blobs/<arch>/xen-dom0-<flavor>.wic and selected at
+# launch by boot-xen.sh (--flavor / VXN_DOM0_FLAVOR). Default: docker only.
+#   VXN_DOM0_FLAVORS = "docker podman"   # ship both, user picks at launch
+# Requires the matching multiconfig(s) in BBMULTICONFIG:
+#   docker -> vxn-<arch>,  podman -> vxn-podman-<arch>
+VXN_DOM0_FLAVORS ?= "docker"
+
 # vdkr (docker) and vpdmn (podman) are included by default. Set either to "0" to
 # build a subset SDK -- e.g. a vxn-only SDK for AXIS:
 #   VCONTAINER_INCLUDE_VXN = "1"
@@ -196,9 +205,13 @@ python () {
     # Guarded by VCONTAINER_INCLUDE_VXN and MC presence so the tarball never
     # pulls in the vxn image (or errors on a missing MC) when vxn is off.
     if d.getVar('VCONTAINER_INCLUDE_VXN') == '1':
-        for mc in ['vxn-x86-64', 'vxn-aarch64']:
-            if mc in bbmulticonfig:
-                mcdeps.append('mc::%s:xen-image-minimal:do_image_complete' % mc)
+        flavors = (d.getVar('VXN_DOM0_FLAVORS') or 'docker').split()
+        for arch_mc in ['x86-64', 'aarch64']:
+            for flavor in flavors:
+                mc = ('vxn-%s' % arch_mc) if flavor == 'docker' \
+                    else ('vxn-%s-%s' % (flavor, arch_mc))
+                if mc in bbmulticonfig:
+                    mcdeps.append('mc::%s:xen-image-minimal:do_image_complete' % mc)
 
     if mcdeps:
         d.setVarFlag('do_populate_sdk', 'mcdepends', ' '.join(mcdeps))
@@ -349,26 +362,37 @@ create_sdk_files:append () {
     INCLUDE_VXN="${VCONTAINER_INCLUDE_VXN}"
     if [ "${INCLUDE_VXN}" = "1" ]; then
         VXN_INCLUDED=0
+        VXN_FLAVORS="${VXN_DOM0_FLAVORS}"
+        [ -n "${VXN_FLAVORS}" ] || VXN_FLAVORS="docker"
         for ARCH in ${ARCHITECTURES}; do
             case "${ARCH}" in
-                x86_64) VXN_MC="vxn-x86-64"; VXN_MACHINE="qemux86-64" ;;
+                x86_64) VXN_ARCH_MC="x86-64"; VXN_MACHINE="qemux86-64" ;;
                 *)
                     bbwarn "vxn: no multiconfig for ${ARCH} yet (x86_64 only); skipping"
                     continue
                     ;;
             esac
-            VXN_WIC="${TOPDIR}/tmp-${VXN_MC}/deploy/images/${VXN_MACHINE}/xen-image-minimal-${VXN_MACHINE}.rootfs.wic"
-            if [ -f "${VXN_WIC}" ]; then
-                mkdir -p "${SDK_OUT}/vxn-blobs/${ARCH}"
-                cp -L "${VXN_WIC}" "${SDK_OUT}/vxn-blobs/${ARCH}/xen-dom0.wic"
-                VXN_INCLUDED=1
-                bbnote "Copied vxn blob: ${ARCH}/xen-dom0.wic"
-            else
-                bbfatal "VCONTAINER_INCLUDE_VXN=1 but Xen image not found:
+            # One dom0 image per engine flavor (docker/podman can't share a
+            # rootfs). Each maps to its own multiconfig + TMPDIR and is shipped
+            # under a flavor-tagged name; boot-xen.sh selects one at launch.
+            for FLAVOR in ${VXN_FLAVORS}; do
+                case "${FLAVOR}" in
+                    docker) VXN_MC="vxn-${VXN_ARCH_MC}" ;;
+                    *)      VXN_MC="vxn-${FLAVOR}-${VXN_ARCH_MC}" ;;
+                esac
+                VXN_WIC="${TOPDIR}/tmp-${VXN_MC}/deploy/images/${VXN_MACHINE}/xen-image-minimal-${VXN_MACHINE}.rootfs.wic"
+                if [ -f "${VXN_WIC}" ]; then
+                    mkdir -p "${SDK_OUT}/vxn-blobs/${ARCH}"
+                    cp -L "${VXN_WIC}" "${SDK_OUT}/vxn-blobs/${ARCH}/xen-dom0-${FLAVOR}.wic"
+                    VXN_INCLUDED=1
+                    bbnote "Copied vxn blob: ${ARCH}/xen-dom0-${FLAVOR}.wic"
+                else
+                    bbfatal "VCONTAINER_INCLUDE_VXN=1 (flavor ${FLAVOR}) but Xen image not found:
   ${VXN_WIC}
 Build it first with:
   bitbake mc:${VXN_MC}:xen-image-minimal"
-            fi
+                fi
+            done
         done
         if [ "${VXN_INCLUDED}" = "1" ]; then
             # mode 1 (transparent host-side, the vdkr/vpdmn UX): the qemu-xen

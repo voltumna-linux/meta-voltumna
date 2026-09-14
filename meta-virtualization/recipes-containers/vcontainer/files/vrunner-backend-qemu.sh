@@ -83,18 +83,23 @@ hv_check_accel() {
 
 hv_find_command() {
     if ! command -v "$HV_CMD" >/dev/null 2>&1; then
-        for path in \
-            "${STAGING_BINDIR_NATIVE:-}" \
-            "/usr/bin"; do
-            if [ -n "$path" ] && [ -x "$path/$HV_CMD" ]; then
-                HV_CMD="$path/$HV_CMD"
+        # Not on PATH: search STAGING_BINDIR_NATIVE, then the SDK's bundled
+        # nativesdk qemu under sysroots/*/usr/bin (same place boot-xen.sh looks),
+        # so vdkr/vpdmn find the bundled qemu without sourcing the SDK env, then
+        # /usr/bin as a last resort.
+        for cand in \
+            "${STAGING_BINDIR_NATIVE:+$STAGING_BINDIR_NATIVE/$HV_CMD}" \
+            "${SCRIPT_DIR:-$PWD}"/sysroots/*/usr/bin/"$HV_CMD" \
+            "/usr/bin/$HV_CMD"; do
+            if [ -n "$cand" ] && [ -x "$cand" ]; then
+                HV_CMD="$cand"
                 break
             fi
         done
     fi
 
     if ! command -v "$HV_CMD" >/dev/null 2>&1 && [ ! -x "$HV_CMD" ]; then
-        log "ERROR" "QEMU not found: $HV_CMD"
+        log "ERROR" "QEMU not found: $HV_CMD (looked on PATH, STAGING_BINDIR_NATIVE, SDK sysroots, /usr/bin)"
         exit 1
     fi
     log "DEBUG" "Using QEMU: $HV_CMD"
