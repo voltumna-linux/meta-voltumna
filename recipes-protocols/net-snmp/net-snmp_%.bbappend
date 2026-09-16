@@ -1,3 +1,5 @@
+PACKAGECONFIG:append = " ipv6"
+
 DEPENDS:class-nativesdk = "openssl libnl"
 
 PERLPROG:class-nativesdk = "${USRBINPATH}/env perl"
