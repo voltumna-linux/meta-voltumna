@@ -39,3 +39,5 @@ SYSTEMD_PACKAGES = "${PN}-guest-agent"
 SYSTEMD_SERVICE:${PN}-guest-agent = "qemu-guest-agent.service"
 
 inherit update-rc.d systemd
+
+PACKAGECONFIG:remove = "sdl"
