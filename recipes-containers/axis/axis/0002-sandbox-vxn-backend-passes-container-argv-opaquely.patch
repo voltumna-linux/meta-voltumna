@@ -15,6 +15,8 @@ change). It is one metacharacter-free word that survives the vxn string dispatch
 the guest decodes it and exec's the vector verbatim. Verified: `python3 --version`
 -> Python 3.14.7, `python3 -c` with parens -> HTTP 200.
 
+Upstream-Status: Inappropriate [embedded specific]
+
 Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
 ---
  crates/axis-sandbox/src/linux/vxn.rs | 36 ++++++++++++++++++++++++++--

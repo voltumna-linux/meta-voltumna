@@ -14,6 +14,8 @@ upstream and omitted, so a policy with no limits emits nothing.
 Phase 1 (resource limits) of nested enforcement; filesystem, seccomp, and
 network endpoints are follow-ups over the same --policy-b64 transport.
 
+Upstream-Status: Inappropriate [embedded specific]
+
 Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
 ---
  crates/axis-sandbox/src/linux/vxn.rs | 32 +++++++++++++++++++++++++---

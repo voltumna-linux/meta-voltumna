@@ -9,6 +9,8 @@ VM boundary): read_only -> RO, read_write -> RW, deny -> DENY. Unresolved
 placeholders like {workspace} have no vxn-guest path mapping and are
 skipped. Phase 2 of nested enforcement, over the transport Phase 1 added.
 
+Upstream-Status: Inappropriate [embedded specific]
+
 Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
 ---
  crates/axis-sandbox/src/linux/vxn.rs | 23 +++++++++++++++++++----

@@ -9,6 +9,8 @@ AXIS already runs the child with the terminal inherited (capture_output
 is false for `axis run`) and waits without stealing the tty, so the
 agent's TUI (e.g. claude's login/REPL) drives the real terminal.
 
+Upstream-Status: Inappropriate [embedded specific]
+
 Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
 ---
  crates/axis-sandbox/src/linux/vxn.rs | 9 +++++++++

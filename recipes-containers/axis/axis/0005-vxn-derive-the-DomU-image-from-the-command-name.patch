@@ -11,6 +11,8 @@ vxn auto-provisions from its recipe on first run). VXN_BASE_IMAGE stays
 the escape hatch for running a command in a base image
 (VXN_BASE_IMAGE=alpine axis run -- echo hi).
 
+Upstream-Status: Inappropriate [embedded specific]
+
 Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
 ---
  crates/axis-sandbox/src/linux/vxn.rs | 14 ++++++++++++--

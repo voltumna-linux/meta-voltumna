@@ -26,6 +26,8 @@ separate kernel, so they are not applied here; the VM boundary enforces the
 coarse policy structurally. Filesystem mounts, env transport, the rw workspace,
 and nested in-guest enforcement are follow-ups.
 
+Upstream-Status: Inappropriate [embedded specific]
+
 Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
 ---
  crates/axis-core/src/policy.rs       |   4 +

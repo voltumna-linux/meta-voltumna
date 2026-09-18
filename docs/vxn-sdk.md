@@ -6,7 +6,8 @@ relocatable, self-contained tarball produced by this layer that bundles:
 
 - `vxn` — the host CLI (Docker-like: `run`, `ps`, `images`, `pull`, `provision`, …)
 - a **Xen dom0 image** (`xen-image-minimal`) that boots under QEMU (KVM-accelerated)
-  and hosts the container DomUs
+  and hosts the container DomUs (docker-flavored by default; a podman flavor can be
+  shipped alongside — see [dom0 engine flavor](#dom0-engine-flavor-docker--podman))
 - `vdkr` / `vpdmn` — the Docker / Podman cross-arch CLIs (always included)
 
 Once installed, a user runs `vxn run --rm alpine echo hi` on any Linux host (or
@@ -95,6 +96,7 @@ Build-time (in `local.conf`):
 | `VCONTAINER_INCLUDE_VXN` | `0` | set to `1` to bundle the vxn dom0 blob |
 | `VCONTAINER_ARCHITECTURES` | `x86_64 aarch64` | which arches to build vdkr/vpdmn for |
 | `VXN_DOM0_EXTRA_SPACE` | `10000000` | dom0 rootfs headroom (KB) for container images |
+| `VXN_DOM0_FLAVORS` | `docker` | dom0 engine blob(s) to build/ship (`docker`, `podman`, or both) |
 
 Run-time (env vars, host side):
 
@@ -103,6 +105,40 @@ Run-time (env vars, host side):
 | `VXN_VCPUS` / `VXN_MEM` | vCPUs / memory for the **dom0** QEMU VM |
 | `VXN_MEMORY` / `VXN_VCPUS` | vCPUs / memory for each **container DomU** |
 | `VXN_SSH_PORT` / `VXN_API_PORT` | dom0 ssh / exposed-engine ports |
+| `VXN_DOM0_FLAVOR` | which dom0 engine blob to boot (`docker` default; must be one the SDK shipped) |
+| `VXN_IMAGE` | explicit path to a dom0 `.wic`, bypassing flavor resolution |
+| `VXN_SNAPSHOT` | `1` = boot dom0 read-only and discard writes on exit (clean boot) |
+
+## dom0 engine flavor (docker / podman)
+
+The dom0 runs one container engine, and `docker-moby` and `podman` both own
+`/usr/bin/docker`, so they cannot share a single dom0 image. vxn handles this by
+building a **separate dom0 blob per engine flavor** and selecting one at launch.
+A Xen host has a single dom0, so exactly one flavor is active per boot; switching
+flavor means relaunching against the other blob.
+
+Build-time, `VXN_DOM0_FLAVORS` lists which blobs to build and ship:
+
+```
+VXN_DOM0_FLAVORS = "docker"           # default: docker dom0 only
+VXN_DOM0_FLAVORS = "docker podman"    # ship both, pick at launch
+```
+
+Each flavor is packaged as `vxn-blobs/<arch>/xen-dom0-<flavor>.wic`. The ready-made
+profile `conf/distro/include/vcontainer-sdk-vxn-podman-x86-64.conf` sets both
+(`BBMULTICONFIG += "vxn-podman-x86-64"` and `VXN_DOM0_FLAVORS = "docker podman"`) —
+require it after the vxn SDK profile to produce a two-flavor SDK.
+
+Run-time, the launcher picks the flavor (default `docker`):
+
+```
+VXN_DOM0_FLAVOR=podman vxn-x86_64 run --rm alpine echo hi   # via the vxn CLI
+boot-xen.sh --flavor podman                                 # standalone launcher
+VXN_IMAGE=/path/to/xen-dom0-podman.wic boot-xen.sh          # explicit blob
+```
+
+Requesting a non-docker flavor the SDK did not ship is a hard error listing the
+flavors it does carry — there is no silent fallback to docker.
 
 ## Corporate TLS-intercepting proxy
 

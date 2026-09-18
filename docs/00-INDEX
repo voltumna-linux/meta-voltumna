@@ -17,6 +17,14 @@ openvswitch.txt
 podman.txt
 	- documentation on podman container engine integration.
 
+vxn.md
+	- vxn architecture, interfaces, CLI usage, guest-side init, nested
+	  enforcement, sub-packages, and debugging reference.
+
+vxn-host-binary.md
+	- running an ordinary host binary inside a vxn DomU: dependency
+	  closure carry, direct-mount rootfs, interactive workflow.
+
 vxn-sdk.md
 	- how to build a vxn SDK (Docker-for-Xen, containers as Xen DomU) from Yocto.
 
