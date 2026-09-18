@@ -1,3 +1,5 @@
+Upstream-Status: Inappropriate
+
 diff --git a/configure/cmake_linux.cmake b/configure/cmake_linux.cmake
 index 4dc920cc..0938fc74 100644
 --- a/configure/cmake_linux.cmake

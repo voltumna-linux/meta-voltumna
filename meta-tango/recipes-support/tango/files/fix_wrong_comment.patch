@@ -1,3 +1,5 @@
+Upstream-Status: Inappropriate
+
 diff --git a/cppapi/server/device.h b/cppapi/server/device.h
 index 41731d66..512b82ff 100644
 --- a/cppapi/server/device.h
