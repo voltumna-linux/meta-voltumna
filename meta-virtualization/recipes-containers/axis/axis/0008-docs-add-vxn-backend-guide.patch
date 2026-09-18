@@ -11,6 +11,8 @@ knobs (VXN_BIN, VXN_BASE_IMAGE, VXN_FORWARD_ENV, VXN_MEMORY), how policy
 network modes map to the DomU NIC, and config a vs b. Linked from the
 README's Linux-backends section.
 
+Upstream-Status: Inappropriate [embedded specific]
+
 Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
 ---
  README.md           |   5 ++

@@ -14,6 +14,8 @@ lists it too. The policy defaults network to allow because the vxn tier is
 for interactive agents whose OAuth/API calls need egress out of the box; a
 file policy still covers block/proxy or stricter rules.
 
+Upstream-Status: Inappropriate [embedded specific]
+
 Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
 ---
  crates/axis-cli/src/main.rs |  3 ++-
