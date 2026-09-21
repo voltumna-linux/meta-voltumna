@@ -9,9 +9,9 @@ Because of this focus, CNI has a wide range of support and the specification \
 is simple to implement. \
 "
 
-SRCREV_cni = "3f51e8803ebbdba0ebeed735b42137e4c7302403"
-SRCREV_plugins = "4f4df5d7757cb86630d15a7489e75647df9a8719"
-SRCREV_flannel_plugin = "b380f201008e9bed159703846cf10d3c50b4f9ce"
+SRCREV_cni = "3ee5ddf6d892e4ee4205634c436a3c7e45629eb2"
+SRCREV_plugins = "257ef09a103e8b8fe91a0fefe8680c01f84b520b"
+SRCREV_flannel_plugin = "2f9a62235c0c73f15b84534a361e0ae887af4f97"
 SRCREV_FORMAT = "cni_plugins"
 SRC_URI = "\
 	git://github.com/containernetworking/cni.git;branch=main;name=cni;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX} \
@@ -35,8 +35,8 @@ LIC_FILES_CHKSUM = "file://src/import/LICENSE;md5=fa818a259cbed7ce8bc2a22d35a464
 
 GO_IMPORT = "import"
 
-PV = "1.3.0+git"
-CNI_VERSION = "v1.3.0"
+PV = "1.3.1+git"
+CNI_VERSION = "v1.3.1"
 
 # go-mod-discovery configuration
 # The CNI repo has minimal dependencies. The plugins repo is a separate module

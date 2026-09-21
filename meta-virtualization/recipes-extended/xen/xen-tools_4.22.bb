@@ -1,12 +1,13 @@
-# tag: RELEASE-4.19.0
-SRCREV ?= "8dd897e69119492989aaa034967f3a887f590197"
+SRCREV = "b8fe9e33743c7a387b67fee9d288dcb5c49f3813"
 
-XEN_REL ?= "4.19"
-XEN_BRANCH ?= "stable-4.19"
+XEN_REL = "4.22.0"
+XEN_BRANCH = "stable-4.22"
 
 SRC_URI = " \
     git://xenbits.xen.org/xen.git;branch=${XEN_BRANCH} \
     file://0001-python-pygrub-pass-DISTUTILS-xen-4.19.patch \
+    file://0001-libxl_nocpuid-fix-build-error.patch \
+    file://0001-tests-vpci-drop-explicit-g-use.patch \
     "
 
 LIC_FILES_CHKSUM ?= "file://COPYING;md5=d1a1e216f80b6d8da95fec897d0dbec9"

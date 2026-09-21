@@ -1,7 +1,7 @@
-SRCREV = "83f221c3cdffdd6ec1357b40479a9ba1d03a9df1"
+SRCREV = "b8fe9e33743c7a387b67fee9d288dcb5c49f3813"
 
-XEN_REL ?= "4.21.1"
-XEN_BRANCH ?= "stable-4.21"
+XEN_REL = "4.22.0"
+XEN_BRANCH = "stable-4.22"
 
 SRC_URI = " \
     git://xenbits.xen.org/xen.git;branch=${XEN_BRANCH} \

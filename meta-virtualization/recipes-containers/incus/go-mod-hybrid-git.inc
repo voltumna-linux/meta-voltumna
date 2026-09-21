@@ -6,4 +6,4 @@
 
 SRC_URI += "git://github.com/containerd/continuity;protocol=https;nobranch=1;tag=v0.4.5;shallow=1;rev=44e2adf7e9cd87330f3ad656e7a006ef91ed8c1e;name=git_b4d76115_0;destsuffix=vcs_cache/ef286b146362aa5da58f9ef4e88323a32e1ea45eda78c6d484875972ce0a81e0"
 SRC_URI += "git://github.com/containerd/log;protocol=https;nobranch=1;tag=v0.1.0;shallow=1;rev=0fc1e28871fdf2786e2cc51bbe4133db6547a199;name=git_b70b7359_0;destsuffix=vcs_cache/697be36d9b8a0eb34f8591d0f69b6d596e1e9341b5944ebf81ddd334b1907bc6"
-SRC_URI += "git://github.com/containerd/platforms;protocol=https;nobranch=1;tag=v1.0.0-rc.4;shallow=1;rev=09756f59cb1d6b3fb368f371043d36e634789537;name=git_96693f8e_0;destsuffix=vcs_cache/2a7a4d65a1d6148c7a403e5bf7c719aa64e3d2a544ad7078906c252afe5a2b3d"
+SRC_URI += "git://github.com/containerd/platforms;protocol=https;nobranch=1;tag=v1.0.0-rc.5;shallow=1;rev=94edf5336d59eae4f3130ccd54323841547fd6e4;name=git_96693f8e_0;destsuffix=vcs_cache/bc34dc589e4e5dc1e7c5c92f74c9ac678c611ead5812bb1e5f770c3444d83b50"

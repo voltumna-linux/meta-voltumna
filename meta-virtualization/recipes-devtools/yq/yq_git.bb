@@ -4,7 +4,7 @@ HOMEPAGE = "https://github.com/mikefarah/yq"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://src/import/LICENSE;md5=e40a0dcd62f8269b9bff37fe9aa7dcc2"
 
-SRCREV_yq = "7862131c9c13c977e4ede55b5f6c44e5f8ac7268"
+SRCREV_yq = "ef305adbe5a703a994f431812e0521d81f5f8668"
 SRCREV_FORMAT = "yq"
 
 SRC_URI = "git://github.com/mikefarah/yq.git;name=yq;branch=master;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX} \
@@ -26,7 +26,7 @@ include ${@ "go-mod-hybrid-cache.inc" if d.getVar("GO_MOD_FETCH_MODE") == "hybri
 # Per-dependency license tracking
 include go-mod-licenses.inc
 
-PV = "4.53.3+git"
+PV = "4.53.6+git"
 
 GO_IMPORT = "import"
 

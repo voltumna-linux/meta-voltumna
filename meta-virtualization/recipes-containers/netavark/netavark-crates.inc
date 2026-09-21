@@ -126,9 +126,9 @@ SRC_URI += " \
     crate://crates.io/mio/1.2.2 \
     crate://crates.io/mozim/0.3.2 \
     crate://crates.io/multimap/0.10.1 \
-    crate://crates.io/netlink-packet-core/0.8.2 \
-    crate://crates.io/netlink-packet-route/0.32.1 \
-    crate://crates.io/netlink-sys/0.8.8 \
+    crate://crates.io/netlink-packet-core/0.9.0 \
+    crate://crates.io/netlink-packet-route/0.33.0 \
+    crate://crates.io/netlink-sys/0.9.0 \
     crate://crates.io/nftables/0.6.3 \
     crate://crates.io/nix/0.30.1 \
     crate://crates.io/nix/0.31.3 \
@@ -138,7 +138,6 @@ SRC_URI += " \
     crate://crates.io/once_cell_polyfill/1.70.2 \
     crate://crates.io/ordered-stream/0.2.0 \
     crate://crates.io/parking/2.2.1 \
-    crate://crates.io/paste/1.0.15 \
     crate://crates.io/percent-encoding/2.3.2 \
     crate://crates.io/petgraph/0.8.3 \
     crate://crates.io/pin-project/1.1.13 \
@@ -385,9 +384,9 @@ SRC_URI[mime-0.3.17.sha256sum] = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09
 SRC_URI[mio-1.2.2.sha256sum] = "30d65c71f1ce40ab09135ce117d742b9f8a19ff91a41a8b57ed50bc2de59c427"
 SRC_URI[mozim-0.3.2.sha256sum] = "3cbbd829ba3312b0f3b68b4c9953eabd72d3218b697b02e89be627a395b0dab2"
 SRC_URI[multimap-0.10.1.sha256sum] = "1d87ecb2933e8aeadb3e3a02b828fed80a7528047e68b4f424523a0981a3a084"
-SRC_URI[netlink-packet-core-0.8.2.sha256sum] = "b897d7bd4f0af82e68d40d0344cf37e97f9c97ddf74a098de3e4da05e96ca395"
-SRC_URI[netlink-packet-route-0.32.1.sha256sum] = "98e26a74571b93d1d52a9a5582e7c47aa9464dde57a17ea9841795eef45febd9"
-SRC_URI[netlink-sys-0.8.8.sha256sum] = "cd6c30ed10fa69cc491d491b85cc971f6bdeb8e7367b7cde2ee6cc878d583fae"
+SRC_URI[netlink-packet-core-0.9.0.sha256sum] = "2d6e2daf9a8c2e21302714706860a0e6be02e03d17294ecc66b354ea7d4059dd"
+SRC_URI[netlink-packet-route-0.33.0.sha256sum] = "59d48ffc8b73a506e1ff0878528c72668f2bfbc3d875b6be890a96be5d0d5576"
+SRC_URI[netlink-sys-0.9.0.sha256sum] = "c99d38e00b420df49e940fe0826e667c3dad82ac68eb4c2bbf754c1c14a83a10"
 SRC_URI[nftables-0.6.3.sha256sum] = "3c57e7343eed9e9330e084eef12651b15be3c8ed7825915a0ffa33736b852bed"
 SRC_URI[nix-0.30.1.sha256sum] = "74523f3a35e05aba87a1d978330aef40f67b0304ac79c1c00b294c9830543db6"
 SRC_URI[nix-0.31.3.sha256sum] = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
@@ -397,7 +396,6 @@ SRC_URI[once_cell-1.21.4.sha256sum] = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d0
 SRC_URI[once_cell_polyfill-1.70.2.sha256sum] = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 SRC_URI[ordered-stream-0.2.0.sha256sum] = "9aa2b01e1d916879f73a53d01d1d6cee68adbb31d6d9177a8cfce093cced1d50"
 SRC_URI[parking-2.2.1.sha256sum] = "f38d5652c16fde515bb1ecef450ab0f6a219d619a7274976324d5e377f7dceba"
-SRC_URI[paste-1.0.15.sha256sum] = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 SRC_URI[percent-encoding-2.3.2.sha256sum] = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 SRC_URI[petgraph-0.8.3.sha256sum] = "8701b58ea97060d5e5b155d383a69952a60943f0e6dfe30b04c287beb0b27455"
 SRC_URI[pin-project-1.1.13.sha256sum] = "2466b2336ed02bcdca6b294417127b90ec92038d1d5c4fbeac971a922e0e0924"

@@ -8,4 +8,4 @@ inherit go-mod-vcs
 GO_MODULE_CACHE_DATA = '[\
 {"module":"github.com/containerd/continuity","version":"v0.4.5","vcs_hash":"ef286b146362aa5da58f9ef4e88323a32e1ea45eda78c6d484875972ce0a81e0","timestamp":"2024-10-30T04:18:59Z","subdir":"","vcs_ref":"refs/tags/v0.4.5"},\
 {"module":"github.com/containerd/log","version":"v0.1.0","vcs_hash":"697be36d9b8a0eb34f8591d0f69b6d596e1e9341b5944ebf81ddd334b1907bc6","timestamp":"2023-09-09T00:27:15Z","subdir":"","vcs_ref":"refs/tags/v0.1.0"},\
-{"module":"github.com/containerd/platforms","version":"v1.0.0-rc.4","vcs_hash":"2a7a4d65a1d6148c7a403e5bf7c719aa64e3d2a544ad7078906c252afe5a2b3d","timestamp":"2026-03-31T22:53:10Z","subdir":"","vcs_ref":"refs/tags/v1.0.0-rc.4"}]'
+{"module":"github.com/containerd/platforms","version":"v1.0.0-rc.5","vcs_hash":"bc34dc589e4e5dc1e7c5c92f74c9ac678c611ead5812bb1e5f770c3444d83b50","timestamp":"2026-06-02T18:35:17Z","subdir":"","vcs_ref":"refs/tags/v1.0.0-rc.5"}]'

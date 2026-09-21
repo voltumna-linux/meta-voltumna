@@ -63,7 +63,13 @@
 #                                 Default: "${WORKDIR}/discovery-build-output"
 #
 #   GO_MOD_DISCOVERY_DIR        - Persistent cache location
-#                                 Default: "${TOPDIR}/go-mod-discovery/${PN}/${PV}"
+#                                 Default: "${TOPDIR}/go-mod-discovery/${PN}"
+#                                 Content-addressable across PV bumps: Go
+#                                 module cache entries are keyed on
+#                                 module@version, so successive SRCREV
+#                                 bumps reuse zips that appear in the
+#                                 new go.sum. Stale entries sit unused;
+#                                 clean with `bitbake <recipe> -c clean_discovery`.
 #
 #   GO_MOD_DISCOVERY_MODULES_JSON - Output path for extracted module metadata
 #                                   Default: "${GO_MOD_DISCOVERY_DIR}/modules.json"
@@ -106,8 +112,12 @@
 # Skip BitBake, use scripts directly (see show_upgrade_commands):
 #   bitbake myapp -c show_upgrade_commands
 #
-# PERSISTENT CACHE: The discovery cache is stored in ${TOPDIR}/go-mod-discovery/${PN}/${PV}/
-# This ensures the cache survives `bitbake <recipe> -c cleanall`.
+# PERSISTENT CACHE: The discovery cache is stored in ${TOPDIR}/go-mod-discovery/${PN}/
+# and reused across PV bumps. Go's module cache is content-addressable
+# (files are keyed on module@version), so a bump only downloads the
+# module@version entries the new go.sum references but the old cache
+# didn't already have. Zips from prior PVs that aren't referenced by
+# the new go.sum just sit unused; the cache survives cleanall.
 # To clean: bitbake <recipe> -c clean_discovery
 
 # Required variable (must be set by recipe)
@@ -120,8 +130,10 @@ GO_MOD_DISCOVERY_LDFLAGS ?= "-w -s"
 GO_MOD_DISCOVERY_GOPATH ?= "${S}/src/import/.gopath:${S}/src/import/vendor"
 GO_MOD_DISCOVERY_OUTPUT ?= "${WORKDIR}/discovery-build-output"
 
-# Persistent discovery cache location - survives cleanall
-GO_MOD_DISCOVERY_DIR ?= "${TOPDIR}/go-mod-discovery/${PN}/${PV}"
+# Persistent discovery cache location - survives cleanall.
+# PN-keyed (not PN-PV-keyed): content-addressable Go module zips are
+# reused across PV bumps. See the header PERSISTENT CACHE section.
+GO_MOD_DISCOVERY_DIR ?= "${TOPDIR}/go-mod-discovery/${PN}"
 
 # Output JSON file for discovered modules (used by oe-go-mod-fetcher.py --discovered-modules)
 GO_MOD_DISCOVERY_MODULES_JSON ?= "${GO_MOD_DISCOVERY_DIR}/modules.json"
@@ -473,6 +485,11 @@ Or run 'bitbake ${PN} -c show_upgrade_commands' to see manual options."
 
 addtask generate_modules
 do_generate_modules[nostamp] = "1"
+# The generator verifies every discovered commit by git-fetching from origin.
+# Without [network], bitbake's fetcher sandbox denies DNS and every verify
+# fails with "Could not resolve host" -- indistinguishable from a real
+# transport outage. Same rationale as do_discover_modules[network].
+do_generate_modules[network] = "1"
 do_generate_modules[vardeps] += "GO_MOD_DISCOVERY_MODULES_JSON GO_MOD_DISCOVERY_GIT_REPO \
     GO_MOD_DISCOVERY_GIT_REF GO_MOD_DISCOVERY_RECIPEDIR GO_MOD_DISCOVERY_SKIP_LICENSES"
 do_generate_modules[postfuncs] = "do_show_hybrid_recommendation"

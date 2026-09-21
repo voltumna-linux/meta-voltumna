@@ -209,6 +209,41 @@ def parse_go_mod_git_inc(git_inc_path: Path) -> dict[str, dict]:
     return vcs_to_info
 
 
+def parse_auto_gomod_lines(git_inc_path: Path) -> list[dict]:
+    """Extract auto-emitted "SRC_URI += gomod://..." entries from go-mod-git.inc.
+
+    oe-go-mod-fetcher's auto-recovery path writes these lines when a module's
+    git commit can't be verified but the zip is present in the discovery
+    cache (upstream repo 404, force-pushed history, tag detached, etc.).
+    parse_go_mod_git_inc() ignores them because it only matches git:// URLs,
+    so a downstream hybrid conversion would silently drop the fallback and
+    the recipe would fail to build.
+
+    Returns a list of {module, version, sha256sum} dicts. Callers are
+    expected to merge these into the gomod stream verbatim -- the sha256sum
+    is authoritative (computed from the on-disk zip) and MUST NOT be
+    re-fetched from proxy.golang.org, which would double-fetch and could
+    disagree with what the recipe was validated against.
+    """
+    if not git_inc_path.exists():
+        return []
+    content = git_inc_path.read_text()
+    entries = []
+    seen = set()
+    # SRC_URI += "gomod://<module>;version=<version>;sha256sum=<hex>"
+    pattern = re.compile(
+        r'^SRC_URI\s*\+=\s*"gomod://([^;"]+);version=([^;"]+);sha256sum=([a-f0-9]+)"',
+        re.MULTILINE,
+    )
+    for module, version, sha in pattern.findall(content):
+        key = (module, version)
+        if key in seen:
+            continue
+        seen.add(key)
+        entries.append({'module': module, 'version': version, 'sha256sum': sha})
+    return entries
+
+
 def get_repo_sizes(vcs_info: dict, workdir: Optional[Path] = None) -> dict[str, int]:
     """Get sizes of VCS cache directories if they exist."""
     sizes = {}
@@ -453,15 +488,31 @@ def generate_hybrid_files(
     git_prefixes: list[str],
     gomod_prefixes: list[str],
     output_dir: Path,
-    fetch_checksums: bool = False
+    fetch_checksums: bool = False,
+    auto_gomod_entries: Optional[list[dict]] = None,
 ) -> None:
-    """Generate hybrid include files."""
+    """Generate hybrid include files.
+
+    auto_gomod_entries: modules that oe-go-mod-fetcher's auto-recovery
+    already resolved via gomod:// (see parse_auto_gomod_lines). These
+    bypass prefix classification -- their git:// path is by definition
+    unavailable -- and their sha256sum is taken verbatim from the
+    upstream sidecar (already validated).
+    """
 
     # Ensure output directory exists
     output_dir.mkdir(parents=True, exist_ok=True)
 
     git_modules = []
     gomod_modules = []
+
+    # Modules that oe-go-mod-fetcher couldn't verify via git and already
+    # emitted as gomod:// -- carry them through unchanged so the hybrid
+    # output doesn't silently drop the fallback.
+    auto_gomod_keys = set()
+    if auto_gomod_entries:
+        for e in auto_gomod_entries:
+            auto_gomod_keys.add((e['module'], e['version']))
 
     # Classify modules
     for mod in modules:
@@ -493,8 +544,36 @@ def generate_hybrid_files(
         else:
             git_modules.append(mod)
 
+    # Merge auto-recovered gomod:// entries into the gomod stream.
+    # Any module the upstream cache already listed under this (module,
+    # version) key is a duplicate -- prefer the auto-emitted entry (its
+    # sha256sum is authoritative, computed from the actual on-disk zip
+    # rather than fetched via proxy at hybrid-gen time).
+    auto_added = 0
+    if auto_gomod_entries:
+        existing_keys = {(m['module'], m['version']) for m in gomod_modules}
+        # Remove any git_modules entry displaced by an auto-gomod fallback.
+        # Auto-recovery fires precisely when git:// is impossible, so a
+        # matching (module, version) in git_modules cannot be honored.
+        git_modules[:] = [
+            m for m in git_modules
+            if (m['module'], m['version']) not in auto_gomod_keys
+        ]
+        for e in auto_gomod_entries:
+            key = (e['module'], e['version'])
+            if key in existing_keys:
+                # Same module/version already present; drop and re-add with
+                # the auto sha to keep sha authoritative.
+                gomod_modules[:] = [
+                    m for m in gomod_modules
+                    if (m['module'], m['version']) != key
+                ]
+            gomod_modules.append({'module': e['module'], 'version': e['version']})
+            auto_added += 1
+
     print(f"\nClassification:")
-    print(f"  gomod:// (proxy): {len(gomod_modules)} modules")
+    print(f"  gomod:// (proxy): {len(gomod_modules)} modules"
+          + (f" (of which {auto_added} auto-recovered)" if auto_added else ""))
     print(f"  git:// (VCS):     {len(git_modules)} modules")
 
     # Fetch checksums in parallel (always, unless --no-checksums)
@@ -504,6 +583,14 @@ def generate_hybrid_files(
         if len(checksum_map) < len(gomod_modules):
             missing = len(gomod_modules) - len(checksum_map)
             print(f"  WARNING: Failed to fetch {missing} checksums", file=sys.stderr)
+
+    # Auto-recovered entries carry an authoritative sha256sum from the
+    # upstream sidecar. Overlay them onto checksum_map after the network
+    # fetch so we never depend on the proxy for a module whose sha the
+    # fetcher already validated locally.
+    if auto_gomod_entries:
+        for e in auto_gomod_entries:
+            checksum_map[f"{e['module']}@{e['version']}"] = e['sha256sum']
 
     # Generate gomod include file
     gomod_lines = [
@@ -682,6 +769,11 @@ def main():
     vcs_info = parse_go_mod_git_inc(git_inc)
     print(f"  Found {len(vcs_info)} VCS entries")
 
+    auto_gomod_entries = parse_auto_gomod_lines(git_inc)
+    if auto_gomod_entries:
+        print(f"  Found {len(auto_gomod_entries)} auto-recovered gomod:// entries"
+              f" (carried through to hybrid output)")
+
     # Get sizes from discovery cache and/or workdir
     sizes = {}
     if args.discovery_cache:
@@ -732,7 +824,8 @@ def main():
         git_prefixes=git_prefixes,
         gomod_prefixes=gomod_prefixes,
         output_dir=output_dir,
-        fetch_checksums=not args.no_checksums  # Default: fetch checksums
+        fetch_checksums=not args.no_checksums,  # Default: fetch checksums
+        auto_gomod_entries=auto_gomod_entries,
     )
 
 

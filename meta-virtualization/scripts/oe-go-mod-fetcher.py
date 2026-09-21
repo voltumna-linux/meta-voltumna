@@ -320,6 +320,51 @@ VERIFY_DETECTED_BRANCHES: Dict[Tuple[str, str], str] = {}  # (url, commit) -> br
 VERIFY_FALLBACK_COMMITS: Dict[Tuple[str, str], str] = {}  # Maps (url, original_commit) -> fallback_commit
 VERIFY_FULL_REPOS: Set[str] = set()  # Track repos that have been fetched with full history
 DUMB_HTTP_URLS: Set[str] = set()  # URLs known to serve via dumb-HTTP (no shallow-fetch support)
+
+# Distinct-transport-failure count. Bumped whenever a git fetch fails with a
+# message that looks like a network transport error (DNS resolution failure,
+# unreachable host, TLS handshake failure, connection reset/refused/timeout,
+# proxy resolution failure). Auto-recovery consults this before emitting
+# gomod:// fallback lines: if the run had ANY transport failures, verify
+# results are untrustworthy for the fallback decision, so we abort cleanly
+# instead of silently degrading the recipe from git:// to gomod:// on a
+# transient network blip.
+NETWORK_FAILURE_COUNT = 0
+_NETWORK_FAILURE_PATTERNS = (
+    "could not resolve host",
+    "could not resolve proxy",
+    "unable to look up",
+    "temporary failure in name resolution",
+    "network is unreachable",
+    "no route to host",
+    "connection refused",
+    "connection reset",
+    "connection timed out",
+    "operation timed out",
+    "ssl_connect",
+    "gnutls_handshake",
+    "server certificate verification failed",
+    "unable to access",  # git's wrapper around curl transport failures
+)
+
+
+def _looks_like_network_failure(detail: str) -> bool:
+    """Return True if `detail` (git stderr/stdout) matches a known transport-
+    failure signature. Deliberately conservative -- a false positive here just
+    means we abort the run and ask the user to retry, which is cheap; a false
+    negative means we silently degrade a recipe, which is expensive."""
+    if not detail:
+        return False
+    lowered = detail.lower()
+    return any(pat in lowered for pat in _NETWORK_FAILURE_PATTERNS)
+
+
+def _note_network_failure(detail: str) -> None:
+    """Increment NETWORK_FAILURE_COUNT if `detail` looks like a transport
+    failure. Safe to call unconditionally on any git-fetch stderr."""
+    global NETWORK_FAILURE_COUNT
+    if _looks_like_network_failure(detail):
+        NETWORK_FAILURE_COUNT += 1
 DUMB_HTTP_CACHE_DIRTY = False
 ORPHANED_COMMITS: Set[Tuple[str, str]] = set()  # (vcs_url, commit) whose commit is no longer upstream
 VERIFY_CORRECTIONS_APPLIED = False  # Track if any commit corrections were made
@@ -924,6 +969,7 @@ def verify_commit_accessible(vcs_url: str, commit: str, ref_hint: str = "", vers
                     detail = (exc.stderr or exc.stdout or "").strip() if isinstance(exc.stderr, str) or isinstance(exc.stdout, str) else ""
                     if detail:
                         print(f"  ⚠️  Full clone failed for {vcs_url[:50]}...: {detail[:100]}")
+                        _note_network_failure(detail)
                     for lock_file in ["shallow.lock", "index.lock", "HEAD.lock"]:
                         lock_path = repo_dir / lock_file
                         if lock_path.exists():
@@ -966,6 +1012,7 @@ def verify_commit_accessible(vcs_url: str, commit: str, ref_hint: str = "", vers
                     detail = (exc.stderr or exc.stdout or "").strip() if isinstance(exc.stderr, str) or isinstance(exc.stdout, str) else ""
                     if detail:
                         print(f"  ⚠️  Full clone failed for {vcs_url[:50]}...: {detail[:100]}")
+                        _note_network_failure(detail)
                     for lock_file in ["shallow.lock", "index.lock", "HEAD.lock"]:
                         lock_path = repo_dir / lock_file
                         if lock_path.exists():
@@ -1722,6 +1769,18 @@ def _execute(args: argparse.Namespace) -> int:
         discovered_modules_path = Path(args.discovered_modules).resolve()
         modules = load_discovered_modules(discovered_modules_path)
 
+        # discover_modules() (which we skip in this path) is where
+        # CURRENT_GOMODCACHE normally gets set. Without it, later helpers
+        # like _cached_zip_sha256() can't find the on-disk module zips,
+        # so auto-recovery (gomod:// fallback for unverifiable commits)
+        # silently no-ops. The bbclass convention places the cache next
+        # to modules.json at <GO_MOD_DISCOVERY_DIR>/cache/, so derive
+        # it from the JSON path.
+        global CURRENT_GOMODCACHE
+        candidate_cache = discovered_modules_path.parent / "cache"
+        if candidate_cache.is_dir():
+            CURRENT_GOMODCACHE = str(candidate_cache)
+
         if modules is None:
             print("\n❌ Failed to load discovered modules - falling back to discovery")
             modules = discover_modules(source_dir, args.gomodcache)
@@ -2184,8 +2243,7 @@ def _execute(args: argparse.Namespace) -> int:
             print()
             print(f"     Option 1: Exclude from VCS and fetch via Go module proxy instead.")
             print(f"               Add to your recipe (.bb):")
-            print(f'         SRC_URI += "gomod://{module_path};version={version};sha256sum=<run bitbake -c fetch to get>"')
-            print(f'         GO_MOD_VCS_EXCLUDE += "{module_path}"')
+            _print_gomod_exclude_recipe_block(module_path, version)
             print()
             print(f"     Option 2: Same result, but for direct oe-go-mod-fetcher.py invocation.")
             print(f"               Provide the git repository URL for this module:")
@@ -2328,6 +2386,112 @@ def _stderr_indicates_dumb_http(stderr: str) -> bool:
     if not stderr:
         return False
     return "dumb http transport does not support shallow capabilities" in stderr
+
+
+MVS_SELECTED_CACHE: Dict[str, Optional[str]] = {}
+
+
+def _mvs_selected_version(module_path: str) -> Optional[str]:
+    """Return the version of module_path that MVS selects for the current
+    build, or None if we can't determine it.
+
+    Uses `go list -m -json <module>` in CURRENT_SOURCE_DIR. Called from the
+    failed_results / SKIPPED_MODULES hint printer to warn the user when the
+    fetcher's reported version is only a /go.mod-only entry in go.sum, while
+    the version the build ACTUALLY uses (the MVS winner) is different -- so
+    a naive copy-paste of the fetcher's suggested gomod:// line pins the
+    wrong version and the build still fails at compile time.
+    """
+    if module_path in MVS_SELECTED_CACHE:
+        return MVS_SELECTED_CACHE[module_path]
+    if not CURRENT_SOURCE_DIR:
+        MVS_SELECTED_CACHE[module_path] = None
+        return None
+    env = os.environ.copy()
+    env.setdefault('GOFLAGS', '-mod=mod')
+    try:
+        result = subprocess.run(
+            ['go', 'list', '-m', '-json', module_path],
+            cwd=str(CURRENT_SOURCE_DIR),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=GO_CMD_TIMEOUT,
+            check=True,
+        )
+        info = json.loads(result.stdout)
+        ver = info.get('Version')
+        MVS_SELECTED_CACHE[module_path] = ver
+        return ver
+    except Exception:
+        MVS_SELECTED_CACHE[module_path] = None
+        return None
+
+
+def _module_path_escape(module_path: str) -> str:
+    """Go's !-escape: every uppercase letter -> '!' + lowercase.
+
+    Used to translate a canonical module path (github.com/HdrHistogram/...) to
+    its on-disk directory (github.com/!hdr!histogram/...) inside GOMODCACHE.
+    """
+    return re.sub(r'([A-Z])', lambda m: '!' + m.group(1).lower(), module_path)
+
+
+def _cached_zip_sha256(module_path: str, version: str) -> Optional[str]:
+    """Return sha256 of a module@version .zip in the discovery cache, or None.
+
+    We use this to fill in the sha256sum for the copy-paste `gomod://` hint
+    lines emitted after a discovery run. If the fetcher has resolved the
+    module far enough to download its zip (which is true for every module
+    that reaches the failed/skipped-report stage), the sha is right there
+    on disk -- no need to loop the user through a build-fetch-copy cycle.
+    """
+    if not CURRENT_GOMODCACHE:
+        return None
+    escaped = _module_path_escape(module_path)
+    zip_path = Path(CURRENT_GOMODCACHE) / "cache" / "download" / escaped / "@v" / f"{version}.zip"
+    if not zip_path.is_file():
+        return None
+    try:
+        h = hashlib.sha256()
+        with open(zip_path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception:
+        return None
+
+
+def _print_gomod_exclude_recipe_block(module_path: str, version: str, indent: str = "         ") -> None:
+    """Emit the ready-to-paste `SRC_URI += "gomod://..."` + GO_MOD_VCS_EXCLUDE
+    block for a module the fetcher couldn't handle via VCS. If the module's
+    zip is already in the discovery cache (usually the case), we compute the
+    real sha256sum and inline it instead of the placeholder — copy-paste and
+    the recipe builds without a mid-cycle bitbake -c fetch to elicit the
+    right sha.
+
+    If the failing version is not what MVS selects for this build (i.e. it's
+    a /go.mod-only entry in go.sum), emit a second gomod:// line pinning the
+    MVS-selected version too. Without that, a naive paste of only the failing
+    version's line still leaves the compile-time cache missing the version
+    the build actually uses -- the exact trap that produced the k3s
+    x/mod@v0.6.0-dev -> compile-fails-on-x/mod@v0.38.0 sequence.
+    """
+    def emit_line(v: str) -> None:
+        sha = _cached_zip_sha256(module_path, v)
+        if sha:
+            print(f'{indent}SRC_URI += "gomod://{module_path};version={v};sha256sum={sha}"')
+        else:
+            print(f'{indent}SRC_URI += "gomod://{module_path};version={v};sha256sum=<run bitbake -c fetch to get>"')
+
+    emit_line(version)
+    selected = _mvs_selected_version(module_path)
+    if selected and selected != version:
+        print(f'{indent}# NOTE: {version} above is a /go.mod-only reference in go.sum; MVS')
+        print(f'{indent}# selects {selected} for this build. The version below is the one your')
+        print(f'{indent}# compile actually needs — keep BOTH lines.')
+        emit_line(selected)
+    print(f'{indent}GO_MOD_VCS_EXCLUDE += "{module_path}"')
 
 
 def _stderr_indicates_orphaned_commit(stderr: str) -> bool:
@@ -4335,9 +4499,93 @@ def generate_recipe(modules: List[Dict], source_dir: Path, output_dir: Optional[
     print(f"\nFound {len(vcs_repos)} unique git repositories")
     print(f"Supporting {len(modules)} modules")
 
-    if failed_results:
+    # Auto-recover failures where possible.
+    #
+    # A "failed" verification means we can't git-fetch the exact commit the
+    # proxy sold us. But at this point in the run we've already downloaded
+    # the module's zip via `go mod download` (it sits in the discovery
+    # cache). If we can compute its sha256 -- and, when the failing entry
+    # is a /go.mod-only reference, also the MVS-selected version's sha256
+    # -- we can auto-emit gomod:// SRC_URI lines into the sidecar and drop
+    # the module from the git:// output. No abort, no user hand-editing.
+    #
+    # Only genuine dead-ends (no zip in cache at all) fall through to the
+    # abort path with the recovery hints.
+    #
+    # auto_gomod_entries is declared unconditionally so the go-mod-git.inc
+    # writer downstream can always reference it (empty list → no-op).
+    auto_gomod_entries: List[Tuple[str, str, str]] = []
+    truly_failed_results = []
+
+    # Guard against silent recipe degradation from transient network issues.
+    # If any git fetch during verification hit a transport-level failure
+    # (DNS, connection reset, TLS handshake), then failed_results can't be
+    # trusted -- a module that would normally verify cleanly may now be in
+    # there purely because we couldn't reach its origin. Auto-emitting
+    # gomod:// for those would flip the recipe from git:// to gomod:// on
+    # a network blip. Abort instead and let the user re-run once the
+    # network is back.
+    if failed_results and NETWORK_FAILURE_COUNT > 0:
+        print(f"\n❌ {NETWORK_FAILURE_COUNT} transport-level fetch failure(s) detected during verification.")
+        print(f"   {len(failed_results)} unverifiable commit(s) may be false positives -- refusing to")
+        print(f"   auto-emit gomod:// fallbacks (would silently degrade recipe on a network blip).")
+        print(f"   Fix the network issue and re-run 'bitbake <recipe> -c generate_modules'.")
+        return False
+
+    def _queue_auto_gomod(module_path: str, version: str) -> bool:
+        sha = _cached_zip_sha256(module_path, version)
+        if not sha:
+            return False
+        # Skip duplicates
+        for m, v, _ in auto_gomod_entries:
+            if m == module_path and v == version:
+                return True
+        auto_gomod_entries.append((module_path, version, sha))
+        return True
+
+    for entry in failed_results:
+        _, module_path, version, commit_hash, vcs_url, ref_hint = entry
+        recovered_any = False
+
+        # Handle the failing version (typically /go.mod-only or an orphaned tag).
+        if _queue_auto_gomod(module_path, version):
+            recovered_any = True
+
+        # If the failing entry is /go.mod-only, MVS actually selects a different
+        # version -- the one the compile needs a zip for. Auto-emit that too.
+        selected = _mvs_selected_version(module_path)
+        if selected and selected != version and _queue_auto_gomod(module_path, selected):
+            recovered_any = True
+
+        if recovered_any:
+            # Drop this module_path from the git:// side entirely: remove
+            # ALL of its commits from vcs_repos, drop its module records from
+            # modules[], so no git:// SRC_URI entry emerges and no
+            # go-mod-cache.inc record either.
+            for repo_key in list(vcs_repos.keys()):
+                repo = vcs_repos[repo_key]
+                for ch in list(repo['commits'].keys()):
+                    repo['commits'][ch]['modules'] = [
+                        m for m in repo['commits'][ch]['modules']
+                        if m['module_path'] != module_path
+                    ]
+                    if not repo['commits'][ch]['modules']:
+                        del repo['commits'][ch]
+                if not repo.get('commits'):
+                    del vcs_repos[repo_key]
+            modules = [m for m in modules if m['module_path'] != module_path]
+        else:
+            truly_failed_results.append(entry)
+
+    if auto_gomod_entries:
+        print(f"\n♻️  Auto-recovered {len(auto_gomod_entries)} module(s) via gomod:// fallback:")
+        for m, v, _ in auto_gomod_entries:
+            print(f"    - {m}@{v}")
+        print(f"    (emitted as SRC_URI += \"gomod://...\" lines in go-mod-git.inc)")
+
+    if truly_failed_results:
         print("\n❌ Unable to verify the following module commits against their repositories:")
-        for _, module_path, version, commit_hash, vcs_url, ref_hint in failed_results:
+        for _, module_path, version, commit_hash, vcs_url, ref_hint in truly_failed_results:
             print(f"\n   - {module_path}@{version} ({commit_hash})")
             hint = f" {ref_hint}" if ref_hint else ""
             depth_flag = "" if vcs_url in DUMB_HTTP_URLS else " --depth=1"
@@ -4345,8 +4593,7 @@ def generate_recipe(modules: List[Dict], source_dir: Path, output_dir: Optional[
             print()
             print(f"     Option 1: Exclude from VCS and fetch via Go module proxy instead.")
             print(f"               Add to your recipe (.bb):")
-            print(f'         SRC_URI += "gomod://{module_path};version={version};sha256sum=<run bitbake -c fetch to get>"')
-            print(f'         GO_MOD_VCS_EXCLUDE += "{module_path}"')
+            _print_gomod_exclude_recipe_block(module_path, version)
             print()
             print(f"     Option 2: Same result, but for direct oe-go-mod-fetcher.py invocation.")
             print(f"               Run before generation:")
@@ -4473,6 +4720,18 @@ def generate_recipe(modules: List[Dict], source_dir: Path, output_dir: Optional[
         for entry in src_uri_entries:
             f.write(f'SRC_URI += "{entry}"\n')
         f.write('\n')
+
+        # Auto-recovered modules (gomod:// fallback for entries whose commit
+        # couldn't be verified against upstream git). See the "Auto-recovered"
+        # print earlier in this run for the list; keeping them in-file so the
+        # recipe consumes them without any extra include.
+        if auto_gomod_entries:
+            f.write("# Auto-recovered modules — commit unverifiable via git, fetched via Go module proxy.\n")
+            f.write("# The zip sha256 comes from what the discovery cache actually pulled;\n")
+            f.write("# re-run discover_and_generate to refresh after a SRCREV bump.\n")
+            for module_path, version, sha in auto_gomod_entries:
+                f.write(f'SRC_URI += "gomod://{module_path};version={version};sha256sum={sha}"\n')
+            f.write('\n')
 
         # Note: BB_GIT_SHALLOW_EXTRA_REFS is NOT used here because those refs must be
         # present in ALL repositories, which isn't the case for module dependencies.

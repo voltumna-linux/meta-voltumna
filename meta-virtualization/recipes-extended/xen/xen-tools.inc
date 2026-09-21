@@ -783,6 +783,8 @@ FILES:${PN}-test += "\
     ${libdir}/xen/tests/test-pdx-mask \
     ${libdir}/xen/tests/test-cpu-policy \
     ${libdir}/xen/tests/test-tsx \
+    ${libdir}/xen/tests/test-numa \
+    ${libdir}/xen/tests/test-mem-claim \
     "
 
 # test-xenstore and test-resource currently only exist in 4.16

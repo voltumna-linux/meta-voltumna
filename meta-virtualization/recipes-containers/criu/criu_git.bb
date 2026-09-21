@@ -13,7 +13,7 @@ EXCLUDE_FROM_WORLD = "1"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=412de458544c1cb6a2b512cd399286e2"
 
-SRCREV = "91d552257809d0e5c7148190e9aa0372f13b76a0"
+SRCREV = "33482a1af18bd9d2868a7c8b22f34e48c91ccd33"
 PV = "4.2.1+git"
 
 SRC_URI = "git://github.com/checkpoint-restore/criu.git;branch=criu-dev;protocol=https \

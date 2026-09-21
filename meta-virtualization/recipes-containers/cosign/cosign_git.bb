@@ -9,7 +9,7 @@ GO_IMPORT = "github.com/sigstore/cosign"
 
 SRC_URI = "git://github.com/sigstore/cosign.git;branch=main;name=cosign;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX}"
 PV = "3.1.3+git"
-SRCREV_cosign = "8b8c87b68a75f70c12e1adf25f9bb87f24abea7e"
+SRCREV_cosign = "e9a91ea113bfc8102a4385c4ac477285e4b74cee"
 
 SRCREV_FORMAT = "cosign"
 
@@ -22,17 +22,14 @@ GO_MOD_DISCOVERY_GIT_REF = "${SRCREV_cosign}"
 
 # Modules that can't be fetched via git (no repo metadata or unreachable commits)
 # - buf.build/gen/go: generated protobuf module, no git repository
-# - drjosh.dev/assertzapper: gitea host, unreachable (Recv failure: Connection reset by peer)
 # - github.com/open-policy-agent/opa: pinned commit not reachable via shallow fetch
 SRC_URI += "gomod://buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go;version=v1.36.11-20260709200747-435963d16310.1;sha256sum=${COSIGN_BUF_BUILD_SHA}"
-SRC_URI += "gomod://drjosh.dev/assertzapper;version=v0.3.2;sha256sum=${COSIGN_ASSERTZAPPER_SHA}"
-SRC_URI += "gomod://github.com/open-policy-agent/opa;version=v1.17.1;sha256sum=${COSIGN_OPA_SHA}"
-GO_MOD_VCS_EXCLUDE = "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go drjosh.dev/assertzapper github.com/open-policy-agent/opa"
+SRC_URI += "gomod://github.com/open-policy-agent/opa;version=v1.20.2;sha256sum=${COSIGN_OPA_SHA}"
+GO_MOD_VCS_EXCLUDE = "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go github.com/open-policy-agent/opa"
 
 # Checksums — run bitbake cosign -c fetch to get correct values on first use
 COSIGN_BUF_BUILD_SHA ?= "7d3f740646193cc6f3b191223817fad3d0fe636b203163b4425da90bfb47a99e"
-COSIGN_ASSERTZAPPER_SHA ?= "a56ecec7fe53aae63f7fbb33c23785ebad6b2b08c25c980430c1145e065ad103"
-COSIGN_OPA_SHA ?= "6a20b70d7453866b7b3d8048c7dcde064a6e5342d446d581e1513b0da64060e4"
+COSIGN_OPA_SHA ?= "d8cb5f5a1a59bffa3d473b21800f6a25d62999c301fe86c884b756c187ecee10"
 
 # GO_MOD_FETCH_MODE: "vcs" (all git://) or "hybrid" (gomod:// + git://)
 GO_MOD_FETCH_MODE ?= "hybrid"

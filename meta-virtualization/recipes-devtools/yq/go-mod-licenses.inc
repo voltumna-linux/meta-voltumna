@@ -10,6 +10,7 @@ LIC_FILES_CHKSUM += "\
     file://pkg/mod/github.com/agext/levenshtein@v1.2.1/LICENSE;md5=86d3f3a95c324c9479bd8986968f4327;spdx=Apache-2.0 \
     file://pkg/mod/github.com/alecthomas/participle/v2@v2.1.4/COPYING;md5=c9b197062ffa2eb27eed3d8ef59c1a56;spdx=MIT \
     file://pkg/mod/github.com/apparentlymart/go-textseg/v15@v15.0.0/LICENSE;md5=71da33b1e7ba5b34e6e9f27c509931db;spdx=Unknown \
+    file://pkg/mod/github.com/apparentlymart/go-textseg/v17@v17.0.1/LICENSE;md5=d57e691f661895b6e63c173405869a37;spdx=MIT \
     file://pkg/mod/github.com/dimchansky/utfbom@v1.1.1/LICENSE;md5=d5b81a403268b5ea485b4a2579630c17;spdx=Apache-2.0 \
     file://pkg/mod/github.com/elliotchance/orderedmap@v1.8.0/LICENSE;md5=47a0bd50edb1474747d074fc0ba1ead5;spdx=MIT \
     file://pkg/mod/github.com/fatih/color@v1.19.0/LICENSE.md;md5=316e6d590bdcde7993fb175662c0dd5a;spdx=MIT \
@@ -19,7 +20,7 @@ LIC_FILES_CHKSUM += "\
     file://pkg/mod/github.com/google/go-cmp@v0.6.0/LICENSE;md5=4ac66f7dea41d8d116cb7fb28aeff2ab;spdx=Unknown \
     file://pkg/mod/github.com/hashicorp/hcl/v2@v2.24.0/LICENSE;md5=b1c7d811d58ca6da0bffe95cffc4d43f;spdx=Unknown \
     file://pkg/mod/github.com/jinzhu/copier@v0.4.0/License;md5=0cdfc16c21f9eb3a88219af9bed0e7a1;spdx=MIT \
-    file://pkg/mod/github.com/magiconair/properties@v1.8.10/LICENSE.md;md5=714beb7325ffa89d5a68d936a3bb04e5;spdx=Unknown \
+    file://pkg/mod/github.com/magiconair/properties@v1.18.11/LICENSE.md;md5=714beb7325ffa89d5a68d936a3bb04e5;spdx=Unknown \
     file://pkg/mod/github.com/mattn/go-colorable@v0.1.14/LICENSE;md5=24ce168f90aec2456a73de1839037245;spdx=MIT \
     file://pkg/mod/github.com/mattn/go-isatty@v0.0.20/LICENSE;md5=f509beadd5a11227c27b5d2ad6c9f2c6;spdx=MIT \
     file://pkg/mod/github.com/mitchellh/go-wordwrap@v1.0.1/LICENSE.md;md5=56da355a12d4821cda57b8f23ec34bc4;spdx=MIT \
@@ -29,7 +30,7 @@ LIC_FILES_CHKSUM += "\
     file://pkg/mod/github.com/yuin/gopher-lua@v1.1.2/LICENSE;md5=5ea59bf62229a35ae7b2c7208524163e;spdx=MIT \
     file://pkg/mod/github.com/zclconf/go-cty@v1.19.0/LICENSE;md5=5fa044db97ab139f0b76ceeca0e5a3d5;spdx=MIT \
     file://pkg/mod/go.yaml.in/yaml/v4@v4.0.0-rc.6/LICENSE;md5=2729d3a1fab7cdaacf8f8e12d2556871;spdx=Apache-2.0 \
-    file://pkg/mod/golang.org/x/net@v0.57.0/LICENSE;md5=7998cb338f82d15c0eff93b7004d272a;spdx=Unknown \
+    file://pkg/mod/golang.org/x/net@v0.58.0/LICENSE;md5=7998cb338f82d15c0eff93b7004d272a;spdx=Unknown \
     file://pkg/mod/golang.org/x/sys@v0.47.0/LICENSE;md5=7998cb338f82d15c0eff93b7004d272a;spdx=Unknown \
-    file://pkg/mod/golang.org/x/text@v0.40.0/LICENSE;md5=7998cb338f82d15c0eff93b7004d272a;spdx=Unknown \
+    file://pkg/mod/golang.org/x/text@v0.41.0/LICENSE;md5=7998cb338f82d15c0eff93b7004d272a;spdx=Unknown \
 "
