@@ -7,18 +7,13 @@ LIC_FILES_CHKSUM = "file://NOTICE;md5=7a858c074723608e08614061dc044352 \
                     file://LICENSE_1_0.txt;md5=e4224ccaecb14d942c71d31bef20d78c \
                    "
 
-SRC_URI = "https://github.com/msgpack/msgpack-c/releases/download/cpp-${PV}/msgpack-cxx-${PV}.tar.gz"
-SRC_URI[sha256sum] = "4a3c0c0ac55ef4456c2d0b93c21b5d105aa3a8f21ef8fa9758550feaf989b92f"
+SRC_URI = "git://github.com/msgpack/msgpack-c;branch=c_master;protocol=https;tag=c-${PV}"
+SRCREV = "e17beb371b59459a13b48e166a11e123bda5bf93"
 
-UPSTREAM_CHECK_URI = "https://github.com/msgpack/msgpack-c/releases"
-UPSTREAM_CHECK_REGEX = "(?P<pver>\d+(\.\d+)+)"
-
-S = "${UNPACKDIR}/msgpack-cxx-${PV}"
-
-DEPENDS += "boost"
+UPSTREAM_CHECK_GITTAGREGEX = "c-(?P<pver>\d+(\.\d+)+)"
 
 inherit cmake pkgconfig
 
-RDEPENDS:${PN}-dev = ""
+EXTRA_OECMAKE += "-DMSGPACK_BUILD_TESTS=off"
 
 BBCLASSEXTEND += "native nativesdk"
