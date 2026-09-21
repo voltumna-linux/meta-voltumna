@@ -4,9 +4,9 @@ LICENSE = "BSD-3-Clause"
 SECTION = "bootloader"
 
 SRC_URI = "git://github.com/devicetree-org/lopper.git;branch=master;protocol=https"
-SRCREV = "73d63fb54a28531783716a8722f3aef6f7811e36"
+SRCREV = "ffbc06e249c085cccc1181a4a3ead37c77f3955b"
 
-BASEVERSION = "1.5.0"
+BASEVERSION = "1.6.0"
 PV = "v${BASEVERSION}+git"
 
 PYPA_WHEEL = "${PIP_INSTALL_DIST_PATH}/${BPN}-${BASEVERSION}-*.whl"

@@ -30,10 +30,10 @@ SRC_URI[traefik-crd.sha256sum] = "c6245bdcfd193d10ec956d90c50e0d1a3fa1bde541df80
 SRC_URI[traefik.sha256sum] = "888de9d098769b9199238076bee225d1b10dba1e889b0e28127eddc38cdb435b"
 
 SRC_URI[k3s.md5sum] = "363d3a08dc0b72ba6e6577964f6e94a5"
-SRCREV_k3s = "a2fc9574e060a325ac9998843efed7cd4dcb1c18"
+SRCREV_k3s = "dca49392c395b1acc6bb6883079151592a968844"
 
 SRCREV_FORMAT = "k3s_fuse"
-PV = "v1.36.3+k3s1+git"
+PV = "v1.36.4+k3s1+git"
 
 # K3s uses flannel for CNI networking, not the containerd bridge config
 CNI_NETWORKING_FILES ?= "${UNPACKDIR}/cni-flannel.conflist"

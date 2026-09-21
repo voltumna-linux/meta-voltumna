@@ -6,7 +6,7 @@ DESCRIPTION = "A tool that facilitates building OCI container images."
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://src/github.com/containers/buildah/LICENSE;md5=e3fc50a88d0a364313df4b21ef20c29e"
 
-BUILDAH_VERSION = "1.43.2"
+BUILDAH_VERSION = "1.43.4"
 
 PV = "${BUILDAH_VERSION}"
 
@@ -25,7 +25,7 @@ GO_INSTALL = "${GO_IMPORT}"
 GO_WORKDIR = "${GO_INSTALL}"
 GOBUILDFLAGS += "-mod vendor"
 
-SRCREV = "488c1c92e64334c9015ab3e747600080d44c45b3"
+SRCREV = "c7061d00bae87f95000d550c015bc4d9be0b53af"
 
 SRC_URI = " \
     git://github.com/containers/buildah;branch=release-1.43;name=buildah;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX} \

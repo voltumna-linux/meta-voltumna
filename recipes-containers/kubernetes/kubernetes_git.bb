@@ -5,25 +5,25 @@ applications across multiple hosts, providing basic mechanisms for deployment, \
 maintenance, and scaling of applications. \
 "
 
-PV = "1.36.4+git"
-CVE_VERSION = "1.36.4"
-SRCREV_kubernetes = "ed15c228276ffddb7900bcee5be7e5fd18623810"
-SRCREV_kubernetes-release = "c28e997b56a39695b0623c2b7d757cf27251df94"
+PV = "1.37.0+git"
+CVE_VERSION = "1.37.0"
+SRCREV_kubernetes = "9fe0cc3bae7f7beaa4a8d57771e99115063e8773"
+SRCREV_kubernetes-release = "f665d3915e2d0fdce1bf15f47e83fe27ed3f4a98"
 PE = "1"
 
 BBCLASSEXTEND = "devupstream:target"
 LIC_FILES_CHKSUM:class-devupstream = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
 DEFAULT_PREFERENCE:class-devupstream = "-1"
-SRC_URI:class-devupstream = "git://github.com/kubernetes/kubernetes.git;branch=release-1.36;name=kubernetes;protocol=https \
+SRC_URI:class-devupstream = "git://github.com/kubernetes/kubernetes.git;branch=release-1.37;name=kubernetes;protocol=https \
                              git://github.com/kubernetes/release;branch=master;name=kubernetes-release;destsuffix=${BB_GIT_DEFAULT_DESTSUFFIX}/release;protocol=https \
                             "
-SRCREV_kubernetes:class-devupstream = "ed15c228276ffddb7900bcee5be7e5fd18623810"
-SRCREV_kubernetes-release:class-devupstream = "c28e997b56a39695b0623c2b7d757cf27251df94"
-PV:class-devupstream = "1.36.4+git${SRCREV_kubernetes}"
+SRCREV_kubernetes:class-devupstream = "9fe0cc3bae7f7beaa4a8d57771e99115063e8773"
+SRCREV_kubernetes-release:class-devupstream = "f665d3915e2d0fdce1bf15f47e83fe27ed3f4a98"
+PV:class-devupstream = "1.37.0+git${SRCREV_kubernetes}"
 
 SRCREV_FORMAT ?= "kubernetes_release"
 
-SRC_URI = "git://github.com/kubernetes/kubernetes.git;branch=release-1.36;name=kubernetes;protocol=https;destsuffix=${BB_GIT_DEFAULT_DESTSUFFIX}/src/github.com/kubernetes/kubernetes \
+SRC_URI = "git://github.com/kubernetes/kubernetes.git;branch=release-1.37;name=kubernetes;protocol=https;destsuffix=${BB_GIT_DEFAULT_DESTSUFFIX}/src/github.com/kubernetes/kubernetes \
            git://github.com/kubernetes/release;branch=master;name=kubernetes-release;destsuffix=${BB_GIT_DEFAULT_DESTSUFFIX}/release;protocol=https"
 
 SRC_URI:append = " \

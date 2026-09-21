@@ -1,7 +1,7 @@
 # master status March 2025
-SRCREV ?= "de0254b90922a8644bb2c4c1593786d45c80ea22"
+SRCREV = "adbbbd47a1fad8e3bc1ab65c555f11d831fd6681"
 
-XEN_REL ?= "4.21-dev"
+XEN_REL ?= "4.23-dev"
 XEN_BRANCH ?= "master"
 
 SRC_URI = " \

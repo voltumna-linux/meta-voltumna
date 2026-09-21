@@ -15,19 +15,16 @@ Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
  tools/tests/vpci/Makefile | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/tools/tests/vpci/Makefile b/tools/tests/vpci/Makefile
-index 97359ff67f..39c582cded 100644
---- a/tools/tests/vpci/Makefile
-+++ b/tools/tests/vpci/Makefile
+Index: xen-tools-4.22.0+stable/tools/tests/vpci/Makefile
+===================================================================
+--- xen-tools-4.22.0+stable.orig/tools/tests/vpci/Makefile
++++ xen-tools-4.22.0+stable/tools/tests/vpci/Makefile
 @@ -15,7 +15,7 @@ else
  endif
  
- $(TARGET): vpci.c vpci.h list.h main.c emul.h
--	$(CC) $(CFLAGS_xeninclude) -g -o $@ vpci.c main.c
-+	$(CC) $(CFLAGS_xeninclude) -o $@ vpci.c main.c
+ $(TARGET): vpci.c vpci.h list.h private.h main.c emul.h
+-	$(CC) $(CFLAGS_xeninclude) -include emul.h -g -o $@ vpci.c main.c
++	$(CC) $(CFLAGS_xeninclude) -include emul.h -o $@ vpci.c main.c
  
  .PHONY: clean
  clean:
--- 
-2.39.2
-
