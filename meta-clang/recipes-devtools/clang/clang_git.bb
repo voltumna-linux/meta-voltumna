@@ -223,7 +223,7 @@ PROVIDES_append_class-native = " llvm-native"
 
 BBCLASSEXTEND = "native nativesdk"
 
-RDEPENDS:${PN} += "\
+RDEPENDS_${PN} += "\
   perl-module-digest-md5 \
   perl-module-file-basename \
   perl-module-file-copy \
