@@ -31,6 +31,29 @@ do not. systemd is required (enforced via `REQUIRED_DISTRO_FEATURES`) because it
 mounts cgroups and configures DNS out of the box; with sysvinit you have to do
 both manually before podman can run a workload.
 
+> **Note: netavark needs the native nftables kernel modules.** podman's default
+> network backend (netavark) builds its firewall ruleset with the native
+> nftables expression modules (`nft_ct`, `nft_nat`, `nft_chain_nat`, `nft_masq`,
+> `nft_reject`, `nft_compat`). The stock `linux-yocto` kernel builds these as
+> loadable modules, which a minimal image does not pull in automatically. Without
+> them the workload never starts and netavark fails at container creation with:
+>
+> ```
+> nft ... Error: Could not process rule: No such file or directory
+> ```
+>
+> Make sure they are present in your image (they live outside this layer), e.g.:
+>
+> ```bitbake
+> IMAGE_INSTALL:append = " \
+>     kernel-module-nft-ct kernel-module-nft-nat kernel-module-nft-chain-nat \
+>     kernel-module-nft-masq kernel-module-nft-reject kernel-module-nft-reject-inet \
+>     kernel-module-nft-compat"
+> ```
+>
+> On a kernel that builds these features in (`=y`) the modules and their
+> `kernel-module-*` packages do not exist, and none of this is needed.
+
 ## Build
 
 ```shell

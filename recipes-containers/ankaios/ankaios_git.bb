@@ -20,7 +20,7 @@ COMPATIBLE_HOST = "^(?!(qemu)?mips).*"
 # Build dependencies
 DEPENDS += "protobuf-native"
 
-PV = "1.0.1+git"
+PV = "1.0.4+git"
 
 SRC_URI = "\
     git://github.com/eclipse-ankaios/ankaios.git;protocol=https;branch=release-1.0 \
@@ -36,9 +36,9 @@ SRC_URI = "\
     file://ank-agent.default \
 "
 
-# v1.0.1 tag commit
+# v1.0.4 tag commit
 # When bumping SRCREV, re-diff upstream deny.toml and re-check LICENSE against the crate graph.
-SRCREV = "cde70616706b58fd03e4de3f7423addaffa58720"
+SRCREV = "1604423b3906fc1d1dd7cb59a6442a18215074e7"
 
 # cargo-update-recipe-crates provides the `update_crates` task used to
 # regenerate ankaios-crates.inc after an SRCREV bump.

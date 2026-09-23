@@ -31,6 +31,10 @@ CLEANBROKEN = "1"
 # with container stacks
 CRUN_AS_RUNC ?= "true"
 
+# Normalized once: a bare "false" is a non-empty string and would otherwise
+# read as true in both the shell test and the python expansion below.
+CRUN_AS_RUNC_ENABLED = "${@'1' if bb.utils.to_boolean(d.getVar('CRUN_AS_RUNC')) else ''}"
+
 PACKAGECONFIG ??= " \
     caps external-yajl man \
     ${@bb.utils.contains('DISTRO_FEATURES', 'seccomp', 'seccomp', '', d)} \
@@ -56,13 +60,13 @@ do_configure:prepend () {
 
 do_install() {
     oe_runmake 'DESTDIR=${D}' install
-    if [ -n "${CRUN_AS_RUNC}" ]; then
+    if [ -n "${CRUN_AS_RUNC_ENABLED}" ]; then
         ln -sr "${D}/${bindir}/crun" "${D}${bindir}/runc"
     fi
 }
 
 # When crun provides /usr/bin/runc symlink, it conflicts with the runc package
-RCONFLICTS:${PN} = "${@'runc' if d.getVar('CRUN_AS_RUNC') else ''}"
+RCONFLICTS:${PN} = "${@'runc' if d.getVar('CRUN_AS_RUNC_ENABLED') else ''}"
 
 REQUIRED_DISTRO_FEATURES:class-native ?= ""
 DEPENDS:class-native += "yajl libcap go-md2man m4 libseccomp"

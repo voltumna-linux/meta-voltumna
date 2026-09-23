@@ -582,8 +582,8 @@ IMAGE_CMD:oci() {
 
                 if [ -d "$oci_preinstall_rootfs" ]; then
                     bbnote "OCI: Copying pre-installed packages from $oci_preinstall_rootfs"
-                    # Use rsync to merge into bundle rootfs (handles symlinks properly)
-                    rsync -a --no-owner --no-group "$oci_preinstall_rootfs/" "$image_bundle_name/rootfs/"
+                    # Use rsync to merge into bundle rootfs (handles symlinks properly), use content, not size+date to deduplicate, SOURCE_DATE_EPOCH breaks mtime.
+                    rsync -a --checksum --no-times --no-owner --no-group "$oci_preinstall_rootfs/" "$image_bundle_name/rootfs/"
 
                     # Create usrmerge symlinks in the first packages layer.
                     # Normally done by ROOTFS_PREPROCESS_COMMAND in do_rootfs,
