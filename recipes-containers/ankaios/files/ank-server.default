@@ -1,0 +1,8 @@
+# Environment overrides for the ank-server sysvinit service.
+# Sourced by /etc/init.d/ank-server. Uncomment and adjust as needed.
+
+# Log level for the Ankaios server (error, warn, info, debug, trace).
+#RUST_LOG=info
+
+# Log file written by the init script.
+#LOGFILE=/var/log/ank-server.log

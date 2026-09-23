@@ -1,0 +1,10 @@
+[Unit]
+Description=Ankaios server
+After=network.target
+
+[Service]
+Environment="RUST_LOG=info"
+ExecStart=/usr/bin/ank-server -x /etc/ankaios/ank-server.conf
+
+[Install]
+WantedBy=multi-user.target

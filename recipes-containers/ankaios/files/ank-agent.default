@@ -1,0 +1,8 @@
+# Environment overrides for the ank-agent sysvinit service.
+# Sourced by /etc/init.d/ank-agent. Uncomment and adjust as needed.
+
+# Log level for the Ankaios agent (error, warn, info, debug, trace).
+#RUST_LOG=info
+
+# Log file written by the init script.
+#LOGFILE=/var/log/ank-agent.log
