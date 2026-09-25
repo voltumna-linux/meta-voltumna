@@ -26,6 +26,17 @@ SRC_URI = "https://www.ffmpeg.org/releases/${BP}.tar.xz \
            file://0001-fftools-resources-Fix-double-build-by-disabling-.d-f.patch \
            file://0001-ffbuild-commonmak-Consolidate-pattern-rules-for-comp.patch \
            file://0002-ffbuild-common.mak-ensure-target-directories-are-cre.patch \
+           file://CVE-2026-64830.patch \
+           file://CVE-2026-64831.patch \
+           file://CVE-2026-64832.patch \
+           file://CVE-2026-64833.patch \
+           file://CVE-2026-64834.patch \
+           file://CVE-2026-64835.patch \
+           file://CVE-2026-65703.patch \
+           file://CVE-2026-65704.patch \
+           file://CVE-2026-65705_p1.patch \
+           file://CVE-2026-65705_p2.patch \
+           file://CVE-2026-65706.patch \
            "
 
 SRC_URI[sha256sum] = "6136812ea6d4e68bdba27e33c2a94382711cdf4f8602ffef056ff792bd6f9818"
