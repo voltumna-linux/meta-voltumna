@@ -395,6 +395,118 @@ podman run --rm --network=none alpine echo hello
 `vxn`, `vdkr`, `vpdmn`, and `ctr` do not have this constraint — they
 speak to `vxn-oci-runtime` directly and vxn sets up the vif on dom0.
 
+## Guest type and PCI / VF passthrough (experimental)
+
+vxn boots each DomU as a direct-kernel appliance (there is no HVM /
+qemu-dm path). The guest type defaults per architecture:
+
+- **x86_64: PV** (default)
+- **aarch64: PVH** (ARM Xen has no PV guests)
+
+### Selecting PVH (`VXN_DOMU_TYPE`)
+
+`VXN_DOMU_TYPE` overrides the default (`pv` | `pvh`). PVH is opt-in on
+x86_64; PV stays the default so existing setups are unchanged. The same
+guest kernel boots either way (`vxn.cfg` enables `CONFIG_XEN_PV` and
+`CONFIG_XEN_PVH` together; `XEN_PVH` is an x86-only symbol, arm64 is
+PVH-style already).
+
+```
+VXN_DOMU_TYPE=pvh vxn run --rm alpine echo hi
+```
+
+### Making PVH the default at build time (no runtime env)
+
+To ship a dom0 that defaults to PVH without asking anyone to set an
+environment variable, enable the vxn recipe's `pvh` PACKAGECONFIG:
+
+```
+PACKAGECONFIG:append:pn-vxn = " pvh"
+```
+
+This writes `/etc/vxn/vxn.conf` on the dom0 with `: "${VXN_DOMU_TYPE:=pvh}"`.
+Both xl-config generators (`vrunner-backend-xen.sh`, `vxn-oci-runtime`)
+source that file, so PVH becomes the default; a runtime `VXN_DOMU_TYPE`
+still overrides it. The same file is the place to bake in a fixed
+`VXN_PCI`, `VXN_DEVICE_MODEL`, or `VXN_XL_EXTRA` default (commented
+examples are written into it).
+
+### PCI / VF passthrough (`VXN_PCI`)
+
+`VXN_PCI` is a space/comma-separated list of PCI BDFs to assign to the
+DomU. When set, vxn emits an `xl` `pci = [ ... ]` line into the domain
+config.
+
+```
+VXN_DOMU_TYPE=pvh VXN_PCI="0000:03:10.1" vxn run --rm myimage
+```
+
+**This is the vxn-side plumbing only. It is not yet a tested,
+end-to-end feature.** Functional passthrough additionally requires:
+
+- **A passthrough-capable Xen.** PVH domU vPCI passthrough relies on Xen
+  changes that are **out-of-tree as of Xen 4.19** (the PVH vPCI work,
+  which uses a separate PCI segment for emulated devices). Stock 4.19
+  will not fully pass a device to a PVH domU without them.
+- **A PVH dom0** for PVH SR-IOV (`dom0=pvh` on the Xen command line);
+  without it dom0 is PV, and PVH SR-IOV support is still in progress.
+- **dom0 prep:** IOMMU enabled (VT-d / AMD-Vi, `iommu=1`), the VF created
+  on its PF (`sriov_numvfs`), and the VF bound to `xen-pciback` /
+  `xl pci-assignable-add` before launch. vxn does not orchestrate this
+  yet.
+- **The VF driver in the guest.** `vxn.cfg` enables PCI + the Xen PCI
+  frontend and native MMCONFIG so a passed device is *visible*, but the
+  device-specific driver (e.g. `iavf`, `ixgbevf`, `mlx5_core`) is not
+  bundled — add it to the guest rootfs/initramfs per deployment.
+
+### Engaging the device model (`VXN_DEVICE_MODEL`, `VXN_XL_EXTRA`)
+
+vxn's PV/PVH guests are direct-kernel and use **no** Xen device model
+(qemu-dm) by default. The PVH vPCI path emulates a PCI segment for virtio
+devices, which does need a device model, so the wiring is in place:
+
+- `VXN_DEVICE_MODEL=1` (or a version string, e.g. `qemu-xen`) emits
+  `device_model_version` into the xl config.
+- `VXN_XL_EXTRA` appends arbitrary literal lines to the xl config — the
+  hook for the emulated-device stanzas the out-of-tree vPCI patch set
+  defines, so they can be dropped in via `/etc/vxn/vxn.conf` with no code
+  change.
+
+This requires **qemu-dm present in dom0**: a standard `xen-image-minimal`
+dom0 has it, but the slimmed SDK dom0 (`VXN_SLIM_DOM0=1`) strips it. Set
+`VXN_SLIM_DOM0="0"` if a device-model path is needed there.
+
+On aarch64 the guest type is already PVH, so only the `VXN_PCI` wiring
+and guest driver apply; ARM Xen PCI passthrough is platform-dependent
+(needs SMMU + a Xen-supported PCI host bridge) and less mature than x86.
+
+### Topology: which dom0 owns the device
+
+Passthrough only works if the dom0 that emits `pci = [ ... ]` actually
+**owns** the device:
+
+- **Bare-metal Xen (config-b):** dom0 owns the real PCI hierarchy, so a
+  physical VF is assignable. This is the realistic target for VF
+  passthrough.
+- **Nested SDK (config-a), as shipped:** dom0 runs as a QEMU/KVM guest,
+  so the nested Xen sees only QEMU's *emulated* PCI topology, not the
+  host's real devices. A physical VF is not visible; `VXN_PCI` can only
+  reference emulated devices.
+
+Passthrough *can* be arranged in the nested config, it just is not wired
+up yet (no current use case has asked for it). It would require, before
+nested Xen can re-assign the device:
+
+1. VFIO-forwarding the physical VF from the outer host into the QEMU/KVM
+   VM that runs dom0 (a `vfio-pci` device on the outer QEMU command line;
+   `boot-xen.sh` does not emit this today), and
+2. exposing a nested IOMMU (vIOMMU) to that VM so the nested Xen has an
+   IOMMU to program.
+
+The `VXN_PCI` wiring itself is topology-agnostic: it only writes the `xl`
+`pci=` line. Whether a BDF resolves to a real device depends on whether
+that dom0 owns it.
+
 ## Using vxn
 
 ### The `vxn` CLI
