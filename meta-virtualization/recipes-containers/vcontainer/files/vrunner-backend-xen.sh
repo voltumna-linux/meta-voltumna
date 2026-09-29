@@ -531,12 +531,55 @@ _write_xen_config() {
         vif_array="$_XEN_VIF"
     fi
 
+    # Build-time defaults from the dom0 config file (written by the vxn recipe's
+    # PACKAGECONFIG). It sets VXN_DOMU_TYPE / VXN_PCI / VXN_DEVICE_MODEL /
+    # VXN_XL_EXTRA defaults via ${VAR:=...}, so a runtime environment value still
+    # wins and, if neither is set, the per-arch fallback below applies. This is
+    # how PVH (etc.) becomes a default with no runtime env from the user.
+    [ -r /etc/vxn/vxn.conf ] && . /etc/vxn/vxn.conf
+
     # Determine guest type per architecture:
     #   x86_64: PV guests work (paravirtualized, no HVM needed)
     #   aarch64: ARM Xen only supports PVH-style guests (no PV)
     local xen_type="pv"
     case "$TARGET_ARCH" in
         aarch64) xen_type="pvh" ;;
+    esac
+    # VXN_DOMU_TYPE overrides the per-arch default (pv | pvh). PVH is opt-in on
+    # x86_64 (needed for PCI / SR-IOV VF passthrough); PV stays the default so
+    # existing setups are unchanged. aarch64 is PVH either way.
+    [ -n "${VXN_DOMU_TYPE:-}" ] && xen_type="$VXN_DOMU_TYPE"
+
+    # Optional PCI passthrough: VXN_PCI is a space/comma-separated list of PCI
+    # BDFs (e.g. "0000:03:10.1") to assign to the DomU, emitted as an xl `pci=`
+    # line only when set. This is the vxn-side plumbing only -- functional
+    # passthrough also needs a passthrough-capable Xen (PVH vPCI support is
+    # out-of-tree as of 4.19), dom0 IOMMU + the device bound to xen-pciback, and
+    # the matching driver in the guest. See docs/vxn.md.
+    local pci_array="" pci_line=""
+    if [ -n "${VXN_PCI:-}" ]; then
+        local _bdf
+        for _bdf in $(echo "$VXN_PCI" | tr ',' ' '); do
+            if [ -n "$pci_array" ]; then
+                pci_array="$pci_array, '$_bdf'"
+            else
+                pci_array="'$_bdf'"
+            fi
+        done
+        pci_line="pci = [ $pci_array ]"
+    fi
+
+    # Device model (qemu-dm): PV/PVH boot direct-kernel with no device model by
+    # default. Set VXN_DEVICE_MODEL=1 (or a version string like "qemu-xen") to
+    # emit device_model_version -- required for the PVH vPCI path that emulates a
+    # PCI segment for virtio devices. Needs qemu-dm present in dom0 (non-slim).
+    # VXN_XL_EXTRA appends arbitrary xl config lines (e.g. the emulated-device
+    # stanzas from the out-of-tree vPCI patch set). See docs/vxn.md.
+    local dm_line=""
+    case "${VXN_DEVICE_MODEL:-}" in
+        ""|0|no|false)  ;;
+        1|yes|true)     dm_line='device_model_version = "qemu-xen"' ;;
+        *)              dm_line="device_model_version = \"$VXN_DEVICE_MODEL\"" ;;
     esac
 
     # Memory and vCPUs - configurable via environment
@@ -592,6 +635,9 @@ extra = "console=hvc0 quiet loglevel=0 init=/init vcontainer.blk=xvd vcontainer.
 
 disk = [ $disk_array ]
 vif = [ $vif_array ]
+$pci_line
+$dm_line
+${VXN_XL_EXTRA:-}
 
 serial = 'pty'
 

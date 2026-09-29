@@ -53,6 +53,15 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 inherit features_check systemd
 REQUIRED_DISTRO_FEATURES = "xen"
 
+# Build-time default DomU guest type baked into the dom0 (no runtime env needed).
+# PACKAGECONFIG 'pvh' makes PVH the default guest type on this dom0; without it
+# the per-arch default applies (PV on x86_64, PVH on aarch64). The choice is
+# written to /etc/vxn/vxn.conf as a ${VAR:=...} default, so a runtime
+# VXN_DOMU_TYPE still overrides. Enable in a dom0 image/distro with:
+#   PACKAGECONFIG:append:pn-vxn = " pvh"
+PACKAGECONFIG ??= ""
+PACKAGECONFIG[pvh] = ""
+
 # Host scripts + guest init scripts (all from the vcontainer files dir)
 SRC_URI = "\
     file://vxn.sh \
@@ -236,6 +245,24 @@ do_install() {
     install -d ${D}${sysconfdir}/containerd
     install -m 0644 ${S}/containerd-config-vxn.toml ${D}${sysconfdir}/containerd/config.toml
 
+    # dom0 defaults sourced by the xl-config generators (vrunner-backend-xen.sh,
+    # vxn-oci-runtime). Values use the ${VAR:=default} form so a runtime
+    # environment value still overrides. This is how PVH (etc.) becomes the
+    # default with no runtime env from the user (PACKAGECONFIG 'pvh'). The
+    # `=` in `${VAR:=...}` keeps bitbake from treating these as its own vars.
+    install -d ${D}${sysconfdir}/vxn
+    conf="${D}${sysconfdir}/vxn/vxn.conf"
+    echo '# vxn dom0 defaults, sourced by the xl-config generators.'   >  "$conf"
+    echo '# Runtime environment values override these (VAR:=default).' >> "$conf"
+    if ${@bb.utils.contains('PACKAGECONFIG', 'pvh', 'true', 'false', d)}; then
+        echo ': "${VXN_DOMU_TYPE:=pvh}"'                               >> "$conf"
+    else
+        echo '# guest type: per-arch default (PV on x86_64, PVH on aarch64)' >> "$conf"
+    fi
+    echo '# : "${VXN_PCI:=0000:03:10.1}"      # fixed PCI/VF passthrough BDF(s)' >> "$conf"
+    echo '# : "${VXN_DEVICE_MODEL:=qemu-xen}" # engage qemu-dm (PVH vPCI path)'  >> "$conf"
+    echo '# : "${VXN_XL_EXTRA:=}"             # extra literal xl config lines'   >> "$conf"
+
     # Install vxn shim wrapper: PATH trick makes runc shim find vxn-oci-runtime
     install -m 0755 ${S}/containerd-shim-vxn-v2 ${D}${bindir}/containerd-shim-vxn-v2
 
@@ -373,6 +400,7 @@ FILES:${PN} = "\
     ${bindir}/vxn-authorized-keys.sh \
     ${libexecdir}/vxn/ \
     ${sysconfdir}/containerd/config.toml \
+    ${sysconfdir}/vxn/vxn.conf \
     ${libdir}/vxn/ \
     ${datadir}/vxn/ \
     ${systemd_system_unitdir}/vxn-command-channel.service \

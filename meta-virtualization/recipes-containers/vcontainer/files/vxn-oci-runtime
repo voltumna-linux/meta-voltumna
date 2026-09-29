@@ -402,10 +402,46 @@ cmd_create() {
     fi
     [ -n "${VXN_DOMU_CMDLINE_EXTRA:-}" ] && kernel_extra="$kernel_extra $VXN_DOMU_CMDLINE_EXTRA"
 
+    # Build-time defaults from the dom0 config file (vxn recipe PACKAGECONFIG);
+    # sets VXN_DOMU_TYPE / VXN_PCI / VXN_DEVICE_MODEL / VXN_XL_EXTRA via
+    # ${VAR:=...} so runtime env still wins. Mirrors vrunner-backend-xen.sh.
+    [ -r /etc/vxn/vxn.conf ] && . /etc/vxn/vxn.conf
+
+    # VXN_DOMU_TYPE overrides the per-arch default (pv | pvh); PVH is opt-in on
+    # x86_64 for PCI / SR-IOV VF passthrough.
+    local vxn_type="${VXN_DOMU_TYPE:-$VXN_TYPE}"
+
+    # Optional PCI passthrough: VXN_PCI is a space/comma-separated list of BDFs
+    # emitted as an xl `pci=` line only when set. vxn-side plumbing only; see
+    # docs/vxn.md for the Xen / dom0 / guest-driver requirements.
+    local pci_line=""
+    if [ -n "${VXN_PCI:-}" ]; then
+        local _bdf pci_array=""
+        for _bdf in $(echo "$VXN_PCI" | tr ',' ' '); do
+            if [ -n "$pci_array" ]; then
+                pci_array="$pci_array, '$_bdf'"
+            else
+                pci_array="'$_bdf'"
+            fi
+        done
+        pci_line="pci = [ $pci_array ]"
+    fi
+
+    # Device model (qemu-dm) wiring -- off by default (direct-kernel PV/PVH).
+    # VXN_DEVICE_MODEL=1|<version> emits device_model_version (needed for the
+    # PVH vPCI emulated-segment path; requires qemu-dm in dom0). VXN_XL_EXTRA
+    # appends arbitrary xl lines. Mirrors vrunner-backend-xen.sh.
+    local dm_line=""
+    case "${VXN_DEVICE_MODEL:-}" in
+        ""|0|no|false)  ;;
+        1|yes|true)     dm_line='device_model_version = "qemu-xen"' ;;
+        *)              dm_line="device_model_version = \"$VXN_DEVICE_MODEL\"" ;;
+    esac
+
     cat > "$config_cfg" <<XENEOF
 # Auto-generated Xen domain config for vxn-oci-runtime
 name = "$domname"
-type = "$VXN_TYPE"
+type = "$vxn_type"
 memory = $xen_memory
 vcpus = $xen_vcpus
 
@@ -415,6 +451,9 @@ extra = "$kernel_extra"
 
 disk = [ 'format=raw,vdev=xvda,access=ro,target=$VXN_ROOTFS', 'format=raw,vdev=xvdb,access=rw,target=$input_img' ]
 vif = [ $vxn_vif ]
+$pci_line
+$dm_line
+${VXN_XL_EXTRA:-}
 
 serial = 'pty'
 
