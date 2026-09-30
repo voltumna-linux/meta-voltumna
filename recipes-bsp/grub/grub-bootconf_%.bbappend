@@ -1,5 +1,7 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 SRC_URI:append = " \
 	file://grub.cfg \
 	"
