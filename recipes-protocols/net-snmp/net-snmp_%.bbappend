@@ -1,5 +1,10 @@
-DEPENDS:class-nativesdk = "openssl libnl"
+FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
+SRC_URI:append = " file://snmpd.local.conf"
+
+DEPENDS:class-nativesdk = "openssl libnl"
 PERLPROG:class-nativesdk = "${USRBINPATH}/env perl"
 
 RDEPENDS:${PN}-libs = " ${PN}-lib-netsnmp \
@@ -7,7 +12,17 @@ RDEPENDS:${PN}-libs = " ${PN}-lib-netsnmp \
                         ${PN}-lib-helpers \
                         ${PN}-lib-mibs \
 "
-BBCLASSEXTEND = "nativesdk"
-
-SYSTEMD_AUTO_ENABLE:${PN}-server-snmpd = "disable"
+SYSTEMD_AUTO_ENABLE:${PN}-server-snmpd = "enable"
 SYSTEMD_AUTO_ENABLE:${PN}-server-snmptrapd =  "disable"
+
+FILES:${PN} += "${sysconfdir}/snmp"
+
+do_install[vardeps] += "PRIMARY_NETIF"
+do_install:append() {
+    install -d ${D}${sysconfdir}/snmp
+    install -m 644 ${WORKDIR}/snmpd.local.conf ${D}${sysconfdir}/snmp/
+    sed -i "s,@ETH@,${@d.getVar('PRIMARY_NETIF') or 'eth0'},g" \
+        ${D}${sysconfdir}/snmp/snmpd.local.conf
+}
+
+BBCLASSEXTEND = "nativesdk"
