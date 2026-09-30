@@ -2,6 +2,8 @@ DESCRIPTION = "OS Updater"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 RDEPENDS:${PN} = "bash curl ca-certificates nginx diffutils rsync python3 python3-requests python3-dbus pam-plugin-succeed-if"
 
 SRC_URI = " \
