@@ -39,4 +39,4 @@ do_install() {
 		${D}${sysconfdir}/nginx/location-conf.d
 }
 
-inherit allarch systemd
+inherit systemd
