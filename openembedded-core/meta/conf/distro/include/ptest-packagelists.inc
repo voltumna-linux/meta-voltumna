@@ -48,6 +48,7 @@ PTESTS_FAST = "\
     libtest-needs-perl \
     libtest-warnings-perl \
     libtimedate-perl \
+    libtoml11 \
     libtry-tiny-perl \
     libusb1 \
     libxml-namespacesupport-perl \
@@ -65,6 +66,7 @@ PTESTS_FAST = "\
     lzo \
     m4 \
     nettle \
+    npth \
     opkg \
     popt \
     procps \
