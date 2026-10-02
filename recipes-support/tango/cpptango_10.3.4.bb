@@ -10,7 +10,7 @@ RDEPENDS:${PN} += "omniorb"
 
 DEFAULT_PREFERENCE = "-1"
 
-SRCREV = "62f0ce4232478fca2261782138e0ea1aacde005e"
+SRCREV = "511396b53a0c4538acef60596f887a876449f93f"
 SRC_URI = " \
 	gitsm://gitlab.com/tango-controls/cppTango.git;protocol=https;nobranch=1 \
 	"
