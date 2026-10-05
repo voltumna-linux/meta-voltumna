@@ -58,7 +58,7 @@ do_compile() {
     # cannot find package runtime/cgo (using -importcfg)
     #        ... recipe-sysroot-native/usr/lib/aarch64-poky-linux/go/pkg/tool/linux_amd64/link:
     #        cannot open file : open : no such file or directory
-    export GO_BUILD_FLAGS="-trimpath -a -pkgdir dontusecurrentpkgs"
+    export GO_BUILD_FLAGS="-trimpath -a -pkgdir dontusecurrentpkgs -modcacherw"
     # As of v2.2.0+ the GO11MODULE setting breaks the build (linking errors). It doesn't
     # seem necessary anymore. Leaving it here for now as a breakcrumb if other errors pop
     # up
