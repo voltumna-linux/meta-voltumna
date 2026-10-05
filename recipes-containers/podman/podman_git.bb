@@ -77,6 +77,12 @@ EXTRA_OEMAKE = " \
 PODMAN_FEATURES ?= "docker"
 
 PACKAGECONFIG ?= ""
+PACKAGECONFIG[manpages] = ",,go-md2man-native"
+# When manpages are enabled, build the docs target with go-md2man-native
+# and skip the host 'man -l' check via MAN_L=true; also install them.
+PODMAN_DOCS_TARGET = "${@bb.utils.contains('PACKAGECONFIG', 'manpages', 'docs', '', d)}"
+PODMAN_DOCS_ARGS = "${@bb.utils.contains('PACKAGECONFIG', 'manpages', 'GOMD2MAN=${STAGING_BINDIR_NATIVE}/go-md2man MAN_L=true', '', d)}"
+PODMAN_INSTALL_MAN = "${@bb.utils.contains('PACKAGECONFIG', 'manpages', 'install.man', '', d)}"
 PACKAGECONFIG[rootless] = ",,,fuse-overlayfs slirp4netns,,"
 
 do_compile() {
@@ -104,7 +110,8 @@ do_compile() {
 	export NATIVE_GOOS=${BUILD_GOOS}
 	export NATIVE_GOARCH=${BUILD_GOARCH}
 
-	oe_runmake NATIVE_GOOS=${BUILD_GOOS} NATIVE_GOARCH=${BUILD_GOARCH} BUILDTAGS="${BUILDTAGS}"
+	oe_runmake binaries ${PODMAN_DOCS_TARGET} ${PODMAN_DOCS_ARGS} \
+                  NATIVE_GOOS=${BUILD_GOOS} NATIVE_GOARCH=${BUILD_GOARCH} BUILDTAGS="${BUILDTAGS}"
 }
 
 do_install() {
@@ -114,7 +121,7 @@ do_install() {
 	export GOPATH="${S}/src/.gopath"
 	export GOROOT="${STAGING_DIR_NATIVE}/${nonarch_libdir}/${HOST_SYS}/go"
 
-	oe_runmake install DESTDIR="${D}"
+	oe_runmake install.bin ${PODMAN_INSTALL_MAN} install.systemd DESTDIR="${D}"
 	if ${@bb.utils.contains('PODMAN_FEATURES', 'docker', 'true', 'false', d)}; then
 		oe_runmake install.docker DESTDIR="${D}"
 	fi
