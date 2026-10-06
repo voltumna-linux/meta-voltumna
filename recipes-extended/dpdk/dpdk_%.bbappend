@@ -7,6 +7,7 @@ EXTRA_OEMESON:append = " -Duse_hpet=true"
 
 SRC_URI:append = " \
 	file://reduce-queue-itr-interval-default-on-intel-nics.patch \
+        file://0001-app-testpmd-show-longest-Rx-gap-in-port-statistics.patch \
 	"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
