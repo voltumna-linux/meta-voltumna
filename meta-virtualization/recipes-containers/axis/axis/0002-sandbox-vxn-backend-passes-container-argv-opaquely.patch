@@ -1,7 +1,7 @@
-From 217139783232efcab3b4a61f779fd9a8fd8bdb32 Mon Sep 17 00:00:00 2001
-From: Bruce Ashfield <bruce.ashfield@gmail.com>
+From b6be03071456698cc74fbd8db424f37128c80726 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@amd.com>
 Date: Tue, 11 Aug 2026 17:23:29 +0000
-Subject: [PATCH 02/10] sandbox: vxn backend passes container argv opaquely
+Subject: [PATCH 02/11] sandbox: vxn backend passes container argv opaquely
 
 VxnSandbox handed the container command to `vxn run` as loose args, where vxn's
 own parser ate container flags (`--version`) and the guest's `sh -c` wrapper
@@ -15,9 +15,8 @@ change). It is one metacharacter-free word that survives the vxn string dispatch
 the guest decodes it and exec's the vector verbatim. Verified: `python3 --version`
 -> Python 3.14.7, `python3 -c` with parens -> HTTP 200.
 
-Upstream-Status: Inappropriate [embedded specific]
-
-Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+Upstream-Status: Submitted [https://github.com/ROCm/axis/pull/38]
+Signed-off-by: Bruce Ashfield <bruce.ashfield@amd.com>
 ---
  crates/axis-sandbox/src/linux/vxn.rs | 36 ++++++++++++++++++++++++++--
  1 file changed, 34 insertions(+), 2 deletions(-)
@@ -76,3 +75,6 @@ index 7bb76ac..5f420cd 100644
  
          Ok(Self {
              id: config.id.clone(),
+-- 
+2.43.0
+

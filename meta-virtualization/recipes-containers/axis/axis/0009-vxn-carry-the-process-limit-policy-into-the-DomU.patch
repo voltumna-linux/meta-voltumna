@@ -1,7 +1,7 @@
-From ed266634da7b6486b834f8aab9ace25b96f9bba6 Mon Sep 17 00:00:00 2001
-From: Bruce Ashfield <bruce.ashfield@gmail.com>
+From bec345561066a2ca2f58b63e8a5cc953a8f0d9cf Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@amd.com>
 Date: Fri, 14 Aug 2026 14:27:23 +0000
-Subject: [PATCH 09/10] vxn: carry the process-limit policy into the DomU
+Subject: [PATCH 09/11] vxn: carry the process-limit policy into the DomU
 
 The vxn backend enforced only the VM boundary; the policy's fine-grained
 process limits (memory/pids/cpu) were dropped, so a compromised agent had
@@ -14,9 +14,8 @@ upstream and omitted, so a policy with no limits emits nothing.
 Phase 1 (resource limits) of nested enforcement; filesystem, seccomp, and
 network endpoints are follow-ups over the same --policy-b64 transport.
 
-Upstream-Status: Inappropriate [embedded specific]
-
-Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+Upstream-Status: Submitted [https://github.com/ROCm/axis/pull/38]
+Signed-off-by: Bruce Ashfield <bruce.ashfield@amd.com>
 ---
  crates/axis-sandbox/src/linux/vxn.rs | 32 +++++++++++++++++++++++++---
  1 file changed, 29 insertions(+), 3 deletions(-)
@@ -64,3 +63,6 @@ index dae4e8e..79ba033 100644
          argv.push(base_image);
  
          // Opaque argv (#31): encode [command, args...] as a single sentinel token
+-- 
+2.43.0
+

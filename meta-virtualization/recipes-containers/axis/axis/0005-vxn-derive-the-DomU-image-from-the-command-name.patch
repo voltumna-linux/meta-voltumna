@@ -1,7 +1,7 @@
-From 868486833ad89d55516dee375575722e0a6504ce Mon Sep 17 00:00:00 2001
-From: Bruce Ashfield <bruce.ashfield@gmail.com>
+From a4a097caf07c8ebd8f2abd9d860200c749b88f50 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@amd.com>
 Date: Fri, 14 Aug 2026 03:43:24 +0000
-Subject: [PATCH 05/10] vxn: derive the DomU image from the command name
+Subject: [PATCH 05/11] vxn: derive the DomU image from the command name
 
 The vxn image was VXN_BASE_IMAGE or a fixed default base, so
 `axis run --policy vxn -- claude` could not bring up the agent without
@@ -11,9 +11,8 @@ vxn auto-provisions from its recipe on first run). VXN_BASE_IMAGE stays
 the escape hatch for running a command in a base image
 (VXN_BASE_IMAGE=alpine axis run -- echo hi).
 
-Upstream-Status: Inappropriate [embedded specific]
-
-Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+Upstream-Status: Submitted [https://github.com/ROCm/axis/pull/38]
+Signed-off-by: Bruce Ashfield <bruce.ashfield@amd.com>
 ---
  crates/axis-sandbox/src/linux/vxn.rs | 14 ++++++++++++--
  1 file changed, 12 insertions(+), 2 deletions(-)
@@ -43,3 +42,6 @@ index d17fd95..70ebc98 100644
  
          let mut argv = vec![vxn_bin, "run".to_string(), "--rm".to_string()];
  
+-- 
+2.43.0
+

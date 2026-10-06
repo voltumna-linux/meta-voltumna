@@ -1,7 +1,7 @@
-From a1df6bdd65c9f8d57ae1812290f73cc174cb2561 Mon Sep 17 00:00:00 2001
-From: Bruce Ashfield <bruce.ashfield@gmail.com>
+From c1d9c458e72d658048b9deffddcf742cb007d086 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@amd.com>
 Date: Thu, 13 Aug 2026 17:39:06 +0000
-Subject: [PATCH 07/10] vxn: add a built-in `vxn` policy so `axis run --policy
+Subject: [PATCH 07/11] vxn: add a built-in `vxn` policy so `axis run --policy
  vxn` works
 
 The built-in policy names (minimal, coding-agent, gpu-agent) did not
@@ -14,9 +14,8 @@ lists it too. The policy defaults network to allow because the vxn tier is
 for interactive agents whose OAuth/API calls need egress out of the box; a
 file policy still covers block/proxy or stricter rules.
 
-Upstream-Status: Inappropriate [embedded specific]
-
-Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+Upstream-Status: Submitted [https://github.com/ROCm/axis/pull/38]
+Signed-off-by: Bruce Ashfield <bruce.ashfield@amd.com>
 ---
  crates/axis-cli/src/main.rs |  3 ++-
  policies/vxn.yaml           | 32 ++++++++++++++++++++++++++++++++
@@ -77,3 +76,6 @@ index 0000000..375b114
 +
 +network:
 +  mode: allow
+-- 
+2.43.0
+

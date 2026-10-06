@@ -1,7 +1,7 @@
-From 4ff1c2133d72d97066d4150e2a53c35f2f1e4198 Mon Sep 17 00:00:00 2001
-From: Bruce Ashfield <bruce.ashfield@gmail.com>
+From 91dede52183e06a847b3848cc9cf1d532b3ea91e Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@amd.com>
 Date: Fri, 14 Aug 2026 16:49:50 +0000
-Subject: [PATCH 10/10] vxn: carry the filesystem policy into the DomU
+Subject: [PATCH 10/11] vxn: carry the filesystem policy into the DomU
 
 Extend the --policy-b64 blob with the AXIS filesystem policy so vxn-init
 can build a bind-mount view inside the guest (defense-in-depth behind the
@@ -9,9 +9,8 @@ VM boundary): read_only -> RO, read_write -> RW, deny -> DENY. Unresolved
 placeholders like {workspace} have no vxn-guest path mapping and are
 skipped. Phase 2 of nested enforcement, over the transport Phase 1 added.
 
-Upstream-Status: Inappropriate [embedded specific]
-
-Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+Upstream-Status: Submitted [https://github.com/ROCm/axis/pull/38]
+Signed-off-by: Bruce Ashfield <bruce.ashfield@amd.com>
 ---
  crates/axis-sandbox/src/linux/vxn.rs | 23 +++++++++++++++++++----
  1 file changed, 19 insertions(+), 4 deletions(-)
@@ -54,3 +53,6 @@ index 79ba033..dcb82e2 100644
          argv.push(base_image);
  
          // Opaque argv (#31): encode [command, args...] as a single sentinel token
+-- 
+2.43.0
+

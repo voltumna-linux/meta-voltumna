@@ -1,7 +1,7 @@
-From c7cb6bf79fd73efed0e05bcbbf4bd34ab67afea2 Mon Sep 17 00:00:00 2001
-From: Bruce Ashfield <bruce.ashfield@gmail.com>
+From f36b0f369b8983bc005f6e9d365a152d17bfcb83 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@amd.com>
 Date: Fri, 14 Aug 2026 03:43:38 +0000
-Subject: [PATCH 06/10] vxn: add -it for interactive terminals
+Subject: [PATCH 06/11] vxn: add -it for interactive terminals
 
 When SandboxConfig.interactive_terminal is set (a tty `axis run`), add
 -it to the vxn argv. vxn routes -it over ssh-tt to the DomU console, and
@@ -9,9 +9,8 @@ AXIS already runs the child with the terminal inherited (capture_output
 is false for `axis run`) and waits without stealing the tty, so the
 agent's TUI (e.g. claude's login/REPL) drives the real terminal.
 
-Upstream-Status: Inappropriate [embedded specific]
-
-Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+Upstream-Status: Submitted [https://github.com/ROCm/axis/pull/38]
+Signed-off-by: Bruce Ashfield <bruce.ashfield@amd.com>
 ---
  crates/axis-sandbox/src/linux/vxn.rs | 9 +++++++++
  1 file changed, 9 insertions(+)
@@ -36,3 +35,6 @@ index 70ebc98..dae4e8e 100644
          // AXIS network policy -> the DomU's NIC.
          //   Block -> --no-network (no vif at all; stronger than a netns)
          //   Allow -> default bridge (leave the flag off)
+-- 
+2.43.0
+
