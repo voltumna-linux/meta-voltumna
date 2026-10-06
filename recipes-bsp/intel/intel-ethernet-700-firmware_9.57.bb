@@ -1,6 +1,7 @@
 DESCRIPTION = "Provides the Non-Volatile Memory (NVM) Update Utility for Intel Ethernet Network Adapter 700 Series."
 HOMEPAGE = "https://www.intel.com/content/www/us/en/download/18190/non-volatile-memory-nvm-update-utility-for-intel-ethernet-network-adapter-700-series.html"
-LICENSE = "CLOSED"
+LICENSE = "LicenseRef-intel-ethernet-700-firmware-CLOSED"
+LIC_FILES_CHKSUM = "file://700Series/Linux_x64/license.txt;md5=e475236e1d192f96e69473e79f969226"
 
 PV_MAJOR = "${@d.getVar('PV').split('.')[0]}"
 PV_MINOR = "${@d.getVar('PV').split('.')[1]}"

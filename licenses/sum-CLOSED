@@ -1,0 +1,44 @@
+NOTE: Proprietary-use notice and disclaimer transcribed from the front
+matter of SUM_UserGuide.pdf (Supermicro Update Manager User's Guide,
+Revision 2.15.0) shipped inside sum_2.15.0_Linux_x86_64_20251104.tar.gz.
+No standalone license file is shipped with SUM; this is the vendor's
+governing proprietary notice for the software.
+-------------------------------------------------------------------------------
+
+The information in this USER'S GUIDE has been carefully reviewed and is believed to be accurate. The
+vendor assumes no responsibility for any inaccuracies that may be contained in this document, makes no
+commitment to update or to keep current the information in this manual, or to notify any person
+organization of the updates. Please Note: For the most up-to-date version of this manual, please see our
+web site at www.supermicro.com.
+Super Micro Computer, Inc. ("Supermicro") reserves the right to make changes to the product described in
+this manual at any time and without notice. This product, including software, if any, and documentation
+may not, in whole or in part, be copied, photocopied, reproduced, translated or reduced to any medium or
+machine without prior written consent.
+DISCLAIMER OF WARRANTY ON SOFTWARE AND MATERIALS. You expressly acknowledge and agree that
+use of the Software and Materials is at your sole risk. FURTHERMORE, SUPER MICRO COMPUTER INC. DOES
+NOT WARRANT OR MAKE ANY REPRESENTATIONS REGARDING THE USE OR THE RESULTS OF THE USE OF
+THE SOFTWARE OR MATERIALS IN TERMS OF THEIR CORRECTNESS, ACCURACY, RELIABILITY, OR
+OTHERWISE. NO ORAL OR WRITTEN INFORMATION OR ADVICE GIVEN BY SUPER MICRO COMPUTER INC.
+OR SUPER MICRO COMPUTER INC. AUTHORIZED REPRESENTATIVE SHALL CREATE A WARRANTY OR IN ANY
+WAY INCREASE THE SCOPE OF THIS WARRANTY. SHOULD THE SOFTWARE AND/OR MATERIALS PROVE
+DEFECTIVE, YOU (AND NOT SUPER MICRO COMPUTER INC. OR A SUPER MICRO COMPUTER INC.
+AUTHORIZED REPRESENTATIVE) ASSUME THE ENTIRE COST OF ALL NECESSARY SERVICE, REPAIR, OR
+CORRECTION.
+LIMITATION OF LIABILITY. UNDER NO CIRCUMSTANCES INCLUDING NEGLIGENCE, SHALL SUPER MICRO
+COMPUTER INC. BE LIABLE FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES THAT RESULT
+FROM THE USE OR INABILITY TO USE THE SOFTWARE OR MATERIALS, EVEN IF SUPER MICRO COMPUTER
+INC. OR A SUPER MICRO COMPUTER INC. AUTHORIZED REPRESENTATIVE HAS BEEN ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGES.
+Any disputes arising between manufacturer and customer shall be governed by the laws of Santa Clara
+County in the State of California, USA. The State of California, County of Santa Clara shall be the exclusive
+venue for the resolution of any such disputes. Super Micro's total liability for all claims will not exceed the
+price paid for the hardware product.
+Manual Revision 2.15.0
+Release Date: Oct 16, 2025
+Unless you request and receive written permission from Super Micro Computer, Inc., you may not copy any part of
+this document.
+Information in this document is subject to change without notice. Other products and companies referred to herein
+are trademarks or registered trademarks of their respective companies or mark holders.
+Copyright (c) 2013-2025 by Super Micro Computer, Inc.
+All rights reserved.
+Printed in the United States of America

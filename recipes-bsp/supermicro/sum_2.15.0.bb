@@ -1,7 +1,8 @@
 DESCRIPTION = "Supermicro Update Manager (SUM) is used for managing and configuring \
 the BIOS/BMC firmware for Supermicro X9 generation motherboards and above."
 HOMEPAGE = "https://www.supermicro.com/en/solutions/management-software/supermicro-update-manager"
-LICENSE = "CLOSED"
+LICENSE = "LicenseRef-sum-CLOSED"
+LIC_FILES_CHKSUM = "file://SUM_UserGuide.pdf;md5=4292cf4fc6e164d4714fab454291a0c5"
 
 COMPATIBLE_HOST = "x86_64.*-linux"
 

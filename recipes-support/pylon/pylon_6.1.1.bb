@@ -1,6 +1,7 @@
 DESCRIPTION = "Basler's Pylon camera software"
 HOMEPAGE = "https://www.baslerweb.com/en/sales-support/downloads/software-downloads/#type=pylonsoftware;language=all;version=all"
-LICENSE = "CLOSED"
+LICENSE = "LicenseRef-pylon-CLOSED"
+LIC_FILES_CHKSUM = "file://share/pylon/licenses/License.html;md5=b966523debb4b5dc8429530d00d2e8be"
 
 BUILDNUMBER = "19861"
 SRC_URI = " \

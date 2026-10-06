@@ -1,6 +1,7 @@
 DESCRIPTION = "Provides the Non-Volatile Memory (NVM) Update Utility for Intel Ethernet Network Adapter X550 Series."
 HOMEPAGE = "https://www.intel.com/content/www/us/en/download/19358/non-volatile-memory-nvm-update-utility-for-intel-ethernet-network-adapter-x550-series.html"
-LICENSE = "CLOSED"
+LICENSE = "LicenseRef-intel-ethernet-550-firmware-CLOSED"
+LIC_FILES_CHKSUM = "file://X550/Linux_x64/license.txt;md5=e475236e1d192f96e69473e79f969226"
 
 PV_MAJOR = "${@d.getVar('PV').split('.')[0]}"
 PV_MINOR = "${@d.getVar('PV').split('.')[1]}"

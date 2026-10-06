@@ -3,7 +3,8 @@ DESCRIPTION = "SuperServer Automation Assistant (SAA) is the powerful CLI \
 for IT Administrator to easily deploy, configure, and update the managed \
 systems from single node to datacenter scale."
 HOMEPAGE = "https://www.supermicro.com/en/solutions/management-software/superserver-automation-assistant"
-LICENSE = "CLOSED"
+LICENSE = "LicenseRef-saa-CLOSED"
+LIC_FILES_CHKSUM = "file://SAA_UserGuide.pdf;md5=b30a5bdb1d4693e37b22ff9277a9c8c5"
 
 COMPATIBLE_HOST = "x86_64.*-linux"
 

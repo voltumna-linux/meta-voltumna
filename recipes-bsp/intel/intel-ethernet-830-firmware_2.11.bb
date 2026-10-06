@@ -1,6 +1,7 @@
 DESCRIPTION = "Provides the Non-Volatile Memory (NVM) Update Utility for Intel Ethernet Network Adapter E830 Series."
 HOMEPAGE = "https://www.intel.com/content/www/us/en/download/859202/nvm-update-utility-for-intel-ethernet-e830-and-e835-series.html"
-LICENSE = "CLOSED"
+LICENSE = "LicenseRef-intel-ethernet-830-firmware-CLOSED"
+LIC_FILES_CHKSUM = "file://E830_E835/Linux_x64/license.txt;md5=e475236e1d192f96e69473e79f969226"
 
 PV_MAJOR = "${@d.getVar('PV').split('.')[0]}"
 PV_MINOR = "${@d.getVar('PV').split('.')[1]}"
