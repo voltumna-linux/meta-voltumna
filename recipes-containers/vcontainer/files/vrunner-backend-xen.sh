@@ -116,22 +116,23 @@ hv_prepare_container() {
         *)          return 0 ;;
     esac
 
-    # Secret-safe per-run env (#20): AXIS passes container env as
-    # --env-b64=<base64(KEY=VAL\n...)>. Pull it out of DOCKER_CMD HERE in dom0 so
-    # the values are staged onto the per-run input disk (.vxn-env/env, like
-    # .vxn-ca below) and STRIPPED from the command -- they never reach the
-    # container DomU's kernel cmdline. The guest sources /mnt/input/.vxn-env/env
-    # before exec. (The base64 value is transiently in dom0's argv here -- the
-    # trusted control plane, like `docker run -e` on a host; a ssh/9p channel that
-    # avoids dom0 argv entirely is a hardening follow-up.)
-    VXN_ENV_B64=""
-    case "$DOCKER_CMD" in
-        *--env-b64=*)
-            VXN_ENV_B64=$(printf '%s' "$DOCKER_CMD" | grep -oE '\-\-env-b64=[A-Za-z0-9+/=]+' | head -1)
-            VXN_ENV_B64="${VXN_ENV_B64#--env-b64=}"
-            DOCKER_CMD=$(printf '%s' "$DOCKER_CMD" | sed -E 's/ *--env-b64=[A-Za-z0-9+/=]+//')
-            ;;
-    esac
+    # Secret-safe per-run env (#20): AXIS passes container env to the vxn frontend
+    # in the ENVIRONMENT (VXN_ENV_B64=<base64(KEY=VAL\n...)>), which we inherit
+    # here -- so the base64 value (which may contain secrets like ANTHROPIC_API_KEY)
+    # never appears on any argv: not on the world-readable dom0 command line, and
+    # not on the container DomU's kernel cmdline. We stage it onto the per-run
+    # input disk (.vxn-env/env, like .vxn-ca below), 0600; the guest sources it
+    # before exec. A legacy --env-b64= flag on the command is still accepted as a
+    # fallback, and any such flag is always stripped from the command regardless.
+    if [ -z "${VXN_ENV_B64:-}" ]; then
+        case "$DOCKER_CMD" in
+            *--env-b64=*)
+                VXN_ENV_B64=$(printf '%s' "$DOCKER_CMD" | grep -oE '\-\-env-b64=[A-Za-z0-9+/=]+' | head -1)
+                VXN_ENV_B64="${VXN_ENV_B64#--env-b64=}"
+                ;;
+        esac
+    fi
+    DOCKER_CMD=$(printf '%s' "$DOCKER_CMD" | sed -E 's/ *--env-b64=[A-Za-z0-9+/=]+//')
 
     # Nested enforcement (#31): AXIS passes the enforcement-relevant policy subset
     # as --policy-b64=<base64(KEY=VAL\n...)>. Same treatment as --env-b64 -- stage

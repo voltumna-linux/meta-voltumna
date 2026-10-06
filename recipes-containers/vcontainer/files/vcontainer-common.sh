@@ -1003,6 +1003,11 @@ build_runner_args() {
     [ -n "$STATE_DIR" ] && args+=("--state-dir" "$STATE_DIR")
     [ -n "$INPUT_STORAGE" ] && args+=("--input-storage" "$INPUT_STORAGE")
     [ "$DISABLE_KVM" = "true" ] && args+=("--no-kvm")
+    # Carry the run's name through to the backend so the Xen domain name is
+    # deterministic (HV_DOMNAME=vxn-<name>) rather than PID-based (vxn-$$). This
+    # lets an external driver (e.g. AXIS) that passed `--name` tear the exact
+    # DomU down (`xl destroy vxn-<name>`) on timeout/kill instead of orphaning it.
+    [ -n "${RUN_CONTAINER_NAME:-}" ] && args+=("--container-name" "$RUN_CONTAINER_NAME")
 
     # Add idle timeout from config
     local idle_timeout=$(config_get "idle-timeout" "1800")

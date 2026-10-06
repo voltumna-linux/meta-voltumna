@@ -1,7 +1,7 @@
-From dd261a14069bacd373595fab3758ee0eecdd5b0b Mon Sep 17 00:00:00 2001
-From: Bruce Ashfield <bruce.ashfield@gmail.com>
+From 580cf2393ae3fd63e555f4d177c968ec40d2daf8 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@amd.com>
 Date: Wed, 12 Aug 2026 21:04:45 +0000
-Subject: [PATCH 04/10] vxn: forward explicitly-named host env vars into the
+Subject: [PATCH 04/11] vxn: forward explicitly-named host env vars into the
  DomU
 
 The vxn sandbox delivers container env via a base64 blob on the input disk.
@@ -14,9 +14,8 @@ the collected config env). This is an explicit, documented opt-in -- nothing
 is forwarded unless named -- so the default secret-stripping behavior is
 preserved.
 
-Upstream-Status: Inappropriate [embedded specific]
-
-Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+Upstream-Status: Submitted [https://github.com/ROCm/axis/pull/38]
+Signed-off-by: Bruce Ashfield <bruce.ashfield@amd.com>
 ---
  crates/axis-sandbox/src/linux/vxn.rs | 37 +++++++++++++++++++++-------
  1 file changed, 28 insertions(+), 9 deletions(-)
@@ -77,3 +76,6 @@ index b958e76..d17fd95 100644
          }
  
          // TODO(vxn/axis): filesystem deny/allow -> DomU mount set; rw workspace
+-- 
+2.43.0
+

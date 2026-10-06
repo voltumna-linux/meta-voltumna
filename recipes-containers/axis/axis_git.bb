@@ -24,6 +24,7 @@ SRC_URI = "git://github.com/ROCm/axis.git;protocol=https;branch=main \
     file://0008-docs-add-vxn-backend-guide.patch \
     file://0009-vxn-carry-the-process-limit-policy-into-the-DomU.patch \
     file://0010-vxn-carry-the-filesystem-policy-into-the-DomU.patch \
+    file://0011-vxn-tear-down-the-DomU-on-destroy-timeout-fix-unenfo.patch \
     "
 SRCREV = "fe981ef99a2c4c73499b003600fa8d599617ab85"
 

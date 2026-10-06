@@ -1,7 +1,7 @@
-From a3f7cf49aa07b7f810f54295c018798958012a19 Mon Sep 17 00:00:00 2001
-From: Bruce Ashfield <bruce.ashfield@gmail.com>
+From e9859926409c66466cd18809af51349e581c14d0 Mon Sep 17 00:00:00 2001
+From: Bruce Ashfield <bruce.ashfield@amd.com>
 Date: Fri, 14 Aug 2026 04:04:48 +0000
-Subject: [PATCH 08/10] docs: add vxn backend guide
+Subject: [PATCH 08/11] docs: add vxn backend guide
 
 The vxn sandbox backend needs a vxn SDK (the `vxn` CLI) installed, which a
 user builds from the meta-virtualization Yocto layer. Document the
@@ -11,9 +11,8 @@ knobs (VXN_BIN, VXN_BASE_IMAGE, VXN_FORWARD_ENV, VXN_MEMORY), how policy
 network modes map to the DomU NIC, and config a vs b. Linked from the
 README's Linux-backends section.
 
-Upstream-Status: Inappropriate [embedded specific]
-
-Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+Upstream-Status: Submitted [https://github.com/ROCm/axis/pull/38]
+Signed-off-by: Bruce Ashfield <bruce.ashfield@amd.com>
 ---
  README.md           |   5 ++
  docs/vxn-backend.md | 135 ++++++++++++++++++++++++++++++++++++++++++++
@@ -177,3 +176,6 @@ index 0000000..89c72a0
 +
 +- meta-virtualization `docs/vxn-sdk.md` — building the SDK.
 +- The extracted SDK's `README.txt` — the three vxn runtime modes.
+-- 
+2.43.0
+
