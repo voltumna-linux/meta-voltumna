@@ -1,0 +1,133 @@
+Upstream-Status: Inappropriate
+
+From 4cdf8c3acd32f6858688357c0c28505f26a6cca5 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Sun, 4 Oct 2026 17:32:41 +0200
+Subject: [PATCH] app/testpmd: show longest Rx gap in port statistics
+
+Add to the port statistics the longest time between two Rx bursts
+returning packets, since the previous show.
+
+With traffic at a constant rate it shows the longest time the port
+went without receiving, a quick check of how deterministic a setup
+is. The TSC is read once per Rx burst returning packets.
+
+Signed-off-by: Giulio Gaio <giulio.gaio@elettra.eu>
+Signed-off-by: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+---
+ .mailmap                                    |  1 +
+ app/test-pmd/config.c                       | 11 +++++++++++
+ app/test-pmd/testpmd.c                      |  2 ++
+ app/test-pmd/testpmd.h                      | 14 ++++++++++++++
+ doc/guides/testpmd_app_ug/testpmd_funcs.rst |  2 ++
+ 5 files changed, 30 insertions(+)
+
+diff --git a/.mailmap b/.mailmap
+index bfb6116..214fd53 100644
+--- a/.mailmap
++++ b/.mailmap
+@@ -519,6 +519,7 @@ Gerry Gribbon <ggribbon@nvidia.com>
+ Ghalem Boudour <ghalem.boudour@6wind.com>
+ Gilad Berman <giladb@mellanox.com>
+ Girish Nandibasappa <girish.nandibasappa@amd.com>
++Giulio Gaio <giulio.gaio@elettra.eu>
+ Gong Deli <gnnnnng@gmail.com>
+ Gordon Noonan <gordon.noonan@intel.com>
+ Gosia Bakota <gosia.bakota@intel.com>
+diff --git a/app/test-pmd/config.c b/app/test-pmd/config.c
+index 32c885d..e505466 100644
+--- a/app/test-pmd/config.c
++++ b/app/test-pmd/config.c
+@@ -292,6 +292,8 @@ nic_stats_display(portid_t port_id)
+ 	uint64_t mpps_rx, mpps_tx, mbps_rx, mbps_tx;
+ 	struct rte_eth_stats stats;
+ 	static const char *nic_stats_border = "########################";
++	uint64_t rx_gap = 0;
++	streamid_t sm_id;
+ 	int ret;
+ 
+ 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+@@ -353,6 +355,15 @@ nic_stats_display(portid_t port_id)
+ 	printf("  Rx-pps: %12"PRIu64"          Rx-bps: %12"PRIu64"\n  Tx-pps: %12"
+ 	       PRIu64"          Tx-bps: %12"PRIu64"\n", mpps_rx, mbps_rx * 8,
+ 	       mpps_tx, mbps_tx * 8);
++	for (sm_id = 0; sm_id < cur_fwd_config.nb_fwd_streams; sm_id++)
++		if (fwd_streams[sm_id]->rx_port == port_id &&
++		    fwd_streams[sm_id]->rx_gap_gen == ports[port_id].rx_gap_gen)
++			rx_gap = RTE_MAX(rx_gap, fwd_streams[sm_id]->rx_gap_max);
++	ports[port_id].rx_gap_gen++;
++	if (rx_gap != 0)
++		printf("  Max-Rx-gap: %8.1f us\n", rx_gap * 1E6 / rte_get_tsc_hz());
++	else
++		printf("  Max-Rx-gap:      n/a\n");
+ 
+ 	if (xstats_display_num > 0)
+ 		nic_xstats_display_periodic(port_id);
+diff --git a/app/test-pmd/testpmd.c b/app/test-pmd/testpmd.c
+index 4591ad2..8bbc15f 100644
+--- a/app/test-pmd/testpmd.c
++++ b/app/test-pmd/testpmd.c
+@@ -2186,6 +2186,8 @@ fwd_stats_reset(void)
+ 		memset(&fs->rx_burst_stats, 0, sizeof(fs->rx_burst_stats));
+ 		memset(&fs->tx_burst_stats, 0, sizeof(fs->tx_burst_stats));
+ 		fs->busy_cycles = 0;
++		fs->rx_gap_last = 0;
++		fs->rx_gap_max = 0;
+ 	}
+ }
+ 
+diff --git a/app/test-pmd/testpmd.h b/app/test-pmd/testpmd.h
+index f319471..d6958d2 100644
+--- a/app/test-pmd/testpmd.h
++++ b/app/test-pmd/testpmd.h
+@@ -205,6 +205,9 @@ struct fwd_stream {
+ 	unsigned int gro_times;	/**< GRO operation times */
+ #endif
+ 	uint64_t busy_cycles; /**< used with --record-core-cycles */
++	uint64_t rx_gap_last; /**< TSC of the last Rx burst returning packets */
++	uint64_t rx_gap_max; /**< longest TSC gap between two such bursts */
++	uint32_t rx_gap_gen; /**< ports[rx_port].rx_gap_gen of rx_gap_max */
+ 	struct pkt_burst_stats rx_burst_stats;
+ 	struct pkt_burst_stats tx_burst_stats;
+ 	struct fwd_lcore *lcore; /**< Lcore being scheduled. */
+@@ -342,6 +345,7 @@ struct rte_port {
+ 	struct rte_eth_conf     dev_conf;   /**< Port configuration. */
+ 	struct rte_ether_addr       eth_addr;   /**< Port ethernet address */
+ 	struct rte_eth_stats    stats;      /**< Last port statistics */
++	uint32_t                rx_gap_gen; /**< Bumped by each port stats display */
+ 	unsigned int            socket_id;  /**< For NUMA support */
+ 	uint16_t		parse_tunnel:1; /**< Parse internal headers */
+ 	uint16_t                tso_segsz;  /**< Segmentation offload MSS for non-tunneled packets. */
+@@ -901,6 +905,16 @@ common_fwd_stream_receive(struct fwd_stream *fs, struct rte_mbuf **burst,
+ 	uint16_t nb_rx;
+ 
+ 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, burst, nb_pkts);
++	if (nb_rx != 0) {
++		uint64_t now = rte_rdtsc();
++		uint64_t gap = fs->rx_gap_last != 0 ? now - fs->rx_gap_last : 0;
++		uint32_t gen = ports[fs->rx_port].rx_gap_gen;
++
++		if (gen != fs->rx_gap_gen || gap > fs->rx_gap_max)
++			fs->rx_gap_max = gap;
++		fs->rx_gap_gen = gen;
++		fs->rx_gap_last = now;
++	}
+ 	if (record_burst_stats)
+ 		fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
+ 	fs->rx_packets += nb_rx;
+diff --git a/doc/guides/testpmd_app_ug/testpmd_funcs.rst b/doc/guides/testpmd_app_ug/testpmd_funcs.rst
+index 62bb167..63e9d29 100644
+--- a/doc/guides/testpmd_app_ug/testpmd_funcs.rst
++++ b/doc/guides/testpmd_app_ug/testpmd_funcs.rst
+@@ -171,6 +171,8 @@ The available information categories are:
+ * ``summary``: Brief port summary such as Device Name, Driver Name etc.
+ 
+ * ``stats``: RX/TX statistics.
++  ``Max-Rx-gap`` is the longest time between two Rx bursts returning packets
++  on the port since the last show (``n/a`` if none).
+ 
+ * ``xstats``: RX/TX extended NIC statistics.
+ 
+-- 
+2.53.0
+
