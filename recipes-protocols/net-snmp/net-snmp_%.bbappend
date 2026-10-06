@@ -1,6 +1,6 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 
-PACKAGE_ARCH = "${MACHINE_ARCH}"
+PACKAGE_ARCH:class-target = "${MACHINE_ARCH}"
 
 SRC_URI:append = " file://snmpd.local.conf"
 
@@ -14,6 +14,11 @@ RDEPENDS:${PN}-libs = " ${PN}-lib-netsnmp \
                         ${PN}-lib-helpers \
                         ${PN}-lib-mibs \
 "
+# SDK host needs headers/libs/tools only, not daemons.
+# Upstream RDEPENDS:${PN}-dev pulls -server which is unbuildable for
+# nativesdk (sbindir==bindir, client swallows daemons, snmptrapd pkg empty).
+RDEPENDS:${PN}-dev:class-nativesdk = "${PN}-client (= ${EXTENDPKGV})"
+RRECOMMENDS:${PN}-dbg:class-nativesdk = "${PN}-client (= ${EXTENDPKGV})"
 SYSTEMD_AUTO_ENABLE:${PN}-server-snmpd = "enable"
 SYSTEMD_AUTO_ENABLE:${PN}-server-snmptrapd =  "disable"
 
@@ -27,4 +32,4 @@ do_install:append() {
         ${D}${sysconfdir}/snmp/snmpd.local.conf
 }
 
-BBCLASSEXTEND = "nativesdk"
+BBCLASSEXTEND:append = " nativesdk"
