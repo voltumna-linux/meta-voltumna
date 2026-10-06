@@ -2,11 +2,13 @@ DESCRIPTION = "OS Installer"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-RDEPENDS:${PN} = "bash bmap-tools parted util-linux"
+RDEPENDS:${PN} = "bash bmaptool parted util-linux"
 
 SRC_URI = " \
 	file://os-install \
 	"
+
+S = "${UNPACKDIR}"
 
 FILES:${PN} = "${base_sbindir}/os-install"
 
