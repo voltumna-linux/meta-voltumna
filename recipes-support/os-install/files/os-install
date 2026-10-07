@@ -4,6 +4,7 @@ export PATH=/usr/bin:/usr/sbin:/bin:/sbin
 
 IMAGE_URL=http://www.elettra.eu/images/Documents/Voltumna/public
 IMAGE_SUFFIX=img.xz
+IMAGE_VERSION=""
 DISK=/dev/sda
 
 echo "Installation in progress..."
@@ -19,6 +20,7 @@ do
 	case $arg in
 		image_url=*)	IMAGE_URL="${arg//image_url=}";;
 		image_suffix=*)	IMAGE_SUFFIX="${arg//image_suffix=}";;
+		image_version=*)	IMAGE_VERSION="${arg//image_version=}";;
 		disk=*)		DISK="${arg//disk=}";;
 	esac
 done
@@ -34,7 +36,11 @@ if [ ! -f /etc/resolv.conf ]; then
 	done
 fi
 
-bmaptool copy ${IMAGE_URL}/$(ls -d usr-* | sed -e 's/usr-\(.*\)/\1/').${IMAGE_SUFFIX} ${DISK}
+if [ -z "$IMAGE_VERSION" ]; then
+	IMAGE_VERSION=$(ls -d usr-* | sed -e 's/usr-\(.*\)/\1/')
+fi
+
+bmaptool copy ${IMAGE_URL}/${IMAGE_VERSION}.${IMAGE_SUFFIX} ${DISK}
 
 umount /tmp
 partprobe ${DISK}
