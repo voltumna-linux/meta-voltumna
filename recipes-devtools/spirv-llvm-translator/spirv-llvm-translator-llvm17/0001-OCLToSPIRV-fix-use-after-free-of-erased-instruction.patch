@@ -1,0 +1,62 @@
+From aea1ac74ed4301df12adbffff535f72f37d0bb13 Mon Sep 17 00:00:00 2001
+From: Wenju He <wenju.he@intel.com>
+Date: Thu, 3 Aug 2023 10:42:46 +0000
+Subject: [PATCH] OCLToSPIRV: fix use-after-free of erased instructions in
+ ValuesToDelete
+
+Backport of upstream "Fix delete of functions that becomes unused (#2109)"
+to the llvm_release_170 branch.
+
+runOCLToSPIRV() erased every Instruction in ValuesToDelete in a first
+loop and then walked the same container again with
+dyn_cast<GlobalValue>() to erase global values. After the first loop the
+Instructions are already freed, so the second loop reads freed memory.
+If that memory has been recycled in the meantime (for example by another
+thread compiling an OpenCL program concurrently and reusing the freed
+chunks) the stale Value ID can look like a Function (FunctionVal == 0) and
+eraseFromParent() is called on garbage, which corrupts the heap and
+crashes in random places (SIGSEGV in Function::eraseFromParent, "stack
+smashing detected", malloc(): invalid size, ...).
+
+Only instructions are put into the set now; unused function declarations
+are removed by eraseUselessFunctions() anyway.
+
+Upstream-Status: Backport [https://github.com/KhronosGroup/SPIRV-LLVM-Translator/commit/aea1ac74ed4301df12adbffff535f72f37d0bb13]
+Signed-off-by: Yogesh Tyagi <yogesh.tyagi@intel.com>
+---
+--- a/lib/SPIRV/OCLToSPIRV.cpp
++++ b/lib/SPIRV/OCLToSPIRV.cpp
+@@ -177,12 +177,8 @@
+ 
+   visit(*M);
+ 
+-  for (auto &I : ValuesToDelete)
+-    if (auto Inst = dyn_cast<Instruction>(I))
+-      Inst->eraseFromParent();
+-  for (auto &I : ValuesToDelete)
+-    if (auto GV = dyn_cast<GlobalValue>(I))
+-      GV->eraseFromParent();
++  for (Instruction *I : ValuesToDelete)
++    I->eraseFromParent();
+ 
+   eraseUselessFunctions(M); // remove unused functions declarations
+   LLVM_DEBUG(dbgs() << "After OCLToSPIRV:\n" << *M);
+@@ -1087,7 +1083,6 @@
+                     << *CI->getArgOperand(0) << '\n');
+     CI->replaceAllUsesWith(CI->getArgOperand(0));
+     ValuesToDelete.insert(CI);
+-    ValuesToDelete.insert(CI->getCalledFunction());
+     return true;
+   }
+   return false;
+--- a/lib/SPIRV/OCLToSPIRV.h
++++ b/lib/SPIRV/OCLToSPIRV.h
+@@ -268,7 +268,7 @@
+ private:
+   LLVMContext *Ctx;
+   unsigned CLVer; /// OpenCL version as major*10+minor
+-  std::set<Value *> ValuesToDelete;
++  std::set<Instruction *> ValuesToDelete;
+   OCLTypeToSPIRVBase *OCLTypeToSPIRVPtr;
+ 
+   ConstantInt *addInt32(int I) { return getInt32(M, I); }
