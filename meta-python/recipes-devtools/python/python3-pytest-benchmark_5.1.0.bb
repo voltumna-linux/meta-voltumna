@@ -7,6 +7,8 @@ SRC_URI[sha256sum] = "9ea661cdc292e8231f7cd4c10b0319e56a2118e2c09d9f50e1b3d150d2
 
 inherit pypi setuptools3
 
+PYPI_PACKAGE_SDIST = "pytest-benchmark"
+
 RDEPENDS:${PN} += "python3-core python3-py-cpuinfo python3-pytest python3-aspectlib"
 
 BBCLASSEXTEND = "native nativesdk"

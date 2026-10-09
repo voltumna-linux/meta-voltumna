@@ -4,7 +4,6 @@ LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=26e1a171d943c64f00c51f90c256b9d4"
 
 SRC_URI[sha256sum] = "fed2afca4cb66832a416404ec02140a5311d8ce7658c0fdd92cc022b0cef8266"
-PYPI_PACKAGE = "git_pw"
 
 inherit pypi python_setuptools_build_meta
 

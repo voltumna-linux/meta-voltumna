@@ -12,7 +12,7 @@ RDEPENDS:${PN} += " \
 
 inherit setuptools3 pypi
 
-PYPI_PACKAGE = "txWS"
+PYPI_PACKAGE_SDIST = "txWS"
 
 SRC_URI += "file://0001-drop-the-six-dependency.patch"
 SRC_URI[sha256sum] = "cb93086095d04a5d70f53a75053f7df478ff37e972c3637fb55ca4a9e6b94679"

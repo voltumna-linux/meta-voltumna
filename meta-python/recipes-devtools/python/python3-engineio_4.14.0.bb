@@ -7,7 +7,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=42d0a9e728978f0eeb759c3be91536b8"
 
 inherit pypi python_setuptools_build_meta
 
-PYPI_PACKAGE = "python_engineio"
+PYPI_PACKAGE = "python-engineio"
 
 RDEPENDS:${PN} += " \
 	python3-netclient \

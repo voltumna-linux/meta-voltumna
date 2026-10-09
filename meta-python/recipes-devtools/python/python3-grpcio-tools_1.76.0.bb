@@ -7,8 +7,6 @@ LIC_FILES_CHKSUM = "file://PKG-INFO;beginline=8;endline=8;md5=7145f7cdd263359b62
 
 inherit pypi setuptools3
 
-PYPI_PACKAGE = "grpcio_tools"
-
 DEPENDS += "python3-grpcio"
 
 SRC_URI += "file://0001-setup.py-Do-not-mix-C-and-C-compiler-options.patch \

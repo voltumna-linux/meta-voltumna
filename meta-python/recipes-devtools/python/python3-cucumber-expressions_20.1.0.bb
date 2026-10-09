@@ -8,8 +8,6 @@ SRC_URI[sha256sum] = "0d216ec26e36c71b3e5643f2e72c41f9b266ef04eaa0c7e47a6e3b2caf
 
 inherit pypi python_uv_build
 
-PYPI_PACKAGE = "cucumber_expressions"
-
 RDEPENDS:${PN} += " \
     python3-core \
     python3-numbers \

@@ -17,6 +17,4 @@ RDEPENDS:${PN} += "\
 
 SRC_URI[sha256sum] = "68be2c29e14ae310f8a39e1a79916b6d85c6cb41dcce789d14ff05fe293e4c55"
 
-PYPI_PACKAGE = "sentry_sdk"
-
 inherit pypi setuptools3

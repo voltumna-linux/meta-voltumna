@@ -8,4 +8,6 @@ SRC_URI[sha256sum] = "54fd1966d6bd1fcde781596cb86068214edeebff1db13a2cea11079e3f
 
 inherit pypi python_setuptools_build_meta
 
+PYPI_PACKAGE_SDIST = "lru-dict"
+
 DEPENDS += "python3-wheel-native"

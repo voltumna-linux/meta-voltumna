@@ -8,7 +8,6 @@ SRC_URI += "file://0001-python3-google-auth-oauthlib-Skip-failing-3PI-creden.pat
 SRC_URI[sha256sum] = "1a83f5f2a8421dedadaa3caf25b3a710dddf85a33a63144be41c2fc79174b106"
 
 inherit pypi setuptools3 ptest
-PYPI_PACKAGE = "google_auth_oauthlib"
 
 SRC_URI += " \
         file://run-ptest \

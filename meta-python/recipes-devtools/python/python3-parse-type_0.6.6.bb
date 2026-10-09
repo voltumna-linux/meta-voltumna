@@ -9,8 +9,6 @@ SRC_URI += " \
     file://0001-drop-the-six-dependency.patch \
 "
 
-PYPI_PACKAGE = "parse_type"
-
 inherit pypi ptest python_setuptools_build_meta
 
 DEPENDS += "python3-wheel-native"

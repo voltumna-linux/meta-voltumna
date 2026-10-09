@@ -5,6 +5,8 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
 
 inherit pypi setuptools3
 
+PYPI_PACKAGE_SDIST = "googleapis-common-protos"
+
 SRC_URI[sha256sum] = "27c5abdffc4911f28101e635de1533fb4cfd2c37fbaa9174587c799fac90aa87"
 
 RDEPENDS:${PN} += "\
