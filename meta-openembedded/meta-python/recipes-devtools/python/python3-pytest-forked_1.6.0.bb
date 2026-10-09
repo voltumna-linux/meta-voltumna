@@ -7,6 +7,8 @@ SRC_URI[sha256sum] = "4dafd46a9a600f65d822b8f605133ecf5b3e1941ebb3588e943b4e3eb7
 
 inherit pypi python_setuptools_build_meta
 
+PYPI_PACKAGE_SDIST = "pytest-forked"
+
 PEP517_BUILD_OPTS = "--skip-dependency-check"
 
 DEPENDS += "python3-setuptools-scm-native"

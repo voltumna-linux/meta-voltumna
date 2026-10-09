@@ -7,7 +7,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=42d0a9e728978f0eeb759c3be91536b8"
 
 inherit pypi python_setuptools_build_meta
 
-PYPI_PACKAGE = "python_socketio"
+PYPI_PACKAGE = "python-socketio"
 
 SRC_URI[sha256sum] = "c3bbfc4937dcfea7c4d1b182afa94d4a30335d153987e8f2078b344beacf95a0"
 

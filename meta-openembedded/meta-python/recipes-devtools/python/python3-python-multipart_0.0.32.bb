@@ -6,10 +6,8 @@ SRC_URI[sha256sum] = "be54b7f3fa167bb83e4fcd936b887b708f4e57fe75911c02aebf53efaf
 
 inherit pypi python_hatchling ptest-python-pytest
 
-PYPI_PACKAGE = "python_multipart"
 CVE_PRODUCT = "python-multipart"
 
 RDEPENDS:${PN}-ptest += " \
 	python3-pyyaml \
 "
-

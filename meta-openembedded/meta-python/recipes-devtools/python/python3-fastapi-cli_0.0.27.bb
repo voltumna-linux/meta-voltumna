@@ -7,8 +7,6 @@ SRC_URI[sha256sum] = "1dffb1e40c0c88f2e0171a8a252a2b615c1e63ff8c05626649e4badd6a
 
 inherit pypi python_pdm
 
-PYPI_PACKAGE = "fastapi_cli"
-
 RDEPENDS:${PN} += "\
     python3-difflib \
     python3-pydantic \

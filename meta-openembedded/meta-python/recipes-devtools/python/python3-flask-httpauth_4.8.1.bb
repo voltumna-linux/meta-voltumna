@@ -7,8 +7,6 @@ inherit pypi python_setuptools_build_meta
 
 DEPENDS += "python3-wheel-native"
 
-PYPI_PACKAGE = "flask_httpauth"
-
 SRC_URI[sha256sum] = "88499b22f1353893743c3cd68f2ca561c4ad9ef75cd6bcc7f621161cd0e80744"
 
 RDEPENDS:${PN} += "\

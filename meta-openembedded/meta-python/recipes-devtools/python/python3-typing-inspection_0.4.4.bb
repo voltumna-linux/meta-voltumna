@@ -10,8 +10,6 @@ SRC_URI[sha256sum] = "547274fa6b0a561ccf549cc9524b999a578e737d015d8709d021f9d0d1
 
 RDEPENDS:${PN}-ptest += "python3-typing-extensions"
 
-PYPI_PACKAGE = "typing_inspection"
-
 do_install_ptest:append() {
 	# test_literal_values_unhashable_type asserts that duplicate unhashable
 	# Literal values (e.g. Literal[[1, 'a'], [1, 'a']]) are preserved, but

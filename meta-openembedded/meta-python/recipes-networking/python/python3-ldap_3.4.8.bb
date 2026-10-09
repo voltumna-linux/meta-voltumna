@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://LICENCE;md5=36ce9d726d0321b73c1521704d07db1b"
 
 DEPENDS = "python3 openldap cyrus-sasl python3-setuptools-scm-native"
 
-PYPI_PACKAGE = "python_ldap"
+PYPI_PACKAGE = "python-ldap"
 
 inherit pypi python_setuptools_build_meta
 

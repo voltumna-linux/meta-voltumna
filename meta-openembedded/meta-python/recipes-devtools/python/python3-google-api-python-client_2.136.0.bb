@@ -8,6 +8,8 @@ SRC_URI[sha256sum] = "161c722c8864e7ed39393e2b7eea76ef4e1c933a6a59f9d7c70409b663
 
 inherit pypi setuptools3
 
+PYPI_PACKAGE_SDIST = "google-api-python-client"
+
 RDEPENDS:${PN} += "\
     python3-logging \
     python3-json \

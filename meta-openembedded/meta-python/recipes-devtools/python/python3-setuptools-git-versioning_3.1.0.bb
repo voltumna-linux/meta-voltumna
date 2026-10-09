@@ -16,6 +16,4 @@ RDEPENDS:${PN} += "python3-core python3-datetime python3-logging \
 				   python3-packaging python3-pprint python3-setuptools \
 				   python3-tomllib"
 
-PYPI_PACKAGE = "setuptools_git_versioning"
-
 BBCLASSEXTEND += "native"
