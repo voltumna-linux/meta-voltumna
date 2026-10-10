@@ -7,7 +7,25 @@
 # Provides the stripped-down DISTRO_FEATURES, opted-out features, and
 # native class overrides common to all minimal container/VM builds.
 
-require conf/distro/poky.conf
+# Base on oe-core's self-contained minimal distro skeleton rather than
+# meta-poky's poky.conf. meta-virt ships multiple distros (vruntime,
+# vcontainer) and should not drag in the poky *reference* distro -- that
+# coupled these distros to meta-poky being in bblayers.conf and silently
+# pulled poky policy (poky-sanity, poky-world-exclude, SANITY_TESTED_DISTROS,
+# rpm, sysvinit) we never asked for. defaultsetup.conf lives in oe-core
+# (always present) and provides default providers/distrovars, tcmode/tclibc,
+# security_flags and init-manager -- everything a functional distro needs.
+require conf/distro/defaultsetup.conf
+
+# poky.conf pinned these; defaultsetup.conf leaves them to oe-core defaults.
+# Keep rpm packaging (unchanged from the poky-based behavior) and pin the
+# kernel so dropping poky.conf does not let linux-yocto float. INIT_MANAGER
+# is deliberately NOT pinned here -- defaultsetup.conf defaults to systemd,
+# which is what this layer uses (the VM rootfs overrides to busybox in
+# vruntime.conf; nothing in the layer relies on sysvinit).
+PACKAGE_CLASSES ?= "package_rpm"
+PREFERRED_VERSION_linux-yocto ?= "7.2%"
+PREFERRED_VERSION_linux-yocto-rt ?= "7.2%"
 
 # Minimal distro features for container runtime environment
 # - acl: Access control lists (containers need this)
@@ -36,9 +54,11 @@ DISTRO_FEATURES = "acl ext2 ipv4 ipv6 seccomp vfat pci vcontainer vxn virtualiza
 # DISTRO_FEATURES_OPTED_OUT (commit 159148f4de2).
 DISTRO_FEATURES_OPTED_OUT = "pulseaudio gobject-introspection-data opengl ptest multiarch wayland vulkan"
 
-# Native and nativesdk classes need full features for build tools
-DISTRO_FEATURES:class-native = "${POKY_DEFAULT_DISTRO_FEATURES}"
-DISTRO_FEATURES:class-nativesdk = "${POKY_DEFAULT_DISTRO_FEATURES}"
+# Native and nativesdk classes: keep the stripped feature set out of the
+# build tools. Empty here matches the previous poky-based behavior
+# (POKY_DEFAULT_DISTRO_FEATURES was "") without referencing a poky symbol.
+DISTRO_FEATURES:class-native = ""
+DISTRO_FEATURES:class-nativesdk = ""
 
 # Keep images small - no documentation or debug
 EXTRA_IMAGE_FEATURES = ""

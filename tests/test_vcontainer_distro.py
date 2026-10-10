@@ -58,9 +58,17 @@ class TestVruntimeBaseInc:
         path = meta_virt_dir / "conf" / "distro" / "include" / "vruntime-base.inc"
         assert path.exists(), f"Missing: {path}"
 
-    def test_requires_poky(self, meta_virt_dir):
+    def test_requires_selfcontained_base(self, meta_virt_dir):
+        """Base on oe-core's defaultsetup.conf, not meta-poky's poky.conf, so
+        the meta-virt distros do not depend on meta-poky being in the stack."""
         content = (meta_virt_dir / "conf" / "distro" / "include" / "vruntime-base.inc").read_text()
-        assert "require conf/distro/poky.conf" in content
+        assert "require conf/distro/defaultsetup.conf" in content
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            assert "require conf/distro/poky.conf" not in stripped, \
+                "vruntime-base.inc must not require poky.conf (use defaultsetup.conf)"
 
     def test_sets_distro_features(self, meta_virt_dir):
         content = (meta_virt_dir / "conf" / "distro" / "include" / "vruntime-base.inc").read_text()

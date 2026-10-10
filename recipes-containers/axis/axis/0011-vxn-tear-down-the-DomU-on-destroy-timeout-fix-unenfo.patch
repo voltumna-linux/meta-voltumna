@@ -1,4 +1,4 @@
-From 0c87766499819101bfaef2d9b218fc9eb800f77e Mon Sep 17 00:00:00 2001
+From c516e21f8c2b94bf80eda110b400b02e334e091c Mon Sep 17 00:00:00 2001
 From: Bruce Ashfield <bruce.ashfield@gmail.com>
 Date: Tue, 6 Oct 2026 08:14:30 +0000
 Subject: [PATCH 11/11] vxn: tear down the DomU on destroy/timeout; fix
@@ -10,11 +10,15 @@ the first cut left the DomU running.
 P1:
 - destroy() tears down the exact DomU. vxn derives the domain name
   "vxn-<name>" from `vxn run --name` (paired meta-virt build_runner_args
-  change), so the backend `xl destroy`es that domain (with a `vxn rm`
-  fallback) instead of only killing the blocked `xl create -c` frontend,
-  which orphaned the VM.
-- axis-cli calls destroy() after wait() on the non-interactive run too, so a
-  timeout (which only kills the frontend) still tears the DomU down.
+  change), so the backend `xl destroy`es that domain instead of only killing
+  the blocked `xl create -c` frontend, which orphaned the VM. Teardown is then
+  confirmed with an explicit `xl list` absence check (not by matching
+  `xl destroy` stderr), so an unrelated error is never read as success; a
+  `vxn rm` relay is the fallback where the host has no xl (SDK mode).
+- destroy() runs on more paths: axis-cli calls it after wait() on the
+  non-interactive run (timeout only kills the frontend), and teardown is now
+  skipped ONLY on a confirmed clean exit (Some(0)) -- an abnormal vxn exit
+  observed by a still-running AXIS still triggers cleanup.
 - the frontend pid is retained so destroy() can signal it after wait() has
   moved the Child into a blocking task (interactive SIGTERM path).
 - new() rejects process.run_as_user / non-empty process.blocked_syscalls with
@@ -36,8 +40,8 @@ Signed-off-by: Bruce Ashfield <bruce.ashfield@amd.com>
 Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
 ---
  crates/axis-cli/src/main.rs          |   6 +-
- crates/axis-sandbox/src/linux/vxn.rs | 263 ++++++++++++++++++++++++---
- 2 files changed, 241 insertions(+), 28 deletions(-)
+ crates/axis-sandbox/src/linux/vxn.rs | 319 ++++++++++++++++++++++++---
+ 2 files changed, 290 insertions(+), 35 deletions(-)
 
 diff --git a/crates/axis-cli/src/main.rs b/crates/axis-cli/src/main.rs
 index 39265f5..5edbc09 100644
@@ -60,7 +64,7 @@ index 39265f5..5edbc09 100644
                              }
                              _ = tokio::signal::ctrl_c() => {
 diff --git a/crates/axis-sandbox/src/linux/vxn.rs b/crates/axis-sandbox/src/linux/vxn.rs
-index dcb82e2..b122f54 100644
+index dcb82e2..e1e99dc 100644
 --- a/crates/axis-sandbox/src/linux/vxn.rs
 +++ b/crates/axis-sandbox/src/linux/vxn.rs
 @@ -19,7 +19,7 @@
@@ -72,7 +76,33 @@ index dcb82e2..b122f54 100644
  use axis_core::types::SandboxId;
  use std::process::{Child, Command, Stdio};
  use std::time::Duration;
-@@ -53,14 +53,62 @@ fn b64(input: &[u8]) -> String {
+@@ -38,8 +38,7 @@ const KILL_GRACE_SEC: u64 = 5;
+ /// guest. Inlined to avoid adding a direct dependency (would change Cargo.lock and
+ /// break `--locked`). Used only to encode short argv elements.
+ fn b64(input: &[u8]) -> String {
+-    const T: &[u8; 64] =
+-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
++    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+     let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
+     for c in input.chunks(3) {
+         let b0 = c[0];
+@@ -47,20 +46,76 @@ fn b64(input: &[u8]) -> String {
+         let b2 = *c.get(2).unwrap_or(&0);
+         out.push(T[(b0 >> 2) as usize] as char);
+         out.push(T[(((b0 & 0x03) << 4) | (b1 >> 4)) as usize] as char);
+-        out.push(if c.len() > 1 { T[(((b1 & 0x0f) << 2) | (b2 >> 6)) as usize] as char } else { '=' });
+-        out.push(if c.len() > 2 { T[(b2 & 0x3f) as usize] as char } else { '=' });
++        out.push(if c.len() > 1 {
++            T[(((b1 & 0x0f) << 2) | (b2 >> 6)) as usize] as char
++        } else {
++            '='
++        });
++        out.push(if c.len() > 2 {
++            T[(b2 & 0x3f) as usize] as char
++        } else {
++            '='
++        });
+     }
      out
  }
  
@@ -136,7 +166,7 @@ index dcb82e2..b122f54 100644
  }
  
  impl VxnSandbox {
-@@ -71,6 +119,30 @@ impl VxnSandbox {
+@@ -71,6 +126,30 @@ impl VxnSandbox {
              ));
          }
  
@@ -167,7 +197,7 @@ index dcb82e2..b122f54 100644
          let vxn_bin = std::env::var("VXN_BIN").unwrap_or_else(|_| DEFAULT_VXN_BIN.to_string());
          // Image: VXN_BASE_IMAGE if set, else derive it from the command name --
          // for vxn the tool IS the image (`axis run -- claude` -> image "claude",
-@@ -85,7 +157,20 @@ impl VxnSandbox {
+@@ -85,7 +164,20 @@ impl VxnSandbox {
                  .unwrap_or_else(|| DEFAULT_BASE_IMAGE.to_string())
          });
  
@@ -189,7 +219,7 @@ index dcb82e2..b122f54 100644
  
          // Interactive terminal (`axis run` under a tty): let vxn allocate an
          // interactive session (-it). vxn routes -it over ssh-tt to dom0's DomU
-@@ -130,24 +215,26 @@ impl VxnSandbox {
+@@ -130,24 +222,26 @@ impl VxnSandbox {
          // is forwarded unless the operator names it in VXN_FORWARD_ENV.
          let mut env_lines = String::new();
          for (k, v) in &config.env {
@@ -227,7 +257,7 @@ index dcb82e2..b122f54 100644
  
          // Nested enforcement (#31, Approach A): carry the enforcement-relevant
          // policy subset into the DomU as one opaque base64 flag (mirrors
-@@ -175,14 +262,29 @@ impl VxnSandbox {
+@@ -175,14 +269,29 @@ impl VxnSandbox {
          // {workspace} have no vxn-guest path mapping, so skip them.
          {
              let f = &config.policy.filesystem;
@@ -265,9 +295,12 @@ index dcb82e2..b122f54 100644
              }
          }
          if !policy_lines.is_empty() {
-@@ -213,10 +315,16 @@ impl VxnSandbox {
+@@ -211,12 +320,18 @@ impl VxnSandbox {
+         argv.push(format!("__VXNARGV__{}", toks.join(",")));
+ 
          Ok(Self {
-             id: config.id.clone(),
+-            id: config.id.clone(),
++            id: config.id,
              argv,
 +            vxn_bin,
 +            run_name,
@@ -282,7 +315,7 @@ index dcb82e2..b122f54 100644
          })
      }
  
-@@ -237,6 +345,74 @@ impl VxnSandbox {
+@@ -237,6 +352,106 @@ impl VxnSandbox {
          }
          let _ = child.wait();
      }
@@ -306,33 +339,67 @@ index dcb82e2..b122f54 100644
 +        }
 +    }
 +
-+    /// Tear the DomU down. `vxn run --rm` cleans it on a normal frontend exit,
-+    /// but a force-kill (timeout/destroy) leaves the DomU running while its
-+    /// blocked `xl create -c` frontend is killed, so destroy() calls this to
-+    /// guarantee teardown. Primary path is `xl destroy <domain>` (reliable where
-+    /// xl is present, i.e. dom0 / config-b) since the domain name is now
-+    /// deterministic; `vxn rm <run_name>` is the fallback (e.g. config-a, where
-+    /// the host has no xl and vxn relays). A domain already gone is success
-+    /// (idempotent); if neither path can confirm teardown it is fail-closed, so
-+    /// the caller does not treat a still-running VM as destroyed.
-+    fn gone(stderr: &[u8]) -> bool {
-+        let e = String::from_utf8_lossy(stderr).to_lowercase();
-+        e.contains("invalid domain")
-+            || e.contains("no domain")
-+            || e.contains("not found")
-+            || e.contains("no such")
-+            || e.contains("does not exist")
-+    }
-+
-+    fn stop_domu(&self) -> Result<(), SandboxError> {
-+        match Command::new("xl")
-+            .args(["destroy", &self.domain])
++    /// Whether `xl list` shows no domain named `self.domain`.
++    ///   Ok(true)  listing succeeded and the domain is absent (confirmed gone)
++    ///   Ok(false) listing succeeded and the domain is still present
++    ///   Err(_)    could not run / parse `xl list` -> the caller must fail closed
++    ///
++    /// This is an explicit structured check rather than matching `xl destroy`
++    /// stderr, so an unrelated failure (e.g. "Runner script not found") is never
++    /// mistaken for a successful teardown.
++    fn domain_absent(&self) -> Result<bool, SandboxError> {
++        let out = Command::new("xl")
++            .arg("list")
 +            .stdin(Stdio::null())
 +            .output()
-+        {
-+            Ok(o) if o.status.success() => return Ok(()),
-+            Ok(o) if Self::gone(&o.stderr) => return Ok(()),
-+            Ok(_) | Err(_) => { /* xl failed or is absent: try the vxn fallback */ }
++            .map_err(|e| {
++                SandboxError::IsolationFailed(format!(
++                    "could not run `xl list` to confirm teardown of {}: {e}",
++                    self.domain
++                ))
++            })?;
++        if !out.status.success() {
++            return Err(SandboxError::IsolationFailed(format!(
++                "`xl list` failed while confirming teardown of {}: {}",
++                self.domain,
++                String::from_utf8_lossy(&out.stderr).trim()
++            )));
++        }
++        // `xl list` rows are: Name  ID  Mem  VCPUs  State  Time(s). The domain
++        // name is the first whitespace-delimited field of each row after the
++        // header line.
++        let present = String::from_utf8_lossy(&out.stdout)
++            .lines()
++            .skip(1)
++            .filter_map(|l| l.split_whitespace().next())
++            .any(|name| name == self.domain);
++        Ok(!present)
++    }
++
++    /// Tear the DomU down and confirm it. `vxn run --rm` cleans it on a normal
++    /// frontend exit, but a force-kill (timeout/destroy) leaves it running while
++    /// its blocked `xl create -c` frontend is killed. `xl destroy` + the
++    /// `domain_absent` check is the primary path (dom0 / config-b); `vxn rm` is
++    /// the fallback where the host has no xl (config-a). Fail-closed: if teardown
++    /// cannot be confirmed, the caller must not treat the VM as destroyed.
++    fn stop_domu(&self) -> Result<(), SandboxError> {
++        // Best-effort destroy; its exit status/stderr is advisory only. The
++        // authoritative result is the explicit `xl list` absence check below.
++        let _ = Command::new("xl")
++            .args(["destroy", &self.domain])
++            .stdin(Stdio::null())
++            .output();
++        match self.domain_absent() {
++            Ok(true) => return Ok(()),
++            Ok(false) => {
++                return Err(SandboxError::IsolationFailed(format!(
++                    "DomU {} is still present after `xl destroy`",
++                    self.domain
++                )));
++            }
++            // xl unavailable or unparsable (e.g. an SDK/config-a host with no xl):
++            // fall back to tearing down through vxn.
++            Err(_) => {}
 +        }
 +        match Command::new(&self.vxn_bin)
 +            .args(["rm", &self.run_name])
@@ -340,10 +407,8 @@ index dcb82e2..b122f54 100644
 +            .output()
 +        {
 +            Ok(o) if o.status.success() => Ok(()),
-+            Ok(o) if Self::gone(&o.stderr) => Ok(()),
 +            Ok(o) => Err(SandboxError::IsolationFailed(format!(
-+                "could not confirm DomU teardown (xl destroy {} and {} rm {} both failed: {})",
-+                self.domain,
++                "could not confirm DomU teardown: `{} rm {}` failed: {}",
 +                self.vxn_bin,
 +                self.run_name,
 +                String::from_utf8_lossy(&o.stderr).trim()
@@ -357,7 +422,7 @@ index dcb82e2..b122f54 100644
  }
  
  impl SandboxImpl for VxnSandbox {
-@@ -248,6 +424,11 @@ impl SandboxImpl for VxnSandbox {
+@@ -248,6 +463,11 @@ impl SandboxImpl for VxnSandbox {
          }
          let mut cmd = Command::new(&self.argv[0]);
          cmd.args(&self.argv[1..]);
@@ -369,7 +434,7 @@ index dcb82e2..b122f54 100644
          if self.capture_output {
              cmd.stdout(Stdio::piped())
                  .stderr(Stdio::piped())
-@@ -258,6 +439,7 @@ impl SandboxImpl for VxnSandbox {
+@@ -258,6 +478,7 @@ impl SandboxImpl for VxnSandbox {
              .map_err(|e| SandboxError::SpawnFailed(format!("vxn run spawn failed: {e}")))?;
          let pid = child.id();
          tracing::info!("sandbox {} started as a vxn DomU (pid={pid})", self.id);
@@ -377,7 +442,7 @@ index dcb82e2..b122f54 100644
          self.child = Some(child);
          Ok(pid)
      }
-@@ -295,6 +477,10 @@ impl SandboxImpl for VxnSandbox {
+@@ -295,6 +516,10 @@ impl SandboxImpl for VxnSandbox {
                                  "sandbox {} exceeded timeout {secs}s; terminating DomU",
                                  self.id
                              );
@@ -388,17 +453,31 @@ index dcb82e2..b122f54 100644
                              // SIGTERM unblocks the child.wait() on the blocking
                              // thread; grace, then SIGKILL if still stuck.
                              unsafe { libc::kill(pid, libc::SIGTERM); }
-@@ -356,15 +542,38 @@ impl SandboxImpl for VxnSandbox {
+@@ -315,8 +540,8 @@ impl SandboxImpl for VxnSandbox {
+                 }
+             };
+ 
+-            let (_child, status) = joined
+-                .map_err(|e| SandboxError::IsolationFailed(format!("vxn wait join: {e}")))?;
++            let (_child, status) =
++                joined.map_err(|e| SandboxError::IsolationFailed(format!("vxn wait join: {e}")))?;
+             let code = status.map_err(SandboxError::Io)?.code().unwrap_or(-1);
+             self.exit_code = Some(code);
+             tracing::info!("sandbox {} exited (code={code})", self.id);
+@@ -356,15 +581,41 @@ impl SandboxImpl for VxnSandbox {
      }
  
      fn destroy(&mut self) -> Result<(), SandboxError> {
-+        // The DomU must be stopped unless the run already exited cleanly on its
-+        // own (where `--rm` has torn it down). It may still be live if: we hold a
-+        // Child to kill; the frontend was force-killed on timeout; or no exit was
-+        // ever observed (e.g. the interactive wait was cancelled and the Child is
-+        // in a blocking task, so self.child is None but the DomU is up).
-+        let needs_stop =
-+            self.child.is_some() || self.force_killed || self.exit_code.is_none();
++        // Skip teardown ONLY on a confirmed clean exit: the frontend exited 0 on
++        // its own (where `--rm` has torn the DomU down). Every other state may
++        // leave the DomU alive and must run stop_domu(): still holding a Child;
++        // force-killed on timeout; no exit observed yet (the interactive wait was
++        // cancelled and the Child is in a blocking task); or an abnormal exit
++        // code (vxn died unexpectedly while AXIS kept running -- exit_code is
++        // Some(nonzero) there, which force_killed does not capture).
++        let cleanly_exited =
++            self.child.is_none() && !self.force_killed && self.exit_code == Some(0);
++        let needs_stop = !cleanly_exited;
 +
          if let Some(mut child) = self.child.take() {
 +            self.force_killed = true;
