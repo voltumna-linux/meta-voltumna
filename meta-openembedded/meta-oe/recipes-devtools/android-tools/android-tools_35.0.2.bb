@@ -60,6 +60,7 @@ SRC_URI = "https://deb.debian.org/debian/pool/main/a/android-platform-tools/andr
            file://0012-libbase-off64_t-extend-non-glibc-compat-typedef-to-musl.patch \
            file://0013-adb-sysdeps-provide-pread64-pwrite64-lseek64-fallba.patch \
            file://0014-daemon-auth-vendor-a-portable-b64_pton-for-non-glib.patch \
+           file://0015-adbd-make-fs-config-opt-in-on-non-android-builds.patch \
            "
 
 SRC_URI[orig.md5sum] = "352376965cdef7bd7505d8fefdd43d50"
@@ -98,6 +99,7 @@ CFLAGS:append:libc-musl = " -DANDROID_HOST_MUSL"
 # path instead of the broken compile-time one.
 CXXFLAGS:append = " -fPIC -std=gnu++20 -D_Nonnull= -D_Nullable= -I${STAGING_INCDIR}/boringssl -DFMT_CONSTEVAL="
 CXXFLAGS:append:libc-musl = " -DANDROID_HOST_MUSL"
+CXXFLAGS:append = "${@bb.utils.contains('PACKAGECONFIG', 'fs-config', ' -DADBD_USE_FS_CONFIG', '', d)}"
 LDFLAGS:append = " -fPIC -L${STAGING_LIBDIR}/android"
 
 
@@ -259,4 +261,8 @@ FILES:${PN}-adbd = " \
 BBCLASSEXTEND = "native"
 
 PACKAGECONFIG ??= "${@bb.utils.filter('DISTRO_FEATURES', 'systemd', d)}"
+# Apply Android's fs_config ownership/mode tables to files pushed by adbd to
+# /system, /vendor and /oem. Off by default: the tables describe Android
+# partition images and are meaningless on a generic Linux rootfs.
+PACKAGECONFIG[fs-config] = ""
 PACKAGECONFIG[systemd] = ",,systemd"

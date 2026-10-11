@@ -10,6 +10,7 @@ SRC_URI = " \
     file://0001-Do-not-try-to-start-dbus-we-do-not-have-dbus-lauch.patch \
     file://0001-src-make-an-IBusText-own-an-updated-IBusAttrList-ref.patch \
     file://0002-src-Fix-IBusAttrList-leak-when-converting-text.patch \
+    file://0001-m4-update-ax_prog_cc_for_build.m4-to-serial-26.patch \
 "
 SRCREV = "1f7af28437afd62a6d145bfc81035e698a37411d"
 

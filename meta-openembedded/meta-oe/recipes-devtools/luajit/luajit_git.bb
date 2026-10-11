@@ -13,17 +13,30 @@ SRCREV = "659a61693aa3b87661864ad0f12eee14c865cd7f"
 # The v2.1 branch is rolling with no tags; track commits.
 UPSTREAM_CHECK_COMMITS = "1"
 
-inherit pkgconfig binconfig siteinfo
+inherit pkgconfig binconfig siteinfo qemu
 
 BBCLASSEXTEND = "native"
 
 # http://luajit.org/install.html#cross
-# Host luajit needs to be compiled with the same pointer size
-# If you want to cross-compile to any 32 bit target on an x64 OS,
-# you need to install the multilib development package (e.g.
-# libc6-dev:i386 on Debian/Ubuntu) and build a 32 bit host part
-# (HOST_CC="gcc -m32").
-BUILD_CC_ARCH:append = " ${@['-m32',''][d.getVar('SITEINFO_BITS') != '32']}"
+# The build compiles helpers (minilua, buildvm) and runs them, and buildvm
+# must have the target's pointer size. For a 32 bit target on an x86 build
+# host they are built with "gcc -m32", which needs the multilib development
+# package (e.g. libc6-dev:i386 on Debian/Ubuntu). Other build hosts have no
+# -m32, so there the helpers are built with the target compiler and run under
+# qemu-user instead, which needs a machine qemu-user can emulate
+# (qemu-usermode in MACHINE_FEATURES).
+LUAJIT_HOST_QEMU = "${@'1' if d.getVar('SITEINFO_BITS') == '32' and d.getVar('BUILD_ARCH') not in ('x86_64', 'i686') else ''}"
+LUAJIT_HOST_QEMU:class-native = ""
+
+BUILD_CC_ARCH:append = "${@' -m32' if d.getVar('SITEINFO_BITS') == '32' and not d.getVar('LUAJIT_HOST_QEMU') else ''}"
+DEPENDS:append = "${@' qemu-native' if d.getVar('LUAJIT_HOST_QEMU') else ''}"
+
+LUAJIT_HOST_OEMAKE = "'HOST_CC=${BUILD_CC}' 'HOST_CFLAGS=${BUILD_CFLAGS}'"
+LUAJIT_HOST_OEMAKE_QEMU = "\
+    'HOST_CC=${CC}' 'HOST_CFLAGS=${CFLAGS}' 'HOST_LDFLAGS=${LDFLAGS}' \
+    'MINILUA_X=${WORKDIR}/luajit-qemuwrapper host/minilua' \
+    'BUILDVM_X=${WORKDIR}/luajit-qemuwrapper host/buildvm' \
+"
 
 # The lua makefiles expect the TARGET_SYS to be from uname -s
 # Values: Windows, Linux, Darwin, iOS, SunOS, PS3, GNU/kFreeBSD
@@ -48,8 +61,7 @@ EXTRA_OEMAKE = "\
     'TARGET_CFLAGS=${CFLAGS}' \
     'TARGET_LDFLAGS=${LDFLAGS}' \
     'TARGET_SHLDFLAGS=${LDFLAGS}' \
-    'HOST_CC=${BUILD_CC}' \
-    'HOST_CFLAGS=${BUILD_CFLAGS}' \
+    ${@d.getVar('LUAJIT_HOST_OEMAKE_QEMU') if d.getVar('LUAJIT_HOST_QEMU') else d.getVar('LUAJIT_HOST_OEMAKE')} \
     \
     'PREFIX=${prefix}' \
     'MULTILIB=${baselib}' \
@@ -57,6 +69,13 @@ EXTRA_OEMAKE = "\
 "
 
 do_compile () {
+    if [ -n "${LUAJIT_HOST_QEMU}" ]; then
+        cat > ${WORKDIR}/luajit-qemuwrapper <<EOF
+#!/bin/sh
+${@qemu_wrapper_cmdline(d, '${STAGING_DIR_HOST}', ['${STAGING_DIR_HOST}${libdir}', '${STAGING_DIR_HOST}${base_libdir}'])} "\$@"
+EOF
+        chmod +x ${WORKDIR}/luajit-qemuwrapper
+    fi
     oe_runmake
 }
 
