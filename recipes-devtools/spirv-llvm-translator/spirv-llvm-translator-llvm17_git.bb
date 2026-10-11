@@ -2,7 +2,9 @@ LICENSE = "NCSA"
 LIC_FILES_CHKSUM = "file://LICENSE.TXT;md5=47e311aa9caedd1b3abf098bd7814d1d"
 
 BRANCH = "llvm_release_170"
-SRC_URI = "git://github.com/KhronosGroup/SPIRV-LLVM-Translator;protocol=https;branch=${BRANCH}"
+SRC_URI = "git://github.com/KhronosGroup/SPIRV-LLVM-Translator;protocol=https;branch=${BRANCH} \
+           file://0001-OCLToSPIRV-fix-use-after-free-of-erased-instruction.patch \
+           "
 
 PV = "17.0.20"
 SRCREV = "9cfd7296dc81df56ec76a71d37a201c5a45860b4"
