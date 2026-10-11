@@ -26,30 +26,11 @@ Signed-off-by: Niko Mauno <niko.mauno@vaisala.com>
 
 Upstream-Status: Submitted [https://github.com/fluent/fluent-bit/pull/9450]
 Signed-off-by: Leon Anavi <leon.anavi@konsulko.com>
+Signed-off-by: Ankur Tyagi <ankur.tyagi85@gmail.com>
 ---
- lib/ctraces/CMakeLists.txt | 8 ++------
  lib/monkey/CMakeLists.txt  | 4 +---
- 2 files changed, 3 insertions(+), 9 deletions(-)
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/lib/ctraces/CMakeLists.txt b/lib/ctraces/CMakeLists.txt
-index bb2c54fa6..7d59dd834 100644
---- a/lib/ctraces/CMakeLists.txt
-+++ b/lib/ctraces/CMakeLists.txt
-@@ -30,12 +30,8 @@ set(CTR_VERSION_MINOR  7)
- set(CTR_VERSION_PATCH  1)
- set(CTR_VERSION_STR "${CTR_VERSION_MAJOR}.${CTR_VERSION_MINOR}.${CTR_VERSION_PATCH}")
- 
--# Define __FILENAME__ consistently across Operating Systems
--if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
--  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__FILENAME__='\"$$(subst ${CMAKE_SOURCE_DIR}/,,$$(abspath $$<))\"'")
--else()
--  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__FILENAME__=__FILE__")
--endif()
-+# Define __FILENAME__
-+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__FILENAME__=__FILE__")
- 
- # Configuration options
- option(CTR_DEV             "Enable development mode"                   No)
 diff --git a/lib/monkey/CMakeLists.txt b/lib/monkey/CMakeLists.txt
 index 45f96d797..cc227fdb0 100644
 --- a/lib/monkey/CMakeLists.txt

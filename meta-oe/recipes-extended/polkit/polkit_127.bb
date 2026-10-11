@@ -44,7 +44,6 @@ USERADD_PARAM:${PN} = "--system --no-create-home --user-group --home-dir ${sysco
 # to exclude the polkit service in favor of alternative implementations
 SYSTEMD_PACKAGES += "${PN}-service"
 SYSTEMD_SERVICE:${PN}-service = "${BPN}.service"
-SYSTEMD_AUTO_ENABLE = "disable"
 
 PACKAGES =+ "${PN}-service"
 RDEPENDS:${PN}-service += "polkit"
@@ -87,5 +86,8 @@ FILES:${PN} += " \
 	${systemd_unitdir}/system/polkit-agent-helper.socket \
 	${systemd_unitdir}/system/polkit-agent-helper@.service \
 "
+
+# Enable the polkit agent helper socket used by the systemd ask-password functionality
+SYSTEMD_SERVICE:${PN} += "polkit-agent-helper.socket"
 
 CVE_STATUS[CVE-2016-2568] = "unpatched: the fix is a kernel compiled without CONFIG_LEGACY_TIOCSTI"
