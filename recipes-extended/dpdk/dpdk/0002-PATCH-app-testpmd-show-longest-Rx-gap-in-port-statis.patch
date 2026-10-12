@@ -1,9 +1,10 @@
 Upstream-Status: Inappropriate
 
-From 4cdf8c3acd32f6858688357c0c28505f26a6cca5 Mon Sep 17 00:00:00 2001
+From 6af2562631a084ded322234766d7ac54531837dd Mon Sep 17 00:00:00 2001
 From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
-Date: Sun, 4 Oct 2026 17:32:41 +0200
-Subject: [PATCH] app/testpmd: show longest Rx gap in port statistics
+Date: Thu, 8 Oct 2026 10:01:15 +0200
+Subject: [PATCH 2/2] [PATCH] app/testpmd: show longest Rx gap in port
+ statistics
 
 Add to the port statistics the longest time between two Rx bursts
 returning packets, since the previous show.
@@ -23,10 +24,17 @@ Signed-off-by: Alessio Igor Bogani <alessio.bogani@elettra.eu>
  5 files changed, 30 insertions(+)
 
 diff --git a/.mailmap b/.mailmap
-index bfb6116..214fd53 100644
+index 048c02b951..e85c64234f 100644
 --- a/.mailmap
 +++ b/.mailmap
-@@ -519,6 +519,7 @@ Gerry Gribbon <ggribbon@nvidia.com>
+@@ -526,20 +526,21 @@ Geoffrey Lv <geoffrey.lv@gmail.com>
+ Georg Sauthoff <mail@gms.tf>
+ George Prekas <prekageo@amazon.com>
+ George Wilkie <george.wilkie@intl.att.com> <gwilkie@brocade.com>
+ Georgios Katsikas <katsikas.gp@gmail.com>
+ Georgiy Levashov <georgiy.levashov@oktetlabs.ru>
+ Gerald Rogers <gerald.rogers@intel.com>
+ Gerry Gribbon <ggribbon@nvidia.com>
  Ghalem Boudour <ghalem.boudour@6wind.com>
  Gilad Berman <giladb@mellanox.com>
  Girish Nandibasappa <girish.nandibasappa@amd.com>
@@ -34,11 +42,25 @@ index bfb6116..214fd53 100644
  Gong Deli <gnnnnng@gmail.com>
  Gordon Noonan <gordon.noonan@intel.com>
  Gosia Bakota <gosia.bakota@intel.com>
+ Govindarajulu Varadarajan <gvaradar@cisco.com>
+ Gowrishankar Muthukrishnan <gmuthukrishn@marvell.com> <gowrishankar.m@linux.vnet.ibm.com>
+ Greg Tucker <greg.b.tucker@intel.com>
+ Gregory Etelson <getelson@nvidia.com> <getelson@mellanox.com>
+ Gregory Etelson <getelson@nvidia.com> <gregory@weka.io>
+ Grishma Kotecha <grishma.kotecha@intel.com>
+ Grzegorz Galkowski <grzegorz.galkowski@intel.com>
 diff --git a/app/test-pmd/config.c b/app/test-pmd/config.c
-index 32c885d..e505466 100644
+index 32c885de0b..e50546686c 100644
 --- a/app/test-pmd/config.c
 +++ b/app/test-pmd/config.c
-@@ -292,6 +292,8 @@ nic_stats_display(portid_t port_id)
+@@ -285,20 +285,22 @@ nic_stats_display(portid_t port_id)
+ 	static uint64_t prev_pkts_tx[RTE_MAX_ETHPORTS];
+ 	static uint64_t prev_bytes_rx[RTE_MAX_ETHPORTS];
+ 	static uint64_t prev_bytes_tx[RTE_MAX_ETHPORTS];
+ 	static uint64_t prev_ns[RTE_MAX_ETHPORTS];
+ 	struct timespec cur_time;
+ 	uint64_t diff_pkts_rx, diff_pkts_tx, diff_bytes_rx, diff_bytes_tx,
+ 								diff_ns;
  	uint64_t mpps_rx, mpps_tx, mbps_rx, mbps_tx;
  	struct rte_eth_stats stats;
  	static const char *nic_stats_border = "########################";
@@ -47,7 +69,21 @@ index 32c885d..e505466 100644
  	int ret;
  
  	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
-@@ -353,6 +355,15 @@ nic_stats_display(portid_t port_id)
+ 		print_valid_ports();
+ 		return;
+ 	}
+ 	ret = rte_eth_stats_get(port_id, &stats);
+ 	if (ret != 0) {
+ 		fprintf(stderr,
+ 			"%s: Error: failed to get stats (port %u): %d",
+@@ -346,20 +348,29 @@ nic_stats_display(portid_t port_id)
+ 	prev_bytes_tx[port_id] = stats.obytes;
+ 	mbps_rx = diff_ns > 0 ?
+ 		(double)diff_bytes_rx / diff_ns * NS_PER_SEC : 0;
+ 	mbps_tx = diff_ns > 0 ?
+ 		(double)diff_bytes_tx / diff_ns * NS_PER_SEC : 0;
+ 
+ 	printf("\n  Throughput (since last show)\n");
  	printf("  Rx-pps: %12"PRIu64"          Rx-bps: %12"PRIu64"\n  Tx-pps: %12"
  	       PRIu64"          Tx-bps: %12"PRIu64"\n", mpps_rx, mbps_rx * 8,
  	       mpps_tx, mbps_tx * 8);
@@ -63,11 +99,25 @@ index 32c885d..e505466 100644
  
  	if (xstats_display_num > 0)
  		nic_xstats_display_periodic(port_id);
+ 
+ 	printf("  %s############################%s\n",
+ 	       nic_stats_border, nic_stats_border);
+ }
+ 
+ void
+ nic_stats_clear(portid_t port_id)
 diff --git a/app/test-pmd/testpmd.c b/app/test-pmd/testpmd.c
-index 4591ad2..8bbc15f 100644
+index 4568e2fb5f..f49b149834 100644
 --- a/app/test-pmd/testpmd.c
 +++ b/app/test-pmd/testpmd.c
-@@ -2186,6 +2186,8 @@ fwd_stats_reset(void)
+@@ -2179,20 +2179,22 @@ fwd_stats_reset(void)
+ 		fs->tx_packets = 0;
+ 		fs->fwd_dropped = 0;
+ 		fs->rx_bad_ip_csum = 0;
+ 		fs->rx_bad_l4_csum = 0;
+ 		fs->rx_bad_outer_l4_csum = 0;
+ 		fs->rx_bad_outer_ip_csum = 0;
+ 
  		memset(&fs->rx_burst_stats, 0, sizeof(fs->rx_burst_stats));
  		memset(&fs->tx_burst_stats, 0, sizeof(fs->tx_burst_stats));
  		fs->busy_cycles = 0;
@@ -76,11 +126,25 @@ index 4591ad2..8bbc15f 100644
  	}
  }
  
+ static void
+ flush_fwd_rx_queues(void)
+ {
+ 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+ 	portid_t  rxp;
+ 	portid_t port_id;
+ 	queueid_t rxq;
 diff --git a/app/test-pmd/testpmd.h b/app/test-pmd/testpmd.h
-index f319471..d6958d2 100644
+index f319471c73..d6958d2734 100644
 --- a/app/test-pmd/testpmd.h
 +++ b/app/test-pmd/testpmd.h
-@@ -205,6 +205,9 @@ struct fwd_stream {
+@@ -198,20 +198,23 @@ struct fwd_stream {
+ 	uint64_t rx_bad_l4_csum ; /**< received packets has bad l4 checksum */
+ 	uint64_t rx_bad_outer_l4_csum;
+ 	/**< received packets has bad outer l4 checksum */
+ 	uint64_t rx_bad_outer_ip_csum;
+ 	/**< received packets having bad outer ip checksum */
+ 	uint64_t ts_skew; /**< TX scheduling timestamp */
+ #ifdef RTE_LIB_GRO
  	unsigned int gro_times;	/**< GRO operation times */
  #endif
  	uint64_t busy_cycles; /**< used with --record-core-cycles */
@@ -90,7 +154,21 @@ index f319471..d6958d2 100644
  	struct pkt_burst_stats rx_burst_stats;
  	struct pkt_burst_stats tx_burst_stats;
  	struct fwd_lcore *lcore; /**< Lcore being scheduled. */
-@@ -342,6 +345,7 @@ struct rte_port {
+ 	/**< Rx queue information for recycling mbufs */
+ 	struct rte_eth_recycle_rxq_info recycle_rxq_info;
+ };
+ 
+ /**
+  * Age action context types, must be included inside the age action
+  * context structure.
+@@ -335,20 +338,21 @@ struct port_txqueue {
+ };
+ 
+ /**
+  * The data structure associated with each port.
+  */
+ struct rte_port {
+ 	struct rte_eth_dev_info dev_info;   /**< Device info + driver name */
  	struct rte_eth_conf     dev_conf;   /**< Port configuration. */
  	struct rte_ether_addr       eth_addr;   /**< Port ethernet address */
  	struct rte_eth_stats    stats;      /**< Last port statistics */
@@ -98,7 +176,21 @@ index f319471..d6958d2 100644
  	unsigned int            socket_id;  /**< For NUMA support */
  	uint16_t		parse_tunnel:1; /**< Parse internal headers */
  	uint16_t                tso_segsz;  /**< Segmentation offload MSS for non-tunneled packets. */
-@@ -901,6 +905,16 @@ common_fwd_stream_receive(struct fwd_stream *fs, struct rte_mbuf **burst,
+ 	uint16_t                tunnel_tso_segsz; /**< Segmentation offload MSS for tunneled pkts. */
+ 	uint16_t                tx_vlan_id;/**< The tag ID */
+ 	uint16_t                tx_vlan_id_outer;/**< The outer tag ID */
+ 	volatile uint16_t        port_status;    /**< port started or not */
+ 	uint8_t                 need_setup;     /**< port just attached */
+ 	uint8_t                 need_reconfig;  /**< need reconfiguring port or not */
+ 	uint8_t                 need_reconfig_queues; /**< need reconfiguring queues or not */
+@@ -894,20 +898,30 @@ mbuf_pool_find(unsigned int sock_id, uint16_t idx)
+ 	return rte_mempool_lookup((const char *)pool_name);
+ }
+ 
+ static inline uint16_t
+ common_fwd_stream_receive(struct fwd_stream *fs, struct rte_mbuf **burst,
+ 	unsigned int nb_pkts)
+ {
  	uint16_t nb_rx;
  
  	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, burst, nb_pkts);
@@ -115,11 +207,25 @@ index f319471..d6958d2 100644
  	if (record_burst_stats)
  		fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
  	fs->rx_packets += nb_rx;
+ 	return nb_rx;
+ }
+ 
+ static inline uint16_t
+ common_fwd_stream_transmit(struct fwd_stream *fs, struct rte_mbuf **burst,
+ 	unsigned int nb_pkts)
+ {
 diff --git a/doc/guides/testpmd_app_ug/testpmd_funcs.rst b/doc/guides/testpmd_app_ug/testpmd_funcs.rst
-index 62bb167..63e9d29 100644
+index 62bb167d56..63e9d29cc4 100644
 --- a/doc/guides/testpmd_app_ug/testpmd_funcs.rst
 +++ b/doc/guides/testpmd_app_ug/testpmd_funcs.rst
-@@ -171,6 +171,8 @@ The available information categories are:
+@@ -164,20 +164,22 @@ Display information for a given port or all ports::
+ 
+    testpmd> show port (info|summary|stats|xstats|fdir|dcb_tc|cap) (port_id|all)
+ 
+ The available information categories are:
+ 
+ * ``info``: General port information such as MAC address.
+ 
  * ``summary``: Brief port summary such as Device Name, Driver Name etc.
  
  * ``stats``: RX/TX statistics.
@@ -128,6 +234,13 @@ index 62bb167..63e9d29 100644
  
  * ``xstats``: RX/TX extended NIC statistics.
  
+ * ``fdir``: Flow Director information and statistics.
+ 
+ * ``dcb_tc``: DCB information such as TC mapping.
+ 
+ For example:
+ 
+ .. code-block:: console
 -- 
 2.53.0
 
