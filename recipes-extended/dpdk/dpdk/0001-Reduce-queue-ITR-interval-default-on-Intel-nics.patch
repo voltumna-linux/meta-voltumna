@@ -1,10 +1,25 @@
 Upstream-Status: Inappropriate
 
+From db6987271d78e600b09ab013f6fc6ffcf9d3df26 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Thu, 8 Oct 2026 09:59:13 +0200
+Subject: [PATCH 1/2] Reduce queue ITR interval default on Intel nics
+
+Signed-off-by: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+---
+ drivers/net/intel/i40e/i40e_ethdev.h   | 4 ++--
+ drivers/net/intel/iavf/iavf.h          | 2 +-
+ drivers/net/intel/ice/ice_dcf_ethdev.c | 2 +-
+ drivers/net/intel/ixgbe/ixgbe_ethdev.h | 2 +-
+ drivers/net/ngbe/ngbe_ethdev.h         | 2 +-
+ drivers/net/txgbe/txgbe_ethdev.h       | 2 +-
+ 6 files changed, 7 insertions(+), 7 deletions(-)
+
 diff --git a/drivers/net/intel/i40e/i40e_ethdev.h b/drivers/net/intel/i40e/i40e_ethdev.h
-index 44864292d0..e7ee93c3f7 100644
+index 2233eb5553..0fec88868a 100644
 --- a/drivers/net/intel/i40e/i40e_ethdev.h
 +++ b/drivers/net/intel/i40e/i40e_ethdev.h
-@@ -179,23 +179,23 @@ enum i40e_flxpld_layer_idx {
+@@ -180,23 +180,23 @@ enum i40e_flxpld_layer_idx {
  	(1ULL << I40E_FILTER_PCTYPE_FCOE_RX) | \
  	(1ULL << I40E_FILTER_PCTYPE_FCOE_OTHER) | \
  	(1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD))
@@ -31,7 +46,7 @@ index 44864292d0..e7ee93c3f7 100644
  
  #define I40E_RSS_TYPE_NONE           0ULL
 diff --git a/drivers/net/intel/iavf/iavf.h b/drivers/net/intel/iavf/iavf.h
-index f81c939c96..26b1291c3e 100644
+index 845aa97787..2852b52799 100644
 --- a/drivers/net/intel/iavf/iavf.h
 +++ b/drivers/net/intel/iavf/iavf.h
 @@ -64,21 +64,21 @@
@@ -50,15 +65,15 @@ index f81c939c96..26b1291c3e 100644
  #define IAVF_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
  
  #define IAVF_ALARM_INTERVAL 50000 /* us */
+ #define IAVF_PHC_SYNC_ALARM_INTERVAL_US 200000
  
  /* The overhead from MTU to max frame size.
   * Considering QinQ packet, the VLAN tag needs to be counted twice.
   */
  #define IAVF_ETH_OVERHEAD \
  	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + RTE_VLAN_HLEN * 2)
- #define IAVF_ETH_MAX_LEN (RTE_ETHER_MTU + IAVF_ETH_OVERHEAD)
 diff --git a/drivers/net/intel/ice/ice_dcf_ethdev.c b/drivers/net/intel/ice/ice_dcf_ethdev.c
-index 499062be40..a7d664bdef 100644
+index 1d8b73d957..9d160a134f 100644
 --- a/drivers/net/intel/ice/ice_dcf_ethdev.c
 +++ b/drivers/net/intel/ice/ice_dcf_ethdev.c
 @@ -159,21 +159,21 @@ ice_dcf_init_rx_queues(struct rte_eth_dev *dev)
@@ -85,7 +100,7 @@ index 499062be40..a7d664bdef 100644
  	/* Convert to hardware count, as writing each 1 represents 2 us */
  	return interval / 2;
 diff --git a/drivers/net/intel/ixgbe/ixgbe_ethdev.h b/drivers/net/intel/ixgbe/ixgbe_ethdev.h
-index 86da9fc89b..ba80265778 100644
+index 5e2cd6201d..df7bbe2128 100644
 --- a/drivers/net/intel/ixgbe/ixgbe_ethdev.h
 +++ b/drivers/net/intel/ixgbe/ixgbe_ethdev.h
 @@ -56,21 +56,21 @@
@@ -112,7 +127,7 @@ index 86da9fc89b..ba80265778 100644
  
  #define IXGBE_RTTBCNRC_RF_INT_MASK_BASE 0x000003FF
 diff --git a/drivers/net/ngbe/ngbe_ethdev.h b/drivers/net/ngbe/ngbe_ethdev.h
-index faff57ef34..1d2eafeff2 100644
+index 4f8dcff00e..94d64f3327 100644
 --- a/drivers/net/ngbe/ngbe_ethdev.h
 +++ b/drivers/net/ngbe/ngbe_ethdev.h
 @@ -23,21 +23,21 @@
@@ -139,7 +154,7 @@ index faff57ef34..1d2eafeff2 100644
  	RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
  	RTE_ETH_RSS_NONFRAG_IPV4_SCTP | \
 diff --git a/drivers/net/txgbe/txgbe_ethdev.h b/drivers/net/txgbe/txgbe_ethdev.h
-index 9295d8fbd0..bf286e08be 100644
+index c32c61d8bf..eafdc7c230 100644
 --- a/drivers/net/txgbe/txgbe_ethdev.h
 +++ b/drivers/net/txgbe/txgbe_ethdev.h
 @@ -43,21 +43,21 @@
@@ -165,3 +180,6 @@ index 9295d8fbd0..bf286e08be 100644
  /* The overhead from MTU to max frame size. */
  #define TXGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
  
+-- 
+2.53.0
+
