@@ -19,6 +19,10 @@ import glob
 import configparser
 import signal
 import time
+import shlex
+import socket
+import traceback
+from contextlib import closing
 
 class RunQemuError(Exception):
     """Custom exception to raise on known errors."""
@@ -130,6 +134,8 @@ def get_first_file(globs):
     return ''
 
 class BaseConfig(object):
+    PORT_LOCK_DIR = "/tmp/qemu-port-locks"
+
     def __init__(self):
         # The self.d saved vars from self.set(), part of them are from qemuboot.conf
         self.d = {'QB_KERNEL_ROOT': '/dev/vda'}
@@ -194,7 +200,7 @@ class BaseConfig(object):
         self.tcpserial_portnum = ''
         self.taplock = ''
         self.taplock_descriptor = None
-        self.portlocks = {}
+        self.locks = {}
         self.bitbake_e = ''
         self.snapshot = False
         self.wictypes = ('wic.zst', 'wic', 'wic.vmdk', 'wic.qcow2', 'wic.vdi', "wic.vhd", "wic.vhdx")
@@ -258,15 +264,12 @@ class BaseConfig(object):
 
     def check_free_port(self, host, port, lockdir):
         """ Check whether the port is free or not """
-        import socket
-        from contextlib import closing
-
         lockfile = os.path.join(lockdir, str(port) + '.lock')
-        if self.acquire_portlock(lockfile):
+        if self.acquire_lock(lockfile):
             with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
                 if sock.connect_ex((host, port)) == 0:
                     # Port is open, so not free
-                    self.release_portlock(lockfile)
+                    self.release_lock(lockfile)
                     return False
                 else:
                     # Port is not open, so free
@@ -274,33 +277,33 @@ class BaseConfig(object):
         else:
             return False
 
-    def acquire_portlock(self, lockfile):
+    def acquire_lock(self, lockfile):
         logger.debug("Acquiring lockfile %s..." % lockfile)
+        lock_descriptor = None
         try:
-            portlock_descriptor = open(lockfile, 'w')
-            self.portlocks.update({lockfile: portlock_descriptor})
-            fcntl.flock(self.portlocks[lockfile], fcntl.LOCK_EX|fcntl.LOCK_NB)
+            lock_descriptor = open(lockfile, 'w')
+            fcntl.flock(lock_descriptor, fcntl.LOCK_EX|fcntl.LOCK_NB)
         except Exception as e:
             msg = "Acquiring lockfile %s failed: %s" % (lockfile, e)
             logger.info(msg)
-            if lockfile in self.portlocks.keys() and self.portlocks[lockfile]:
-                self.portlocks[lockfile].close()
-                del self.portlocks[lockfile]
+            if lock_descriptor:
+                lock_descriptor.close()
             return False
+        self.locks[lockfile] = lock_descriptor
         return True
 
-    def release_portlock(self, lockfile=None):
+    def release_lock(self, lockfile=None):
         if lockfile != None:
             logger.debug("Releasing lockfile '%s'" % lockfile)
             # We pass the fd to the qemu process and if we unlock here, it would unlock for
             # that too. Therefore don't unlock, just close
-            # fcntl.flock(self.portlocks[lockfile], fcntl.LOCK_UN)
-            self.portlocks[lockfile].close()
+            # fcntl.flock(self.locks[lockfile], fcntl.LOCK_UN)
+            self.locks[lockfile].close()
             # Removing the file is a potential race, don't do that either
             # os.remove(lockfile)
-            del self.portlocks[lockfile]
-        elif len(self.portlocks):
-            for lockfile, descriptor in self.portlocks.items():
+            del self.locks[lockfile]
+        elif len(self.locks):
+            for lockfile, descriptor in self.locks.items():
                 logger.debug("Releasing lockfile '%s'" % lockfile)
                 # We pass the fd to the qemu process and if we unlock here, it would unlock for
                 # that too. Therefore don't unlock, just close
@@ -308,7 +311,7 @@ class BaseConfig(object):
                 descriptor.close()
                 # Removing the file is a potential race, don't do that either
                 # os.remove(lockfile)
-            self.portlocks = {}
+            self.locks = {}
 
     def get(self, key):
         if key in self.d:
@@ -1054,7 +1057,7 @@ to your build configuration.
                 self.nfs_server = '192.168.7.@GATEWAY@'
 
         nfsd_port = 3048 + self.nfs_instance
-        lockdir = "/tmp/qemu-port-locks"
+        lockdir = self.PORT_LOCK_DIR
         self.make_lock_dir(lockdir)
         while not self.check_free_port('localhost', nfsd_port, lockdir):
             self.nfs_instance += 1
@@ -1132,6 +1135,17 @@ to your build configuration.
                 pass
         return
 
+    def alloc_mac_slot(self, lockdir):
+        """MAC address arbitration for slirp addresses: lock the first free
+        numbered lockfile (1-254) to get an octet unique among concurrently
+        running qemu instances on this host."""
+        self.make_lock_dir(lockdir)
+        for slot in range(1, 255):
+            lockfile = os.path.join(lockdir, str(slot) + '.lock')
+            if self.acquire_lock(lockfile):
+                return slot
+        raise RunQemuError("Too many concurrent qemu slirp instances on this host, can't allocate a unique MAC address")
+
     def setup_slirp(self):
         """Setup user networking"""
 
@@ -1147,7 +1161,6 @@ to your build configuration.
         # Figure out the port
         ports = re.findall('hostfwd=[^-]*:([0-9]+)-[^,-]*', qb_slirp_opt)
         ports = [int(i) for i in ports]
-        mac = 2
 
         lockdir = "/tmp/qemu-port-locks"
         self.make_lock_dir(lockdir)
@@ -1157,15 +1170,13 @@ to your build configuration.
             p_new = p
             while not self.check_free_port('localhost', p_new, lockdir):
                 p_new += 1
-                mac += 1
                 while p_new in ports:
                         p_new += 1
-                        mac += 1
             if p != p_new:
                 ports.append(p_new)
                 qb_slirp_opt = re.sub(':%s-' % p, ':%s-' % p_new, qb_slirp_opt)
                 logger.info("Port forward changed: %s -> %s" % (p, p_new))
-        mac = "%s%02x" % (self.mac_slirp, mac)
+        mac = "%s%02x" % (self.mac_slirp, self.alloc_mac_slot("/tmp/qemu-mac-locks"))
         self.set('NETWORK_CMD', '%s %s' % (self.network_device.replace('@MAC@', mac), qb_slirp_opt))
         # Print out port foward
         hostfwd = re.findall('(hostfwd=[^,]*)', qb_slirp_opt)
@@ -1605,7 +1616,6 @@ to your build configuration.
         self.setup_vga()
 
     def start_qemu(self):
-        import shlex
         if self.kernel:
             kernel_opts = "-kernel %s" % (self.kernel)
             if self.get('QB_KERNEL_CMDLINE') == "none":
@@ -1632,8 +1642,8 @@ to your build configuration.
         pass_fds = []
         if self.taplock_descriptor:
             pass_fds = [self.taplock_descriptor.fileno()]
-        if len(self.portlocks):
-            for descriptor in self.portlocks.values():
+        if len(self.locks):
+            for descriptor in self.locks.values():
                 pass_fds.append(descriptor.fileno())
         process = subprocess.Popen(cmds, stderr=subprocess.PIPE, pass_fds=pass_fds, env=self.qemu_environ)
         self.qemuprocess = process
@@ -1682,7 +1692,7 @@ to your build configuration.
             cmd = ("runqemu-export-rootfs", "stop", self.rootfs)
             logger.debug('Running %s' % str(cmd))
             subprocess.check_call(cmd)
-        self.release_portlock()
+        self.release_lock()
 
         if self.saved_stty:
             subprocess.check_call(("stty", self.saved_stty))
@@ -1805,7 +1815,6 @@ def main():
         logger.error(err)
         return 1
     except Exception as err:
-        import traceback
         traceback.print_exc()
         return 1
     finally:
