@@ -8,11 +8,11 @@ LIC_FILES_CHKSUM = "file://SAA_UserGuide.pdf;md5=b30a5bdb1d4693e37b22ff9277a9c8c
 
 COMPATIBLE_HOST = "x86_64.*-linux"
 
-DIR = "1072"
+DIR = "1131"
 SUFFIX = "Linux_x86_64"
-DATE = "20260210"
+DATE = "20260602"
 SRC_URI = "https://www.supermicro.com/Bios/sw_download/${DIR}/saa_${PV}_${SUFFIX}_${DATE}.tar.gz"
-SRC_URI[sha256sum] = "d56ba3a09887a1eaceb21c2ef7842adf2f874f4b055ea4d535d1bd7bbce33878"
+SRC_URI[sha256sum] = "33e8cb9481dd0b6579e3dfb83cbcccc4d9ec852ece05d3e53903d6eea15270c0"
 
 S = "${UNPACKDIR}/${BPN}_${PV}_${SUFFIX}"
 PACKAGES = "${BPN}"
