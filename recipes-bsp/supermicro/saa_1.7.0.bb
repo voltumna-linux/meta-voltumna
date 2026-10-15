@@ -7,18 +7,19 @@ LICENSE = "CLOSED"
 
 COMPATIBLE_HOST = "x86_64.*-linux"
 
-DIR = "1131"
+DIR = "1182"
 SUFFIX = "Linux_x86_64"
-DATE = "20260602"
+DATE = "20260910"
 SRC_URI = "https://www.supermicro.com/Bios/sw_download/${DIR}/saa_${PV}_${SUFFIX}_${DATE}.tar.gz"
-SRC_URI[sha256sum] = "33e8cb9481dd0b6579e3dfb83cbcccc4d9ec852ece05d3e53903d6eea15270c0"
+SRC_URI[sha256sum] = "b37cad4e9e4388451c551ef2ad37309958ce2c5e7d9153fd804abb8e6d983c6f"
 
 S = "${WORKDIR}/${BPN}_${PV}_${SUFFIX}"
 PACKAGES = "${BPN}"
 INSANE_SKIP:${PN} = "already-stripped ldflags debug-files file-rdeps"
 
 do_install() {
-	install -d ${D}${datadir}/${BPN}
+	install -d ${D}${datadir}/${BPN} ${D}${datadir}/${BPN}/acpica_bin/
 	install -m 0744 ${S}/saa ${D}${datadir}/${BPN}
+        install -m 0744 ${S}/acpica_bin/* ${D}${datadir}/${BPN}/acpica_bin/
 	pdftotext ${S}/SAA_UserGuide.pdf ${D}${datadir}/${BPN}/SAA_UserGuide.txt
 }
