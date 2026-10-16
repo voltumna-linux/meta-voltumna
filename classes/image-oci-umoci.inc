@@ -18,13 +18,42 @@ def oci_compute_layer_cache_key(d, layer_name, layer_type, layer_packages):
     Returns: (cache_key, cache_info) tuple where cache_info is human-readable
     """
     import hashlib
-    import os
     import json
+    import oe.packagedata
 
     packages = sorted(layer_packages.split())
-    pkgdata_dir = d.getVar('PKGDATA_DIR')
     machine = d.getVar('MACHINE')
     tune_pkgarch = d.getVar('TUNE_PKGARCH')
+
+    # Resolve the full runtime dependency closure of the layer's packages
+    # (each resolved package name -> its PKGV) from pkgdata, and key on THAT.
+    #
+    # Keying only on the literal names in OCI_LAYERS plus their own PKGV misses
+    # packagegroup content changes: a packagegroup is a near-empty recipe whose
+    # payload is its RDEPENDS, so "RDEPENDS:packagegroup-x:append = ' foo'"
+    # changes what gets installed without changing the packagegroup's name or
+    # PKGV. do_rootfs re-resolves the closure and picks foo up, but the OCI
+    # layer cache would stay a stale HIT. Walking RDEPENDS (which pkgdata
+    # reflects, since the append re-runs the packagegroup's do_packagedata)
+    # folds foo and its version into the key, so the layer correctly MISSes.
+    closure = {}
+
+    def _resolve(pkg):
+        if pkg in closure:
+            return
+        closure[pkg] = '?'   # record the name even if it is not packaged yet
+        try:
+            subd = oe.packagedata.read_subpkgdata_dict(pkg, d)
+        except Exception:
+            return
+        closure[pkg] = subd.get('PKGV', '?')
+        rdeps = subd.get('RDEPENDS', '')
+        if rdeps:
+            for dep in bb.utils.explode_deps(rdeps):
+                _resolve(dep)
+
+    for pkg in packages:
+        _resolve(pkg)
 
     # Build cache key components
     cache_components = {
@@ -33,34 +62,19 @@ def oci_compute_layer_cache_key(d, layer_name, layer_type, layer_packages):
         'packages': packages,
         'machine': machine,
         'tune_pkgarch': tune_pkgarch,
-        'pkg_versions': {}
+        # name -> PKGV across the full RDEPENDS closure (sorted in the JSON)
+        'pkg_closure': closure,
     }
-
-    # Get package versions from pkgdata
-    for pkg in packages:
-        pkg_info_file = os.path.join(pkgdata_dir, 'runtime', pkg)
-        if os.path.exists(pkg_info_file):
-            try:
-                with open(pkg_info_file, 'r') as f:
-                    for line in f:
-                        if line.startswith('PKGV:'):
-                            cache_components['pkg_versions'][pkg] = line.split(':', 1)[1].strip()
-                            break
-                        elif line.startswith(f'PKGV_{pkg}:'):
-                            cache_components['pkg_versions'][pkg] = line.split(':', 1)[1].strip()
-                            break
-            except Exception:
-                pass
 
     # Create deterministic JSON for hashing
     cache_json = json.dumps(cache_components, sort_keys=True)
     cache_key = hashlib.sha256(cache_json.encode()).hexdigest()[:16]
 
     # Human-readable info for logging
-    pkg_vers = [f"{p}={cache_components['pkg_versions'].get(p, '?')}" for p in packages[:3]]
+    pkg_vers = [f"{p}={closure.get(p, '?')}" for p in packages[:3]]
     if len(packages) > 3:
         pkg_vers.append(f"...+{len(packages)-3} more")
-    cache_info = f"{layer_name}:{' '.join(pkg_vers)}"
+    cache_info = f"{layer_name}:{' '.join(pkg_vers)} (closure={len(closure)})"
 
     return cache_key, cache_info
 
@@ -421,6 +435,42 @@ PYEOF
     bbnote "OCI fix: Layer whiteout fix complete"
 }
 
+# Restore setuid/setgid bits on the bundle rootfs just before `umoci repack`.
+#
+# umoci is a Go binary; its file operations go straight to syscalls, so pseudo's
+# LD_PRELOAD interposition cannot intercept it and it reads the REAL on-disk
+# modes. pseudo strips setuid/setgid from the real files (it keeps the true mode
+# only in its own database), so umoci repack would otherwise drop every
+# setuid/setgid bit -- breaking sudo, su, ping, mount, ... in the image.
+#
+# We let umoci do all of its normal work (layer diff, whiteouts, manifest and
+# config) and only fix the modes it is about to read: capture the special-bit
+# files from pseudo's view (find reports the database mode, e.g. 4755), then
+# re-apply them to the real files with pseudo disabled. PSEUDO_DISABLED=1 is the
+# reliable escape -- unsetting LD_PRELOAD does not work because pseudo re-injects
+# it into child processes. After this, the real files carry the special bits and
+# umoci bakes them into the layer. This mirrors oe-core's after-the-fact perms
+# fixups and keeps umoci authoritative for layering.
+oci_restore_setuid_before_repack() {
+    local rootfs="$1"
+    [ -d "$rootfs" ] || return 0
+    local plist="${WORKDIR}/oci-setuid-$$.list"
+    find "$rootfs" -type f -perm /06000 -printf '%m\t%P\n' > "$plist" 2>/dev/null || true
+    if [ ! -s "$plist" ]; then
+        rm -f "$plist"
+        return 0
+    fi
+    local _n=0
+    while IFS="$(printf '\t')" read -r _mode _path; do
+        [ -n "$_path" ] || continue
+        if PSEUDO_DISABLED=1 chmod "$_mode" "$rootfs/$_path" 2>/dev/null; then
+            _n=$(expr $_n + 1)
+        fi
+    done < "$plist"
+    bbnote "OCI: restored setuid/setgid on $_n file(s) before repack"
+    rm -f "$plist"
+}
+
 IMAGE_CMD:oci() {
     umoci_options=""
 
@@ -667,6 +717,7 @@ IMAGE_CMD:oci() {
 
             # Repack to create layer
             bbnote "OCI: Repacking layer $oci_layer_name"
+            oci_restore_setuid_before_repack "$image_bundle_name/rootfs"
             umoci repack --image "$image_name:$repack_tag" "$image_bundle_name"
 
             # Re-unpack for next layer if not the last one
@@ -703,6 +754,7 @@ IMAGE_CMD:oci() {
             cp -r -a --no-preserve=ownership ${IMAGE_ROOTFS}/* $image_bundle_name/rootfs
         fi
 
+        oci_restore_setuid_before_repack "$image_bundle_name/rootfs"
         bbdebug 1 "OCI: umoci repack --image $image_name:$repack_tag $image_bundle_name"
         umoci repack --image $image_name:$repack_tag $image_bundle_name
     fi

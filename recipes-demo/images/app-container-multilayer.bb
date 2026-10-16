@@ -11,8 +11,13 @@ OCI_LAYER_MODE = "multi"
 OCI_LAYERS = "\
     base:packages:base-files+base-passwd+netbase \
     shell:packages:busybox \
+    suid:packages:shadow \
     app:packages:curl \
 "
+# The suid layer carries shadow, which installs setuid binaries (e.g.
+# /usr/bin/passwd, mode 4755). It is both useful and a regression guard:
+# OCI builds must preserve setuid/setgid bits (umoci repack reads the real
+# fs, which pseudo strips of those bits unless we fix them up).
 
 # Note: no IMAGE_INSTALL needed for the packages listed above.
 # image-oci.bbclass walks OCI_LAYERS at parse time and folds every

@@ -160,6 +160,37 @@ def get_oci_layer_blob_sizes(oci_dir):
     return sizes
 
 
+def get_oci_setuid_entries(oci_dir):
+    """Scan every layer blob (gzipped tar) and return the setuid/setgid
+    entries as (name, mode, uid) tuples.
+
+    umoci repack reads the real bundle filesystem, which pseudo strips of
+    setuid/setgid bits, so before the before-repack mode fixup this list
+    would come back empty even when the image installs setuid binaries
+    (sudo, su, busybox, passwd, ...). A non-empty result owned by uid 0 is
+    the signal that the fixup put the bits back where umoci can bake them.
+    """
+    import tarfile
+
+    blobs_dir = oci_dir / "blobs" / "sha256"
+    if not blobs_dir.is_dir():
+        return None
+    special = []
+    for blob in sorted(blobs_dir.iterdir()):
+        if not blob.is_file():
+            continue
+        try:
+            tf = tarfile.open(blob, mode="r:*")
+        except (tarfile.TarError, OSError):
+            # config/manifest JSON blobs are not tar archives -- skip
+            continue
+        with tf:
+            for m in tf.getmembers():
+                if m.isfile() and (m.mode & 0o4000 or m.mode & 0o2000):
+                    special.append((m.name, m.mode, m.uid))
+    return special
+
+
 def get_task_log(build_dir, machine, recipe, task):
     """Get the path to a bitbake task log."""
     work_dir = build_dir / "tmp" / "work"
@@ -227,7 +258,7 @@ class TestMultiLayerOCIBuild:
 
     @pytest.mark.slow
     def test_multilayer_produces_correct_layers(self, build_dir, deploy_dir):
-        """Test that multi-layer build produces 3 layers."""
+        """Test that multi-layer build produces 4 layers."""
         # Ensure the recipe is built
         result = run_bitbake(build_dir, "app-container-multilayer", timeout=3600)
         if result.returncode != 0:
@@ -245,7 +276,7 @@ class TestMultiLayerOCIBuild:
         # Check layer count
         layer_count = get_oci_layer_count(oci_dir)
         assert layer_count is not None, f"Failed to inspect OCI image: {oci_dir}"
-        assert layer_count == 3, f"Expected 3 layers, got {layer_count}"
+        assert layer_count == 4, f"Expected 4 layers, got {layer_count}"
 
         # Check that every layer actually has content. A "packages" layer
         # whose install silently failed (e.g. missing pm.update() on the
@@ -264,6 +295,42 @@ class TestMultiLayerOCIBuild:
             f"{empty}. Each layer should exceed {min_size} bytes; smaller "
             f"means the layer install produced an empty tarball -- typically "
             f"a silent pm.install() failure demoted to bb.warn()."
+        )
+
+    @pytest.mark.slow
+    def test_multilayer_preserves_setuid(self, build_dir, deploy_dir):
+        """setuid/setgid bits must survive into the OCI layers.
+
+        umoci repack reads the real bundle filesystem to build each layer,
+        but umoci's syscalls bypass pseudo, which strips setuid/setgid from
+        the real files (tracking the true mode only in its database). Without
+        the before-repack mode fixup, every setuid/setgid bit is lost -- sudo
+        refuses to run with 'must be owned by uid 0 and have the setuid bit
+        set'. The 'suid' layer installs shadow (e.g. /usr/bin/passwd, 4755);
+        this asserts at least one setuid/setgid file survives, owned by root.
+        """
+        result = run_bitbake(build_dir, "app-container-multilayer", timeout=3600)
+        if result.returncode != 0:
+            pytest.skip("Build failed, skipping setuid check")
+
+        oci_dirs = list(deploy_dir.glob("app-container-multilayer*-oci"))
+        assert len(oci_dirs) > 0, "No OCI directory found for app-container-multilayer"
+        oci_dir = oci_dirs[0]
+        if oci_dir.is_symlink():
+            oci_dir = oci_dir.resolve()
+
+        special = get_oci_setuid_entries(oci_dir)
+        assert special is not None, f"Failed to read layer blobs from {oci_dir}"
+        assert special, (
+            "No setuid/setgid files in any OCI layer. The image installs "
+            "setuid binaries (shadow's passwd, busybox), so an empty result "
+            "means umoci repack dropped the bits -- the pseudo/umoci mode "
+            "fixup before repack regressed."
+        )
+        # The special bits must be on root-owned files to be meaningful.
+        root_owned = [e for e in special if e[2] == 0]
+        assert root_owned, (
+            f"setuid/setgid files exist but none are owned by uid 0: {special}"
         )
 
 
@@ -295,7 +362,7 @@ class TestLayerCaching:
 
         # Check for cache entries (format: {hash}-{layer_name})
         cache_entries = list(layer_cache_dir.iterdir())
-        assert len(cache_entries) >= 3, f"Expected at least 3 cache entries, found {len(cache_entries)}"
+        assert len(cache_entries) >= 4, f"Expected at least 4 cache entries, found {len(cache_entries)}"
 
         # Check for expected layer names
         entry_names = [e.name for e in cache_entries]
@@ -363,7 +430,7 @@ class TestLayerCaching:
             # Count hits vs misses
             hits = log_content.count("OCI Cache HIT")
             misses = log_content.count("OCI Cache MISS")
-            assert hits >= 3, f"Expected at least 3 cache hits, got {hits} hits and {misses} misses"
+            assert hits >= 4, f"Expected at least 4 cache hits, got {hits} hits and {misses} misses"
 
 
 class TestSingleLayerBackwardCompat:
@@ -518,3 +585,110 @@ class TestLayerTypes:
         class_file = meta_virt_dir / "classes" / "image-oci.bbclass"
         content = class_file.read_text()
         assert "files" in content, "files layer type should be documented"
+
+
+class TestLayerCacheKeyClosure:
+    """The OCI layer cache key must reflect the resolved RDEPENDS closure.
+
+    Logic-level guard for the bug where appending to a packagegroup's
+    RDEPENDS (e.g. 'RDEPENDS:packagegroup-x:append = " libxcrypt-dev"')
+    rebuilt the rootfs but left the OCI layer a stale cache HIT. The key
+    used to hash only the literal package names in OCI_LAYERS plus their own
+    PKGV; a packagegroup's name and PKGV do not change when its RDEPENDS do,
+    so the key never moved. The fix hashes the full RDEPENDS closure.
+
+    This reads the real pkgdata the bbclass function reads
+    (oe.packagedata.read_subpkgdata_dict parses the same runtime/<pkg>
+    files) and asserts the closure key flips on a simulated packagegroup
+    RDEPENDS append while the old name-only key does not. It is not
+    build-gated, but needs a prior build's pkgdata; it skips otherwise.
+    """
+
+    @staticmethod
+    def _pkgdata_runtime(build_dir, machine):
+        d = build_dir / "tmp" / "pkgdata" / machine / "runtime"
+        return d if d.is_dir() else None
+
+    @staticmethod
+    def _read(runtime_dir, pkg, overrides=None):
+        # Mirror oe.packagedata.read_subpkgdata_dict: parse KEY: value, strip
+        # the ":<pkg>" override suffix so RDEPENDS:<pkg> becomes RDEPENDS.
+        out = {}
+        fn = runtime_dir / pkg
+        if fn.exists():
+            for line in fn.read_text().splitlines():
+                if ":" in line:
+                    k, v = line.split(":", 1)
+                    if k.endswith(":" + pkg):
+                        k = k[: -(len(pkg) + 1)]
+                    out[k.strip()] = v.strip()
+        if overrides and pkg in overrides:
+            out["RDEPENDS"] = (out.get("RDEPENDS", "") + " " + overrides[pkg]).strip()
+        return out
+
+    @classmethod
+    def _explode(cls, rdeps):
+        import re
+        return re.sub(r"\([^)]*\)", "", rdeps).split()
+
+    @classmethod
+    def _nameonly_key(cls, runtime_dir, pkgs, overrides=None):
+        import hashlib, json
+        vers = {p: cls._read(runtime_dir, p, overrides).get("PKGV", "?") for p in pkgs}
+        comps = {"packages": sorted(pkgs), "pkg_versions": vers}
+        return hashlib.sha256(json.dumps(comps, sort_keys=True).encode()).hexdigest()[:16]
+
+    @classmethod
+    def _closure_key(cls, runtime_dir, pkgs, overrides=None):
+        import hashlib, json
+        closure = {}
+
+        def resolve(pkg):
+            if pkg in closure:
+                return
+            closure[pkg] = "?"
+            subd = cls._read(runtime_dir, pkg, overrides)
+            closure[pkg] = subd.get("PKGV", "?")
+            for dep in cls._explode(subd.get("RDEPENDS", "")):
+                resolve(dep)
+
+        for p in sorted(pkgs):
+            resolve(p)
+        comps = {"packages": sorted(pkgs), "pkg_closure": closure}
+        key = hashlib.sha256(json.dumps(comps, sort_keys=True).encode()).hexdigest()[:16]
+        return key, len(closure)
+
+    def _find_packagegroup(self, runtime_dir):
+        for f in sorted(runtime_dir.glob("packagegroup-*")):
+            for line in f.read_text().splitlines():
+                if line.startswith("RDEPENDS:" + f.name + ":") and line.split(":", 2)[-1].strip():
+                    return f.name
+        return None
+
+    def test_closure_key_invalidates_on_packagegroup_change(self, build_dir, machine):
+        runtime_dir = self._pkgdata_runtime(build_dir, machine)
+        if runtime_dir is None:
+            pytest.skip("no pkgdata runtime dir (build something first)")
+        pg = self._find_packagegroup(runtime_dir)
+        if pg is None:
+            pytest.skip("no packagegroup with RDEPENDS in pkgdata")
+
+        pkgs = [pg]
+        # a package guaranteed not already in the group's closure
+        extra = {pg: "this-pkg-does-not-exist-xyzzy"}
+
+        old_before = self._nameonly_key(runtime_dir, pkgs)
+        old_after = self._nameonly_key(runtime_dir, pkgs, extra)
+        new_before, n = self._closure_key(runtime_dir, pkgs)
+        new_after, _ = self._closure_key(runtime_dir, pkgs, extra)
+
+        assert n > 1, f"closure for {pg} should resolve beyond the group itself, got {n}"
+        # name-only key is blind to the RDEPENDS change (the original bug)
+        assert old_before == old_after, (
+            "name-only key unexpectedly changed; test assumption broken"
+        )
+        # closure key must move when the packagegroup's RDEPENDS change
+        assert new_before != new_after, (
+            f"closure cache key did not change when {pg} RDEPENDS gained a "
+            f"package -- the cache would serve a stale layer (regression)."
+        )
