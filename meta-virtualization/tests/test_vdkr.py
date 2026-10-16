@@ -28,6 +28,8 @@ Run with OCI image for import tests:
 import pytest
 import json
 import os
+import shutil
+from pathlib import Path
 
 
 @pytest.mark.memres
@@ -620,6 +622,163 @@ class TestVolumeMounts:
         assert result.returncode != 0
         output = (result.stdout + result.stderr).lower()
         assert "memres" in output or "daemon" in output
+
+
+CP_MARKER = "Hello from the container!"
+
+
+@pytest.fixture(scope="module")
+def cp_container(request):
+    """A running container with a known /cpdata tree, for cp tests.
+
+    The tree carries the awkward cases: an executable file, a dotfile, and
+    a relative symlink. It is built on the host and installed with the
+    host->container cp direction (which already works), so the tests can
+    then copy it back out and assert structure is preserved.
+    """
+    import tempfile as _tf
+    vdkr = request.getfixturevalue("vdkr")
+    vdkr.ensure_alpine()
+    name = "cpsrc"
+    vdkr.run("rm", "-f", name, check=False)
+    result = vdkr.run("run", "-d", "--name", name,
+                      "alpine:latest", "sleep", "600", timeout=60)
+    assert result.returncode == 0, f"run -d failed: {result.stdout}"
+
+    staging = Path(_tf.mkdtemp(prefix="vdkr-cpfix-"))
+    tree = staging / "cpdata"
+    (tree / "bin").mkdir(parents=True)
+    script = tree / "bin" / "hello.sh"
+    script.write_text(f"#!/bin/sh\necho '{CP_MARKER}'\n")
+    script.chmod(0o755)
+    (tree / ".hidden").write_text("Hidden file\n")
+    (tree / "link").symlink_to("bin/hello.sh")
+
+    # Install into the container via the host->container direction.
+    result = vdkr.run("cp", str(tree), f"{name}:/cpdata", timeout=120)
+    assert result.returncode == 0, f"fixture cp host->container failed: {result.stdout}"
+
+    yield vdkr, name
+
+    vdkr.run("rm", "-f", name, check=False)
+    shutil.rmtree(staging, ignore_errors=True)
+
+
+@pytest.mark.memres
+class TestCp:
+    """`cp` to and from a running container.
+
+    Regression coverage for the container->host direction: `runtime cp
+    container:path /mnt/share` restored the source ownership (0:0) on each
+    extracted file, but /mnt/share is a virtio-9p mount exported
+    security_model=none by an unprivileged host QEMU, so the chown was
+    denied (EPERM) and the copy aborted with data stranded in the share.
+    The fix streams a tar blob into the share (the same boundary-crossing
+    pattern `save` uses) and unpacks it on the host, which also preserves
+    modes, dotfiles and symlinks. The matrix below mirrors docker/podman cp
+    destination semantics.
+    """
+
+    def test_cp_host_to_container_dotfile(self, cp_container):
+        """Host->container round-trips a nested dotfile (regression guard)."""
+        vdkr, name = cp_container
+        result = vdkr.run("exec", name, "cat", "/cpdata/.hidden", timeout=60)
+        assert result.returncode == 0
+        assert "Hidden file" in result.stdout
+
+    def test_cp_file_into_dir(self, cp_container, temp_dir):
+        vdkr, name = cp_container
+        result = vdkr.run("cp", f"{name}:/cpdata/bin/hello.sh",
+                          str(temp_dir), timeout=120)
+        assert result.returncode == 0, f"cp failed: {result.stdout}"
+        copy = temp_dir / "hello.sh"
+        assert CP_MARKER in copy.read_text()
+        assert copy.stat().st_mode & 0o100, "exec bit lost"
+        assert copy.stat().st_uid == os.getuid()
+
+    def test_cp_file_to_new_name(self, cp_container, temp_dir):
+        vdkr, name = cp_container
+        dest = temp_dir / "renamed.sh"
+        result = vdkr.run("cp", f"{name}:/cpdata/bin/hello.sh",
+                          str(dest), timeout=120)
+        assert result.returncode == 0, f"cp failed: {result.stdout}"
+        assert CP_MARKER in dest.read_text()
+
+    def test_cp_file_over_file(self, cp_container, temp_dir):
+        vdkr, name = cp_container
+        existing = temp_dir / "existing"
+        existing.write_text("Old content\n")
+        result = vdkr.run("cp", f"{name}:/cpdata/bin/hello.sh",
+                          str(existing), timeout=120)
+        assert result.returncode == 0, f"cp failed: {result.stdout}"
+        assert CP_MARKER in existing.read_text()
+
+    def test_cp_dotfile(self, cp_container, temp_dir):
+        vdkr, name = cp_container
+        result = vdkr.run("cp", f"{name}:/cpdata/.hidden",
+                          str(temp_dir), timeout=120)
+        assert result.returncode == 0, f"cp failed: {result.stdout}"
+        assert (temp_dir / ".hidden").read_text() == "Hidden file\n"
+
+    def test_cp_dir_into_dir(self, cp_container, temp_dir):
+        vdkr, name = cp_container
+        result = vdkr.run("cp", f"{name}:/cpdata", str(temp_dir), timeout=120)
+        assert result.returncode == 0, f"cp failed: {result.stdout}"
+        got = temp_dir / "cpdata"
+        assert got.is_dir()
+        assert CP_MARKER in (got / "bin" / "hello.sh").read_text()
+        assert (got / "bin" / "hello.sh").stat().st_mode & 0o100, "exec bit lost"
+        assert (got / ".hidden").read_text() == "Hidden file\n"
+        assert os.path.islink(got / "link"), "symlink not preserved"
+        assert os.readlink(got / "link") == "bin/hello.sh"
+
+    def test_cp_dir_to_new_name(self, cp_container, temp_dir):
+        vdkr, name = cp_container
+        dest = temp_dir / "renamed-dir"
+        result = vdkr.run("cp", f"{name}:/cpdata", str(dest), timeout=120)
+        assert result.returncode == 0, f"cp failed: {result.stdout}"
+        assert CP_MARKER in (dest / "bin" / "hello.sh").read_text()
+        assert os.readlink(dest / "link") == "bin/hello.sh"
+
+    def test_cp_dir_contents_into_dir(self, cp_container, temp_dir):
+        """`cp container:/dir/.` copies contents, not the dir itself."""
+        vdkr, name = cp_container
+        result = vdkr.run("cp", f"{name}:/cpdata/.", str(temp_dir), timeout=120)
+        assert result.returncode == 0, f"cp failed: {result.stdout}"
+        assert not (temp_dir / "cpdata").exists()
+        assert (temp_dir / ".hidden").read_text() == "Hidden file\n"
+        assert CP_MARKER in (temp_dir / "bin" / "hello.sh").read_text()
+
+    def test_cp_dir_contents_to_new_name(self, cp_container, temp_dir):
+        vdkr, name = cp_container
+        dest = temp_dir / "newdir"
+        result = vdkr.run("cp", f"{name}:/cpdata/.", str(dest), timeout=120)
+        assert result.returncode == 0, f"cp failed: {result.stdout}"
+        assert (dest / ".hidden").read_text() == "Hidden file\n"
+        assert CP_MARKER in (dest / "bin" / "hello.sh").read_text()
+
+    def test_cp_missing_source_fails(self, cp_container, temp_dir):
+        vdkr, name = cp_container
+        result = vdkr.run("cp", f"{name}:/cpdata/nope",
+                          str(temp_dir), check=False, timeout=120)
+        assert result.returncode != 0
+        assert list(temp_dir.iterdir()) == []
+
+    def test_cp_missing_parent_fails(self, cp_container, temp_dir):
+        vdkr, name = cp_container
+        result = vdkr.run("cp", f"{name}:/cpdata/bin/hello.sh",
+                          str(temp_dir / "nodir" / "f"), check=False, timeout=120)
+        assert result.returncode != 0
+        assert list(temp_dir.iterdir()) == []
+
+    def test_cp_dir_over_file_fails(self, cp_container, temp_dir):
+        vdkr, name = cp_container
+        existing = temp_dir / "afile"
+        existing.write_text("Old content\n")
+        result = vdkr.run("cp", f"{name}:/cpdata",
+                          str(existing), check=False, timeout=120)
+        assert result.returncode != 0
+        assert existing.read_text() == "Old content\n"
 
 
 @pytest.mark.memres

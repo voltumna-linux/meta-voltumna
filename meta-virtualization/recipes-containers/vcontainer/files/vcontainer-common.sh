@@ -1628,6 +1628,32 @@ run_runtime_command_with_input() {
     fi
 }
 
+# Daemon-mode output sibling of run_runtime_command_with_input: run a runtime
+# command that writes a SINGLE file into the virtio-9p share, then hand the
+# host-side path back in RUNTIME_SHARE_OUTPUT. Writing one file (rather than
+# extracting many) is what keeps this off the share's ownership limitation --
+# the share is exported security_model=none by an unprivileged host QEMU, so a
+# runtime that tried to chown extracted files would be denied (EPERM). Both
+# `save` and container->host `cp` cross the boundary this way.
+#
+#   $1  name of the file the runtime_cmd writes under /mnt/share
+#   $2  the runtime command (must redirect/-o into /mnt/share/$1)
+# Returns 0 and sets RUNTIME_SHARE_OUTPUT on success, 1 if nothing was produced.
+RUNTIME_SHARE_OUTPUT=""
+run_runtime_output_to_share() {
+    local share_name="$1"
+    local runtime_cmd="$2"
+    local share_dir="${STATE_DIR:-$DEFAULT_STATE_DIR/$TARGET_ARCH}/share"
+
+    RUNTIME_SHARE_OUTPUT=""
+    rm -rf "$share_dir"/* 2>/dev/null || true
+    # || true so set -e does not abort before the produced-nothing check below.
+    run_runtime_command "$runtime_cmd" || true
+    [ -s "$share_dir/$share_name" ] || return 1
+    RUNTIME_SHARE_OUTPUT="$share_dir/$share_name"
+    return 0
+}
+
 # ============================================================================
 # Volume Mount Support
 # ============================================================================
@@ -2466,16 +2492,11 @@ case "$COMMAND" in
         if daemon_is_running; then
             # Use daemon mode with virtio-9p - save to shared dir, then copy to host
             [ "$VERBOSE" = "true" ] && echo -e "${CYAN}[$VCONTAINER_RUNTIME_NAME]${NC} Using daemon mode for save" >&2
-            SHARE_DIR="${STATE_DIR:-$DEFAULT_STATE_DIR/$TARGET_ARCH}/share"
 
-            # Clear share dir and run save command
-            rm -rf "$SHARE_DIR"/* 2>/dev/null || true
-            run_runtime_command "$VCONTAINER_RUNTIME_CMD save -o /mnt/share/output.tar $IMAGE_NAME"
-
-            # Copy from share dir to output file
-            if [ -f "$SHARE_DIR/output.tar" ]; then
-                cp "$SHARE_DIR/output.tar" "$OUTPUT_FILE"
-                rm -f "$SHARE_DIR/output.tar"
+            if run_runtime_output_to_share output.tar \
+                    "$VCONTAINER_RUNTIME_CMD save -o /mnt/share/output.tar $IMAGE_NAME"; then
+                cp "$RUNTIME_SHARE_OUTPUT" "$OUTPUT_FILE"
+                rm -f "$RUNTIME_SHARE_OUTPUT"
                 echo -e "${GREEN}[$VCONTAINER_RUNTIME_NAME]${NC} Saved to $OUTPUT_FILE ($(du -h "$OUTPUT_FILE" | cut -f1))"
             else
                 echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} Save failed - output not found in shared directory" >&2
@@ -2818,23 +2839,81 @@ case "$COMMAND" in
         # Determine direction: host->container or container->host
         if [[ "$SRC" == *":"* ]] && [[ "$DEST" != *":"* ]]; then
             # Container to host: runtime cp container:/path /local/path
-            # Run runtime cp to /mnt/share, then copy from share to host
             CONTAINER_PATH="$SRC"
             HOST_PATH="$DEST"
-            SHARE_DIR="${STATE_DIR:-$DEFAULT_STATE_DIR/$TARGET_ARCH}/share"
+
+            # "container:/dir/." means copy the directory CONTENTS. docker and
+            # podman stream that differently (docker tars the contents, podman
+            # tars the dir itself), so don't rely on either: copy the directory
+            # and strip its leading path component on extraction, uniformly.
+            CP_STRIP=""
+            if [[ "$CONTAINER_PATH" == */. ]]; then
+                CONTAINER_PATH="${CONTAINER_PATH%/.}"
+                CP_STRIP="--strip-components=1"
+            fi
 
             if daemon_is_running; then
-                rm -rf "$SHARE_DIR"/* 2>/dev/null || true
-                run_runtime_command "$VCONTAINER_RUNTIME_CMD cp $CONTAINER_PATH /mnt/share/"
-                # Find what was copied and move to destination
-                if [ -n "$(ls -A "$SHARE_DIR" 2>/dev/null)" ]; then
-                    cp -r "$SHARE_DIR"/* "$HOST_PATH" 2>/dev/null || cp -r "$SHARE_DIR"/* "$(dirname "$HOST_PATH")/"
-                    rm -rf "$SHARE_DIR"/*
-                    echo -e "${GREEN}[$VCONTAINER_RUNTIME_NAME]${NC} Copied to $HOST_PATH"
-                else
-                    echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} Copy failed - no files in share directory" >&2
+                # Cross the 9p boundary the same way `save` does, via the shared
+                # helper: have the runtime stream one tar blob (the cp "-" form)
+                # into the share, then unpack it here. A direct "runtime cp
+                # container:path /mnt/share" would restore the source ownership
+                # (0:0) on each extracted file, but the share is exported
+                # security_model=none by an unprivileged host QEMU, so that chown
+                # is denied (EPERM); writing a single tar file avoids it, and
+                # host-side tar preserves symlinks, modes and dotfiles.
+                if ! run_runtime_output_to_share cp.tar \
+                        "$VCONTAINER_RUNTIME_CMD cp $CONTAINER_PATH - > /mnt/share/cp.tar"; then
+                    echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} Copy failed - nothing streamed from container" >&2
                     exit 1
                 fi
+                _cp_blob="$RUNTIME_SHARE_OUTPUT"
+                # Place the tar contents at the destination with docker/podman cp
+                # semantics. `cp SRC -` emits a tar rooted at basename(SRC);
+                # `cp SRC/. -` emits the directory contents.
+                _cp_ok=1
+                if [ -d "$HOST_PATH" ]; then
+                    # Existing directory: extract into it.
+                    tar -xf "$_cp_blob" -C "$HOST_PATH" $CP_STRIP || _cp_ok=0
+                elif [ ! -d "$(dirname "$HOST_PATH")" ]; then
+                    echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} Copy failed - $(dirname "$HOST_PATH") does not exist" >&2
+                    rm -f "$_cp_blob"
+                    exit 1
+                else
+                    # New path or existing file: extract to a staging dir next to
+                    # the destination, then place the result (rename/overwrite).
+                    _cp_tmp=$(mktemp -d "$(dirname "$HOST_PATH")/.$VCONTAINER_RUNTIME_NAME-cp.XXXXXX") || _cp_tmp=""
+                    if [ -z "$_cp_tmp" ] || ! tar -xf "$_cp_blob" -C "$_cp_tmp" $CP_STRIP; then
+                        _cp_ok=0
+                    else
+                        _cp_n=$(ls -A "$_cp_tmp" | wc -l)
+                        if [ "$_cp_n" -eq 1 ]; then
+                            _cp_item="$_cp_tmp/$(ls -A "$_cp_tmp")"
+                            if [ -d "$_cp_item" ] && [ -e "$HOST_PATH" ] && [ ! -d "$HOST_PATH" ]; then
+                                echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} Copy failed - cannot copy a directory over $HOST_PATH" >&2
+                                rm -rf "$_cp_tmp" "$_cp_blob"
+                                exit 1
+                            fi
+                            rm -rf "$HOST_PATH" 2>/dev/null || true
+                            mv "$_cp_item" "$HOST_PATH" || _cp_ok=0
+                        else
+                            # Directory contents (SRC/.) to a path that does not
+                            # exist yet: create it and move everything in.
+                            if mkdir "$HOST_PATH" 2>/dev/null; then
+                                mv "$_cp_tmp"/* "$HOST_PATH"/ 2>/dev/null || true
+                                mv "$_cp_tmp"/.[!.]* "$HOST_PATH"/ 2>/dev/null || true
+                            else
+                                _cp_ok=0
+                            fi
+                        fi
+                    fi
+                    rm -rf "$_cp_tmp"
+                fi
+                rm -f "$_cp_blob"
+                if [ "$_cp_ok" != "1" ]; then
+                    echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} Copy failed - could not unpack into $HOST_PATH" >&2
+                    exit 1
+                fi
+                echo -e "${GREEN}[$VCONTAINER_RUNTIME_NAME]${NC} Copied to $HOST_PATH"
             else
                 echo -e "${RED}[$VCONTAINER_RUNTIME_NAME]${NC} cp requires daemon mode. Start with: $VCONTAINER_RUNTIME_NAME memres start" >&2
                 exit 1
