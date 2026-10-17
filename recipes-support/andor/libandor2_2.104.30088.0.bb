@@ -1,6 +1,6 @@
 include andor2.inc
 
-DEPENDS = "libusb-compat"
+DEPENDS = "libusb-compat patchelf-native"
 
 SRC_URI:append = " \
 	file://90-andor.rules  \
@@ -26,6 +26,21 @@ do_install () {
 	 	ln -sfrn ${D}${libdir}/$lib ${D}${libdir}/$n.so
 	 	ln -sfrn ${D}${libdir}/$lib ${D}${libdir}/$n.so.2
 	done
+        for lib in ${D}${libdir}/libatspectrograph-*.so.*; do
+            # salta i symlink, patcha solo il file reale
+            [ -f "$lib" ] && [ ! -L "$lib" ] || continue
+
+            ${NM} -D --defined-only "$lib" \
+                | awk '$2=="T" && $3 ~ /^libusb_/ {print $3" atsbundled_"$3}' \
+                > ${WORKDIR}/ats-libusb.map
+
+            patchelf --rename-dynamic-symbols ${WORKDIR}/ats-libusb.map "$lib"
+
+            # controllo: non devono restare simboli libusb_ esportati
+            if ${NM} -D --defined-only "$lib" | grep -q ' T libusb_'; then
+                bbfatal "Rename failed on $lib"
+            fi
+        done
  	
 	install -d ${D}${docdir}/andor2
 	cp -r ${S}/doc/* ${D}${docdir}/andor2/
@@ -41,3 +56,5 @@ do_install () {
 }
 
 BBCLASSEXTEND = "nativesdk"
+
+# INSANE_SKIP:${PN} += "already-stripped ldflags"
