@@ -58,17 +58,21 @@ class TestVruntimeBaseInc:
         path = meta_virt_dir / "conf" / "distro" / "include" / "vruntime-base.inc"
         assert path.exists(), f"Missing: {path}"
 
-    def test_requires_selfcontained_base(self, meta_virt_dir):
-        """Base on oe-core's defaultsetup.conf, not meta-poky's poky.conf, so
-        the meta-virt distros do not depend on meta-poky being in the stack."""
+    def test_does_not_require_a_base_distro(self, meta_virt_dir):
+        """Like poky.conf and every oe-core distro, the base skeleton comes
+        from bitbake.conf (which includes defaultsetup.conf after the distro
+        conf). vruntime-base.inc must NOT require poky.conf (couples to
+        meta-poky) nor defaultsetup.conf (parses it twice -> "Duplicate
+        inclusion" warnings, Yocto bug 16451)."""
         content = (meta_virt_dir / "conf" / "distro" / "include" / "vruntime-base.inc").read_text()
-        assert "require conf/distro/defaultsetup.conf" in content
         for line in content.splitlines():
             stripped = line.strip()
             if stripped.startswith("#"):
                 continue
             assert "require conf/distro/poky.conf" not in stripped, \
-                "vruntime-base.inc must not require poky.conf (use defaultsetup.conf)"
+                "vruntime-base.inc must not require poky.conf"
+            assert "conf/distro/defaultsetup.conf" not in stripped, \
+                "vruntime-base.inc must not require defaultsetup.conf (bitbake.conf supplies it)"
 
     def test_sets_distro_features(self, meta_virt_dir):
         content = (meta_virt_dir / "conf" / "distro" / "include" / "vruntime-base.inc").read_text()

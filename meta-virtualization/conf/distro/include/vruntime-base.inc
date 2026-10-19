@@ -7,22 +7,22 @@
 # Provides the stripped-down DISTRO_FEATURES, opted-out features, and
 # native class overrides common to all minimal container/VM builds.
 
-# Base on oe-core's self-contained minimal distro skeleton rather than
-# meta-poky's poky.conf. meta-virt ships multiple distros (vruntime,
-# vcontainer) and should not drag in the poky *reference* distro -- that
-# coupled these distros to meta-poky being in bblayers.conf and silently
-# pulled poky policy (poky-sanity, poky-world-exclude, SANITY_TESTED_DISTROS,
-# rpm, sysvinit) we never asked for. defaultsetup.conf lives in oe-core
-# (always present) and provides default providers/distrovars, tcmode/tclibc,
-# security_flags and init-manager -- everything a functional distro needs.
-require conf/distro/defaultsetup.conf
-
-# poky.conf pinned these; defaultsetup.conf leaves them to oe-core defaults.
-# Keep rpm packaging (unchanged from the poky-based behavior) and pin the
-# kernel so dropping poky.conf does not let linux-yocto float. INIT_MANAGER
-# is deliberately NOT pinned here -- defaultsetup.conf defaults to systemd,
-# which is what this layer uses (the VM rootfs overrides to busybox in
-# vruntime.conf; nothing in the layer relies on sysvinit).
+# These are their own distros (vruntime, vcontainer), deliberately NOT based
+# on meta-poky's poky.conf: that dragged in the poky *reference* distro policy
+# (poky-sanity, poky-world-exclude, SANITY_TESTED_DISTROS, rpm, sysvinit) and
+# coupled us to meta-poky being in bblayers.conf. Like poky.conf and every
+# other oe-core distro, this file sets only the distro's own features and
+# overrides; the base skeleton (default providers/distrovars, tcmode/tclibc,
+# security_flags, init-manager) is supplied by bitbake.conf, which includes
+# conf/distro/defaultsetup.conf immediately after conf/distro/${DISTRO}.conf
+# for every distro. Do NOT "require defaultsetup.conf" here -- doing so parses
+# it twice and triggers "Duplicate inclusion" warnings (Yocto bug 16451).
+#
+# Because the distro conf is parsed before defaultsetup, these ?= pins win
+# over defaultsetup's own ?= defaults: keep rpm packaging and pin the kernel
+# so we do not inherit ipk / let linux-yocto float. INIT_MANAGER is left to
+# defaultsetup's systemd default, which matches the layer (the VM rootfs
+# overrides to busybox init in vruntime.conf; nothing relies on sysvinit).
 PACKAGE_CLASSES ?= "package_rpm"
 PREFERRED_VERSION_linux-yocto ?= "7.2%"
 PREFERRED_VERSION_linux-yocto-rt ?= "7.2%"
