@@ -7,8 +7,7 @@ This Yocto layer contains older CLANG versions revived from [meta-clang](https:/
 The problem with only keeping a single LLVM or CLANG version is that crucial projects are slow to update their LLVM version support:
 
 * [IGC of Intel Compute Runtime](https://github.com/intel/intel-graphics-compiler) supports up to LLVM 15, with LLVM 14 being production quality for the legacy versions.
-* The [llvmlite](https://pypi.org/project/llvmlite/) Python module in version 0.43 supports LLVM 14 or 15
-
+* The [llvmlite](https://pypi.org/project/llvmlite/) Python module in version 0.42 supports LLVM 22
 # Usage
 
 [meta-clang](https://github.com/kraj/meta-clang) optionally suggests setting the default compiler to CLANG:
