@@ -4,6 +4,11 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/meta/files/common-licenses/MIT;md5=0835ad
 
 SRC_URI:append = "file://init"
 
+# Resolved through FILESPATH (which includes FILESEXTRAPATHS), so layers can
+# override init. Must stay lazy (`=`): with `:=` it would freeze this recipe's
+# own files/ before a bbappend prepends its directory.
+INIT_FILE = "${@bb.utils.which(d.getVar('FILESPATH'), 'init')}"
+
 PV = "1.0"
 
 # Avoid (R)DEPENDS which add other dependencies
@@ -25,7 +30,7 @@ IMAGE_FSTYPES = "${INITRAMFS_FSTYPES}"
 LDCONFIGDEPEND = ""
 
 install() {
-	cp ${FILE_DIRNAME}/files/init ${IMAGE_ROOTFS}
+	cp ${INIT_FILE} ${IMAGE_ROOTFS}
 	chmod 744 ${IMAGE_ROOTFS}/init
 
 	mkdir -p ${IMAGE_ROOTFS}/dev ${IMAGE_ROOTFS}/proc \
