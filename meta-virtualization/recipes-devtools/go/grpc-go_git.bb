@@ -46,3 +46,5 @@ CVE_PRODUCT += "grpc"
 # grpc-go (Go implementation in meta-virtualization) does not
 # contain the affected HPACK code path.
 CVE_STATUS[CVE-2024-7246] = "not-applicable-config: CVE is for grpc (C-core), not grpc-go."
+CVE_STATUS[CVE-2023-33953] = "not-applicable-config: CVE affects gRPC C-core-based implementations, not grpc-go."
+CVE_STATUS[CVE-2024-37168] = "cpe-incorrect: affects @grpc/grpc-js, not grpc-go"
