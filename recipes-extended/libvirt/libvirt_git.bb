@@ -42,6 +42,7 @@ SRC_URI = "gitsm://github.com/libvirt/libvirt.git;name=libvirt;protocol=https;br
            file://0001-messon.build-remove-build-path-information-to-avoid-.patch \
            file://0001-tests-meson-clear-absolute-directory-paths.patch \
            file://0001-qemu_nbdkit.c-use-llu-to-print-time_t.patch \
+           file://CVE-2026-18917.patch \
           "
 
 inherit meson gettext update-rc.d pkgconfig systemd useradd perlnative
