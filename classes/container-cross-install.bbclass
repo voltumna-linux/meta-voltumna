@@ -1090,4 +1090,4 @@ Or remove it from BUNDLED_CONTAINERS if not needed.
 }
 
 # First merge any bundles installed via IMAGE_INSTALL, then process BUNDLED_CONTAINERS
-ROOTFS_POSTPROCESS_COMMAND += "merge_installed_bundles; bundle_containers;"
+ROOTFS_POSTPROCESS_COMMAND += "merge_installed_bundles bundle_containers"

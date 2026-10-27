@@ -725,7 +725,7 @@ create_sdk_files[vardeps] += "VCONTAINER_TARGET_ARCH VCONTAINER_KERNEL_NAME VCON
 # Substitute custom placeholders in installer script
 # ===========================================================================
 # This runs AFTER archive_sdk to replace placeholders in our custom template
-SDK_POSTPROCESS_COMMAND += "substitute_vcontainer_vars;"
+SDK_POSTPROCESS_COMMAND += "substitute_vcontainer_vars"
 
 substitute_vcontainer_vars () {
     # Replace placeholders in the installer script

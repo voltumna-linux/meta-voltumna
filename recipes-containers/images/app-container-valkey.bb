@@ -27,7 +27,7 @@ CONTAINER_SHELL = "busybox"
 #  image.bbclass intentionally sets do_fetch, do_unpack and do_install to noexec.
 #  We do not want to abuse that isolation, so instead get the file from local
 #  tree and install in rootfs postprocess.
-ROOTFS_POSTPROCESS_COMMAND:append = " rootfs_install_entrypoint_sh ; "
+ROOTFS_POSTPROCESS_COMMAND:append = " rootfs_install_entrypoint_sh"
 rootfs_install_entrypoint_sh () {
     install -m 0755 ${THISDIR}/${BPN}/container-entrypoint.sh ${IMAGE_ROOTFS}/${bindir}/
 }

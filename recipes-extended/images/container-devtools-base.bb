@@ -39,7 +39,7 @@ DEVTOOLS_BASE_PKG_FEED_URL ?= "http://10.0.2.2/rpm"
 
 
 # TODO: support more than rpm
-ROOTFS_POSTPROCESS_COMMAND += "rootfs_pkg_feed_config ; "
+ROOTFS_POSTPROCESS_COMMAND += "rootfs_pkg_feed_config"
 rootfs_pkg_feed_config () {
     if [ "${IMAGE_PKGTYPE}" = "rpm" ]; then
        install -m 755 -d ${IMAGE_ROOTFS}/${sysconfdir}/yum.repos.d

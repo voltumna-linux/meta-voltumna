@@ -434,4 +434,4 @@ EOF
 }
 
 # First merge any bundles installed via IMAGE_INSTALL, then process BUNDLED_XEN_GUESTS
-ROOTFS_POSTPROCESS_COMMAND += "merge_installed_xen_bundles; bundle_xen_guests;"
+ROOTFS_POSTPROCESS_COMMAND += "merge_installed_xen_bundles bundle_xen_guests"

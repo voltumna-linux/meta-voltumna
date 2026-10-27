@@ -89,7 +89,7 @@ DOCKER_REGISTRY_INSECURE ?= ""
 IMAGE_FSTYPES = "squashfs"
 
 # Install our init script
-ROOTFS_POSTPROCESS_COMMAND += "install_vdkr_init;"
+ROOTFS_POSTPROCESS_COMMAND += "install_vdkr_init"
 
 install_vdkr_init() {
     # Install vdkr-init.sh as /init and vcontainer-init-common.sh alongside it

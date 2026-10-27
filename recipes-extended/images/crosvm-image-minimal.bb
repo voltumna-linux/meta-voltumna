@@ -73,7 +73,7 @@ bundle_crosvm_guest() {
                     "$target_dir/${CROSVM_GUEST_TARGET_KERNEL_NAME}"
 }
 
-ROOTFS_POSTPROCESS_COMMAND += "bundle_crosvm_guest;"
+ROOTFS_POSTPROCESS_COMMAND += "bundle_crosvm_guest"
 
 IMAGE_ROOTFS_SIZE = "0"
 

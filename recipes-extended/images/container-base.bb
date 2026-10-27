@@ -45,7 +45,7 @@ IMAGE_CONTAINER_NO_DUMMY = "1"
 # directories (/var/volatile/*, etc.) are not created, so we do that ourselves
 # in a minimal way below. We could bootstrap and run some of the more standard
 # scripts that do it at boot, but we avoid that until needed.
-ROOTFS_POSTPROCESS_COMMAND += "rootfs_fixup_var_volatile ; "
+ROOTFS_POSTPROCESS_COMMAND += "rootfs_fixup_var_volatile"
 
 # This :remove is required, because it comes along and deletes our /var/volatile/
 # fixups!

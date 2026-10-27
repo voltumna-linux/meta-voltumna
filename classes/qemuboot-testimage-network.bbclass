@@ -51,4 +51,4 @@ EOF
         fi
     fi
 }
-ROOTFS_POSTPROCESS_COMMAND += 'enable_runqemu_network;'
+ROOTFS_POSTPROCESS_COMMAND += 'enable_runqemu_network'

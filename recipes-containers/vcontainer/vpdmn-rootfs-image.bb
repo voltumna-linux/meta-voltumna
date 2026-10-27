@@ -78,7 +78,7 @@ IMAGE_ROOTFS_EXTRA_SPACE = "0"
 IMAGE_FSTYPES = "squashfs"
 
 # Install our init script
-ROOTFS_POSTPROCESS_COMMAND += "install_vpdmn_init;"
+ROOTFS_POSTPROCESS_COMMAND += "install_vpdmn_init"
 
 install_vpdmn_init() {
     # Install vpdmn-init.sh as /init and vcontainer-init-common.sh alongside it

@@ -53,7 +53,7 @@ IMAGE_NAME_SUFFIX = ""
 COMPATIBLE_HOST = "(x86_64|aarch64).*-linux"
 
 # Create required directories that busybox/preinit expect
-ROOTFS_POSTPROCESS_COMMAND += "create_initramfs_dirs;"
+ROOTFS_POSTPROCESS_COMMAND += "create_initramfs_dirs"
 
 create_initramfs_dirs() {
     # Create mount points used by preinit
