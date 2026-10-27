@@ -32,7 +32,7 @@ do_rootfs[file-checksums] += "${STATE_YAML_SRC}:True"
 
 # Override the (empty) default state.yaml shipped by ank-server with one that
 # defines the hello-ankaios workload.
-ROOTFS_POSTPROCESS_COMMAND += "install_ankaios_test_state;"
+ROOTFS_POSTPROCESS_COMMAND += "install_ankaios_test_state"
 install_ankaios_test_state() {
     install -d ${IMAGE_ROOTFS}${sysconfdir}/ankaios
     install -m 0644 ${STATE_YAML_SRC} ${IMAGE_ROOTFS}${sysconfdir}/ankaios/state.yaml

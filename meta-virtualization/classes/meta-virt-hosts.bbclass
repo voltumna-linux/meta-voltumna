@@ -1,8 +1,8 @@
 # This doesn't work, since it seems to be too late for sanity checking.
 # IMAGE_FEATURES[validitems] += ' ${@bb.utils.contains("DISTRO_FEATURES", "virtualization", "virt-unique-hostname; ", "",d)}'
 
-ROOTFS_POSTPROCESS_COMMAND += '${@bb.utils.contains("IMAGE_FEATURES", "virt-unique-hostname", "virt_gen_hostname; ", "",d)}'
-ROOTFS_POSTPROCESS_COMMAND += '${@bb.utils.contains("IMAGE_FEATURES", "virt-unique-hostname", "virt_set_hostname; ", "",d)}'
+ROOTFS_POSTPROCESS_COMMAND += '${@bb.utils.contains("IMAGE_FEATURES", "virt-unique-hostname", "virt_gen_hostname ", "",d)}'
+ROOTFS_POSTPROCESS_COMMAND += '${@bb.utils.contains("IMAGE_FEATURES", "virt-unique-hostname", "virt_set_hostname ", "",d)}'
 
 python virt_gen_hostname() {
     import uuid
