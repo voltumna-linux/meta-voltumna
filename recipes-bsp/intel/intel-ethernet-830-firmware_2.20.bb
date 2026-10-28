@@ -4,9 +4,9 @@ LICENSE = "CLOSED"
 
 PV_MAJOR = "${@d.getVar('PV').split('.')[0]}"
 PV_MINOR = "${@d.getVar('PV').split('.')[1]}"
-NUM = "923583"
+NUM = "930886"
 SRC_URI = "https://downloadmirror.intel.com/${NUM}/E830_E835_NVMUpdatePackage_v${PV_MAJOR}_${PV_MINOR}.zip"
-SRC_URI[sha256sum] = "0e1514e7d8846894945ed9b8a78829d1093f246535bde3d276f931223baf11ab"
+SRC_URI[sha256sum] = "70ed9130108ea1e3ed755dd3597838a269413ab5d34949044d202563fe3704f1"
 
 COMPATIBLE_HOST = "x86_64.*-linux"
 
