@@ -4,9 +4,9 @@ LICENSE = "CLOSED"
 
 PV_MAJOR = "${@d.getVar('PV').split('.')[0]}"
 PV_MINOR = "${@d.getVar('PV').split('.')[1]}"
-NUM = "871942"
+NUM = "786044"
 SRC_URI = "https://downloadmirror.intel.com/${NUM}/E810_NVMUpdatePackage_v${PV_MAJOR}_${PV_MINOR}.zip"
-SRC_URI[sha256sum] = "c68f64f2a0b98b1d12b113a5d4d317967860834369b741fa74bfdf1b3684fefd"
+SRC_URI[sha256sum] = "f1f8bdba4dbae2c6c6e29e1ae9fbc502259165ae1554c9ba42c83f17e2b1a974"
 
 COMPATIBLE_HOST = "x86_64.*-linux"
 
