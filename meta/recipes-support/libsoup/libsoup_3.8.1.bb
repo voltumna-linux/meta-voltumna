@@ -11,7 +11,7 @@ DEPENDS = "glib-2.0 glib-2.0-native libxml2 sqlite3 libpsl nghttp2"
 
 inherit gettext gnomebase upstream-version-is-even gobject-introspection gi-docgen vala ptest-gnome
 
-SRC_URI[archive.sha256sum] = "bbf08fa3e03a88c31a3d27a0d87cb422e9490f2d08e149211103df6d638a2238"
+SRC_URI[archive.sha256sum] = "5013dcef9136f6f861e6529fca578af50c1f52a39219027fb5aff652d1371a04"
 
 SRC_URI += "file://run-ptest"
 
@@ -45,9 +45,10 @@ GIDOCGEN_MESON_ENABLE_FLAG = 'enabled'
 GIDOCGEN_MESON_DISABLE_FLAG = 'disabled'
 
 # These tests abort under ptest and leave the binaries in place:
-# - header-parsing-test: a g_hash_table_size() assertion in
-#   do_param_list_tests() does not hold (returns one entry instead of three)
-#   with the current glib.
+# - header-parsing-test: the /header-parsing/param-list subtest aborts as
+#   soup_header_parse_semi_param_list() returns one parameter instead of
+#   three for a header with invalid-UTF-8 extended (*=) parameters:
+#   https://gitlab.gnome.org/GNOME/libsoup/-/work_items/560
 # - logger-test (long-invalid-body-length) and http2-body-stream-test
 #   (large_data) exercise multi-GiB allocations and are killed by the OOM
 #   killer on the memory-constrained ptest machines.
