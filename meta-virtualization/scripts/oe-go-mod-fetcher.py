@@ -73,7 +73,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 from datetime import datetime, timedelta, timezone
 
-VERSION = "3.0.0"
+VERSION = "3.0.1"
 LOG_PATH: Optional[Path] = None
 
 # =============================================================================
@@ -4631,14 +4631,13 @@ def generate_recipe(modules: List[Dict], source_dir: Path, output_dir: Optional[
 
             # Use branch name from ref_hint when available (more reliable than nobranch=1)
             # ref_hint is like "refs/tags/v1.9.3" or "refs/heads/main"
+            # Shallow clones are enabled by BB_GIT_SHALLOW = "1" at the recipe level;
+            # the ;tag= parm below is auto-added to shallow_extra_refs by bitbake, which
+            # is what makes a depth-1 fetch reach the pinned rev.
             ref_hint = commit_info.get('ref_hint', '')
             if ref_hint:
-                shallow_param = ';shallow=1'
-                # For tags, use nobranch=1 since the commit may not be on a branch head
-                # For branches, use the branch name directly
                 if ref_hint.startswith('refs/tags/'):
                     # Tags: BitBake can fetch tagged commits with nobranch=1
-                    # Add tag= so shallow clones include this tag (with BB_GIT_SHALLOW=1 in recipe)
                     tag_name = ref_hint[10:]  # Strip "refs/tags/"
                     branch_param = f';nobranch=1;tag={tag_name}'
                 elif ref_hint.startswith('refs/heads/'):
@@ -4652,17 +4651,15 @@ def generate_recipe(modules: List[Dict], source_dir: Path, output_dir: Optional[
                 detected_branch = VERIFY_DETECTED_BRANCHES.get((git_url, commit_hash))
                 if detected_branch:
                     # Use the detected branch name instead of nobranch=1
-                    shallow_param = ''
                     branch_param = f';branch={detected_branch}'
                     print(f"    Using detected branch: {detected_branch} for {commit_hash[:12]}")
                 else:
                     # No ref and no detected branch - use nobranch=1
                     # This should only happen for genuine orphaned commits that couldn't be fixed
-                    shallow_param = ''
                     branch_param = ';nobranch=1'
 
             src_uri_entries.append(
-                f'{git_url_bb};protocol={protocol}{branch_param}{shallow_param};'
+                f'{git_url_bb};protocol={protocol}{branch_param};'
                 f'rev={commit_hash};'
                 f'name={fetch_name};'
                 f'destsuffix={destsuffix}'

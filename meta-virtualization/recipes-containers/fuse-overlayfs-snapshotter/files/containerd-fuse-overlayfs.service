@@ -1,0 +1,15 @@
+[Unit]
+Description=containerd fuse-overlayfs snapshotter gRPC proxy plugin
+Documentation=https://github.com/containerd/fuse-overlayfs-snapshotter
+After=local-fs.target
+Before=containerd.service docker.service
+
+[Service]
+RuntimeDirectory=containerd-fuse-overlayfs
+ExecStart=/usr/bin/containerd-fuse-overlayfs-grpc /run/containerd-fuse-overlayfs/containerd-fuse-overlayfs.sock @CONTAINERD_FUSE_OVERLAYFS_ROOT@
+Restart=on-failure
+RestartSec=5
+OOMScoreAdjust=-999
+
+[Install]
+WantedBy=multi-user.target
