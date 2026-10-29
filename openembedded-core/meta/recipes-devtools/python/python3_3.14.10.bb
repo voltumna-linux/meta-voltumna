@@ -30,7 +30,7 @@ SRC_URI:append:class-native = " \
            file://0001-Lib-sysconfig.py-use-prefix-value-from-build-configu.patch \
            "
 
-SRC_URI[sha256sum] = "e02d9ac21cebda6e46435369744a92c65cc7cd8669697694122cf97ffacd1e53"
+SRC_URI[sha256sum] = "de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032"
 
 # exclude pre-releases for both python 2.x and 3.x
 UPSTREAM_CHECK_REGEX = "[Pp]ython-(?P<pver>\d+(\.\d+)+).tar"
@@ -276,39 +276,8 @@ SKIPPED_TESTS = " \
     --ignore test_write_read_append \
 "
 
-# We build Python3 with editline support by default, which has tab completion
-# but not bang completion. test_bang_completion_without_do_shell() passes if
-# building with readline, but we don't want to change the default, so skip the
-# test.
-# https://github.com/python/cpython/issues/150922
-SKIPPED_TESTS += " \
-    --ignore test_bang_completion_without_do_shell \
-"
-
-# Also fails with editline instead of readline. See:
-# https://github.com/python/cpython/issues/123018
-SKIPPED_TESTS += " \
-    --ignore test_write_read_limited_history \
-"
-
-# In 3.14+ PyREPL's uses terminfo instead of curses. ICH1, is not in the
-# resulting terminal capabilities, in an "optimization" occurring from PyREPL's
-# side that causes test_cursor_back_write() to fail. Specifically, the test
-# tests the following writes in sequence:
-#
-# 1. b"1"
-# 2. TERM_CAPABILITIES["cub"] + b":1"
-# 3. ANY, b"2"
-#
-# The first two writes are read correctly, but the result for the third
-# write is seeing the equivalent of:
-#
-# ANY, b"21"
-SKIPPED_TESTS += " \
-    --ignore test_cursor_back_write \
-"
-
 # Needs IMAGE_FEATURE += \"tools-sdk\"
+# Can be removed when https://github.com/python/cpython/pull/151231 is merged
 SKIPPED_TESTS += " \
     --ignore test_find_library_with_gcc \
     --ignore test_find_library_with_ld \
@@ -317,12 +286,6 @@ SKIPPED_TESTS += " \
 # Fails due to differences in CFLAGS as as modified during build
 SKIPPED_TESTS += " \
     --ignore test_sysconfigdata_json \
-"
-
-# Fails with segfault
-# Bugzilla YP 16182 (test_tracemalloc_track_race)
-SKIPPED_TESTS += " \
-    --ignore test.test_tracemalloc.TestCAPI.test_tracemalloc_track_race \
 "
 
 # Intermittent failure under load - the remote pdb attach test is timing
@@ -356,16 +319,15 @@ SKIPPED_TESTS += " \
     --ignore test.test_asyncio.test_eager_task_factory.CEagerTaskFactoryLoopTests.test_staggered_race_with_eager_tasks \
 "
 
-SKIPPED_TESTS:append:libc-musl = " \
-    -x test__locale \
-    -x test_c_locale_coercion \
-    -x test_locale \
-    -x test_os test_re \
-    -x test__xxsubinterpreters \
-    -x test_threading \
-    --ignore test.test_strptime.StrptimeTests.test_date_locale2 \
-    --ignore test.test_ctypes.test_dlerror.TestNullDlsym.test_null_dlsym \
-    --ignore test.test_multiprocessing_fork.test_processes.WithProcessesTestProcess.test_interrupt \
+# Intermittent failure under load - this concurrent.futures ProcessPool test
+# starts a worker and expects it to be stranded within a 30s thread-join
+# timeout. On loaded autobuilder hosts under QEMU emulation (seen on
+# qemuriscv64) the worker process is slow to start, the managed queue get()
+# times out and the join exceeds 30s. Upstream test is timing-sensitive
+# (CPython gh-119592).
+# Bugzilla YP 16466
+SKIPPED_TESTS += " \
+    --ignore test_shutdown_no_wait_max_tasks_gh119592 \
 "
 
 # https://github.com/python/cpython/issues/159424
