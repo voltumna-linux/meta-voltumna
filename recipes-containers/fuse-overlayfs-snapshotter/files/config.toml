@@ -1,0 +1,9 @@
+version = 2
+
+# The fuse-overlayfs snapshotter is provided by the containerd-fuse-overlayfs-grpc
+# proxy plugin (containerd-fuse-overlayfs.service). Docker selects it with
+# "storage-driver": "fuse-overlayfs" in /etc/docker/daemon.json.
+[proxy_plugins]
+  [proxy_plugins."fuse-overlayfs"]
+    type = "snapshot"
+    address = "/run/containerd-fuse-overlayfs/containerd-fuse-overlayfs.sock"
