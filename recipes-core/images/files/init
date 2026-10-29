@@ -1,217 +1,552 @@
 #!/bin/sh
+# Initramfs PID 1: network setup, root and auxiliary mounts, switch_root.
+# POSIX sh; requires the same initramfs utilities as the original script.
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
 
-do_reboot() {
-	umount -a 2>/dev/null
-	echo -n "Rebooting in 10 sec. "
-	sleep 10
-	reboot -f
+log() { printf 'initramfs: %s\n' "$*" >&2; }
+
+reboot_now() {
+    log 'Restart in 10 seconds...'
+    sync
+    sleep 10
+    reboot -f
+    # PID 1 must never return if reboot fails.
+    log 'ERROR: reboot -f failed'
+    while :; do sleep 60; done
 }
 
-# Mounting proc filesystem
-mount -n -t proc none /proc || do_reboot
+fail() {
+    log "ERROR: $*"
+    reboot_now
+}
 
-# Symlinking mtab to make "umount -a" works
-ln -s /proc/self/mounts /etc/mtab >/dev/null 2>&1
+# Convert the 3-character permission triple of "ls -l" (e.g. rwx, r-x, rws)
+# to an octal digit stored in perm_digit. Setuid/setgid/sticky are ignored.
+perm_digit() {
+    perm_digit=0
+    case "$1" in r??) perm_digit=$((perm_digit + 4)) ;; esac
+    case "$1" in ?w?) perm_digit=$((perm_digit + 2)) ;; esac
+    case "$1" in ??[xst]) perm_digit=$((perm_digit + 1)) ;; esac
+}
 
-# Mounting dev filesystem
-mount -t devtmpfs none /dev || do_reboot
+# Give directory DST the same owner, group and permission bits as directory
+# SRC. Uses stat when available, otherwise falls back to parsing "ls -ldn".
+# Numeric ids are used, so no /etc/passwd or /etc/group is needed.
+clone_dir_attrs() {
+    cda_owner=
+    cda_mode=
+    if cda_info=$(stat -c '%u:%g %a' "$1" 2>/dev/null) && [ -n "$cda_info" ]; then
+        cda_owner=${cda_info% *}
+        cda_mode=${cda_info#* }
+    else
+        cda_ls=$(ls -ldn "$1" 2>/dev/null) || return 1
+        read -r cda_perm cda_links cda_uid cda_gid cda_rest <<EOF
+$cda_ls
+EOF
+        case "$cda_perm" in
+            d?????????*) ;;
+            *) return 1 ;;
+        esac
+        cda_p=${cda_perm#?}                 # rwxr-xr-x (+ optional ACL mark)
+        cda_u=${cda_p%"${cda_p#???}"}       # first triple
+        cda_r=${cda_p#???}
+        cda_g=${cda_r%"${cda_r#???}"}       # second triple
+        cda_r=${cda_r#???}
+        cda_o=${cda_r%"${cda_r#???}"}       # third triple
+        perm_digit "$cda_u"; cda_du=$perm_digit
+        perm_digit "$cda_g"; cda_dg=$perm_digit
+        perm_digit "$cda_o"; cda_do=$perm_digit
+        cda_owner=$cda_uid:$cda_gid
+        cda_mode=$cda_du$cda_dg$cda_do
+    fi
+    case "$cda_owner" in
+        ''|*[!0-9:]*) return 1 ;;
+    esac
+    case "$cda_mode" in
+        ''|*[!0-7]*) return 1 ;;
+    esac
+    chown "$cda_owner" "$2" || return 1
+    chmod "$cda_mode" "$2" || return 1
+}
 
-# Mounting sys filesystem
-mount -t sysfs none /sys || do_reboot
+# Do not repeat mounts if a pre-existing initramfs already mounted them.
+is_mounted() {
+    [ -r /proc/mounts ] || return 1
+    while read -r source mountpoint type opts dump pass; do
+        [ "$mountpoint" = "$1" ] && return 0
+    done < /proc/mounts
+    return 1
+}
 
-# Defaults
+is_mounted /proc || mount -n -t proc proc /proc || fail 'mount /proc'
+if [ ! -e /etc/mtab ] && [ ! -L /etc/mtab ]; then
+    ln -s /proc/self/mounts /etc/mtab || fail 'create /etc/mtab'
+fi
+is_mounted /dev || mount -t devtmpfs devtmpfs /dev || fail 'mount /dev'
+is_mounted /sys || mount -t sysfs sysfs /sys || fail 'mount /sys'
+
+# Defaults and explicit optional states.
 rootflags=noatime,async
+rootpath=
+rootfstype=
+usrpath=
+usrfstype=
+usrflags=
+ifnames=1
+network=0
+ip=
+siaddr=
+router=
+mask=
+hostname=
+interface=
+autoconf=
+dns1=
+dns2=
+ntp=
+homepath=
+runtimepath=
+runtimesitepath=
+breakpoint=
 
-# Parse command line options
-for arg in $(cat /proc/cmdline)
-do
-	case $arg in
-		*fstab=* | nfsroot=* | rootwait )
-					echo "The $arg parameter is ignored...";;
-		debug)			export debug=true
-					set -x;;
-		break=*)		export break="${arg//break=}";;
-		ip=*)			export network=true
-					for idx in $(seq 1 10); do
-						param=$(echo "${arg//ip=}" | cut -d":" -f${idx})
-						case $idx in
-							1)  export ip="${param}";;
-							2)  export siaddr="${param}";;
-							3)  export router="${param}";;
-							4)  export mask="${param}";;
-							5)  export hostname="${param}";;
-							6)  export interface="${param}";;
-							7)  export autoconf="${param}";;
-							8)  export dns1="${param}";;
-							9)  export dns2="${param}";;
-							10) export ntp="${param}";;
-						esac
-					done;;
-		root=*)			export rootpath="${arg//root=}";;
-		rootfstype=*)		export rootfstype="${arg//rootfstype=}";;
-		rootflags=*)		export rootflags="${arg//rootflags=}";;
-		mount.usr=*)		export usrpath="${arg//mount.usr=}";;
-		mount.usrfstype=*)	export usrfstype="${arg//mount.usrfstype=}";;
-		mount.usrflags=*)	export usrflags="${arg//mount.usrflags=}";;
-		systemd.volatile=*)	echo "The $arg paramter is not implemented yet...";;
-	esac
-done
-
-# The usrfstype/flags defaults are the same of the root's ones
-if [ -z "${usrfstype}" ]; then
-	usrfstype=${rootfstype}
-fi
-
-if [ -z "${usrflags}" ]; then
-	usrflags=${rootflags}
-fi
-
-# Rename network interfaces
-SYSCLASSNET=/sys/class/net/
-for NIC in $(ls ${SYSCLASSNET})
-do
-	UDEVADM_OUTPUT=$(udevadm test-builtin net_id ${SYSCLASSNET}${NIC} 2>/dev/null)
-	ID_NET_NAME_ONBOARD=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_ONBOARD=\(.*\)/\1/p')
-	if [ -n "${ID_NET_NAME_ONBOARD}" ]; then
-		ip link set ${NIC} name ${ID_NET_NAME_ONBOARD} >/dev/null 2>&1
-	fi
-	ID_NET_NAME_PATH=$(echo "${UDEVADM_OUTPUT}" | sed -n 's/ID_NET_NAME_PATH=\(.*\)/\1/p')
-	if [ -n "${ID_NET_NAME_PATH}" ]; then
-		ip link set ${NIC} name ${ID_NET_NAME_PATH} >/dev/null 2>&1
-	fi
-done
-
-# Drop into a shell...
-if [ "${break}" = "top" ]; then
-	sh
-fi
-
-# Retrieve parameters from network if it is the case...
-if [ -n "${network}" ]; then
-	if [ -z "${interface}" ]; then
-		echo -n "Fail to retrieve interface! "
-		do_reboot
-	fi
-
-	ip link set "${interface}" up >/dev/null 2>&1
-	counter=0
-	while [ "$(cat /sys/class/net/${interface}/operstate)" != "up" ]
-	do
-		counter=$(($counter+1))
-		sleep 1
-		if [ "$counter" -gt 60 ]; then
-			echo -n "Fail to bring up interface! "
-			do_reboot
-		fi
-	done
-
-	if [ "${autoconf}" = "dhcp" ]; then
-		eval $(udhcpc -n -q -i ${interface} -O rootpath -O usrpath -O runtimepath -O homepath -s /etc/udhcpc.d/60voltumna 2>/dev/null)
-	fi
-
-	ip addr add ${ip}/${mask} dev ${interface} >/dev/null 2>&1
-	if [ "$?" -ne 0 ]; then
-		echo -n "Fail to configure interface! "
-		do_reboot
-	fi
-	ip route add default via ${router} dev ${interface} >/dev/null 2>&1
-fi
-
-# Set hostname
-if [ -z "$hostname" ]; then
-	hostname localhost
+# Kernel command-line values have no shell quoting; turn off pathname expansion
+# while splitting tokens to avoid wildcard expansion from untrusted parameters.
+IFS=' 	
+'
+set -f
+if [ -r /proc/cmdline ]; then
+    cmdline=$(cat /proc/cmdline) || fail 'read /proc/cmdline'
 else
-	hostname $(echo $hostname | cut -d"." -f1)
+    fail '/proc/cmdline is unavailable'
 fi
+for arg in $cmdline; do
+    case "$arg" in
+        *fstab=*|nfsroot=*|rootwait)
+            log "Unsupported parameter: $arg" ;;
+        debug)
+            set -x ;;
+        break=*)
+            breakpoint=${arg#break=} ;;
+        ip=*)
+            # The last ip= parameter wins, including previously set fields.
+            network=0
+            ip= siaddr= router= mask= hostname= interface= autoconf=
+            dns1= dns2= ntp=
+            ip_spec=${arg#ip=}
+            case "$ip_spec" in
+                off|none)
+                    network=0 ;;
+                dhcp|on|any)
+                    network=1
+                    autoconf=dhcp ;;
+                *)
+                    network=1
+                    IFS=: read -r ip siaddr router mask hostname interface autoconf dns1 dns2 ntp <<EOF
+$ip_spec
+EOF
+                    ;;
+            esac ;;
+        root=*)             rootpath=${arg#root=} ;;
+        rootfstype=*)       rootfstype=${arg#rootfstype=} ;;
+        rootflags=*)        rootflags=${arg#rootflags=} ;;
+        mount.usr=*)        usrpath=${arg#mount.usr=} ;;
+        mount.usrfstype=*)  usrfstype=${arg#mount.usrfstype=} ;;
+        mount.usrflags=*)   usrflags=${arg#mount.usrflags=} ;;
+        mount.home=*)       homepath=${arg#mount.home=} ;;
+        mount.runtime=*)    runtimepath=${arg#mount.runtime=} ;;
+        net.ifnames=*)     ifnames=${arg#net.ifnames=} ;;
+        systemd.volatile=*) log "Unimplemented parameter: $arg" ;;
+    esac
+done
+set +f
 
-# Drop into a shell...
-if [ "${break}" = "middle" ]; then
-	sh
-fi
-
-# Check mandatory parameters...
-if [ -z "${rootfstype}" -o -z "${rootpath}" -o -z "${usrpath}" ]; then
-	echo -n "Missing rootfstype and/or root(path) parameters! "; do_reboot
-fi
-
-# Mount rootpath...
-case $rootfstype in
-	nfs)	mount -t ${rootfstype} ${siaddr}:${rootpath} /mnt/rootfs -o nfsvers=3,${rootflags},ro,nolock;;
-	*)	counter=0
-		while [ ! -b "${rootpath}" ]; do
-			counter=$(($counter+1))
-			sleep 1
-			if [ "$counter" -gt 60 ]; then
-				echo -n "Fail to wait root! "
-				do_reboot
-			fi
-		done
-		# Check rootfs filesystem
-		fsck.ext4 -n ${rootpath} 1>/dev/null 2>&1
-		case "$?" in
-			0|1) ;;
-			2) do_reboot	;;
-			*) fsck.ext4 -p ${rootpath}; do_reboot ;;
-		esac
-		mount -t ${rootfstype} ${rootpath} /mnt/rootfs -o ${rootflags},ro;;
+[ -n "$usrfstype" ] || usrfstype=$rootfstype
+[ -n "$rootflags" ] || rootflags=noatime,async
+[ -n "$usrflags" ] || usrflags=$rootflags
+case "$ifnames" in
+    0|1) ;;
+    *) fail "net.ifnames must be 0 or 1: $ifnames" ;;
 esac
-if [ "$?" -ne 0 ]; then
-	echo -n "Fail to mount root(path)! "
-	do_reboot
-fi
-
-# Mount usrpath...
-case $usrfstype in
-	nfs)	mount -t ${usrfstype} ${siaddr}:${usrpath} /mnt/rootfs/usr -o nfsvers=3,${usrflags},ro,nolock;;
-	*)	mount -t ${usrfstype} /mnt/rootfs/${usrpath} /mnt/rootfs/usr -o ${usrflags},ro,bind;;
+case "$breakpoint" in
+    ''|top|middle|bottom) ;;
+    *) fail "Unsupported break= value: $breakpoint" ;;
 esac
-if [ "$?" -ne 0 ]; then
-	echo -n "Fail to mount usr(path)! "
-	do_reboot
-fi
-
-#### Mount homepath...
-###case $rootfstype in
-###	nfs)	mount -t ${rootfstype} ${siaddr}:${homepath} /mnt/rootfs/home -o nfsvers=4,${rootflags},rw,nolock;;
-###esac
-###if [ "$?" -ne 0 ]; then
-###	echo -n "Fail to mount home(path)! "
-###	do_reboot
-###fi
-###
-#### Mount runtimepath...
-###case $rootfstype in
-###	nfs)	mount -t ${rootfstype} ${siaddr}:${runtimepath} /mnt/rootfs/runtime -o nfsvers=4,${rootflags},ro,nolock;;
-###esac
-###if [ "$?" -ne 0 ]; then
-###	echo -n "Fail to mount runtime(path)! "
-###	do_reboot
-###fi
-###
-###mount -t ${rootfstype} ${siaddr}:${runtimepath}/site/`hostname -s` /mnt/rootfs/runtime/site/`hostname -s` -o nfsvers=4,${rootflags},rw,nolock 1>/dev/null 2>&1
-
-# Remount usrpath
-case `sed -n 's,VARIANT_ID=".*-\(.*\)",\1,p' /mnt/rootfs/etc/os-release` in
-	sde) mount /mnt/rootfs/usr -o remount,rw;;
-	sre) mount /mnt/rootfs/usr -o remount,ro;;
+case "$autoconf" in
+    dhcp|on|any) autoconf=dhcp ;;
+    ''|off|none) autoconf=none ;;
+    *) fail "Unsupported IP autoconfiguration: $autoconf" ;;
 esac
-if [ "$?" -ne 0 ]; then
-	echo -n "Fail to remount usr(path) with user defined flags! "
-	do_reboot
+
+# Parse ONLY assignments printed by the custom udhcpc hook. Never eval DHCP
+# output. The hook should print one KEY=value (or export KEY=value) per line.
+parse_dhcp_output() {
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            ''|\#*) continue ;;
+            'export '*) line=${line#'export '} ;;
+        esac
+        case "$line" in
+            *=*) key=${line%%=*}; value=${line#*=} ;;
+            *) continue ;;
+        esac
+        case "$key" in
+            rootpath|usrpath|homepath|runtimepath|runtimesitepath|siaddr|ip|mask|router|hostname|dns1|dns2|ntp) ;;
+            *) continue ;;
+        esac
+        case "$value" in
+            \"*\") value=${value#\"}; value=${value%\"} ;;
+            \'*\') value=${value#\'}; value=${value%\'} ;;
+        esac
+        # DHCP may advertise multiple routers or NTP servers. Use the first
+        # one without evaluating shell syntax or expanding wildcard characters.
+        case "$key" in
+            router|ntp)
+                IFS=' 	' read -r value unused <<EOF
+$value
+EOF
+                ;;
+        esac
+        case "$value" in
+            *[[:space:]]*) fail "Invalid DHCP value for $key" ;;
+        esac
+        case "$key" in
+            rootpath)    rootpath=$value ;;
+            usrpath)     usrpath=$value ;;
+            homepath)    homepath=$value ;;
+            runtimepath) runtimepath=$value ;;
+            runtimesitepath) runtimesitepath=$value ;;
+            siaddr)      siaddr=$value ;;
+            ip)          ip=$value ;;
+            mask)        mask=$value ;;
+            router)      router=$value ;;
+            hostname)    hostname=$value ;;
+            dns1)        dns1=$value ;;
+            dns2)        dns2=$value ;;
+            ntp)         ntp=$value ;;
+        esac
+    done <<EOF
+$1
+EOF
+}
+
+# Predictable interface names: attempt one rename only, and update the
+# interface selected by the kernel command line if the rename succeeds.
+if [ "$ifnames" = 1 ] && command -v udevadm >/dev/null 2>&1; then
+    for nic_path in /sys/class/net/*; do
+        [ -e "$nic_path" ] || continue
+        nic=${nic_path##*/}
+        [ "$nic" = lo ] && continue
+        udev_output=$(udevadm test-builtin net_id "$nic_path" 2>/dev/null) || continue
+        candidate=$(printf '%s\n' "$udev_output" | sed -n 's/^ID_NET_NAME_ONBOARD=//p' | sed -n '1p')
+        if [ -z "$candidate" ]; then
+            candidate=$(printf '%s\n' "$udev_output" | sed -n 's/^ID_NET_NAME_PATH=//p' | sed -n '1p')
+        fi
+        [ -n "$candidate" ] || continue
+        [ "$candidate" = "$nic" ] && continue
+        if ip link set dev "$nic" name "$candidate" 2>/dev/null; then
+            [ "$interface" != "$nic" ] || interface=$candidate
+        else
+            log "Interface $nic: cannot rename to $candidate"
+        fi
+    done
 fi
 
-# Remount rootpath
-mount /mnt/rootfs/ -o remount,rw;
-if [ "$?" -ne 0 ]; then
-	echo -n "Fail to remount root(path) with user defined flags! "
-	do_reboot
+[ "$breakpoint" != top ] || sh
+
+if [ "$network" = 1 ]; then
+    if [ -z "$interface" ] && [ "$autoconf" = dhcp ]; then
+        # Autoselect only if the choice is unambiguous.
+        count=0
+        for nic_path in /sys/class/net/*; do
+            [ -e "$nic_path" ] || continue
+            nic=${nic_path##*/}
+            [ "$nic" = lo ] && continue
+            count=$((count + 1))
+            interface=$nic
+        done
+        [ "$count" -eq 1 ] || fail 'specify a DHCP interface (multiple NICs or no NIC)'
+    fi
+    [ -n "$interface" ] || fail 'network interface is unspecified'
+    case "$interface" in
+        */*|.|..) fail "Invalid network interface: $interface" ;;
+    esac
+    [ -e "/sys/class/net/$interface" ] || fail "network interface does not exist: $interface"
+    ip link set dev "$interface" up || fail "bring up interface $interface"
+
+    if [ "$autoconf" = dhcp ]; then
+        [ -x /etc/udhcpc.d/60voltumna ] || fail 'DHCP hook /etc/udhcpc.d/60voltumna is missing or not executable'
+        dhcp_output=$(udhcpc -n -q -i "$interface" \
+            -O rootpath -O usrpath -O runtimepath -O runtimesitepath -O homepath \
+            -s /etc/udhcpc.d/60voltumna) || fail 'DHCP failed'
+        parse_dhcp_output "$dhcp_output"
+    fi
+
+    # A DHCP hook may already have configured the interface. Do not add a
+    # duplicate address. A static configuration always needs both fields.
+    if [ "$autoconf" != dhcp ] || ! ip -4 addr show dev "$interface" | grep -q 'inet '; then
+        [ -n "$ip" ] && [ -n "$mask" ] || fail 'IPv4 address or netmask is missing'
+        ip addr add "$ip/$mask" dev "$interface" || fail "assign IP address to $interface"
+    fi
+    if [ -n "$router" ] && [ "$router" != 0.0.0.0 ]; then
+        ip route replace default via "$router" dev "$interface" || fail 'configure default gateway'
+    fi
 fi
 
-# Drop into a shell...
-if [ "${break}" = "bottom" ]; then
-	sh
+# Use a safe single-label hostname for the local runtime site mountpoint.
+[ -n "$hostname" ] || hostname=localhost
+short_hostname=${hostname%%.*}
+case "$short_hostname" in
+    ''|*[!a-zA-Z0-9_-]*) fail "Invalid hostname: $hostname" ;;
+esac
+[ "${#short_hostname}" -le 63 ] || fail 'hostname is too long'
+hostname "$short_hostname" || fail 'set hostname'
+
+[ "$breakpoint" != middle ] || sh
+
+[ -n "$rootfstype" ] || fail 'rootfstype is missing'
+[ -n "$rootpath" ] || fail 'root path is missing (root= or DHCP rootpath)'
+[ -n "$usrpath" ] || fail '/usr path is missing (mount.usr= or DHCP usrpath)'
+[ -n "$usrfstype" ] || fail 'cannot determine mount.usrfstype'
+
+# A runtime site export is independent of the common runtime export. The DHCP
+# hook must supply it explicitly; never construct a remote path from a hostname.
+case "$runtimepath" in
+    ''|0)
+        case "$runtimesitepath" in
+            ''|0) ;;
+            *) fail 'runtimesitepath requires runtimepath' ;;
+        esac ;;
+    *)
+        case "$runtimesitepath" in
+            ''|0) fail 'DHCP runtimesitepath is required when runtimepath is enabled' ;;
+        esac
+        case "$usrfstype" in
+            nfs|tmpfs) ;;
+            *) fail "runtime is unsupported with mount.usrfstype=$usrfstype" ;;
+        esac ;;
+esac
+mkdir -p /mnt/rootfs /mnt/nfs || fail 'create temporary mountpoints'
+
+# Require an explicit server when fetching NFS content.
+require_server() {
+    [ -n "$siaddr" ] || fail "NFS server (siaddr) is missing for $1"
+}
+
+# Device nodes can appear asynchronously for both root and /usr.
+wait_for_device() {
+    counter=0
+    while [ ! -b "$1" ]; do
+        [ "$counter" -lt 60 ] || fail "block device not found: $1"
+        counter=$((counter + 1))
+        sleep 1
+    done
+}
+
+# Root filesystem.
+case "$rootfstype" in
+    nfs)
+        require_server root
+        mount -t nfs "$siaddr:$rootpath" /mnt/rootfs \
+            -o "nfsvers=3,$rootflags,ro,nolock" || fail 'mount root NFS' ;;
+    tmpfs)
+        require_server root
+        mount -t nfs "$siaddr:$rootpath" /mnt/nfs -o nfsvers=3,ro,nolock || fail 'mount NFS source for root'
+        mount -t tmpfs tmpfs /mnt/rootfs -o "$rootflags,rw" || fail 'mount root tmpfs'
+        cp -a /mnt/nfs/. /mnt/rootfs/ || fail 'copy root from NFS to tmpfs'
+        umount /mnt/nfs || fail 'unmount NFS source for root' ;;
+    *)
+        wait_for_device "$rootpath"
+        # Never run e2fsck on non-ext4 filesystems.
+        if [ "$rootfstype" = ext4 ]; then
+            fsck.ext4 -n "$rootpath" >/dev/null 2>&1
+            fsck_status=$?
+            case "$fsck_status" in
+                0) ;;
+                2) fail 'fsck.ext4 requires a reboot' ;;
+                *)
+                    fsck.ext4 -p "$rootpath" || {
+                        fsck_status=$?
+                        case "$fsck_status" in
+                            1) : ;; # Errors corrected.
+                            2) fail 'fsck.ext4 requested a reboot' ;;
+                            *) fail "fsck.ext4 failed (status $fsck_status)" ;;
+                        esac
+                    } ;;
+            esac
+        fi
+        mount -t "$rootfstype" "$rootpath" /mnt/rootfs \
+            -o "$rootflags,ro" || fail "mount root ($rootfstype)" ;;
+esac
+
+# The original design requires writable root before switch_root. Do this
+# before creating auxiliary mountpoints and remounting a local bind of /usr.
+mount -o remount,rw /mnt/rootfs || fail 'remount root read/write'
+mkdir -p /mnt/rootfs/usr || fail 'create /usr'
+
+# /usr: NFS export, tmpfs copy, real block device, or local bind directory.
+usr_is_bind=0
+case "$usrfstype" in
+    nfs)
+        require_server usr
+        mount -t nfs "$siaddr:$usrpath" /mnt/rootfs/usr \
+            -o "nfsvers=3,$usrflags,ro,nolock" || fail 'mount /usr NFS' ;;
+    tmpfs)
+        require_server usr
+        mount -t nfs "$siaddr:$usrpath" /mnt/nfs -o nfsvers=3,ro,nolock || fail 'mount NFS source for /usr'
+        mount -t tmpfs tmpfs /mnt/rootfs/usr -o "$usrflags,rw" || fail 'mount /usr tmpfs'
+        cp -a /mnt/nfs/. /mnt/rootfs/usr/ || fail 'copy /usr from NFS to tmpfs'
+        umount /mnt/nfs || fail 'unmount NFS source for /usr' ;;
+    *)
+        case "$usrpath" in
+            /dev/*) wait_for_device "$usrpath" ;;
+        esac
+        if [ -b "$usrpath" ]; then
+            mount -t "$usrfstype" "$usrpath" /mnt/rootfs/usr \
+                -o "$usrflags,ro" || fail 'mount /usr block device'
+        else
+            relative_usr=${usrpath#/}
+            case "/$relative_usr/" in
+                *'/../'*) fail "Invalid /usr source directory: $usrpath" ;;
+            esac
+            # Resolve symlinks as well as '..' before binding a local source.
+            # An absolute symlink must not bind an initramfs directory by mistake.
+            usr_source=$(CDPATH= cd -P "/mnt/rootfs/$relative_usr" 2>/dev/null && pwd -P) || \
+                fail "/usr source directory does not exist: $usrpath"
+            case "$usr_source" in
+                /mnt/rootfs|/mnt/rootfs/*) ;;
+                *) fail "/usr source directory escapes the new rootfs: $usrpath" ;;
+            esac
+            mount -o bind "$usr_source" /mnt/rootfs/usr || fail 'bind mount /usr'
+            usr_is_bind=1
+        fi ;;
+esac
+
+# Optional /home. NFS live mount with /usr on NFS, RAM copy with tmpfs.
+if [ -n "$homepath" ] && [ "$homepath" != 0 ]; then
+    require_server home
+    mkdir -p /mnt/rootfs/home || fail 'create /home'
+    case "$usrfstype" in
+        nfs)
+            mount -t nfs "$siaddr:$homepath" /mnt/rootfs/home \
+                -o "nfsvers=3,$usrflags,rw,nolock" || fail 'mount /home NFS' ;;
+        tmpfs)
+            mount -t nfs "$siaddr:$homepath" /mnt/nfs -o nfsvers=3,ro,nolock || fail 'mount NFS source for /home'
+            mount -t tmpfs tmpfs /mnt/rootfs/home -o "$usrflags,rw" || fail 'mount /home tmpfs'
+            # Copy each user directory separately and skip the ones over the
+            # size limit, keeping only its .ssh subtree so that SSH key login
+            # still works.
+            command -v du >/dev/null 2>&1 || fail 'du is unavailable'
+            for entry in /mnt/nfs/* /mnt/nfs/.[!.]* /mnt/nfs/..?*; do
+                [ -e "$entry" ] || continue
+                name=${entry##*/}
+                if [ -d "$entry" ]; then
+                    dir_kb=$(du -sk "$entry" 2>/dev/null | sed -n '1s/[^0-9].*//p')
+                    case "$dir_kb" in
+                        ''|*[!0-9]*) fail "cannot determine size of /home/$name" ;;
+                    esac
+                    if [ "$dir_kb" -gt 512000 ]; then
+                        log "skip /home/$name: ${dir_kb} kB exceeds 500 MB, copying .ssh only"
+                        mkdir -p "/mnt/rootfs/home/$name" || fail "create /home/$name"
+                        # mkdir creates the directory as root:root with the
+                        # default mode: restore owner, group and mode of the
+                        # original home, otherwise the user cannot write to it.
+                        clone_dir_attrs "$entry" "/mnt/rootfs/home/$name" || \
+                            fail "set owner/mode of /home/$name"
+                        if [ -d "$entry/.ssh" ]; then
+                            cp -a "$entry/.ssh" "/mnt/rootfs/home/$name/" || \
+                                fail "copy /home/$name/.ssh"
+                        else
+                            log "no .ssh in /home/$name: SSH key login will fail"
+                        fi
+                        continue
+                    fi
+                fi
+                cp -a "$entry" /mnt/rootfs/home/ || fail "copy /home/$name"
+            done
+            umount /mnt/nfs || fail 'unmount NFS source for /home' ;;
+        *)
+            fail "mount.home is unsupported with mount.usrfstype=$usrfstype" ;;
+    esac
 fi
 
+# Optional runtime and site-specific writable directory.
+if [ -n "$runtimepath" ] && [ "$runtimepath" != 0 ]; then
+    require_server runtime
+    mkdir -p /mnt/rootfs/runtime || fail 'create /runtime'
+    case "$usrfstype" in
+        nfs)
+            mount -t nfs "$siaddr:$runtimepath" /mnt/rootfs/runtime \
+                -o "nfsvers=3,$usrflags,ro,nolock" || fail 'mount /runtime NFS'
+            [ -d "/mnt/rootfs/runtime/site/$short_hostname" ] || \
+                fail 'runtime/site/host directory is missing from the NFS export'
+            mount -t nfs "$siaddr:$runtimesitepath" "/mnt/rootfs/runtime/site/$short_hostname" \
+                -o "nfsvers=3,$usrflags,rw,nolock" || fail 'mount runtime/site NFS' ;;
+        tmpfs)
+            mount -t nfs "$siaddr:$runtimepath" /mnt/nfs -o nfsvers=3,ro,nolock || fail 'mount NFS source for runtime'
+            mount -t tmpfs tmpfs /mnt/rootfs/runtime -o "$usrflags,rw" || fail 'mount runtime tmpfs'
+            # Original layout copies only these common runtime directories.
+            for dirname in bin etc include lib share; do
+                if [ -e "/mnt/nfs/$dirname" ]; then
+                    cp -a "/mnt/nfs/$dirname" /mnt/rootfs/runtime/ || \
+                        fail "copy runtime/$dirname"
+                fi
+            done
+            umount /mnt/nfs || fail 'unmount NFS source for runtime'
+            mkdir -p "/mnt/rootfs/runtime/site/$short_hostname" || fail 'create runtime/site/host'
+            mount -o remount,ro /mnt/rootfs/runtime || fail 'remount runtime read-only'
+            mount -t nfs "$siaddr:$runtimesitepath" /mnt/nfs \
+                -o nfsvers=3,ro,nolock || fail 'mount NFS source for runtime/site'
+            mount -t tmpfs tmpfs "/mnt/rootfs/runtime/site/$short_hostname" \
+                -o "$usrflags,rw" || fail 'mount runtime/site tmpfs'
+            cp -a /mnt/nfs/. "/mnt/rootfs/runtime/site/$short_hostname/" || \
+                fail 'copy runtime/site from NFS to tmpfs'
+            umount /mnt/nfs || fail 'unmount NFS source for runtime/site' ;;
+        *)
+            fail "runtime is unsupported with mount.usrfstype=$usrfstype" ;;
+    esac
+fi
+
+[ "$breakpoint" != bottom ] || sh
+
+# Read VARIANT_ID as data, never source /etc/os-release as shell code.
+variant=
+if [ -r /mnt/rootfs/etc/os-release ]; then
+    variant=$(sed -n 's/^VARIANT_ID=//p' /mnt/rootfs/etc/os-release | sed -n '1p')
+    case "$variant" in
+        \"*\") variant=${variant#\"}; variant=${variant%\"} ;;
+        \'*\') variant=${variant#\'}; variant=${variant%\'} ;;
+    esac
+fi
+case "$variant" in
+    sde|*-sde) usr_mode=rw ;;
+    sre|*-sre) usr_mode=ro ;;
+    *)
+        usr_mode=ro
+        log "Unrecognized VARIANT_ID='$variant': keeping /usr read-only" ;;
+esac
+if [ "$usr_is_bind" = 1 ]; then
+    mount -o "remount,bind,$usr_mode" /mnt/rootfs/usr || fail "remount /usr bind ($usr_mode)"
+else
+    mount -o "remount,$usr_mode" /mnt/rootfs/usr || fail "remount /usr ($usr_mode)"
+fi
+
+# An absolute /sbin/init symlink is resolved against the *new* root only
+# by switch_root; -x here would incorrectly reject that valid layout.
+[ -e /mnt/rootfs/sbin/init ] || [ -L /mnt/rootfs/sbin/init ] || \
+    fail '/sbin/init is missing from the new rootfs'
+command -v switch_root >/dev/null 2>&1 || fail 'switch_root is unavailable'
+
+# Preserve the service mounts and any mounts below them across switch_root.
+# Move /proc last, after all operations that read the old /proc have finished.
+for service_fs in dev sys proc; do
+    mkdir -p "/mnt/rootfs/$service_fs" || fail "create /$service_fs in the new rootfs"
+    mount -o move "/$service_fs" "/mnt/rootfs/$service_fs" || fail "move /$service_fs to the new rootfs"
+done
+
+# A shell can exit directly if exec cannot load switch_root. Keep PID 1 alive
+# through the normal failure handler in that case. A successful exec removes
+# the trap and lets switch_root take over as PID 1.
+trap 'trap - 0; fail "exec switch_root failed"' 0
 exec switch_root /mnt/rootfs /sbin/init
