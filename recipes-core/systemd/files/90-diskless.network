@@ -1,7 +1,5 @@
 [Match]
 Name=@ETH@
-KernelCommandLine=|rootfstype=nfs
-KernelCommandLine=|rootfstype=tmpfs
 
 [Network]
 DHCP=ipv4
