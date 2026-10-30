@@ -2,7 +2,7 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
-SRC_URI_append += "file://80-diskless.network \
+SRC_URI_append += "file://90-diskless.network \
 		file://80-standalone.network \
 		"
 
@@ -14,10 +14,10 @@ do_install_append() {
 
 	install -d ${D}${systemd_unitdir}/network
 	install -D -m 0644 ${WORKDIR}/80-standalone.network \
-		${WORKDIR}/80-diskless.network ${D}${systemd_unitdir}/network/
+		${WORKDIR}/90-diskless.network ${D}${systemd_unitdir}/network/
 
 	sed -i "s,@ETH@,${@d.getVar('PRIMARY_NETIF')},g" \
-		${D}${systemd_unitdir}/network/80-diskless.network
+		${D}${systemd_unitdir}/network/90-diskless.network
 	
 	sed -i "s,@ETH@,${@d.getVar('PRIMARY_NETIF')},g" \
 		${D}${systemd_unitdir}/network/80-standalone.network
