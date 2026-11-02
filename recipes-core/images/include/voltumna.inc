@@ -13,7 +13,7 @@ ROOTFS_BOOTSTRAP_INSTALL:remove = "run-postinsts"
 IMAGE_INSTALL:append = "kernel-image ${MACHINE_EXTRA_RRECOMMENDS} \
 	os-release systemd-journal-upload bash coreutils util-linux util-linux-sfdisk glibc-utils \
 	procps psmisc ldd less tzdata tzdata-europe polkit lsof socat stress-ng sed tar xz grep gawk \
-	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip \
+	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip sudo \
 	nfs-utils-client iproute2 iproute2-ip iproute2-devlink ethtool inetutils-ping inetutils-telnet \
 	net-tools curl libnss-resolve strace ltrace gdb libasan libubsan e2fsprogs-mke2fs btop picocom \
         lshw numactl quota diffutils"
