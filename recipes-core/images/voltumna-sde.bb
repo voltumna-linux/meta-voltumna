@@ -1,8 +1,8 @@
 require include/voltumna.inc
 VARIANT = "Voltumna (Development)"
 
-IMAGE_FEATURES:append = " debug-tweaks \
-	${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
+IMAGE_FEATURES:append = " \
+    ${@bb.utils.contains('DISTRO_FEATURES', 'api-documentation', 'doc-pkgs', '', d)}"
 
 IMAGE_INSTALL:append = " info man-pages"
 
