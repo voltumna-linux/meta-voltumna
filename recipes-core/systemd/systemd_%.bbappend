@@ -67,9 +67,6 @@ do_install:append() {
 	# Enforce /run/lock creation
 	echo 'd /run/lock 0755 root root - -' >>${D}${exec_prefix}/lib/tmpfiles.d/tmp.conf
 
-	# Set the right permission
-	chmod 755 ${D}${datadir}/polkit-1/rules.d
-
 	# Remove few files and directories
 	rm ${D}${datadir}/factory/etc/issue \
 		${D}${datadir}/factory/etc/pam.d/other \
