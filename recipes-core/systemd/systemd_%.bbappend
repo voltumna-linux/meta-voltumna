@@ -79,6 +79,11 @@ do_install:append() {
 		${D}${datadir}/factory/etc/pam.d/system-auth
 	rmdir ${D}${datadir}/factory/etc/pam.d
 
+	# empower.rules (upstream systemd) concede tutte le azioni polkit al
+	# gruppo "empower", che run0 --empower sa aggiungere: lo toglie, sudo e'
+	# l'unica porta privilegiata
+	rm -f ${D}${datadir}/polkit-1/rules.d/empower.rules
+
 	# Add script energy_perf_bias
 	install -d ${D}${sbindir}
 	install -m 0755 ${UNPACKDIR}/energy_perf_bias \
