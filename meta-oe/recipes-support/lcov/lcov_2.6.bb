@@ -57,8 +57,10 @@ RDEPENDS:${PN}:append:class-target = " \
     gcov \
     gcov-symlinks \
 "
-SRC_URI = "https://github.com/linux-test-project/lcov/releases/download/v${PV}/lcov-${PV}.tar.gz"
-SRC_URI[sha256sum] = "7e5e5a154bd5f3557659c328cab376764e7abd238bb403c424472c296b175126"
+SRC_URI = "https://github.com/linux-test-project/lcov/releases/download/v${PV}/lcov-${PV}.tar.gz \
+           file://0001-docs-Do-not-run-sphinx-build-goals-in-parallel.patch \
+           "
+SRC_URI[sha256sum] = "67a45db99b8ef0260c3fac9a2e3749fd8fa350a15e235dd3c29b356d97755c75"
 
 UPSTREAM_CHECK_URI = "https://github.com/linux-test-project/lcov/releases"
 UPSTREAM_CHECK_REGEX = "(?P<pver>\d+(\.\d+)+)"
@@ -68,7 +70,7 @@ do_install() {
     # Makefile bakes the runtime --bindir/--libdir ($(PREFIX)/...) into the
     # installed perl modules and manpages, so folding ${D} into PREFIX would
     # embed the build path and trip the buildpaths QA check.
-    oe_runmake install PREFIX=${prefix} DESTDIR=${D} CFG_DIR=${sysconfdir} LCOV_PERL_PATH="/usr/bin/env perl"
+    oe_runmake install PREFIX=${prefix} DESTDIR=${D} CFG_DIR=${sysconfdir} LCOV_PERL_PATH="/usr/bin/env perl" LCOV_NO_XS=1
 
     # The upstream test suite is shipped under ${datadir}/lcov/tests and is
     # not needed at runtime. Its shell scripts pull in unwanted file-rdeps on
