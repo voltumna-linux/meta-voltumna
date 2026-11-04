@@ -434,9 +434,7 @@ if [ -n "$homepath" ] && [ "$homepath" != 0 ]; then
         tmpfs)
             mount -t nfs "$siaddr:$homepath" /mnt/nfs -o nfsvers=3,ro,nolock || fail 'mount NFS source for /home'
             mount -t tmpfs tmpfs /mnt/rootfs/home -o "$usrflags,rw" || fail 'mount /home tmpfs'
-            # Copy each user directory separately and skip the ones over the
-            # size limit, keeping only its .ssh subtree so that SSH key login
-            # still works.
+            # Copy each user directory separately and skip the ones over the size limit
             command -v du >/dev/null 2>&1 || fail 'du is unavailable'
             for entry in /mnt/nfs/* /mnt/nfs/.[!.]* /mnt/nfs/..?*; do
                 [ -e "$entry" ] || continue
@@ -447,19 +445,13 @@ if [ -n "$homepath" ] && [ "$homepath" != 0 ]; then
                         ''|*[!0-9]*) fail "cannot determine size of /home/$name" ;;
                     esac
                     if [ "$dir_kb" -gt 512000 ]; then
-                        log "skip /home/$name: ${dir_kb} kB exceeds 500 MB, copying .ssh only"
+                        log "skip /home/$name: ${dir_kb} kB exceeds 500 MB"
                         mkdir -p "/mnt/rootfs/home/$name" || fail "create /home/$name"
                         # mkdir creates the directory as root:root with the
                         # default mode: restore owner, group and mode of the
                         # original home, otherwise the user cannot write to it.
                         clone_dir_attrs "$entry" "/mnt/rootfs/home/$name" || \
                             fail "set owner/mode of /home/$name"
-                        if [ -d "$entry/.ssh" ]; then
-                            cp -a "$entry/.ssh" "/mnt/rootfs/home/$name/" || \
-                                fail "copy /home/$name/.ssh"
-                        else
-                            log "no .ssh in /home/$name: SSH key login will fail"
-                        fi
                         continue
                     fi
                 fi
