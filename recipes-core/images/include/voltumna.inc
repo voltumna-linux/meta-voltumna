@@ -85,12 +85,12 @@ move_usr_into_osdir() {
 	ln -sr ${IMAGE_ROOTFS}/.osdir/${IMAGE_NAME}/ ${IMAGE_ROOTFS}/.osdir/default
 }
 
-ROOTFS_POSTPROCESS_COMMAND:append = " remove_useless; disable_upload; append_to_osrelease;"
-IMAGE_PREPROCESS_COMMAND:append = " use_initramfs_bundled_kernel; copy_etc_into_factory; compute_sum; move_usr_into_osdir;"
-IMAGE_PREPROCESS_COMMAND:append:arm = " complete_uboot_bootloader_conf;"
-IMAGE_PREPROCESS_COMMAND:append:mvme2500 = " complete_uboot_bootloader_conf;"
-IMAGE_PREPROCESS_COMMAND:append:x86-64 = " complete_grub_bootloader_conf;"
-IMAGE_PREPROCESS_COMMAND:append:x86 = " complete_grub_bootloader_conf;"
+ROOTFS_POSTPROCESS_COMMAND:append = " remove_useless disable_upload append_to_osrelease"
+IMAGE_PREPROCESS_COMMAND:append = " use_initramfs_bundled_kernel copy_etc_into_factory compute_sum move_usr_into_osdir"
+IMAGE_PREPROCESS_COMMAND:append:arm = " complete_uboot_bootloader_conf"
+IMAGE_PREPROCESS_COMMAND:append:mvme2500 = " complete_uboot_bootloader_conf"
+IMAGE_PREPROCESS_COMMAND:append:x86-64 = " complete_grub_bootloader_conf"
+IMAGE_PREPROCESS_COMMAND:append:x86 = " complete_grub_bootloader_conf"
 
 BAD_RECOMMENDATIONS += "busybox-syslog"
 inherit core-image

@@ -45,7 +45,7 @@ remove_var() {
 	rm -fr ${IMAGE_ROOTFS}${localstatedir}
 }
 
-IMAGE_PREPROCESS_COMMAND:append = " remove_var;"
+IMAGE_PREPROCESS_COMMAND:append = " remove_var"
 
 BAD_RECOMMENDATIONS:append = "busybox-syslog"
 inherit image

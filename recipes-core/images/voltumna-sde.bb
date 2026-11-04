@@ -82,4 +82,4 @@ set_runtime_lib() {
 	__EOF__
 }
 
-ROOTFS_POSTPROCESS_COMMAND:append = " install_sdk_sh; install_environment_setup_sh; set_killuserprocess; set_runtime_lib;"
+ROOTFS_POSTPROCESS_COMMAND:append = " install_sdk_sh install_environment_setup_sh set_killuserprocess set_runtime_lib"
