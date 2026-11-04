@@ -10,8 +10,8 @@ do_rootfs[depends] += "virtual/bootloader:do_deploy virtual/kernel:do_bundle_ini
 DEPENDS = "virtual/bootloader virtual/kernel"
 
 ROOTFS_BOOTSTRAP_INSTALL:remove = "run-postinsts"
-IMAGE_INSTALL:append = "kernel-image ${MACHINE_EXTRA_RRECOMMENDS} \
-	os-release systemd-journal-upload bash coreutils util-linux util-linux-sfdisk glibc-utils \
+IMAGE_INSTALL:append = "kernel-image os-release ${MACHINE_EXTRA_RRECOMMENDS} \
+	systemd-analyze systemd-journal-upload bash coreutils util-linux util-linux-sfdisk glibc-utils \
 	procps psmisc ldd less tzdata tzdata-europe polkit polkit-service lsof socat stress-ng sed tar xz grep gawk \
 	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip sudo \
 	nfs-utils-client iproute2 iproute2-ip iproute2-devlink ethtool inetutils-ping inetutils-telnet \
@@ -34,10 +34,6 @@ remove_useless() {
 # For rust
 #	rm -f ${IMAGE_ROOTFS}/usr/lib/rustlib/x86_64-voltumna-linux-gnu/x86_64${SDK_VENDOR}-linux-gnu.json
 	rm -fr ${IMAGE_ROOTFS}/usr/share/post-relocate-setup.d/
-}
-
-disable_upload() {
-	rm -f ${IMAGE_ROOTFS}${sysconfdir}/systemd/system/multi-user.target.wants/systemd-journal-upload.service
 }
 
 use_initramfs_bundled_kernel() {
@@ -85,7 +81,7 @@ move_usr_into_osdir() {
 	ln -sr ${IMAGE_ROOTFS}/.osdir/${IMAGE_NAME}/ ${IMAGE_ROOTFS}/.osdir/default
 }
 
-ROOTFS_POSTPROCESS_COMMAND:append = " remove_useless disable_upload append_to_osrelease"
+ROOTFS_POSTPROCESS_COMMAND:append = " remove_useless append_to_osrelease"
 IMAGE_PREPROCESS_COMMAND:append = " use_initramfs_bundled_kernel copy_etc_into_factory compute_sum move_usr_into_osdir"
 IMAGE_PREPROCESS_COMMAND:append:arm = " complete_uboot_bootloader_conf"
 IMAGE_PREPROCESS_COMMAND:append:mvme2500 = " complete_uboot_bootloader_conf"
