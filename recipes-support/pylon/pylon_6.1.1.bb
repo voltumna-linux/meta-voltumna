@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://share/pylon/licenses/License.html;md5=b966523debb4b5d
 
 BUILDNUMBER = "19861"
 SRC_URI = " \
-	file://${DL_DIR}/pylon_${PV}.${BUILDNUMBER}_x86_64.tar.gz;subdir=${BPN}-${PV} \
+	https://www.elettra.eu/images/Documents/Voltumna/intranet/predownloaded-tarballs/pylon_${PV}.${BUILDNUMBER}_x86_64.tar.gz;subdir=${BPN}-${PV} \
 	"
 SRC_URI[sha256sum] = "f82e402e9c3d5630e535439c5d12a2fe156f3ed4399e579403fe253717401316"
 COMPATIBLE_HOST = "x86_64.*-linux"
