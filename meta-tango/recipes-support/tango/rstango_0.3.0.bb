@@ -18,3 +18,5 @@ DEBUG_PREFIX_MAP:append = " -ffile-prefix-map=${UNPACKDIR}/cargo_home=${TARGET_D
 
 # Install the workspace libraries (tango, tango_omniorb) next to the tgtop binary
 CARGO_INSTALL_LIBRARIES = "1"
+
+BBCLASSEXTEND = "nativesdk"
