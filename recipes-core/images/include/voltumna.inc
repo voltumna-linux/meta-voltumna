@@ -6,7 +6,7 @@ IMAGE_FEATURES = "bash-completion-pkgs ssh-server-openssh"
 
 WIC_CREATE_EXTRA_ARGS += " --no-fstab-update"
 
-IMAGE_INSTALL_append += "os-release systemd-journal-upload bash coreutils util-linux util-linux-sfdisk \
+IMAGE_INSTALL_append += "os-release systemd-analyze systemd-journal-upload bash coreutils util-linux util-linux-sfdisk \
 	glibc-utils procps psmisc ldd less tzdata tzdata-europe polkit lsof socat stress-ng sed tar xz \
 	grep gawk findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip sudo \
 	nfs-utils-client iproute2 ethtool inetutils-ping inetutils-telnet net-tools curl libnss-resolve \
@@ -29,10 +29,6 @@ copy_etc_into_factory() {
 
 remove_useless() {
 	rm -f ${IMAGE_ROOTFS}/usr/bin/su ${IMAGE_ROOTFS}/usr/bin/su.*
-}
-
-disable_upload() {
-        rm -f ${IMAGE_ROOTFS}${sysconfdir}/systemd/system/multi-user.target.wants/systemd-journal-upload.service
 }
 
 use_initramfs_bundled_kernel() {
@@ -70,7 +66,7 @@ append_to_osrelease() {
 	__EOF__
 }
 
-ROOTFS_POSTPROCESS_COMMAND_append += " remove_useless; disable_upload; append_to_osrelease;"
+ROOTFS_POSTPROCESS_COMMAND_append += " remove_useless; append_to_osrelease;"
 IMAGE_PREPROCESS_COMMAND_append += " use_initramfs_bundled_kernel; copy_etc_into_factory; compute_sum; move_usr_into_osdir;"
 
 BAD_RECOMMENDATIONS += "busybox-syslog grub-common"
