@@ -503,7 +503,7 @@ if [ -n "$runtimepath" ] && [ "$runtimepath" != 0 ]; then
 fi
 
 # Setup /run mountpoint
-mount -t tmpfs -o rw,nosuid,nodev,size=20%,nr_inodes=819200,mode=755 tmpfs /run
+mount -t tmpfs -o rw,nosuid,nodev,size=10%,nr_inodes=819200,mode=755 tmpfs /run
 
 # Setup remote logging
 if [ -n "$logsrv" ]; then
@@ -512,6 +512,9 @@ if [ -n "$logsrv" ]; then
 [Upload]
 URL=http://${logsrv}:19532
 EOF
+else
+	mkdir -p /run/systemd/system
+	ln -s /dev/null /run/systemd/system/systemd-journal-upload.service
 fi
 
 [ "$breakpoint" != bottom ] || sh
