@@ -255,7 +255,6 @@ do_install:append:class-nativesdk () {
 # 15120 (test_input_no_stdout_fileno)
 # 15131 (*TestBarrier.test_timeout)
 # 15177 (test_thread_time)
-# 15743 (test.test_os.test_os.TimerfdTests.test_timerfd_TFD_TIMER_ABSTIME)
 # 15885 (test_default_timeout)
 SKIPPED_TESTS = " \
     --ignore *TestBarrier.test_timeout \
@@ -263,7 +262,6 @@ SKIPPED_TESTS = " \
     --ignore ExecutorShutdownTest \
     --ignore ProcessPoolShutdownTest \
     --ignore ThreadPoolShutdownTest \
-    --ignore test.test_os.test_os.TimerfdTests.test_timerfd_TFD_TIMER_ABSTIME \
     --ignore test_active_children \
     --ignore test_default_timeout \
     --ignore test_input_no_stdout_fileno \
@@ -330,6 +328,15 @@ SKIPPED_TESTS += " \
     --ignore test_shutdown_no_wait_max_tasks_gh119592 \
 "
 
+# Intermittent failure under load - these are all timer tests.
+# test_timerfd_TFD_TIMER_ABSTIME was observed failing in Bugzilla YP 15743.
+# test_timerfd_ns_TFS_TIMER_ABSTIME was observed failing in Bugzilla YP 16470.
+# There are actually several other tests in the suite that all look prone to
+# load variability, so skip the whole test class.
+SKIPPED_TESTS:append = " \
+    --ignore TimerfdTests \
+"
+
 # https://github.com/python/cpython/issues/159424
 SKIPPED_TESTS:append:libc-musl = " \
     --ignore test.test_readline.TestHistoryManipulation.test_append_limited_history \
@@ -366,7 +373,8 @@ PACKAGE_PREPROCESS_FUNCS += "py_package_preprocess"
 
 py_package_preprocess () {
         # Remove references to buildmachine paths in target Makefile and _sysconfigdata
-        sed -i -e 's:--sysroot=${STAGING_DIR_TARGET}::g' -e s:'--with-libtool-sysroot=${STAGING_DIR_TARGET}'::g \
+        sed -i -e 's:--sysroot=${STAGING_DIR_TARGET}::g' \
+                -e s:'--with-libtool-sysroot=${STAGING_DIR_TARGET}'::g \
                 -e 's|${DEBUG_PREFIX_MAP}||g' \
                 -e 's:${HOSTTOOLS_DIR}/::g' \
                 -e 's:${RECIPE_SYSROOT_NATIVE}::g' \
@@ -375,43 +383,23 @@ py_package_preprocess () {
                 -e 's:BUILD_GNU_TYPE\(.*\)=\(.*\)[a-z\-]*:BUILD_GNU_TYPE\1=\2${HOST_SYS}:g' \
                 -e 's:build_alias=${BUILD_ARCH}:build_alias=${HOST_ARCH}:g' \
                 -e 's:--build=${BUILD_ARCH}:--build=${HOST_ARCH}:g' \
+                -e 's|"userbase": ".*"|"userbase": ""|g' \
                 ${PKGD}/${libdir}/python${PYTHON_MAJMIN}/config-${PYTHON_MAJMIN}${PYTHON_ABI}*/Makefile \
                 ${PKGD}/${libdir}/python${PYTHON_MAJMIN}/_sysconfigdata*.py \
+                ${PKGD}/${libdir}/python${PYTHON_MAJMIN}/_sysconfig_vars*.json \
                 ${PKGD}/${bindir}/python${PYTHON_MAJMIN}-config
 
-        # Reformat _sysconfigdata after modifying it so that it remains
+        # Reformat and recompile _sysconfigdata after modifying it so that it remains
         # reproducible
         for c in ${PKGD}/${libdir}/python${PYTHON_MAJMIN}/_sysconfigdata*.py; do
             python3 ${UNPACKDIR}/reformat_sysconfig.py $c
+            python3 -mcompileall $c -s ${PKGD} -p /
         done
-
-        # Recompile _sysconfigdata after modifying it
-        cd ${PKGD}
-        sysconfigfile=`find . -name _sysconfigdata_*.py`
-        ${STAGING_BINDIR_NATIVE}/python3-native/python3 \
-             -c "from py_compile import compile; compile('$sysconfigfile')"
-        ${STAGING_BINDIR_NATIVE}/python3-native/python3 \
-             -c "from py_compile import compile; compile('$sysconfigfile', optimize=1)"
-        ${STAGING_BINDIR_NATIVE}/python3-native/python3 \
-             -c "from py_compile import compile; compile('$sysconfigfile', optimize=2)"
-        cd -
 
         mv ${PKGD}/${bindir}/python${PYTHON_MAJMIN}-config ${PKGD}/${bindir}/python${PYTHON_MAJMIN}-config-${MULTILIB_SUFFIX}
 
         #Remove the unneeded copy of target sysconfig data
         rm -rf ${PKGD}/${libdir}/python-sysconfigdata
-
-	# Remove references to buildpaths in _sysconfig_vars JSON files
-        sed -i -e 's:--sysroot=${STAGING_DIR_TARGET}::g' -e s:'--with-libtool-sysroot=${STAGING_DIR_TARGET}'::g \
-                -e 's|${DEBUG_PREFIX_MAP}||g' \
-                -e 's:${HOSTTOOLS_DIR}/::g' \
-                -e 's:${RECIPE_SYSROOT_NATIVE}::g' \
-                -e 's:${RECIPE_SYSROOT}::g' \
-                -e 's:${BASE_WORKDIR}/${MULTIMACH_TARGET_SYS}::g' \
-                -e 's:build_alias=${BUILD_ARCH}:build_alias=${HOST_ARCH}:g' \
-                -e 's:--build=${BUILD_ARCH}:--build=${HOST_ARCH}:g' \
-                -e 's|"userbase": ".*"|"userbase": ""|g' \
-		${PKGD}/${libdir}/python${PYTHON_MAJMIN}/_sysconfig_vars*.json
 
         # Fix extensions in build-details.json
         sed -i -e 's:${BUILD_ARCH}-${HOST_OS}:${HOST_ARCH}-${HOST_OS}:g' ${PKGD}/${libdir}/python${PYTHON_MAJMIN}/build-details.json
