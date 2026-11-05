@@ -443,21 +443,34 @@ if [ -n "$homepath" ] && [ "$homepath" != 0 ]; then
                 name=${entry##*/}
                 if [ -d "$entry" ]; then
                     dir_kb=$(du -sk "$entry" 2>/dev/null | sed -n '1s/[^0-9].*//p')
+                    skip_home=
                     case "$dir_kb" in
-                        ''|*[!0-9]*) fail "cannot determine size of /home/$name" ;;
+                        ''|*[!0-9]*)
+                            log "WARN: cannot determine size of /home/$name: not copied"
+                            skip_home=1 ;;
+                        *) [ "$dir_kb" -gt 512000 ] && {
+                            log "skip /home/$name: ${dir_kb} kB exceeds 500 MB"
+                            skip_home=1; } ;;
                     esac
-                    if [ "$dir_kb" -gt 512000 ]; then
-                        log "skip /home/$name: ${dir_kb} kB exceeds 500 MB"
+                    if [ -n "$skip_home" ]; then
                         mkdir -p "/mnt/rootfs/home/$name" || fail "create /home/$name"
                         # mkdir creates the directory as root:root with the
                         # default mode: restore owner, group and mode of the
                         # original home, otherwise the user cannot write to it.
+                        # A home with wrong attributes is still better than a
+                        # reboot loop, so only warn if this fails.
                         clone_dir_attrs "$entry" "/mnt/rootfs/home/$name" || \
-                            fail "set owner/mode of /home/$name"
+                            log "WARN: cannot set owner/mode of /home/$name"
                         continue
                     fi
                 fi
-                cp -a "$entry" /mnt/rootfs/home/ || fail "copy /home/$name"
+                # Best-effort copy: with root_squash on the NFS export, files
+                # readable only by their owner (e.g. .bash_history, .viminfo)
+                # cannot be read by root and are skipped. Missing them is
+                # harmless: the programs recreate them. cp -a copies every
+                # readable file and exits non-zero because of the skipped ones.
+                cp -a "$entry" /mnt/rootfs/home/ || \
+                    log "WARN: /home/$name copied incompletely (unreadable files skipped)"
             done
             umount /mnt/nfs || fail 'unmount NFS source for /home' ;;
         *)
