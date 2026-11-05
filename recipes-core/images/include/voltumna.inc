@@ -11,7 +11,7 @@ DEPENDS = "virtual/bootloader virtual/kernel"
 
 ROOTFS_BOOTSTRAP_INSTALL:remove = "run-postinsts"
 IMAGE_INSTALL:append = "kernel-image kernel-devicetree ${MACHINE_ESSENTIAL_EXTRA_RRECOMMENDS} \
-	os-release systemd-journal-upload bash coreutils util-linux util-linux-sfdisk glibc-utils \
+	os-release systemd-analyze systemd-journal-upload bash coreutils util-linux util-linux-sfdisk glibc-utils \
 	procps psmisc ldd less tzdata tzdata-europe polkit lsof socat stress-ng sed tar xz grep gawk \
 	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip sudo \
 	nfs-utils-client iproute2 iproute2-ip iproute2-devlink ethtool inetutils-ping inetutils-telnet \
@@ -30,10 +30,6 @@ append_to_osrelease() {
 
 remove_useless() {
 	rm -f ${IMAGE_ROOTFS}/usr/bin/su ${IMAGE_ROOTFS}/usr/bin/su.*
-}
-
-disable_upload() {
-	rm -f ${IMAGE_ROOTFS}${sysconfdir}/systemd/system/multi-user.target.wants/systemd-journal-upload.service
 }
 
 use_initramfs_bundled_kernel() {
@@ -81,7 +77,7 @@ move_usr_into_osdir() {
 	ln -sr ${IMAGE_ROOTFS}/.osdir/${IMAGE_NAME}/ ${IMAGE_ROOTFS}/.osdir/default
 }
 
-ROOTFS_POSTPROCESS_COMMAND:append = " remove_useless; disable_upload; append_to_osrelease;"
+ROOTFS_POSTPROCESS_COMMAND:append = " remove_useless; append_to_osrelease;"
 IMAGE_PREPROCESS_COMMAND:append = " use_initramfs_bundled_kernel; copy_etc_into_factory; compute_sum; move_usr_into_osdir;"
 IMAGE_PREPROCESS_COMMAND:append:arm = " complete_uboot_bootloader_conf;"
 IMAGE_PREPROCESS_COMMAND:append:mvme2500 = " complete_uboot_bootloader_conf;"
