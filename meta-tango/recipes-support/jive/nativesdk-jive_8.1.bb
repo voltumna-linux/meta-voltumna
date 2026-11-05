@@ -7,7 +7,7 @@ SRC_URI = " \
 	https://repo1.maven.org/maven2/org/tango-controls/Jive/${PV}/Jive-${PV}-jar-with-dependencies.jar;unpack=0 \
 	file://jive \
 "
-SRC_URI[sha256sum] = "5b4c4d1e92b09dff88fc29b0582b3820ec281a547e984e358260f367f5d9cfcc"
+SRC_URI[sha256sum] = "4678b5894063ad692dc1ca29448b015d8447909e9c7bba7a2f3786d3ddf826a8"
 
 FILES_${PN} += "${SDKPATHNATIVE}"
 do_install() {
