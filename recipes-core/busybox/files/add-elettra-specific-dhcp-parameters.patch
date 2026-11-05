@@ -1,9 +1,26 @@
 Upstream-Status: Inappropriate
 
-diff -ruNp busybox-1.31.1.orig/networking/udhcp/common.c busybox-1.31.1/networking/udhcp/common.c
---- busybox-1.31.1.orig/networking/udhcp/common.c	2019-06-10 10:50:53.000000000 +0000
-+++ busybox-1.31.1/networking/udhcp/common.c	2023-02-13 10:03:52.782415305 +0000
-@@ -35,6 +35,10 @@ const struct dhcp_optflag dhcp_optflags[
+diff --git a/networking/udhcp/common.c b/networking/udhcp/common.c
+index ad580f38d..15ddfebff 100644
+--- a/networking/udhcp/common.c
++++ b/networking/udhcp/common.c
+@@ -20,28 +20,32 @@ const uint8_t MAC_BCAST_ADDR[6] ALIGN2 = {
+  * OPTION_REQ: these options are requested by udhcpc (unless -o).
+  */
+ const struct dhcp_optflag dhcp_optflags[] ALIGN2 = {
+ 	/* flags                                    code */
+ 	{ OPTION_IP                   | OPTION_REQ, 0x01 }, /* DHCP_SUBNET        */
+ 	{ OPTION_S32                              , 0x02 }, /* DHCP_TIME_OFFSET   */
+ 	{ OPTION_IP | OPTION_LIST     | OPTION_REQ, 0x03 }, /* DHCP_ROUTER        */
+ //	{ OPTION_IP | OPTION_LIST                 , 0x04 }, /* DHCP_TIME_SERVER   */
+ //	{ OPTION_IP | OPTION_LIST                 , 0x05 }, /* DHCP_NAME_SERVER   */
+ 	{ OPTION_IP | OPTION_LIST     | OPTION_REQ, 0x06 }, /* DHCP_DNS_SERVER    */
+-//	{ OPTION_IP | OPTION_LIST                 , 0x07 }, /* DHCP_LOG_SERVER    */
++	{ OPTION_IP | OPTION_LIST                 , 0x07 }, /* DHCP_LOG_SERVER    */
+ //	{ OPTION_IP | OPTION_LIST                 , 0x08 }, /* DHCP_COOKIE_SERVER */
+ 	{ OPTION_IP | OPTION_LIST                 , 0x09 }, /* DHCP_LPR_SERVER    */
+ 	{ OPTION_STRING_HOST          | OPTION_REQ, 0x0c }, /* DHCP_HOST_NAME     */
+ 	{ OPTION_U16                              , 0x0d }, /* DHCP_BOOT_SIZE     */
  	{ OPTION_STRING_HOST          | OPTION_REQ, 0x0f }, /* DHCP_DOMAIN_NAME   */
  	{ OPTION_IP                               , 0x10 }, /* DHCP_SWAP_SERVER   */
  	{ OPTION_STRING                           , 0x11 }, /* DHCP_ROOT_PATH     */
@@ -14,7 +31,30 @@ diff -ruNp busybox-1.31.1.orig/networking/udhcp/common.c busybox-1.31.1/networki
  	{ OPTION_U8                               , 0x17 }, /* DHCP_IP_TTL        */
  	{ OPTION_U16                              , 0x1a }, /* DHCP_MTU           */
  //TODO: why do we request DHCP_BROADCAST? Can't we assume that
-@@ -109,6 +112,10 @@ const char dhcp_option_strings[] ALIGN1
+ //in the unlikely case it is different from typical N.N.255.255,
+ //server would let us know anyway?
+ 	{ OPTION_IP                   | OPTION_REQ, 0x1c }, /* DHCP_BROADCAST     */
+ 	{ OPTION_IP_PAIR | OPTION_LIST            , 0x21 }, /* DHCP_ROUTES        */
+ 	{ OPTION_STRING_HOST                      , 0x28 }, /* DHCP_NIS_DOMAIN    */
+ 	{ OPTION_IP | OPTION_LIST                 , 0x29 }, /* DHCP_NIS_SERVER    */
+ 	{ OPTION_IP | OPTION_LIST     | OPTION_REQ, 0x2a }, /* DHCP_NTP_SERVER    */
+@@ -94,28 +98,32 @@ const struct dhcp_optflag dhcp_optflags[] ALIGN2 = {
+  * "opt OPTION_NAME OPTION_VALUE" directives in udhcpd.conf file.
+  */
+ /* Must match dhcp_optflags[] order */
+ const char dhcp_option_strings[] ALIGN1 =
+ 	"subnet" "\0"           /* DHCP_SUBNET          */
+ 	"timezone" "\0"         /* DHCP_TIME_OFFSET     */
+ 	"router" "\0"           /* DHCP_ROUTER          */
+ //	"timesrv" "\0"          /* DHCP_TIME_SERVER     */
+ //	"namesrv" "\0"          /* DHCP_NAME_SERVER     */
+ 	"dns" "\0"              /* DHCP_DNS_SERVER      */
+-//	"logsrv" "\0"           /* DHCP_LOG_SERVER      */
++	"logsrv" "\0"           /* DHCP_LOG_SERVER      */
+ //	"cookiesrv" "\0"        /* DHCP_COOKIE_SERVER   */
+ 	"lprsrv" "\0"           /* DHCP_LPR_SERVER      */
+ 	"hostname" "\0"         /* DHCP_HOST_NAME       */
+ 	"bootsize" "\0"         /* DHCP_BOOT_SIZE       */
  	"domain" "\0"           /* DHCP_DOMAIN_NAME     */
  	"swapsrv" "\0"          /* DHCP_SWAP_SERVER     */
  	"rootpath" "\0"         /* DHCP_ROOT_PATH       */
@@ -25,3 +65,10 @@ diff -ruNp busybox-1.31.1.orig/networking/udhcp/common.c busybox-1.31.1/networki
  	"ipttl" "\0"            /* DHCP_IP_TTL          */
  	"mtu" "\0"              /* DHCP_MTU             */
  	"broadcast" "\0"        /* DHCP_BROADCAST       */
+ 	"routes" "\0"           /* DHCP_ROUTES          */
+ 	"nisdomain" "\0"        /* DHCP_NIS_DOMAIN      */
+ 	"nissrv" "\0"           /* DHCP_NIS_SERVER      */
+ 	"ntpsrv" "\0"           /* DHCP_NTP_SERVER      */
+ 	"wins" "\0"             /* DHCP_WINS_SERVER     */
+ 	"lease" "\0"            /* DHCP_LEASE_TIME      */
+ 	"serverid" "\0"         /* DHCP_SERVER_ID       */

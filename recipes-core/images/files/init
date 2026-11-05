@@ -106,6 +106,7 @@ autoconf=
 dns1=
 dns2=
 ntp=
+logsrv=
 homepath=
 runtimepath=
 runtimesitepath=
@@ -133,7 +134,7 @@ for arg in $cmdline; do
             # The last ip= parameter wins, including previously set fields.
             network=0
             ip= siaddr= router= mask= hostname= interface= autoconf=
-            dns1= dns2= ntp=
+            dns1= dns2= ntp= logsrv=
             ip_spec=${arg#ip=}
             case "$ip_spec" in
                 off|none)
@@ -143,7 +144,7 @@ for arg in $cmdline; do
                     autoconf=dhcp ;;
                 *)
                     network=1
-                    IFS=: read -r ip siaddr router mask hostname interface autoconf dns1 dns2 ntp <<EOF
+                    IFS=: read -r ip siaddr router mask hostname interface autoconf dns1 dns2 ntp logsrv <<EOF
 $ip_spec
 EOF
                     ;;
@@ -192,7 +193,7 @@ parse_dhcp_output() {
             *) continue ;;
         esac
         case "$key" in
-            rootpath|usrpath|homepath|runtimepath|runtimesitepath|siaddr|ip|mask|router|hostname|dns1|dns2|ntp) ;;
+            rootpath|usrpath|homepath|runtimepath|runtimesitepath|siaddr|ip|mask|router|hostname|dns1|dns2|ntp|logsrv) ;;
             *) continue ;;
         esac
         case "$value" in
@@ -225,6 +226,7 @@ EOF
             dns1)        dns1=$value ;;
             dns2)        dns2=$value ;;
             ntp)         ntp=$value ;;
+            logsrv)      logsrv=$value ;;
         esac
     done <<EOF
 $1
@@ -279,7 +281,7 @@ if [ "$network" = 1 ]; then
         [ -x /etc/udhcpc.d/60voltumna ] || fail 'DHCP hook /etc/udhcpc.d/60voltumna is missing or not executable'
         dhcp_output=$(udhcpc -n -q -i "$interface" \
             -O rootpath -O usrpath -O runtimepath -O runtimesitepath -O homepath \
-            -s /etc/udhcpc.d/60voltumna) || fail 'DHCP failed'
+            -O logsrv -s /etc/udhcpc.d/60voltumna) || fail 'DHCP failed'
         parse_dhcp_output "$dhcp_output"
     fi
 
@@ -500,6 +502,18 @@ if [ -n "$runtimepath" ] && [ "$runtimepath" != 0 ]; then
     esac
 fi
 
+# Setup /run mountpoint
+mount -t tmpfs -o rw,nosuid,nodev,size=20%,nr_inodes=819200,mode=755 tmpfs /run
+
+# Setup remote logging
+if [ -n "$logsrv" ]; then
+	mkdir -p /run/systemd/journal-upload.conf.d
+	cat > /run/systemd/journal-upload.conf.d/90-remote.conf <<EOF
+[Upload]
+URL=http://${logsrv}:19532
+EOF
+fi
+
 [ "$breakpoint" != bottom ] || sh
 
 # Read VARIANT_ID as data, never source /etc/os-release as shell code.
@@ -532,7 +546,7 @@ command -v switch_root >/dev/null 2>&1 || fail 'switch_root is unavailable'
 
 # Preserve the service mounts and any mounts below them across switch_root.
 # Move /proc last, after all operations that read the old /proc have finished.
-for service_fs in dev sys proc; do
+for service_fs in dev sys proc run; do
     mkdir -p "/mnt/rootfs/$service_fs" || fail "create /$service_fs in the new rootfs"
     mount -o move "/$service_fs" "/mnt/rootfs/$service_fs" || fail "move /$service_fs to the new rootfs"
 done
