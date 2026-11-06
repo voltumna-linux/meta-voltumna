@@ -1,13 +1,13 @@
 Upstream-Status: Inappropriate
 
 diff --git a/networking/udhcp/common.c b/networking/udhcp/common.c
-index ad580f38d..15ddfebff 100644
+index 8e9b936..8ecf5a9 100644
 --- a/networking/udhcp/common.c
 +++ b/networking/udhcp/common.c
-@@ -20,28 +20,32 @@ const uint8_t MAC_BCAST_ADDR[6] ALIGN2 = {
+@@ -20,21 +20,21 @@ const uint8_t MAC_BCAST_ADDR[6] ALIGN2 = {
   * OPTION_REQ: these options are requested by udhcpc (unless -o).
   */
- const struct dhcp_optflag dhcp_optflags[] ALIGN2 = {
+ const struct dhcp_optflag dhcp_optflags[] = {
  	/* flags                                    code */
  	{ OPTION_IP                   | OPTION_REQ, 0x01 }, /* DHCP_SUBNET        */
  	{ OPTION_S32                              , 0x02 }, /* DHCP_TIME_OFFSET   */
@@ -24,21 +24,35 @@ index ad580f38d..15ddfebff 100644
  	{ OPTION_STRING_HOST          | OPTION_REQ, 0x0f }, /* DHCP_DOMAIN_NAME   */
  	{ OPTION_IP                               , 0x10 }, /* DHCP_SWAP_SERVER   */
  	{ OPTION_STRING                           , 0x11 }, /* DHCP_ROOT_PATH     */
+ 	{ OPTION_U8                               , 0x17 }, /* DHCP_IP_TTL        */
+ 	{ OPTION_U16                              , 0x1a }, /* DHCP_MTU           */
+ //TODO: why do we request DHCP_BROADCAST? Can't we assume that
+@@ -63,20 +63,24 @@ const struct dhcp_optflag dhcp_optflags[] = {
+ #endif
+ 	{ OPTION_STATIC_ROUTES | OPTION_LIST      , 0x79 }, /* DHCP_STATIC_ROUTES */
+ #if ENABLE_FEATURE_UDHCP_8021Q
+ 	{ OPTION_U16                              , 0x84 }, /* DHCP_VLAN_ID       */
+ 	{ OPTION_U8                               , 0x85 }, /* DHCP_VLAN_PRIORITY */
+ #endif
+ 	{ OPTION_STRING                           , 0xd1 }, /* DHCP_PXE_CONF_FILE */
+ 	{ OPTION_STRING                           , 0xd2 }, /* DHCP_PXE_PATH_PREFIX */
+ 	{ OPTION_U32                              , 0xd3 }, /* DHCP_REBOOT_TIME   */
+ 	{ OPTION_6RD                              , 0xd4 }, /* DHCP_6RD           */
 +	{ OPTION_STRING                           , 0xe0 }, /* DHCP_USR_PATH      */
 +	{ OPTION_STRING                           , 0xe1 }, /* DHCP_RUNTIME_PATH  */
 +	{ OPTION_STRING                           , 0xe2 }, /* DHCP_RUNTIME_SITE_PATH */
 +	{ OPTION_STRING                           , 0xe3 }, /* DHCP_HOME_PATH     */
- 	{ OPTION_U8                               , 0x17 }, /* DHCP_IP_TTL        */
- 	{ OPTION_U16                              , 0x1a }, /* DHCP_MTU           */
- //TODO: why do we request DHCP_BROADCAST? Can't we assume that
- //in the unlikely case it is different from typical N.N.255.255,
- //server would let us know anyway?
- 	{ OPTION_IP                   | OPTION_REQ, 0x1c }, /* DHCP_BROADCAST     */
- 	{ OPTION_IP_PAIR | OPTION_LIST            , 0x21 }, /* DHCP_ROUTES        */
- 	{ OPTION_STRING_HOST                      , 0x28 }, /* DHCP_NIS_DOMAIN    */
- 	{ OPTION_IP | OPTION_LIST                 , 0x29 }, /* DHCP_NIS_SERVER    */
- 	{ OPTION_IP | OPTION_LIST     | OPTION_REQ, 0x2a }, /* DHCP_NTP_SERVER    */
-@@ -94,28 +98,32 @@ const struct dhcp_optflag dhcp_optflags[] ALIGN2 = {
+ 	{ OPTION_STATIC_ROUTES | OPTION_LIST      , 0xf9 }, /* DHCP_MS_STATIC_ROUTES */
+ 	{ OPTION_STRING                           , 0xfc }, /* DHCP_WPAD          */
+ 
+ 	/* Options below have no match in dhcp_option_strings[],
+ 	 * are not passed to dhcpc scripts, and cannot be specified
+ 	 * with "option XXX YYY" syntax in dhcpd config file.
+ 	 * These entries are only used internally by udhcp[cd]
+ 	 * to correctly encode options into packets.
+ 	 */
+ 
+@@ -94,21 +98,21 @@ const struct dhcp_optflag dhcp_optflags[] = {
   * "opt OPTION_NAME OPTION_VALUE" directives in udhcpd.conf file.
   */
  /* Must match dhcp_optflags[] order */
@@ -58,17 +72,31 @@ index ad580f38d..15ddfebff 100644
  	"domain" "\0"           /* DHCP_DOMAIN_NAME     */
  	"swapsrv" "\0"          /* DHCP_SWAP_SERVER     */
  	"rootpath" "\0"         /* DHCP_ROOT_PATH       */
+ 	"ipttl" "\0"            /* DHCP_IP_TTL          */
+ 	"mtu" "\0"              /* DHCP_MTU             */
+ 	"broadcast" "\0"        /* DHCP_BROADCAST       */
+@@ -134,20 +138,24 @@ const char dhcp_option_strings[] ALIGN1 =
+ #endif
+ 	"staticroutes" "\0"     /* DHCP_STATIC_ROUTES   */
+ #if ENABLE_FEATURE_UDHCP_8021Q
+ 	"vlanid" "\0"           /* DHCP_VLAN_ID         */
+ 	"vlanpriority" "\0"     /* DHCP_VLAN_PRIORITY   */
+ #endif
+ 	"pxeconffile" "\0"      /* DHCP_PXE_CONF_FILE   */
+ 	"pxepathprefix" "\0"    /* DHCP_PXE_PATH_PREFIX */
+ 	"reboottime" "\0"       /* DHCP_REBOOT_TIME     */
+ 	"ip6rd" "\0"            /* DHCP_6RD             */
 +	"usrpath" "\0"          /* DHCP_USR_PATH        */
 +	"runtimepath" "\0"      /* DHCP_RUNTIME_PATH    */
 +	"runtimesitepath" "\0"  /* DHCP_RUNTIME_SITE_PATH */
 +	"homepath" "\0"         /* DHCP_HOME_PATH       */
- 	"ipttl" "\0"            /* DHCP_IP_TTL          */
- 	"mtu" "\0"              /* DHCP_MTU             */
- 	"broadcast" "\0"        /* DHCP_BROADCAST       */
- 	"routes" "\0"           /* DHCP_ROUTES          */
- 	"nisdomain" "\0"        /* DHCP_NIS_DOMAIN      */
- 	"nissrv" "\0"           /* DHCP_NIS_SERVER      */
- 	"ntpsrv" "\0"           /* DHCP_NTP_SERVER      */
- 	"wins" "\0"             /* DHCP_WINS_SERVER     */
- 	"lease" "\0"            /* DHCP_LEASE_TIME      */
- 	"serverid" "\0"         /* DHCP_SERVER_ID       */
+ 	"msstaticroutes" "\0"   /* DHCP_MS_STATIC_ROUTES*/
+ 	"wpad" "\0"             /* DHCP_WPAD            */
+ 	;
+ #endif
+ 
+ /* Lengths of the option types in binary form.
+  * Used by:
+  * udhcp_str2optset: to determine how many bytes to allocate.
+  * xmalloc_optname_optval: to estimate string length
+  * from binary option length: (option[LEN] / dhcp_option_lengths[opt_type])
