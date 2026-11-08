@@ -7,6 +7,11 @@ IMAGE_FEATURES += " bash-completion-pkgs ssh-server-openssh"
 WIC_CREATE_EXTRA_ARGS += " --no-fstab-update"
 
 do_rootfs[depends] += "virtual/bootloader:do_deploy virtual/kernel:do_bundle_initramfs"
+# use_initramfs_bundled_kernel (IMAGE_PREPROCESS_COMMAND, run inside do_image)
+# copies ${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE}-initramfs-${MACHINE}-*:
+# KERNEL_DEPLOY_DEPEND only orders virtual/kernel:do_deploy before do_build,
+# which is too late for do_image.
+do_image[depends] += "virtual/kernel:do_deploy"
 DEPENDS = "virtual/bootloader virtual/kernel"
 
 ROOTFS_BOOTSTRAP_INSTALL:remove = "run-postinsts"
