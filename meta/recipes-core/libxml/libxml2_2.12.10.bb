@@ -31,6 +31,14 @@ SRC_URI += "http://www.w3.org/XML/Test/xmlts20130923.tar;subdir=${BP};name=testt
            file://CVE-2026-0992-02.patch \
            file://CVE-2026-0992-03.patch \
            file://CVE-2026-1757.patch \
+           file://CVE-2026-11979.patch \
+           file://CVE-2026-86137.patch \
+           file://CVE-2026-86138.patch \
+           file://CVE-2026-86140.patch \
+           file://CVE-2026-86141.patch \
+           file://CVE-2026-86142.patch \
+           file://CVE-2026-86143.patch \
+           file://CVE-2026-86144.patch \
            "
 
 SRC_URI[archive.sha256sum] = "c3d8c0c34aa39098f66576fe51969db12a5100b956233dc56506f7a8679be995"
@@ -42,6 +50,11 @@ CVE_STATUS[CVE-2023-45322] = "disputed: issue requires memory allocation to fail
 # Disputed as a security issue, if attempts to process an invalid file, it fails
 # https://gitlab.gnome.org/GNOME/libxml2/-/issues/958
 CVE_STATUS[CVE-2025-8732] = "disputed: the code maintainer explains, that the issue can only be triggered with untrusted SGML catalogs and it makes absolutely no sense to use untrusted catalogs. The issue triggers a crash if an invalid file is provided.  https://gitlab.gnome.org/GNOME/libxml2/-/issues/958"
+
+# The Scarthgap 2.12.10 source already contains the equivalent zero-length
+# guard required for the xmlURIEscapeStr integer-overflow issue.
+# https://github.com/GNOME/libxml2/blob/v2.12.10/uri.c#L1689-L1700
+CVE_STATUS[CVE-2026-86139] = "fixed-version: xmlURIEscapeStr returns NULL when xmlStrlen returns zero"
 
 BINCONFIG = "${bindir}/xml2-config"
 

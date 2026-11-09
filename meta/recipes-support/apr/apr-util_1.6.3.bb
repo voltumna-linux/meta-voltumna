@@ -13,6 +13,12 @@ SRC_URI = "${APACHE_MIRROR}/apr/${BPN}-${PV}.tar.gz \
            file://configfix.patch \
            file://configure_fixes.patch \
 	   file://0001-test_transformation-Check-if-transform-is-supported-.patch \
+           file://CVE-2025-49506.patch \
+           file://CVE-2026-32327-dependent.patch \
+           file://CVE-2026-32327.patch \
+		   file://CVE-2026-34501.patch \
+		   file://CVE-2026-34502_p1.patch \
+		   file://CVE-2026-34502_p2.patch \
            file://run-ptest \
            "
 
@@ -98,3 +104,5 @@ do_install_ptest() {
 
 # Add CVE_PRODUCT to match the NVD CPE product name
 CVE_PRODUCT = "apache:apr-util apache:portable_runtime_utility"
+
+CVE_STATUS[CVE-2026-34191] = "not-applicable-config: apr_dbd_oracle is not built because --with-oracle is not enabled"

@@ -46,9 +46,12 @@ SRC_URI = "http://libarchive.org/downloads/libarchive-${PV}.tar.gz \
            file://CVE-2025-60753-02.patch \
            file://CVE-2026-4111-1.patch \
            file://CVE-2026-4111-2.patch \
-           file://CVE-2026-4426.patch \
+           file://CVE-2026-4426_CVE-2026-5121.patch \
            file://CVE-2026-4424-1.patch \
            file://CVE-2026-4424-2.patch \
+           file://CVE-2026-5121-02.patch \
+           file://CVE-2026-5745.patch \
+           file://CVE-2026-15028.patch \
            "
 UPSTREAM_CHECK_URI = "http://libarchive.org/"
 
@@ -82,3 +85,8 @@ ALTERNATIVE_LINK_NAME[cpio] = "${base_bindir}/cpio"
 ALTERNATIVE_TARGET[cpio] = "${bindir}/bsdcpio"
 
 BBCLASSEXTEND = "native nativesdk"
+
+CVE_STATUS[CVE-2026-14164] = "fixed-version: Double-free regression in the RAR5\
+ reader's init_unpack() was introduced upstream by commit 620bdafa (2026-05-16) and existed\
+ only on the git master branch until the fix in PR #3071 (commit 1c914cdf, 2026-05-24). It was\
+ never part of an upstream release tarball."

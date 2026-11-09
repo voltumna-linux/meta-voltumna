@@ -30,7 +30,8 @@ SRC_URI = "https://download.qemu.org/${BPN}-${PV}.tar.xz \
            file://0008-tests-meson.build-use-relative-path-to-refer-to-file.patch \
            file://0009-Define-MAP_SYNC-and-MAP_SHARED_VALIDATE-on-needed-li.patch \
            file://0010-hw-pvrdma-Protect-against-buggy-or-malicious-guest-d.patch \
-           file://0002-linux-user-Replace-use-of-lfs64-related-functions-an.patch \
+           file://0001-linux-user-syscall.c-drop-64-suffix-from-flock64-Co.patch \
+           file://0002-linux-user-syscall.c-eliminate-other-explicit-LFS-usages.patch \
            file://fixedmeson.patch \
            file://no-pip.patch \
            file://4a8579ad8629b57a43daa62e46cc7af6e1078116.patch \
@@ -48,6 +49,10 @@ SRC_URI = "https://download.qemu.org/${BPN}-${PV}.tar.xz \
            file://CVE-2025-11234-01.patch \
            file://CVE-2025-11234-02.patch \
            file://CVE-2024-6519.patch \
+           file://CVE-2025-14876_p1.patch \
+           file://CVE-2025-14876_p2.patch \
+           file://CVE-2026-0665.patch \
+           file://CVE-2026-2243.patch \
            "
 UPSTREAM_CHECK_REGEX = "qemu-(?P<pver>\d+(\.\d+)+)\.tar"
 
