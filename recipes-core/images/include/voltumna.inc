@@ -15,7 +15,7 @@ do_image[depends] += "virtual/kernel:do_deploy"
 DEPENDS = "virtual/bootloader virtual/kernel"
 
 ROOTFS_BOOTSTRAP_INSTALL:remove = "run-postinsts"
-IMAGE_INSTALL:append = "kernel-image kernel-devicetree os-release ${MACHINE_ESSENTIAL_EXTRA_RRECOMMENDS} \
+IMAGE_INSTALL:append = "kernel-image os-release ${MACHINE_ESSENTIAL_EXTRA_RRECOMMENDS} \
 	systemd-analyze systemd-journal-upload bash coreutils util-linux util-linux-sfdisk glibc-utils \
 	procps psmisc ldd less tzdata tzdata-europe lsof socat stress-ng sed tar xz grep gawk \
 	findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip sudo \
