@@ -1,0 +1,17 @@
+Signed-off-by: Zoltán Böszörményi <zboszor@gmail.com>
+Upstream-Status: Inappropriate [Yocto specific]
+diff --git a/aten/src/ATen/native/vulkan/impl/Arithmetic.cpp b/aten/src/ATen/native/vulkan/impl/Arithmetic.cpp
+index 24d0eea4ddd..533d70ae96d 100644
+--- a/aten/src/ATen/native/vulkan/impl/Arithmetic.cpp
++++ b/aten/src/ATen/native/vulkan/impl/Arithmetic.cpp
+@@ -20,8 +20,9 @@ api::ShaderInfo get_shader(const OpType type) {
+       return VK_KERNEL(floor_divide);
+     case OpType::POW:
+       return VK_KERNEL(pow);
++    default:
++      VK_THROW("Invalid OpType");
+   }
+-  VK_THROW("Invalid OpType");
+ }
+ 
+ struct Params final {
