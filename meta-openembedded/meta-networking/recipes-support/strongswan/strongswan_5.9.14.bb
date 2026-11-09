@@ -12,6 +12,12 @@ SRC_URI = "https://download.strongswan.org/strongswan-${PV}.tar.bz2 \
            file://CVE-2025-62291.patch \
            file://CVE-2026-25075.patch \
            file://CVE-2026-35334.patch \
+           file://tls-server-Prevent-infinite-loop-if-supported-versio.patch \
+           file://pkcs5-pkcs7-Avoid-NULL-pointer-dereference-when-veri.patch \
+           file://libsimaka-Reject-zero-length-EAP-SIM-AKA-attributes.patch \
+           file://constraints-Case-insensitive-matching-and-reject-exc.patch \
+           file://tls-server-Only-accept-non-empty-ECDH-public-keys-wi.patch \
+           file://libradius-Reject-undersized-attributes-in-enumerator.patch \
            "
 
 SRC_URI[sha256sum] = "728027ddda4cb34c67c4cec97d3ddb8c274edfbabdaeecf7e74693b54fc33678"

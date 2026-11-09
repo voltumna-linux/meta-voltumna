@@ -11,6 +11,10 @@ inherit pypi ptest setuptools3
 SRC_URI += " \
     file://run-ptest \
     file://0001-setup.py-Do-not-strip-debugging-symbols.patch \
+    file://CVE-2026-32875.patch \
+    file://CVE-2026-32874.patch \
+    file://CVE-2026-44660.patch \
+    file://CVE-2026-54911.patch \
 "
 
 DEPENDS += "python3-setuptools-scm-native"

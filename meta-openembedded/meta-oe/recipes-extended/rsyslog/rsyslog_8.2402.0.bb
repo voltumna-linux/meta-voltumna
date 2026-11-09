@@ -25,6 +25,8 @@ SRC_URI = "https://www.rsyslog.com/files/download/rsyslog/${BPN}-${PV}.tar.gz \
            file://use-pkgconfig-to-check-libgcrypt.patch \
            file://run-ptest \
            file://0001-tests-disable-the-check-for-inotify.patch \
+           file://CVE-2026-19654.patch \
+           file://CVE-2026-19654-regression.patch \
 "
 
 SRC_URI:append:libc-musl = " \
@@ -36,6 +38,8 @@ SRC_URI[sha256sum] = "acbdd8579489df36b4a383dc6909a61b7623807f0aff54c062115f2de7
 
 UPSTREAM_CHECK_URI = "https://github.com/rsyslog/rsyslog/releases"
 UPSTREAM_CHECK_REGEX = "(?P<pver>\d+(\.\d+)+)"
+
+CVE_PRODUCT = "rsyslog:rsyslog"
 
 CVE_STATUS[CVE-2015-3243] = "backported-patch: The shipped default rsyslog.conf contains the fix"
 

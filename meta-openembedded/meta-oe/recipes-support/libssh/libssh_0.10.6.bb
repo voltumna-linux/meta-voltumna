@@ -32,6 +32,15 @@ SRC_URI = "git://git.libssh.org/projects/libssh.git;protocol=https;branch=stable
            file://CVE-2026-0968-2.patch \
            file://CVE-2026-0967.patch \
            file://CVE-2026-0965.patch \
+           file://CVE-2026-59845.patch \
+           file://CVE-2026-59847-01.patch \
+           file://CVE-2026-59847-02.patch \
+           file://CVE-2026-59843.patch \
+           file://CVE-2026-59844.patch \
+           file://CVE-2026-59846.patch \
+           file://CVE-2026-59848.patch \
+           file://CVE-2026-59848-regression.patch \
+           file://CVE-2026-59850.patch \
           "
 SRCREV = "10e09e273f69e149389b3e0e5d44b8c221c2e7f6"
 
@@ -45,8 +54,6 @@ PACKAGECONFIG[gcrypt] = "-DWITH_GCRYPT=1, -DWITH_GCRYPT=0, libgcrypt, "
 PACKAGECONFIG[tests] = "-DUNIT_TESTING=1, -DUNIT_TESTING=0, cmocka"
 
 ARM_INSTRUCTION_SET:armv5 = "arm"
-
-CVE_STATUS[CVE-2025-14821] = "not-applicable-platform: The vulnerability is Windows specific"
 
 EXTRA_OECMAKE = " \
     -DWITH_PCAP=1 \
@@ -72,3 +79,6 @@ do_install_ptest () {
 BBCLASSEXTEND = "native nativesdk"
 
 CVE_STATUS[CVE-2025-14821] = "not-applicable-platform: only affects Windows due to loading configuration from C:\etc"
+#Reference: https://www.libssh.org/security/advisories/CVE-2026-15370.txt
+CVE_STATUS[CVE-2026-15370] = "fixed-version: vulnerable SFTP server longname construction handling was introduced in 0.11.0 and is not present in 0.10.6"
+CVE_STATUS[CVE-2026-59842] = "fixed-version: vulnerable information disclosure via short GSSAPI Curve25519 public key in 0.12.0 and is not present in 0.10.6"
