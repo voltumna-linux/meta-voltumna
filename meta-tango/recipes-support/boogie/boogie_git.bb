@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://LICENSE.txt;md5=84dcc94da3adb52b53ae4fa38fe49e5d"
 
 inherit python_setuptools_build_meta
 
-SRCREV = "29e55db541320554e5f7f3e68532b30da8c0e9c8"
+SRCREV = "a1abf238f01404fba624004bbbad708fc8940bda"
 SRC_URI = "git://gitlab.com/nurbldoff/boogie.git;protocol=https;branch=main"
 S = "${WORKDIR}/git"
 

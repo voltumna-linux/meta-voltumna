@@ -4,15 +4,15 @@ Requires=network-online.target nss-lookup.target
 Wants=tangorc.service
 After=network-online.target tangorc.service nss-lookup.target
 Conflicts=shutdown.target
-RequiresMountsFor=/runtime/site/%H
-ConditionPathIsDirectory=/runtime/site/%H/log
+RequiresMountsFor=/runtime/site/%l
+ConditionPathIsDirectory=/runtime/site/%l/log
 
 [Service]
 User=root
 Group=root
 EnvironmentFile=/etc/runtime-lib.conf
 EnvironmentFile=/run/tango/corba
-ExecStart=/usr/bin/Starter %H
+ExecStart=/usr/bin/Starter %l
 KillMode=process
 RestartSec=5s
 Restart=on-failure
