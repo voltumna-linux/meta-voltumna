@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MIT
 #
 
-inherit toolchain-scripts-base siteinfo kernel-arch
+inherit toolchain-scripts-base siteinfo kernel-arch meson-routines
 
 # We want to be able to change the value of MULTIMACH_TARGET_SYS, because it
 # doesn't always match our expectations... but we default to the stock value
@@ -15,6 +15,13 @@ TARGET_CC_ARCH:append:libc-musl = " -mmusl"
 DEBUG_PREFIX_MAP = ""
 
 EXPORT_SDK_PS1 = "${@ 'export PS1=\\"%s\\"' % d.getVar('SDK_PS1') if d.getVar('SDK_PS1') else ''}"
+
+def siteinfo_with_prefix(d, prefix):
+    # Return a prefixed value from siteinfo
+    for item in siteinfo_data_for_machine(d.getVar("TARGET_ARCH"), d.getVar("TARGET_OS"), d):
+        if item.startswith(prefix):
+            return item.replace(prefix, "")
+    raise KeyError
 
 # This function creates an environment-setup-script for use in a deployable SDK
 toolchain_create_sdk_env_script () {
@@ -70,6 +77,12 @@ toolchain_create_sdk_env_script () {
 	echo 'export OECORE_BASELIB="${baselib}"' >> $script
 	echo 'export OECORE_TARGET_ARCH="${TARGET_ARCH}"' >>$script
 	echo 'export OECORE_TARGET_OS="${TARGET_OS}"' >>$script
+	echo 'export OECORE_TARGET_BITS="${@siteinfo_with_prefix(d, 'bit-')}"' >>$script
+	echo 'export OECORE_TARGET_ENDIAN="${@siteinfo_with_prefix(d, 'endian-')}"' >>$script
+	echo 'export OECORE_MESON_HOST_SYSTEM="${@meson_operating_system('TARGET_OS', d)}"' >>$script
+	echo 'export OECORE_MESON_HOST_CPU_FAMILY="${@meson_cpu_family('TARGET_ARCH', d)}"' >>$script
+	echo 'export OECORE_MESON_HOST_CPU="${TARGET_ARCH}"' >>$script
+	echo 'export OECORE_MESON_HOST_ENDIAN="${@meson_endian('TARGET', d)}"' >>$script
 
 	echo 'unset command_not_found_handle' >> $script
 
@@ -98,6 +111,12 @@ toolchain_create_tree_env_script () {
 	echo 'export OECORE_BASELIB="${baselib}"' >> $script
 	echo 'export OECORE_TARGET_ARCH="${TARGET_ARCH}"' >>$script
 	echo 'export OECORE_TARGET_OS="${TARGET_OS}"' >>$script
+	echo 'export OECORE_TARGET_BITS="${@siteinfo_with_prefix(d, 'bit-')}"' >>$script
+	echo 'export OECORE_TARGET_ENDIAN="${@siteinfo_with_prefix(d, 'endian-')}"' >>$script
+	echo 'export OECORE_MESON_HOST_SYSTEM="${@meson_operating_system('TARGET_OS', d)}"' >>$script
+	echo 'export OECORE_MESON_HOST_CPU_FAMILY="${@meson_cpu_family('TARGET_ARCH', d)}"' >>$script
+	echo 'export OECORE_MESON_HOST_CPU="${TARGET_ARCH}"' >>$script
+	echo 'export OECORE_MESON_HOST_ENDIAN="${@meson_endian('TARGET', d)}"' >>$script
 
 	toolchain_shared_env_script
 
