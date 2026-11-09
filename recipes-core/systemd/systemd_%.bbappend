@@ -18,6 +18,7 @@ PACKAGECONFIG:remove = " \
 	ima \
 	smack \
 	sysvinit \
+	efi \
 "
 
 PACKAGECONFIG:remove:ppce500v2 = " \
