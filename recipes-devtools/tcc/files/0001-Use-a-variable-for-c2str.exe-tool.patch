@@ -1,0 +1,41 @@
+From bdaf46916ba5edfe936249597bf8fb709480cc32 Mon Sep 17 00:00:00 2001
+From: Alessio Igor Bogani <alessio.bogani@elettra.eu>
+Date: Thu, 21 May 2026 20:00:13 +0200
+Subject: [PATCH] Use a variable for c2str.exe tool
+
+Upstream-Status: Inappropriate
+
+diff --git a/Makefile b/Makefile
+index cd13adfb..7edaf0c6 100644
+--- a/Makefile
++++ b/Makefile
+@@ -244,23 +244,25 @@ ifneq ($(GITHASH),no)
+ GITHASH:=$(shell git log -1 --date=short --pretty='format:%cd $(GITHASH)@%h')
+ GITMODF:=$(shell git diff --quiet || echo '*')
+ DEF_GITHASH:= -DTCC_GITHASH="\"$(GITHASH)$(GITMODF)\""
+ endif
+ 
+ ifeq ($(CONFIG_debug),yes)
+ CFLAGS += -g
+ LDFLAGS += -g
+ endif
+ 
++C2STR ?= ./c2str.exe
++
+ # convert "include/tccdefs.h" to "tccdefs_.h"
+ %_.h : include/%.h c2str.exe
+-	$S./c2str.exe $< $@
++	$(C2STR) $< $@
+ 
+ c2str.exe : conftest.c
+ 	$S$(CC) -DC2STR $< -o $@
+ 
+ # target specific object rule
+ $(X)%.o : %.c $(LIBTCC_INC)
+ 	$S$(CC) -o $@ -c $< $(addsuffix ,$(DEFINES) $(CFLAGS))
+ 
+ # additional dependencies
+ $(X)tcc.o : tcctools.c
+-- 
+2.43.0
+
