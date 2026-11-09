@@ -11,7 +11,7 @@ SRC_URI:append = " \
 FILES:${PN}-client:append = " ${nonarch_libdir}/tmpfiles.d"
 
 do_install:append() {
-	rm ${D}${systemd_unitdir}/system/sysinit.target.wants/proc-fs-nfsd.mount
+	rm -f ${D}${systemd_unitdir}/system/sysinit.target.wants/proc-fs-nfsd.mount
 
        install -d ${D}${nonarch_libdir}/tmpfiles.d     
        echo 'd /var/lib/nfs/v4recovery 0755 root root - -' > ${D}${nonarch_libdir}/tmpfiles.d/${BPN}.conf
