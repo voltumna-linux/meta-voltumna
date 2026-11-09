@@ -1,0 +1,14 @@
+Upstream-Status: Inappropriate
+
+diff -ruNp itpp-4.3.1.orig/CMakeLists.txt itpp-4.3.1/CMakeLists.txt
+--- itpp-4.3.1.orig/CMakeLists.txt	2013-07-06 09:11:56.000000000 +0000
++++ itpp-4.3.1/CMakeLists.txt	2026-03-14 20:42:15.934324516 +0000
+@@ -25,7 +25,7 @@
+ #
+ # -------------------------------------------------------------------------
+ 
+-cmake_minimum_required ( VERSION 2.8.6 )
++cmake_minimum_required ( VERSION 3.5 )
+ 
+ set ( CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules/ ${CMAKE_MODULE_PATH} )
+ 
