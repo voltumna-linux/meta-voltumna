@@ -22,6 +22,42 @@ SRC_URI = "git://github.com/vim/vim.git;branch=master;protocol=https \
            file://CVE-2026-28418.patch \
            file://CVE-2026-28419.patch \
            file://CVE-2026-39881.patch \
+           file://CVE-2026-34982.patch \
+           file://CVE-2026-34714.patch \
+           file://CVE-2026-35177.patch \
+           file://CVE-2026-44656.patch \
+           file://CVE-2026-41411.patch \
+           file://CVE-2026-28421.patch \
+           file://CVE-2026-32249.patch \
+           file://CVE-2026-28417.patch \
+           file://CVE-2026-28417-regression_p1.patch \
+           file://CVE-2026-28417-regression_p2.patch \
+           file://CVE-2026-45130.patch \
+           file://CVE-2026-46483.patch \
+           file://CVE-2026-28420.patch \
+           file://CVE-2026-52858.patch \
+           file://CVE-2026-52858-regression.patch \
+           file://CVE-2026-52859.patch \
+           file://CVE-2026-52860.patch \
+           file://CVE-2026-28422.patch \
+           file://CVE-2026-42307.patch \
+           file://CVE-2026-43961.patch \
+           file://CVE-2026-47162.patch \
+           file://CVE-2026-47167.patch \
+           file://CVE-2026-55693.patch \
+           file://CVE-2026-55892.patch \
+           file://CVE-2026-55895.patch \
+           file://CVE-2026-57452.patch \
+           file://CVE-2026-57455.patch \
+           file://CVE-2026-59856.patch \
+           file://CVE-2026-59857.patch \
+           file://CVE-2026-59858.patch \
+           file://CVE-2026-57456.patch \
+           file://CVE-2026-73072.patch \
+           file://CVE-2026-73073.patch \
+           file://CVE-2026-73074.patch \
+           file://CVE-2026-73077.patch \
+           file://CVE-2026-73078.patch \
            "
 
 PV .= ".1683"
@@ -31,6 +67,10 @@ SRCREV = "b922b30cfe4c044c83bac3cc908084ed20a83598"
 UPSTREAM_CHECK_GITTAGREGEX = "(?P<pver>\d+\.\d+)\.0"
 # Ignore that the upstream version .z in x.y.z is always newer
 UPSTREAM_VERSION_UNKNOWN = "1"
+
+CVE_STATUS[CVE-2026-51400] = "not-applicable-platform: Vulnerable code is in src/os_vms.c, which is not compiled for Linux builds."
+
+CVE_STATUS[CVE-2026-51401] = "not-applicable-platform: Vulnerable code is in src/os_vms.c, which is not compiled for Linux builds."
 
 S = "${WORKDIR}/git"
 

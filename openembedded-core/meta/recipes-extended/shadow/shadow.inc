@@ -24,6 +24,7 @@ SRC_URI:append:class-target = " \
 
 SRC_URI:append:class-native = " \
            file://commonio.c-fix-unexpected-open-failure-in-chroot-env.patch \
+           file://disable_syslog.patch \
            "
 SRC_URI[sha256sum] = "a305edf5d19bddbdf5e836d2d609fa8bff2d35458819de4d9f06306a1cf24342"
 
@@ -35,6 +36,8 @@ PAM_SRC_URI = "file://pam.d/chfn \
                file://pam.d/newusers \
                file://pam.d/passwd \
                file://pam.d/su"
+
+CVE_PRODUCT = "debian:shadow shadow_project:shadow"
 
 inherit autotools gettext github-releases pkgconfig
 

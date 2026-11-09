@@ -8,7 +8,11 @@ PYPI_PACKAGE = "Mako"
 
 inherit pypi python_setuptools_build_meta
 
+SRC_URI += "file://CVE-2026-41205.patch \
+            "
 SRC_URI[sha256sum] = "2a0c8ad7f6274271b3bb7467dd37cf9cc6dab4bc19cb69a4ef10669402de698e"
+
+CVE_PRODUCT = "makotemplates:mako sqlalchemy:mako"
 
 RDEPENDS:${PN} = "python3-html \
                   python3-markupsafe \
