@@ -1,0 +1,46 @@
+From 717d23d6a9f152b3800164b4763ad183bb29e28b Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Sun, 4 Dec 2022 18:23:47 -0800
+Subject: [PATCH] libbpf: Fix build warning on ref_ctr_off
+
+Clang warns on 32-bit ARM on this comparision
+
+libbpf.c:10497:18: error: result of comparison of constant 4294967296 with expression of type 'size_t' (aka 'unsigned int') is always false [-Werror,-Wtautological-constant-out-of-range-compare]
+        if (ref_ctr_off >= (1ULL << PERF_UPROBE_REF_CTR_OFFSET_BITS))
+            ~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Check for platform long int to be larger than 32-bits before enabling
+this check, it false on 32bit anyways.
+
+Cc: Alexei Starovoitov <ast@kernel.org>
+Cc: Daniel Borkmann <daniel@iogearbox.net>
+Cc: Song Liu <song@kernel.org>
+Cc: Yonghong Song <yhs@fb.com>
+Cc: Jiri Olsa <jolsa@kernel.org>
+Cc: Paul Walmsley <paul.walmsley@sifive.com>
+Cc: Palmer Dabbelt <palmer@dabbelt.com>
+Cc: Nathan Chancellor <nathan@kernel.org>
+Cc: Nick Desaulniers <ndesaulniers@google.com>
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+Signed-off-by: Bruce Ashfield <bruce.ashfield@gmail.com>
+---
+ tools/lib/bpf/libbpf.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/lib/bpf/libbpf.c b/tools/lib/bpf/libbpf.c
+index dd3b2f57082d2..880c69cac118e 100644
+--- a/tools/lib/bpf/libbpf.c
++++ b/tools/lib/bpf/libbpf.c
+@@ -11127,7 +11127,7 @@ static int perf_event_open_probe(bool uprobe, bool retprobe, const char *name,
+ 	struct perf_event_attr attr;
+ 	int type, pfd;
+ 
+-	if ((__u64)ref_ctr_off >= (1ULL << PERF_UPROBE_REF_CTR_OFFSET_BITS))
++	if (BITS_PER_LONG > 32 && (__u64)ref_ctr_off >= (1ULL << PERF_UPROBE_REF_CTR_OFFSET_BITS))
+ 		return -EINVAL;
+ 
+ 	memset(&attr, 0, attr_sz);
+-- 
+2.39.2
+

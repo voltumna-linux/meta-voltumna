@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+# perf patches
+patch perf-force-include-of-stdbool.h.patch
+# patch perf-change-root-to-prefix-for-python-install.patch
+patch perf-add-sgidefs.h-to-for-mips-builds.patch
+patch perf-add-SLANG_INC-for-slang.h.patch
+# patch perf-tools-Fix-parallel-build.patch
+patch perf-fix-bench-numa-compilation.patch
+patch perf-mips64-Convert-__u64-to-unsigned-long-long.patch
+patch perf-x86-32-explicitly-include-errno.h.patch
+patch perf-perf-can-not-parser-the-backtrace-of-app-in-the.patch
+patch libbpf-Fix-build-warning-on-ref_ctr_off.patch
+patch tools-Remove-some-options-from-CLANG_CROSS_FLAGS.patch
+
+# perf configuration
+kconf hardware perf.cfg
