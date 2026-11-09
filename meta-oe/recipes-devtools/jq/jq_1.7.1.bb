@@ -20,6 +20,17 @@ SRC_URI = "${GITHUB_BASE_URI}/download/${BPN}-${PV}/${BPN}-${PV}.tar.gz \
     file://CVE-2026-33947.patch \
     file://CVE-2026-33948.patch \
     file://CVE-2026-39979.patch \
+    file://CVE-2026-40612.patch \
+    file://CVE-2026-41256.patch \
+    file://CVE-2026-41257.patch \
+    file://CVE-2026-43894.patch \
+    file://CVE-2026-43896.patch \
+    file://CVE-2026-43895.patch \
+    file://CVE-2026-47770.patch \
+    file://CVE-2026-49839.patch \
+    file://CVE-2026-54679.patch \
+    file://CVE-2026-39956.patch \
+    file://CVE-2026-44777.patch \
     "
 SRC_URI[sha256sum] = "478c9ca129fd2e3443fe27314b455e211e0d8c60bc8ff7df703873deeee580c2"
 
@@ -37,6 +48,16 @@ PACKAGECONFIG[valgrind] = "--enable-valgrind,--disable-valgrind,valgrind"
 
 # Gets going with gcc-15 but See if it can be removed with next upgrade
 CFLAGS:append = " -std=gnu17"
+
+# The release tarball ships the bison/flex generated sources and maintainer
+# mode is disabled by default, so make(1) must never consider them outdated.
+# Patches touching src/parser.y (or src/lexer.l) make the shipped src/parser.c
+# look stale, which fires the "NOT building parser.c!" no-op rule. From then on
+# make looks for the file in ${B} instead of resolving it via VPATH and the
+# build fails with "cc1: fatal error: src/parser.c: No such file or directory".
+do_configure:prepend() {
+	touch ${S}/src/parser.c ${S}/src/parser.h ${S}/src/lexer.c ${S}/src/lexer.h
+}
 
 do_configure:append() {
 	sed -i -e "/^ac_cs_config=/ s:${WORKDIR}::g" ${B}/config.status

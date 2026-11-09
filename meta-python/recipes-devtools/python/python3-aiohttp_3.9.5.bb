@@ -8,13 +8,49 @@ SRC_URI[sha256sum] = "edea7d15772ceeb29db4aff55e482d4bcfb6ae160ce144f2682de02f6d
 
 SRC_URI += "file://CVE-2024-52304.patch \
            file://CVE-2025-53643.patch \
+           file://CVE-2025-69224.patch \
            file://CVE-2025-69225.patch \
            file://CVE-2025-69226.patch \
            file://CVE-2025-69228.patch \
+           file://CVE-2025-69229_p1.patch \
+           file://CVE-2025-69229_p2.patch \
+           file://CVE-2025-69227.patch \
+           file://CVE-2025-69223.patch \
+           file://CVE-2026-22815.patch \
+           file://CVE-2026-34514.patch \
+           file://CVE-2026-34513.patch \
+           file://CVE-2026-34993.patch \
+           file://CVE-2026-34518.patch \
+           file://CVE-2026-34519.patch \
+           file://CVE-2026-34516.patch \
+           file://CVE-2026-34517.patch \
+           file://CVE-2026-34520.patch \
+           file://CVE-2026-34525_p1.patch \
+           file://CVE-2026-34525_p2.patch \
+           file://CVE-2026-47265.patch \
+           file://CVE-2026-50269.patch \
+           file://CVE-2026-54274.patch \
+           file://CVE-2026-54275.patch \
+           file://CVE-2026-54277.patch \
+           file://CVE-2026-54278.patch \
+           file://CVE-2026-54279.patch \
+           file://CVE-2026-54273_p1.patch \
+           file://CVE-2026-54273_p2.patch \
            "
+
+CVE_STATUS[CVE-2026-34515] = "not-applicable-platform: Vulnerability only affects applications running on Windows"
 
 PYPI_PACKAGE = "aiohttp"
 inherit python_setuptools_build_meta pypi
+
+DEPENDS += "python3-cython-native"
+
+do_configure:prepend() {
+    cython3 -3 -Werror \
+        -I ${S}/aiohttp \
+        -o ${S}/aiohttp/_http_parser.c \
+        ${S}/aiohttp/_http_parser.pyx
+}
 
 RDEPENDS:${PN} = "\
     python3-aiohappyeyeballs \

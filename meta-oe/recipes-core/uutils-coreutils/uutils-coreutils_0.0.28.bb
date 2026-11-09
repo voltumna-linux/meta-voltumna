@@ -8,7 +8,8 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=e74349878141b240070458d414ab3b64"
 inherit cargo cargo-update-recipe-crates
 
 SRC_URI += "git://github.com/uutils/coreutils.git;protocol=https;branch=main \
-    file://0001-Cargo.lock-revert-to-selinux-sys-0.6.9-and-fts-sys-0.patch"
+    file://0001-Cargo.lock-revert-to-selinux-sys-0.6.9-and-fts-sys-0.patch \
+    file://0002-do-not-compile-stdbuf.patch"
 
 # musl not supported because the libc crate does not support functions like "endutxent" at the moment,
 # so src/uucore/src/lib/features.rs disables utmpx when targetting musl.
@@ -16,6 +17,8 @@ COMPATIBLE_HOST:libc-musl = "null"
 
 SRCREV = "1d9e1626377cbaea3b21842a3525a62ba60f905f"
 S = "${WORKDIR}/git"
+
+CFLAGS:append = " -fdebug-prefix-map=${CARGO_HOME}=${TARGET_DBGSRC_DIR}/cargo_home"
 
 require ${BPN}-crates.inc
 
