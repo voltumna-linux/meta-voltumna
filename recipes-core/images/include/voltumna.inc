@@ -6,7 +6,8 @@ IMAGE_FEATURES = "bash-completion-pkgs ssh-server-openssh"
 
 WIC_CREATE_EXTRA_ARGS += " --no-fstab-update"
 
-IMAGE_INSTALL_append += "os-release systemd-analyze systemd-journal-upload bash coreutils util-linux util-linux-sfdisk \
+IMAGE_INSTALL_append += "${MACHINE_ESSENTIAL_EXTRA_RRECOMMENDS} \
+        os-release systemd-analyze systemd-journal-upload bash coreutils util-linux util-linux-sfdisk \
 	glibc-utils procps psmisc ldd less tzdata tzdata-europe lsof socat stress-ng sed tar xz \
 	grep gawk findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip sudo \
 	nfs-utils-client iproute2 ethtool inetutils-ping inetutils-telnet net-tools curl libnss-resolve \
