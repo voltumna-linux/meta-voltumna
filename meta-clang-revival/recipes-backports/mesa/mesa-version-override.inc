@@ -1,7 +1,8 @@
-PV = "26.2.6"
-SRC_URI[sha256sum] = "b9436b3e1a8be76fbd4823dc884f90596ab7c6ac5e1867a305e66ffccfb31a92"
+PV = "26.3.0"
+SRC_URI[sha256sum] = "91d729aa68bb89e4ec857841300bbe922bcb3e52b1f97566ca83930d3b28343a"
 
 SRC_URI:remove = "file://0001-gallivm-Fix-armhf-build-against-LLVM-22.patch"
+SRC_URI:append = " file://45840.patch"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 

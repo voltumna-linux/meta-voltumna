@@ -1,0 +1,2 @@
+PV = "1.50"
+SRC_URI[sha256sum] = "4460c20cfcf68b994a5ee206ed15fc19ad312f16c96075186e83b0e3f4aa48a5"

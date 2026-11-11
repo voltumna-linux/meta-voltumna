@@ -1,0 +1,43 @@
+From 145a28747ecbfa6a49d6f2a65147ebadf0b0bce3 Mon Sep 17 00:00:00 2001
+From: Markus Hartung <mail@hartmark.se>
+Date: Mon, 2 Nov 2026 10:24:42 +0100
+Subject: [PATCH] intel/dev: size Gfx9 compute scratch for 4 subslices per
+ slice
+
+Fixes: c0d809820f3 ("intel: Fix calculation of max_scratch_ids on fused devices")
+Assisted-by: LLM
+Reviewed-by: Calder Young <calder.young@intel.com>
+Upstream-Status: Submitted [https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/45840]
+---
+ src/intel/dev/intel_device_info.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/src/intel/dev/intel_device_info.c b/src/intel/dev/intel_device_info.c
+index 492011ee36f3..822970eb2ca3 100644
+--- a/src/intel/dev/intel_device_info.c
++++ b/src/intel/dev/intel_device_info.c
+@@ -1888,6 +1888,21 @@ init_max_scratch_ids(struct intel_device_info *devinfo)
+     * scratch space ids.
+     */
+    unsigned subslices = intel_device_info_dual_subslice_id_bound(devinfo);
++
++   /* For Gfx9, devinfo->subslice_total is the TOTAL number of subslices and
++    * we wish to view that there are 4 subslices per slice instead of the
++    * actual number of subslices per slice. The documentation for 3DSTATE_PS
++    * "Scratch Space Base Pointer" says:
++    *
++    *    "Scratch Space per slice is computed based on 4 sub-slices.  SW
++    *     must allocate scratch space enough so that each slice has 4
++    *     slices allowed."
++    *
++    * According to the other driver team, this applies to compute shaders
++    * as well.  This is not currently documented at all.
++    */
++   if (devinfo->ver >= 9 && devinfo->ver < 11)
++      subslices = MAX2(subslices, 4 * devinfo->num_slices);
+    assert(subslices >= devinfo->subslice_total);
+ 
+    unsigned scratch_ids_per_subslice;
+-- 
+GitLab
+
