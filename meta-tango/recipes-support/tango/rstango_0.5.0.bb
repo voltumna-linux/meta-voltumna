@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
 inherit rust cargo cargo-update-recipe-crates pkgconfig
 
 SRC_URI = "git://gitlab.com/theorozier/rstango.git;protocol=https;branch=main"
-SRCREV = "eb7eb59222c64fb4e317cc89fa3819965dbd9a90"
+SRCREV = "8ea22253680205a460618615b561da73cd6adcba"
 
 require ${BPN}-crates.inc
 
