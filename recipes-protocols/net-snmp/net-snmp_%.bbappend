@@ -2,7 +2,10 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 
 PACKAGE_ARCH:class-target = "${MACHINE_ARCH}"
 
-SRC_URI:append = " file://snmpd.local.conf"
+SRC_URI:append = "  \
+    file://snmpd.local.conf \
+    file://override.conf \
+    "
 
 DEPENDS:class-nativesdk = "openssl libnl"
 PERLPROG:class-nativesdk = "${USRBINPATH}/env perl"
@@ -20,14 +23,29 @@ RRECOMMENDS:${PN}-dbg:class-nativesdk = "${PN}-client (= ${EXTENDPKGV})"
 SYSTEMD_AUTO_ENABLE:${PN}-server-snmpd = "enable"
 SYSTEMD_AUTO_ENABLE:${PN}-server-snmptrapd =  "disable"
 
-FILES:${PN} += "${sysconfdir}/snmp"
+FILES:${PN} += " \
+    ${sysconfdir}/snmp \
+    ${sysconfdir}/systemd \
+"
 
 do_install[vardeps] += "PRIMARY_NETIF"
 do_install:append() {
     install -d ${D}${sysconfdir}/snmp
     install -m 644 ${WORKDIR}/snmpd.local.conf ${D}${sysconfdir}/snmp/
-    sed -i "s,@ETH@,${@d.getVar('PRIMARY_NETIF') or 'eth0'},g" \
+    sed -i -e "s,@DISTRO_NAME@,${@d.getVar('DISTRO_NAME')},g" \
+        -e "s,@DISTRO_VERSION@,${@d.getVar('DISTRO_VERSION')},g" \
+        -e "s,@MACHINE@,${@d.getVar('MACHINE')},g" \
+        -e "s,@MAINTAINER@,${@d.getVar('MAINTAINER')},g" \
         ${D}${sysconfdir}/snmp/snmpd.local.conf
+
+    install -d ${D}${sysconfdir}/systemd/system/snmpd.service.d/
+    install -m 644 ${WORKDIR}/override.conf \
+        ${D}${sysconfdir}/systemd/system/snmpd.service.d/
+    sed -i "s,@ETH@,${@d.getVar('PRIMARY_NETIF') or 'eth0'},g" \
+        ${D}${sysconfdir}/systemd/system/snmpd.service.d/override.conf
+
+    sed -i -e 's,^\(com2sec[[:space:]]*paranoid[[:space:]]*default[[:space:]]*public\),#\1,' \
+        ${D}${sysconfdir}/snmp/snmpd.conf
 }
 
 BBCLASSEXTEND:append = " nativesdk"
