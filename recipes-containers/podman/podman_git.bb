@@ -32,9 +32,13 @@ PV = "6.2.0-dev"
 CVE_PRODUCT = "podman_project:podman libpod_project:libpod"
 
 CVE_STATUS[CVE-2019-10152] = "fixed-version: fixed since v1.4.0"
+CVE_STATUS[CVE-2019-10214] = "fixed-version: fixed since v3.0.0"
 CVE_STATUS[CVE-2020-1726] = "fixed-version: fixed since v1.8.1"
+CVE_STATUS[CVE-2022-2738] = "not-applicable-platform: RedHat specific issue"
+CVE_STATUS[CVE-2022-2739] = "not-applicable-platform: RedHat specific issue"
 CVE_STATUS[CVE-2022-2989] = "fixed-version: fixed since v4.3.0"
 CVE_STATUS[CVE-2023-0778] = "fixed-version: fixed since v4.5.0"
+CVE_STATUS[CVE-2025-4953] = "fixed-version: fixed in used buildah version"
 
 PACKAGES =+ "${PN}-contrib"
 
