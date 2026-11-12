@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=1b422f7cda3870b9c4b040b68ba1c0fe"
 DEPENDS += "omniorb-native python3 openssl"
 
 SRC_URI = "http://downloads.sourceforge.net/omniorb/omniORB-${PV}.tar.bz2"
-SRC_URI[sha256sum] = "79720d415d23cd8da99287a4ef4da0aa1bd34d3e4c7b1530715600adc5ed3dc3"
+SRC_URI[sha256sum] = "d57c5ec43030b31eeb620b4c8e47d62bf08eab4945dbeab0e094f10c8447bf93"
 SRC_URI:append = "\
     file://0002-python-shebang.patch \
 "
