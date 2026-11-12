@@ -1,8 +1,8 @@
 SUMMARY = "Tango for Python"
 DESCRIPTION = "PyTango is a python module that exposes to Python the complete Tango C++ API"
 HOMEPAGE = "https://pytango.readthedocs.io/"
-LICENSE = "GPL-3.0-only"
-LIC_FILES_CHKSUM = "file://LICENSE.txt;md5=855580e1a55a9af704c90fae138fe0d1"
+LICENSE = "LGPL-3.0-only"
+LIC_FILES_CHKSUM = "file://LICENSE.txt;md5=edf3c432b05ee3dda249e9c69af744f3"
 
 DEFAULT_PREFERENCE = "-1"
 
