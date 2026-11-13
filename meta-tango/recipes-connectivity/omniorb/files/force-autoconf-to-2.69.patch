@@ -13,7 +13,7 @@ index f27cd1f..9969978 100644
 +++ b/configure.ac
 @@ -1,14 +1,14 @@
  dnl -*- M4 -*-
- AC_INIT([omniORB],[4.3.3],[bugs@omniorb-support.com])
+ AC_INIT([omniORB],[4.3.5],[bugs@omniorb-support.com])
  
 -AC_PREREQ([2.71])
 +AC_PREREQ([2.69])
