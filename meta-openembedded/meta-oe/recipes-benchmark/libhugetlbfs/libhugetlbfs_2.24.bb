@@ -26,6 +26,8 @@ SRC_URI = " \
     file://0013-elflink.c-include-libgen.h-for-basename.patch \
     file://0014-tests-Add-ldflags-to-linker-commandline-for-libheaps.patch \
     file://0015-support-reproducible-builds.patch \
+    file://0016-ld.hugetlbfs-Use-image-base-with-LLD.patch \
+    file://0017-ld.hugetlbfs-Add-riscv64-support.patch \
 "
 
 UPSTREAM_CHECK_GITTAGREGEX = "(?P<pver>\d+(\.\d+)+)"

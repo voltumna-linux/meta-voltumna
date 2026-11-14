@@ -53,7 +53,7 @@ RDEPENDS:packagegroup-meta-oe = "\
 RDEPENDS:packagegroup-meta-oe-benchmarks = "\
     bonnie++ \
     coremark-pro \
-    cpupower \
+    cpupower-bench \
     dbench \
     dhrystone \
     fio \
@@ -98,7 +98,6 @@ RDEPENDS:packagegroup-meta-oe-benchmarks:remove:riscv32 = "libhugetlbfs"
 
 RDEPENDS:packagegroup-meta-oe-bsp = "\
     acpitool \
-    cpufrequtils \
     edac-utils \
     ${@bb.utils.contains("DISTRO_FEATURES", "systemd", "firmwared", "", d)} \
     flashrom \
@@ -214,6 +213,7 @@ RDEPENDS:packagegroup-meta-oe-dbs = "\
     libdbi \
     lmdb \
     mariadb \
+    pg-cron \
     postgresql \
     psqlodbc \
     rocksdb \
