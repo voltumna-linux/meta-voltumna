@@ -592,18 +592,7 @@ class GitDownloadDirectoryNamingTest(FetcherTest):
         self.assertIn(self.recipe_dir, dir)
 
     @skipIfNoNetwork()
-    def test_that_directory_exists_for_mirrored_url_and_recipe_url_when_mirroring_is_used(self):
-        self.setup_mirror_rewrite()
-        fetcher = bb.fetch.Fetch([self.recipe_url], self.d)
-
-        fetcher.download()
-
-        dir = os.listdir(self.dldir + "/git2")
-        self.assertIn(self.mirror_dir, dir)
-        self.assertIn(self.recipe_dir, dir)
-
-    @skipIfNoNetwork()
-    def test_that_recipe_directory_and_mirrored_directory_exists_when_mirroring_is_used_and_the_mirrored_directory_already_exists(self):
+    def test_that_directory_is_named_after_recipe_url_when_mirroring_is_used(self):
         self.setup_mirror_rewrite()
         fetcher = bb.fetch.Fetch([self.mirror_url], self.d)
         fetcher.download()
@@ -875,6 +864,36 @@ class FetcherLocalTest(FetcherTest):
         for value in ("abc", "", "-1", "1\n", "1 2"):
             with self.subTest(striplevel=repr(value)):
                 self.assertInvalidStriplevel(value)
+
+    def test_local_checksum_match(self):
+        # Correct sha256 must run verify_checksum to completion; donestamp
+        # lands in DL_DIR.
+        import hashlib
+        content = b"file:// checksum match test\n"
+        with open(os.path.join(self.localsrcdir, 'sumfile'), 'wb') as f:
+            f.write(content)
+        good = hashlib.sha256(content).hexdigest()
+        fetcher = bb.fetch.Fetch(['file://sumfile;sha256sum=' + good], self.d)
+        ud = fetcher.ud[fetcher.urls[0]]
+        self.assertTrue(ud.needdonestamp)
+        fetcher.download()
+        self.assertTrue(os.path.exists(ud.donestamp))
+
+    def test_local_checksum_mismatch(self):
+        # Bad sha256 raises ChecksumError without renaming the user's
+        # source file to the <localpath>_bad-checksum_<sha> sibling.
+        content = b"file:// checksum mismatch test\n"
+        srcpath = os.path.join(self.localsrcdir, 'sumfile')
+        with open(srcpath, 'wb') as f:
+            f.write(content)
+        bad = "0" * 64
+        fetcher = bb.fetch.Fetch(['file://sumfile;sha256sum=' + bad], self.d)
+        with self.assertRaises(bb.fetch2.FetchError):
+            fetcher.download()
+        self.assertTrue(os.path.exists(srcpath))
+        with open(srcpath, 'rb') as f:
+            self.assertEqual(f.read(), content)
+        self.assertFalse(os.path.exists(srcpath + '_bad-checksum_' + bad))
 
     def dummyGitTest(self, suffix):
         # Create dummy local Git repo
@@ -2871,6 +2890,27 @@ class GitLfsTest(FetcherTest):
         # Test than exception is raised when LFS objects could not be fetched
         with self.assertRaises(bb.fetch.FetchError):
             self.fetch()
+
+    @skipIfNoGitLFS()
+    def test_lfs_fetch_retry_after_failure(self):
+        """Test that a failed LFS fetch does not break later fetches of the same repository"""
+        self.git(["lfs", "install", "--local"], cwd=self.srcdir)
+        self.commit_file("a.mp3", "version 1")
+
+        uri = 'git://%s;protocol=file;lfs=1;branch=master' % self.srcdir
+        self.d.setVar('SRC_URI', uri)
+
+        lfs_objects = os.path.join(self.srcdir, ".git", "lfs", "objects")
+        with hide_directory(lfs_objects):
+            with self.assertRaises(bb.fetch.FetchError):
+                self.fetch()
+
+        fetcher, ud = self.fetch()
+        with hide_directory(self.srcdir):
+            workdir = self.d.getVar('WORKDIR')
+            fetcher.unpack(workdir)
+            with open(os.path.join(workdir, "git", "a.mp3")) as f:
+                self.assertEqual(f.read(), "version 1")
 
 class GitURLWithSpacesTest(FetcherTest):
     test_git_urls = {

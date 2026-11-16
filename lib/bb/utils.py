@@ -1525,31 +1525,6 @@ def process_profilelog(fn, fn_out = None):
         p.print_callers()
 
 
-def exec_flat_python_func(func, *args, **kwargs):
-    """Execute a flat python function (defined with ``def funcname(args): ...``)
-
-    Returns the return value of the function."""
-    # Prepare a small piece of python code which calls the requested function
-    # To do this we need to prepare two things - a set of variables we can use to pass
-    # the values of arguments into the calling function, and the list of arguments for
-    # the function being called
-    context = {}
-    funcargs = []
-    # Handle unnamed arguments
-    aidx = 1
-    for arg in args:
-        argname = 'arg_%s' % aidx
-        context[argname] = arg
-        funcargs.append(argname)
-        aidx += 1
-    # Handle keyword arguments
-    context.update(kwargs)
-    funcargs.extend(['%s=%s' % (arg, arg) for arg in kwargs.keys()])
-    code = 'retval = %s(%s)' % (func, ', '.join(funcargs))
-    comp = bb.utils.better_compile(code, '<string>', '<string>')
-    bb.utils.better_exec(comp, context, code, '<string>')
-    return context['retval']
-
 def edit_metadata(meta_lines, variables, varfunc, match_overrides=False):
     """Edit lines from a recipe or config file and modify one or more
     specified variable values set in the file using a specified callback
@@ -2359,3 +2334,32 @@ def is_path_on_nfs(path):
     import bb.process
     fstype = bb.process.run(['stat', '-f', '-c', '%T', path])[0].strip()
     return fstype == "nfs"
+
+_file_checksums_regex = re.compile(r'(?:(?<=:True)|(?<=:False))\s+')
+
+def split_file_checksums(filelist):
+    """
+    Split a file-checksums value into its ``path:True`` and ``path:False``
+    entries at the whitespace following ``:True`` or ``:False``, since the
+    paths can contain whitespace.
+
+    Arguments:
+
+    -  ``filelist``: the file-checksums string.
+
+    Returns the list of entries. When every whitespace-separated word ends
+    with ``:True`` or ``:False`` (the usual case), this is the same as
+    splitting on whitespace, which is much faster for long values than the
+    regular expression.
+    """
+    words = filelist.split()
+    if words and all(word.endswith((":True", ":False")) for word in words):
+        # Match the regular expression split exactly: leading whitespace stays
+        # with the first entry and trailing whitespace gives an empty entry
+        leading = len(filelist) - len(filelist.lstrip())
+        if leading:
+            words[0] = filelist[:leading] + words[0]
+        if filelist[-1].isspace():
+            words.append("")
+        return words
+    return _file_checksums_regex.split(filelist)
