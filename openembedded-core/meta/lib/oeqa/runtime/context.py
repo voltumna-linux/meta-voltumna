@@ -21,7 +21,7 @@ class OERuntimeTestContext(OETestContext):
 
     def __init__(self, td, logger, target,
                  image_packages, extract_dir):
-        super(OERuntimeTestContext, self).__init__(td, logger)
+        super().__init__(td, logger)
 
         self.target = target
         self.image_packages = image_packages
@@ -56,7 +56,7 @@ class OERuntimeTestContextExecutor(OETestContextExecutor):
     default_extract_dir = 'packages/extracted'
 
     def register_commands(self, logger, subparsers):
-        super(OERuntimeTestContextExecutor, self).register_commands(logger, subparsers)
+        super().register_commands(logger, subparsers)
 
         runtime_group = self.parser.add_argument_group('runtime options')
 
@@ -204,9 +204,9 @@ class OERuntimeTestContextExecutor(OETestContextExecutor):
         if not args.packages_manifest:
             raise TypeError('Manifest file not provided')
 
-        super(OERuntimeTestContextExecutor, self)._process_args(logger, args)
+        super()._process_args(logger, args)
 
-        td = self.tc_kwargs['init']['td']
+        td = self.td
 
         target_kwargs = {}
         target_kwargs['machine'] = td.get("MACHINE") or None
@@ -216,12 +216,12 @@ class OERuntimeTestContextExecutor(OETestContextExecutor):
         target_kwargs['serialcontrol_ps1'] = td.get("TEST_SERIALCONTROL_PS1") or None
         target_kwargs['serialcontrol_connect_timeout'] = td.get("TEST_SERIALCONTROL_CONNECT_TIMEOUT") or None
 
-        self.tc_kwargs['init']['target'] = \
+        self.context_args['target'] = \
                 OERuntimeTestContextExecutor.getTarget(args.target_type,
                         None, args.target_ip, args.server_ip, **target_kwargs)
-        self.tc_kwargs['init']['image_packages'] = \
+        self.context_args['image_packages'] = \
                 OERuntimeTestContextExecutor.readPackagesManifest(
                         args.packages_manifest)
-        self.tc_kwargs['init']['extract_dir'] = args.extract_dir
+        self.context_args['extract_dir'] = args.extract_dir
 
 _executor_class = OERuntimeTestContextExecutor

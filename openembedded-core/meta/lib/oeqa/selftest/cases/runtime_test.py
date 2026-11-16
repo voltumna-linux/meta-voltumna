@@ -20,8 +20,7 @@ class TestExport(OESelftestTestCase):
         """
         Summary: Check basic testexport functionality with only ping test enabled.
         Expected: 1. testexport directory must be created.
-                  2. runexported.py must run without any error/exception.
-                  3. ping test must succeed.
+                  2. ping test must succeed.
         Product: oe-core
         Author: Mariano Lopez <mariano.lopez@intel.com>
         """
@@ -44,7 +43,6 @@ class TestExport(OESelftestTestCase):
         self.assertEqual(True, isdir, 'Failed to create testexport dir: %s' % testexport_dir)
 
         with runqemu('core-image-minimal') as qemu:
-            # Attempt to run runexported.py to perform ping test
             test_path = os.path.join(testexport_dir, "oe-test")
             data_file = os.path.join(testexport_dir, 'data', 'testdata.json')
             manifest = os.path.join(testexport_dir, 'data', 'manifest')
@@ -208,6 +206,11 @@ QB_FSINFO = "tar.zst:rootfs-dbg"
         features += 'PACKAGE_FEED_URIS = "http://bogus_ip:bogus_port"\n'
         features += 'EXTRA_IMAGE_FEATURES += "package-management"\n'
         features += 'PACKAGE_CLASSES = "package_rpm"\n'
+
+        # librepo and rpm require sequoia
+        # https://github.com/rpm-software-management/dnf5/issues/2539
+        features += 'PACKAGECONFIG:append:pn-rpm = " sequoia"\n'
+        features += 'PACKAGECONFIG:append:pn-librepo = " sequoia"\n'
 
         bitbake('gnupg-native -c addto_recipe_sysroot')
 
@@ -470,7 +473,7 @@ class SystemTap(OESelftestTestCase):
 
         @classmethod
         def setUpClass(cls):
-            super(SystemTap, cls).setUpClass()
+            super().setUpClass()
             cls.image = "core-image-minimal"
 
         def default_config(self):
@@ -540,7 +543,7 @@ IMAGE_INSTALL:append = " systemtap-runtime"
 class RustKernel(OESelftestTestCase):
         @classmethod
         def setUpClass(cls):
-            super(RustKernel, cls).setUpClass()
+            super().setUpClass()
             cls.image = "core-image-minimal"
 
         def test_kernel_rust_sample(self):

@@ -4,8 +4,6 @@
 # SPDX-License-Identifier: MIT
 #
 
-import os
-import re
 import errno
 
 def write_file(path, data):
@@ -36,7 +34,7 @@ def remove_from_file(path, data):
         return
     try:
         rdata = read_file(path)
-    except IOError as e:
+    except OSError as e:
         # if file does not exit, just quit, otherwise raise an exception
         if e.errno == errno.ENOENT:
             return

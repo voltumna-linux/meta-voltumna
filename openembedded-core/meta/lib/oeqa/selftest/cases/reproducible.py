@@ -30,7 +30,7 @@ DIFFERENT = 'DIFFERENT'
 SAME = 'SAME'
 
 @functools.total_ordering
-class CompareResult(object):
+class CompareResult:
     def __init__(self):
         self.reference = None
         self.test = None
@@ -42,7 +42,7 @@ class CompareResult(object):
     def __lt__(self, other):
         return (self.status, self.test) < (other.status, other.test)
 
-class PackageCompareResults(object):
+class PackageCompareResults:
     def __init__(self, exclusions):
         self.total = []
         self.missing = []
@@ -240,6 +240,7 @@ class ReproducibleTests(OESelftestTestCase):
             TMPDIR = "{tmpdir}"
             LICENSE_FLAGS_ACCEPTED = "commercial"
             DISTRO_FEATURES:append = ' pam'
+            include_all conf/distro/include/test_reproducible_vars.inc
             USERADDEXTENSION = "useradd-staticids"
             USERADD_ERROR_DYNAMIC = "skip"
             USERADD_UID_TABLES += "files/static-passwd"

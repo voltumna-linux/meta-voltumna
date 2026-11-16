@@ -6,10 +6,9 @@
 
 from oeqa.sdk.context import OESDKTestContext, OESDKTestContextExecutor
 
-class TestSDKBase(object):
+class TestSDKBase:
     @staticmethod
     def get_sdk_configuration(d, test_type):
-        import platform
         import oe.lsb
         from oeqa.utils.metadata import get_layers
         configuration = {'TEST_TYPE': test_type,
@@ -66,9 +65,9 @@ class TestSDK(TestSDKBase):
         import subprocess
 
         try:
-            subprocess.check_output("cd %s; %s <<EOF\n./\nY\nEOF" % (sdk_dir, tcname), shell=True)
+            subprocess.check_output("cd %s; %s <<EOF\n./\nY\nEOF" % (sdk_dir, tcname), shell=True, text=True)
         except subprocess.CalledProcessError as e:
-            bb.fatal("Couldn't install the SDK:\n%s" % e.output.decode("utf-8"))
+            bb.fatal("Couldn't install the SDK:\n%s" % e.output)
 
     def setup_context(self, d):
         """
@@ -80,7 +79,6 @@ class TestSDK(TestSDKBase):
     def run(self, d):
 
         import os
-        import subprocess
         import json
         import logging
 

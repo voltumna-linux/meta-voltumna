@@ -4,10 +4,6 @@
 # SPDX-License-Identifier: MIT
 #
 
-import os
-import sys
-import signal
-import time
 import glob
 import subprocess
 from collections import defaultdict
@@ -24,7 +20,7 @@ class OEQemuTarget(OESSHTarget):
             tmpdir='', dir_image='', boottime=60, serial_ports=2,
             boot_patterns = defaultdict(str), ovmf=False, tmpfsdir=None, native_sysroot=None, **kwargs):
 
-        super(OEQemuTarget, self).__init__(logger, None, server_ip, timeout,
+        super().__init__(logger, None, server_ip, timeout,
                 user, port)
 
         self.server_ip = server_ip
@@ -81,7 +77,7 @@ class OEQemuTarget(OESSHTarget):
             blcmd = ["tail", "-20", self.bootlog]
             msg += "===== start: snippet =====\n\n"
             try:
-                out = subprocess.check_output(blcmd, stderr=subprocess.STDOUT, timeout=1).decode('utf-8')
+                out = subprocess.check_output(blcmd, stderr=subprocess.STDOUT, timeout=1, text=True)
                 msg += "file: %s\n\n" % self.bootlog
                 msg += out
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as err:

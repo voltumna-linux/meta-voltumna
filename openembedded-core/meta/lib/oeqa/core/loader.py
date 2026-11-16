@@ -4,31 +4,25 @@
 # SPDX-License-Identifier: MIT
 #
 
-import os
+import copy
 import re
 import sys
 import unittest
-import inspect
 
 from oeqa.core.utils.path import findFile
 from oeqa.core.utils.test import getSuiteModules, getCaseID
 
 from oeqa.core.exception import OEQATestNotFound
 from oeqa.core.case import OETestCase
-from oeqa.core.decorator import decoratorClasses, OETestDecorator, \
-        OETestDiscover
+from oeqa.core.decorator import decoratorClasses, OETestDiscover
 
 # When loading tests, the unittest framework stores any exceptions and
 # displays them only when the run method is called.
 #
 # For our purposes, it is better to raise the exceptions in the loading
 # step rather than waiting to run the test suite.
-#
-# Generate the function definition because this differ across python versions
-# Python >= 3.4.4 uses tree parameters instead four but for example Python 3.5.3
-# ueses four parameters so isn't incremental.
-_failed_test_args = inspect.getfullargspec(unittest.loader._make_failed_test).args
-exec("""def _make_failed_test(%s): raise exception""" % ', '.join(_failed_test_args))
+def _make_failed_test(methodname, exception, *args, **kwargs):
+    raise exception
 unittest.loader._make_failed_test = _make_failed_test
 
 def _find_duplicated_modules(suite, directory):
@@ -40,7 +34,7 @@ def _find_duplicated_modules(suite, directory):
 def _built_modules_dict(modules, logger):
     modules_dict = {}
 
-    if modules == None:
+    if modules is None:
         return modules_dict
 
     for module in modules:
@@ -95,7 +89,7 @@ class OETestLoader(unittest.TestLoader):
 
         self._patchCaseClass(self.caseClass)
 
-        super(OETestLoader, self).__init__()
+        super().__init__()
 
     def _patchCaseClass(self, testCaseClass):
         # Adds custom attributes to the OETestCase class
@@ -108,21 +102,14 @@ class OETestLoader(unittest.TestLoader):
         self.tc._registry['cases'][case_id] = case
 
     def _handleTestCaseDecorators(self, case):
-        def _handle(obj):
-            if isinstance(obj, OETestDecorator):
-                if not obj.__class__ in decoratorClasses:
-                    raise Exception("Decorator %s isn't registered" \
-                            " in decoratorClasses." % obj.__name__)
-                obj.bind(self.tc._registry, case)
-
-        def _walk_closure(obj):
-            if hasattr(obj, '__closure__') and obj.__closure__:
-                for f in obj.__closure__:
-                    obj = f.cell_contents
-                    _handle(obj)
-                    _walk_closure(obj)
         method = getattr(case, case._testMethodName, None)
-        _walk_closure(method)
+        for obj in getattr(method, '_oeqa_decorators', []):
+            if not obj.__class__ in decoratorClasses:
+                raise Exception("Decorator %s isn't registered" \
+                        " in decoratorClasses." % obj.__class__.__name__)
+            # The decorator instance is shared by every class that has
+            # the method so bind a copy for this test case
+            copy.copy(obj).bind(self.tc._registry, case)
 
     def _filterTest(self, case):
         """
@@ -184,37 +171,9 @@ class OETestLoader(unittest.TestLoader):
         return False
 
     def _getTestCase(self, testCaseClass, tcName):
-        if not hasattr(testCaseClass, '__oeqa_loader') and \
-                issubclass(testCaseClass, OETestCase):
-            # In order to support data_vars validation
-            # monkey patch the default setUp/tearDown{Class} to use
-            # the ones provided by OETestCase
-            setattr(testCaseClass, 'setUpClassMethod',
-                    getattr(testCaseClass, 'setUpClass'))
-            setattr(testCaseClass, 'tearDownClassMethod',
-                    getattr(testCaseClass, 'tearDownClass'))
-            setattr(testCaseClass, 'setUpClass',
-                    testCaseClass._oeSetUpClass)
-            setattr(testCaseClass, 'tearDownClass',
-                    testCaseClass._oeTearDownClass)
-
-            # In order to support decorators initialization
-            # monkey patch the default setUp/tearDown to use
-            # a setUpDecorators/tearDownDecorators that methods
-            # will call setUp/tearDown original methods.
-            setattr(testCaseClass, 'setUpMethod',
-                    getattr(testCaseClass, 'setUp')) 
-            setattr(testCaseClass, 'tearDownMethod',
-                    getattr(testCaseClass, 'tearDown'))
-            setattr(testCaseClass, 'setUp', testCaseClass._oeSetUp)
-            setattr(testCaseClass, 'tearDown', testCaseClass._oeTearDown)
-
-            setattr(testCaseClass, '__oeqa_loader', True)
-
         case = testCaseClass(tcName)
         if isinstance(case, OETestCase):
-            setattr(case, 'decorators', [])
-
+            case.decorators = []
         return case
 
     def loadTestsFromTestCase(self, testCaseClass):
@@ -274,11 +233,11 @@ class OETestLoader(unittest.TestLoader):
         big_suite = self.suiteClass()
         for path in self.module_paths:
             _find_duplicated_modules(big_suite, path)
-            suite = super(OETestLoader, self).discover(path,
+            suite = super().discover(path,
                     pattern='*.py', top_level_dir=path)
             big_suite.addTests(suite)
 
-        cases = None
+        cases = list(self.tc._registry['cases'].values())
         discover_classes = [clss for clss in decoratorClasses
                             if issubclass(clss, OETestDiscover)]
         for clss in discover_classes:
@@ -287,7 +246,7 @@ class OETestLoader(unittest.TestLoader):
         if self.modules_required:
             self._required_modules_validation()
 
-        return self.suiteClass(cases) if cases else big_suite
+        return self.suiteClass(cases)
 
     def _filterModule(self, module):
         if module.__name__ in sys.builtin_module_names:
@@ -322,29 +281,14 @@ class OETestLoader(unittest.TestLoader):
         return (load_module, load_underscore)
 
 
-    # XXX After Python 3.5, remove backward compatibility hacks for
-    # use_load_tests deprecation via *args and **kws.  See issue 16662.
-    if sys.version_info >= (3,5):
-        def loadTestsFromModule(self, module, *args, pattern=None, **kws):
-            """
-                Returns a suite of all tests cases contained in module.
-            """
-            load_module, load_underscore = self._filterModule(module)
+    def loadTestsFromModule(self, module, *args, pattern=None, **kws):
+        """
+            Returns a suite of all tests cases contained in module.
+        """
+        load_module, load_underscore = self._filterModule(module)
 
-            if load_module or load_underscore:
-                return super(OETestLoader, self).loadTestsFromModule(
-                        module, *args, pattern=pattern, **kws)
-            else:
-                return self.suiteClass()
-    else:
-        def loadTestsFromModule(self, module, use_load_tests=True):
-            """
-                Returns a suite of all tests cases contained in module.
-            """
-            load_module, load_underscore = self._filterModule(module)
-
-            if load_module or load_underscore:
-                return super(OETestLoader, self).loadTestsFromModule(
-                        module, use_load_tests)
-            else:
-                return self.suiteClass()
+        if load_module or load_underscore:
+            return super().loadTestsFromModule(
+                    module, *args, pattern=pattern, **kws)
+        else:
+            return self.suiteClass()

@@ -14,7 +14,7 @@ class TestSDKExt(TestSDKBase):
         import logging
 
         from bb.utils import export_proxies
-        from oeqa.utils import avoid_paths_in_environ, make_logger_bitbake_compatible, subprocesstweak
+        from oeqa.utils import make_logger_bitbake_compatible, subprocesstweak
         from oeqa.sdkext.context import OESDKExtTestContext, OESDKExtTestContextExecutor
         from oeqa.utils import get_json_result_dir
 
@@ -47,9 +47,9 @@ class TestSDKExt(TestSDKBase):
         bb.utils.remove(sdk_dir, True)
         bb.utils.mkdirhier(sdk_dir)
         try:
-            subprocess.check_output([tcname, '-y', '-d', sdk_dir])
+            subprocess.check_output([tcname, '-y', '-d', sdk_dir], text=True)
         except subprocess.CalledProcessError as e:
-            msg = "Couldn't install the extensible SDK:\n%s" % e.output.decode("utf-8")
+            msg = "Couldn't install the extensible SDK:\n%s" % e.output
             logfn = os.path.join(sdk_dir, 'preparing_build_system.log')
             if os.path.exists(logfn):
                 msg += '\n\nContents of preparing_build_system.log:\n'

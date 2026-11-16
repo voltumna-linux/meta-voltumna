@@ -6,7 +6,6 @@
 
 import os
 import time
-import unittest
 import logging
 import re
 import json
@@ -15,7 +14,18 @@ import sys
 from unittest import TextTestResult as _TestResult
 from unittest import TextTestRunner as _TestRunner
 
-class OEStreamLogger(object):
+from oeqa.core.utils.test import getSuiteCases
+
+def _case_id(case):
+    # Failures in subtests are recorded against a subtest object, use the
+    # id of the test case it belongs to
+    return getattr(case, 'test_case', case).id()
+
+# setUpClass/setUpModule failures are reported against a placeholder whose id
+# names the class or module
+_setup_failure_re = re.compile(r"^(?:setUpModule|setUpClass) \((?P<name>.*)\)")
+
+class OEStreamLogger:
     def __init__(self, logger):
         self.logger = logger
         self.buffer = ""
@@ -36,15 +46,24 @@ class OEStreamLogger(object):
             handler.flush()
 
 class OETestResult(_TestResult):
+    # If a test has several results, e.g. from subtests, the status reported
+    # is the first of these which it has
+    status_priority = ('FAILED', 'ERROR', 'SKIPPED', 'EXPECTEDFAIL', 'PASSED')
+
     def __init__(self, tc, *args, **kwargs):
-        super(OETestResult, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.successes = []
         self.starttime = {}
         self.endtime = {}
         self.progressinfo = {}
         self.extraresults = {}
-        self.shownmsg = []
+        self.shownmsg = set()
+
+        # (status, message) results for each test id, and for setUpClass and
+        # setUpModule failures by class or module name
+        self.test_results = {}
+        self.setup_results = {}
 
         # Inject into tc so that TestDepends decorator can see results
         tc.results = self
@@ -58,25 +77,23 @@ class OETestResult(_TestResult):
         # May have been set by concurrencytest
         if test.id() not in self.starttime:
             self.starttime[test.id()] = time.time()
-        super(OETestResult, self).startTest(test)
+        super().startTest(test)
 
     def stopTest(self, test):
         self.endtime[test.id()] = time.time()
         if self.buffer:
             self.logged_output[test.id()] = (
                     sys.stdout.getvalue(), sys.stderr.getvalue())
-        super(OETestResult, self).stopTest(test)
+        super().stopTest(test)
         if test.id() in self.progressinfo:
             self.tc.logger.info(self.progressinfo[test.id()])
 
         # Print the errors/failures early to aid/speed debugging, its a pain
         # to wait until selftest finishes to see them.
-        for t in ['failures', 'errors', 'skipped', 'expectedFailures']:
-            for (scase, msg) in getattr(self, t):
-                if test.id() == scase.id():
-                    self.tc.logger.info(str(msg))
-                    self.shownmsg.append(test.id())
-                    break
+        for status, msg in self.test_results.get(test.id(), []):
+            if status != 'PASSED' and msg:
+                self.tc.logger.info(str(msg))
+                self.shownmsg.add(test.id())
 
     # Python 3.12 added this, stub it out for now
     def addDuration(self, test, elapsed):
@@ -96,45 +113,23 @@ class OETestResult(_TestResult):
         msg += " (successes=%d, skipped=%d, failures=%d, errors=%d)" % (len(self.successes), len(self.skipped), len(self.failures), len(self.errors))
         self.tc.logger.info(msg)
 
+    def _addResult(self, test, status, msg=None):
+        m = _setup_failure_re.match(str(test.id()))
+        if m:
+            self.setup_results.setdefault(m.group('name'), []).append((status, msg))
+        else:
+            self.test_results.setdefault(_case_id(test), []).append((status, msg))
+
     def _getTestResultDetails(self, case):
-        result_types = {'failures': 'FAILED', 'errors': 'ERROR', 'skipped': 'SKIPPED',
-                        'expectedFailures': 'EXPECTEDFAIL', 'successes': 'PASSED',
-                        'unexpectedSuccesses' : 'PASSED'}
-
-        for rtype in result_types:
-            found = False
-            for resultclass in getattr(self, rtype):
-                # unexpectedSuccesses are just lists, not lists of tuples
-                if isinstance(resultclass, tuple):
-                    scase, msg = resultclass
-                else:
-                    scase, msg = resultclass, None
-                if case.id() == scase.id():
-                    found = True
-                    break
-                scase_str = str(scase.id())
-
-                # When fails at module or class level the class name is passed as string
-                # so figure out to see if match
-                m = re.search(r"^setUpModule \((?P<module_name>.*)\).*$", scase_str)
-                if m:
-                    if case.__class__.__module__ == m.group('module_name'):
-                        found = True
-                        break
-
-                m = re.search(r"^setUpClass \((?P<class_name>.*)\).*$", scase_str)
-                if m:
-                    class_name = "%s.%s" % (case.__class__.__module__,
-                                            case.__class__.__name__)
-
-                    if class_name == m.group('class_name'):
-                        found = True
-                        break
-
-            if found:
-                return result_types[rtype], msg
-
-        return 'UNKNOWN', None
+        results = self.test_results.get(case.id())
+        if not results:
+            # The test didn't run, look for a class or module setup failure
+            cls = case.__class__
+            results = self.setup_results.get("%s.%s" % (cls.__module__, cls.__name__)) or \
+                      self.setup_results.get(cls.__module__)
+        if not results:
+            return 'UNKNOWN', None
+        return min(results, key=lambda r: self.status_priority.index(r[0]))
 
     def extractExtraResults(self, test, details = None):
         extraresults = None
@@ -153,25 +148,43 @@ class OETestResult(_TestResult):
 
     def addError(self, test, *args, details = None):
         self.extractExtraResults(test, details = details)
-        return super(OETestResult, self).addError(test, *args)
+        super().addError(test, *args)
+        self._addResult(test, 'ERROR', self.errors[-1][1])
 
     def addFailure(self, test, *args, details = None):
         self.extractExtraResults(test, details = details)
-        return super(OETestResult, self).addFailure(test, *args)
+        super().addFailure(test, *args)
+        self._addResult(test, 'FAILED', self.failures[-1][1])
+
+    def addSubTest(self, test, subtest, err):
+        super().addSubTest(test, subtest, err)
+        if err is not None:
+            if issubclass(err[0], test.failureException):
+                self._addResult(test, 'FAILED', self.failures[-1][1])
+            else:
+                self._addResult(test, 'ERROR', self.errors[-1][1])
+
+    # No details argument, so testtools passes the reason
+    def addSkip(self, test, reason):
+        super().addSkip(test, reason)
+        self._addResult(test, 'SKIPPED', reason)
 
     def addSuccess(self, test, details = None):
         #Added so we can keep track of successes too
         self.successes.append((test, None))
         self.extractExtraResults(test, details = details)
-        return super(OETestResult, self).addSuccess(test)
+        super().addSuccess(test)
+        self._addResult(test, 'PASSED')
 
     def addExpectedFailure(self, test, *args, details = None):
         self.extractExtraResults(test, details = details)
-        return super(OETestResult, self).addExpectedFailure(test, *args)
+        super().addExpectedFailure(test, *args)
+        self._addResult(test, 'EXPECTEDFAIL', self.expectedFailures[-1][1])
 
     def addUnexpectedSuccess(self, test, details = None):
         self.extractExtraResults(test, details = details)
-        return super(OETestResult, self).addUnexpectedSuccess(test)
+        super().addUnexpectedSuccess(test)
+        self._addResult(test, 'PASSED')
 
     def logDetails(self, json_file_dir=None, configuration=None, result_id=None,
             dump_streams=False):
@@ -243,7 +256,7 @@ class OETestResult(_TestResult):
         # Account for expected failures
         return not self.wasSuccessful() or len(self.expectedFailures)
 
-class OEListTestsResult(object):
+class OEListTestsResult:
     def wasSuccessful(self):
         return True
 
@@ -252,7 +265,7 @@ class OETestRunner(_TestRunner):
 
     def __init__(self, tc, *args, **kwargs):
         kwargs['stream'] = self.streamLoggerClass(tc.logger)
-        super(OETestRunner, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.tc = tc
         self.resultclass = OETestResult
 
@@ -260,68 +273,44 @@ class OETestRunner(_TestRunner):
         return self.resultclass(self.tc, self.stream, self.descriptions,
                 self.verbosity)
 
-    def _walk_suite(self, suite, func):
-        for obj in suite:
-            if isinstance(obj, unittest.suite.TestSuite):
-                if len(obj._tests):
-                    self._walk_suite(obj, func)
-            elif isinstance(obj, unittest.case.TestCase):
-                func(self.tc.logger, obj)
-                self._walked_cases = self._walked_cases + 1
-
     def _list_tests_name(self, suite):
-        self._walked_cases = 0
-
-        def _list_cases(logger, case):
-            oetags = []
-            if hasattr(case, '__oeqa_testtags'):
-                oetags = getattr(case, '__oeqa_testtags')
-            if oetags:
-                logger.info("%s (%s)" % (case.id(), ",".join(oetags)))
-            else:
-                logger.info("%s" % (case.id()))
+        cases = getSuiteCases(suite)
 
         self.tc.logger.info("Listing all available tests:")
-        self._walked_cases = 0
         self.tc.logger.info("test (tags)")
         self.tc.logger.info("-" * 80)
-        self._walk_suite(suite, _list_cases)
+        for case in cases:
+            oetags = getattr(case, '__oeqa_testtags', None)
+            if oetags:
+                self.tc.logger.info("%s (%s)" % (case.id(), ",".join(oetags)))
+            else:
+                self.tc.logger.info("%s" % (case.id()))
         self.tc.logger.info("-" * 80)
-        self.tc.logger.info("Total found:\t%s" % self._walked_cases)
+        self.tc.logger.info("Total found:\t%s" % len(cases))
 
     def _list_tests_class(self, suite):
-        self._walked_cases = 0
-
-        curr = {}
-        def _list_classes(logger, case):
-            if not 'module' in curr or curr['module'] != case.__module__:
-                curr['module'] = case.__module__
-                logger.info(curr['module'])
-
-            if not 'class' in curr  or curr['class'] != \
-                    case.__class__.__name__:
-                curr['class'] = case.__class__.__name__
-                logger.info(" -- %s" % curr['class'])
-
-            logger.info(" -- -- %s" % case._testMethodName)
-
         self.tc.logger.info("Listing all available test classes:")
-        self._walk_suite(suite, _list_classes)
+        module = cls = None
+        for case in getSuiteCases(suite):
+            if case.__module__ != module:
+                module = case.__module__
+                self.tc.logger.info(module)
+            if case.__class__.__name__ != cls:
+                cls = case.__class__.__name__
+                self.tc.logger.info(" -- %s" % cls)
+            self.tc.logger.info(" -- -- %s" % case._testMethodName)
 
     def _list_tests_module(self, suite):
-        self._walked_cases = 0
-
-        listed = []
-        def _list_modules(logger, case):
-            if not case.__module__ in listed:
-                if case.__module__.startswith('_'):
-                    logger.info("%s (hidden)" % case.__module__)
-                else:
-                    logger.info(case.__module__)
-                listed.append(case.__module__)
-
         self.tc.logger.info("Listing all available test modules:")
-        self._walk_suite(suite, _list_modules)
+        listed = set()
+        for case in getSuiteCases(suite):
+            module = case.__module__
+            if module not in listed:
+                if module.startswith('_'):
+                    self.tc.logger.info("%s (hidden)" % module)
+                else:
+                    self.tc.logger.info(module)
+                listed.add(module)
 
     def list_tests(self, suite, display_type):
         if display_type == 'name':
@@ -333,7 +322,7 @@ class OETestRunner(_TestRunner):
 
         return OEListTestsResult()
 
-class OETestResultJSONHelper(object):
+class OETestResultJSONHelper:
 
     testresult_filename = 'testresults.json'
 

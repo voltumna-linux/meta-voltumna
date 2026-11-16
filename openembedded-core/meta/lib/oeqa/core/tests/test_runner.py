@@ -36,5 +36,52 @@ class TestRunner(TestBase):
 
         fp.close()
 
+class TestResultStatus(TestBase):
+    def _statuses(self, modules):
+        tc = self._testLoader(modules=modules)
+        result = tc.runTests()
+        return {case_id: result._getTestResultDetails(case)[0]
+                for case_id, case in tc._registry['cases'].items()}
+
+    def test_result_status(self):
+        self.assertEqual(self._statuses(['results', 'resultsmodule']), {
+            'results.ResultsTest.testPass': 'PASSED',
+            'results.ResultsTest.testFail': 'FAILED',
+            'results.ResultsTest.testError': 'ERROR',
+            'results.ResultsTest.testSkip': 'SKIPPED',
+            'results.ResultsTest.testExpectedFailure': 'EXPECTEDFAIL',
+            'results.ResultsTest.testUnexpectedSuccess': 'PASSED',
+            'results.ResultsClassErrorTest.testClassError': 'ERROR',
+            'results.ResultsClassSkipTest.testClassSkip': 'SKIPPED',
+            'resultsmodule.ResultsModuleTest.testModuleError': 'ERROR',
+        })
+
+    def test_skip_tests(self):
+        # Tests and classes can be skipped by id prefix; a skipped class must
+        # not run its setUpClass()
+        tc = self._testLoader(modules=['skips'])
+        result = tc.runTests(skips=['skips.SkipsClassTest', 'skips.SkipsTest.testSkipsSkipped'])
+        statuses = {case_id: result._getTestResultDetails(case)[0]
+                    for case_id, case in tc._registry['cases'].items()}
+        self.assertEqual(statuses, {
+            'skips.SkipsClassTest.testSkipsClass': 'SKIPPED',
+            'skips.SkipsTest.testSkipsSkipped': 'SKIPPED',
+            'skips.SkipsTest.testSkipsRun': 'PASSED',
+        })
+
+    def test_td_vars(self):
+        tc = self._testLoader(modules=['tdvars'])
+        result = tc.runTests()
+        statuses = {case_id: result._getTestResultDetails(case)[0]
+                    for case_id, case in tc._registry['cases'].items()}
+        self.assertEqual(statuses, {'tdvars.TdVarsMissingTest.testTdVarsMissing': 'ERROR'})
+        self.assertIn("OEQAMissingVariable", result.errors[0][1])
+
+    def test_subtest_status(self):
+        self.assertEqual(self._statuses(['subtest']), {
+            'subtest.SubTestTest.testSubTestFail': 'FAILED',
+            'subtest.SubTestTest.testSubTestPass': 'PASSED',
+        })
+
 if __name__ == '__main__':
     unittest.main()
