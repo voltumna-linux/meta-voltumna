@@ -112,6 +112,42 @@ class TestDependsDecorator(TestBase):
             msg = 'Expected OEQADependency exception having a circular dependency'
             self.assertTrue(result, msg=msg)
 
+    def test_depends_run(self):
+        # Dependencies given relative to the class must be found when the
+        # tests run, otherwise the dependent tests are skipped
+        tests =  ['depends.DependsTest.testDependsFirst',
+                  'depends.DependsTest.testDependsSecond',
+                  'depends.DependsTest.testDependsThird',
+                  'depends.DependsTest.testDependsFourth',
+                  'depends.DependsTest.testDependsFifth']
+        tc = self._testLoader(modules=self.modules, tests=tests)
+        result = tc.runTests()
+        self.assertTrue(result.wasSuccessful())
+        self.assertEqual(result.skipped, [])
+        self.assertEqual(len(result.successes), len(tests))
+
+class TestDecoratorOrder(TestBase):
+    def test_decorator_order(self):
+        # Decorators are set up in the order they are applied, innermost first
+        tc = self._testLoader(modules=['timeout'])
+        case = tc._registry['cases']['timeout.TimeoutTest.testTimeoutDepends']
+        self.assertEqual([d.__class__.__name__ for d in case.decorators],
+                         ['OETimeout', 'OETestDepends'])
+
+class TestInheritedDecorators(TestBase):
+    modules = ['inherit']
+
+    def test_inherited_decorators(self):
+        # Each test case needs its own decorator instances, even when the
+        # test method is inherited by another test class
+        tc = self._testLoader(modules=self.modules)
+        cases = tc._registry['cases']
+        self.assertEqual(len(cases), 4)
+        for case in cases.values():
+            for d in case.decorators:
+                self.assertIs(d.case, case)
+        self.assertTrue(tc.runTests().wasSuccessful())
+
 class TestTimeoutDecorator(TestBase):
     modules = ['timeout']
 
@@ -132,6 +168,15 @@ class TestTimeoutDecorator(TestBase):
         self.assertFalse(tc.runTests().wasSuccessful(), msg=msg)
         msg = "OETestTimeout didn't restore SIGALRM"
         self.assertIs(alarm_signal, signal.getsignal(signal.SIGALRM), msg=msg)
+
+    def test_timeout_setup_fail(self):
+        tests = ['timeout.TimeoutSetUpFailTest.testTimeoutSetUpFail']
+        alarm_signal = signal.getsignal(signal.SIGALRM)
+        tc = self._testLoader(modules=self.modules, tests=tests)
+        self.assertFalse(tc.runTests().wasSuccessful())
+        # signal.alarm() returns the time left on any previous alarm
+        self.assertEqual(signal.alarm(0), 0, msg="OETestTimeout alarm left running after setUp failed")
+        self.assertIs(alarm_signal, signal.getsignal(signal.SIGALRM), msg="OETestTimeout didn't restore SIGALRM")
 
     def test_timeout_cancel(self):
         tests = ['timeout.TimeoutTest.testTimeoutSkip', 'timeout.TimeoutTest.testTimeoutDepends', 'timeout.TimeoutTest.testTimeoutUnrelated']

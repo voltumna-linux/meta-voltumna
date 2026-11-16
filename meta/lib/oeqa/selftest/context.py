@@ -6,12 +6,10 @@
 
 import os
 import time
-import glob
 import sys
 import importlib
 import subprocess
 import unittest
-from random import choice
 
 import oeqa
 import oe
@@ -19,7 +17,7 @@ import bb.utils
 import bb.tinfoil
 
 from oeqa.core.context import OETestContext, OETestContextExecutor
-from oeqa.core.exception import OEQAPreRun, OEQATestNotFound
+from oeqa.core.exception import OEQAPreRun
 
 from oeqa.utils.commands import runCmd, get_bb_vars, get_test_layer
 
@@ -71,8 +69,8 @@ def removebuilddir(d):
     bb.utils.prunedir(d, ionice=True)
 
 class OESelftestTestContext(OETestContext):
-    def __init__(self, td=None, logger=None, machines=None, config_paths=None, newbuilddir=None, keep_builddir=None):
-        super(OESelftestTestContext, self).__init__(td, logger)
+    def __init__(self, td=None, logger=None, config_paths=None, newbuilddir=None, keep_builddir=None):
+        super().__init__(td, logger)
 
         self.config_paths = config_paths
         self.newbuilddir = newbuilddir
@@ -172,12 +170,6 @@ class OESelftestTestContext(OETestContext):
         else:
             return NonConcurrentTestSuite(suites, processes, self.setup_builddir, self.removebuilddir, self.bb_vars)
 
-    def runTests(self, processes=None, machine=None, skips=[]):
-        return super(OESelftestTestContext, self).runTests(processes, skips)
-
-    def listTests(self, display_type, machine=None):
-        return super(OESelftestTestContext, self).listTests(display_type)
-
 class OESelftestTestContextExecutor(OETestContextExecutor):
     _context_class = OESelftestTestContext
     _script_executor = 'oe-selftest'
@@ -261,7 +253,7 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
         bb.utils.mkdirhier(logdir)
         args.output_log = logdir + '/%s-results-%s.log' % (self.name, args.test_start_time)
 
-        super(OESelftestTestContextExecutor, self)._process_args(logger, args)
+        super()._process_args(logger, args)
 
         if args.list_modules:
             args.list_tests = 'module'
@@ -270,16 +262,17 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
         elif args.list_tests:
             args.list_tests = 'name'
 
-        self.tc_kwargs['init']['td'] = bbvars
+        self.td = bbvars
 
         builddir = os.environ.get("BUILDDIR")
-        self.tc_kwargs['init']['config_paths'] = {}
-        self.tc_kwargs['init']['config_paths']['testlayer_path'] = get_test_layer(bbvars["BBLAYERS"])
-        self.tc_kwargs['init']['config_paths']['builddir'] = builddir
-        self.tc_kwargs['init']['config_paths']['localconf'] = os.path.join(builddir, "conf/local.conf")
-        self.tc_kwargs['init']['config_paths']['bblayers'] = os.path.join(builddir, "conf/bblayers.conf")
-        self.tc_kwargs['init']['newbuilddir'] = args.newbuilddir
-        self.tc_kwargs['init']['keep_builddir'] = args.keep_builddir
+        self.context_args['config_paths'] = {
+            'testlayer_path': get_test_layer(bbvars["BBLAYERS"]),
+            'builddir': builddir,
+            'localconf': os.path.join(builddir, "conf/local.conf"),
+            'bblayers': os.path.join(builddir, "conf/bblayers.conf"),
+        }
+        self.context_args['newbuilddir'] = args.newbuilddir
+        self.context_args['keep_builddir'] = args.keep_builddir
 
         def tag_filter(tags):
             if args.exclude_tags:
@@ -291,10 +284,12 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
             return False
 
         if args.select_tags or args.exclude_tags:
-            self.tc_kwargs['load']['tags_filter'] = tag_filter
+            self.tags_filter = tag_filter
 
-        self.tc_kwargs['run']['skips'] = args.skips
-        self.tc_kwargs['run']['processes'] = args.processes
+        self.skips = args.skips
+        self.processes = args.processes
+
+        self.module_paths = self._get_cases_paths(self.td['BBPATH'].split(':'))
 
     def _pre_run(self):
         def _check_required_env_variables(vars):
@@ -365,15 +360,14 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
             vars['BBLAYERS'] = str(d.getVar('BBLAYERS'))
         self.tc.set_variables(vars)
 
-    def get_json_result_dir(self, args):
+    def _get_json_result_dir(self, args):
         json_result_dir = os.path.join(self.tc.td["LOG_DIR"], 'oeqa')
         if "OEQA_JSON_RESULT_DIR" in self.tc.td:
             json_result_dir = self.tc.td["OEQA_JSON_RESULT_DIR"]
 
         return json_result_dir
 
-    def get_configuration(self, args):
-        import platform
+    def _get_configuration(self, args):
         from oeqa.utils.metadata import metadata_from_bb
         metadata = metadata_from_bb()
         oeselftest_metadata = get_oeselftest_metadata(args)
@@ -386,48 +380,7 @@ class OESelftestTestContextExecutor(OETestContextExecutor):
                         'OESELFTEST_METADATA': oeselftest_metadata}
         return configuration
 
-    def get_result_id(self, configuration):
+    def _get_result_id(self, configuration):
         return '%s_%s_%s_%s' % (configuration['TEST_TYPE'], configuration['HOST_DISTRO'], configuration['MACHINE'], configuration['STARTTIME'])
-
-    def _internal_run(self, logger, args):
-        self.module_paths = self._get_cases_paths(
-                self.tc_kwargs['init']['td']['BBPATH'].split(':'))
-
-        self.tc = self._context_class(**self.tc_kwargs['init'])
-        try:
-            self.tc.loadTests(self.module_paths, **self.tc_kwargs['load'])
-        except OEQATestNotFound as ex:
-            logger.error(ex)
-            sys.exit(1)
-
-        if args.list_tests:
-            rc = self.tc.listTests(args.list_tests, **self.tc_kwargs['list'])
-        else:
-            self._pre_run()
-            rc = self.tc.runTests(**self.tc_kwargs['run'])
-            configuration = self.get_configuration(args)
-            rc.logDetails(self.get_json_result_dir(args),
-                          configuration,
-                          self.get_result_id(configuration))
-            rc.logSummary(self.name)
-
-        return rc
-
-    def run(self, logger, args):
-        self._process_args(logger, args)
-
-        rc = None
-        try:
-             rc = self._internal_run(logger, args)
-        finally:
-            config_paths = self.tc_kwargs['init']['config_paths']
-
-            output_link = os.path.join(os.path.dirname(args.output_log),
-                    "%s-results.log" % self.name)
-            if os.path.lexists(output_link):
-                os.unlink(output_link)
-            os.symlink(args.output_log, output_link)
-
-        return rc
 
 _executor_class = OESelftestTestContextExecutor

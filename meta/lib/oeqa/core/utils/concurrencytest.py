@@ -18,7 +18,6 @@ import os
 import sys
 import traceback
 import unittest
-import subprocess
 import testtools
 import threading
 import time
@@ -51,12 +50,17 @@ _all__ = [
 class BBThreadsafeForwardingResult(ThreadsafeForwardingResult):
 
     def __init__(self, target, semaphore, threadnum, totalinprocess, totaltests, output, finalresult):
-        super(BBThreadsafeForwardingResult, self).__init__(target, semaphore)
+        super().__init__(target, semaphore)
         self.threadnum = threadnum
         self.totalinprocess = totalinprocess
         self.totaltests = totaltests
-        self.buffer = True
+        # Don't set self.buffer, the output comes through outputbuf. Buffering
+        # here would swap sys.stdout/stderr in each reader thread, unlocked,
+        # and could leave them replaced after the tests have run.
         self.outputbuf = output
+        # The process' output accumulates in outputbuf; this is how much of
+        # it was given to earlier results
+        self.outputoffset = 0
         self.finalresult = finalresult
         self.finalresult.buffer = True
         self.target = target
@@ -65,6 +69,11 @@ class BBThreadsafeForwardingResult(ThreadsafeForwardingResult):
         self.semaphore.acquire()
         try:
             if self._test_start:
+                # Count failing tests across all the processes. This is called
+                # once per result, unlike the add* methods of the target which
+                # testtools may call twice.
+                if method.__name__ in ('addError', 'addFailure'):
+                    self.finalresult.failedtests.add(test.id())
                 self.result.starttime[test.id()] = self._test_start.timestamp()
                 self.result.threadprogress[self.threadnum].append(test.id())
                 totalprogress = sum(len(x) for x in self.result.threadprogress.values())
@@ -75,13 +84,18 @@ class BBThreadsafeForwardingResult(ThreadsafeForwardingResult):
                     totalprogress,
                     self.totaltests,
                     "{0:.2f}".format(time.time()-self._test_start.timestamp()),
-                    self.target.failed_tests,
+                    len(self.finalresult.failedtests),
                     test.id())
         finally:
             self.semaphore.release()
-        self.finalresult._stderr_buffer = io.StringIO(initial_value=self.outputbuf.getvalue().decode("utf-8"))
+        # The process runs its tests one at a time, so the output since the
+        # previous result is this test's. stdout and stderr share one pipe so
+        # it is all given as stderr.
+        output = self.outputbuf.getvalue()
+        self.finalresult._stderr_buffer = io.StringIO(initial_value=output[self.outputoffset:].decode("utf-8"))
         self.finalresult._stdout_buffer = io.StringIO()
-        super(BBThreadsafeForwardingResult, self)._add_result_with_semaphore(method, test, *args, **kwargs)
+        self.outputoffset = len(output)
+        super()._add_result_with_semaphore(method, test, *args, **kwargs)
 
 class ProxyTestResult:
     # a very basic TestResult proxy, in order to modify add* calls
@@ -156,6 +170,9 @@ def outSideTestaddError(self, offset, line):
     test_name = line[offset:-1].decode('utf8')
     self.parser._current_test = subunit.RemotedTestCase(test_name)
     self.parser.current_test_description = test_name
+    # The outcome is followed by stopTest(), which testtools needs to match
+    # a startTest() or it loses track and breaks on the following tests
+    self.parser.client.startTest(self.parser._current_test)
     self.parser._state = self.parser._reading_error_details
     self.parser._reading_error_details.set_simple()
     self.parser.subunitLineReceived(line)
@@ -171,6 +188,9 @@ def outSideTestaddSkip(self, offset, line):
     test_name = line[offset:-1].decode('utf8')
     self.parser._current_test = subunit.RemotedTestCase(test_name)
     self.parser.current_test_description = test_name
+    # The outcome is followed by stopTest(), which testtools needs to match
+    # a startTest() or it loses track and breaks on the following tests
+    self.parser.client.startTest(self.parser._current_test)
     self.parser._state = self.parser._reading_skip_details
     self.parser._reading_skip_details.set_simple()
     self.parser.subunitLineReceived(line)
@@ -178,23 +198,12 @@ def outSideTestaddSkip(self, offset, line):
 subunit._OutSideTest.addSkip = outSideTestaddSkip
 
 #
-# A dummy structure to add to io.StringIO so that the .buffer object
-# is available and accepts writes. This allows unittest with buffer=True
-# to interact ok with subunit which wants to access sys.stdout.buffer.
-#
-class dummybuf(object):
-   def __init__(self, parent):
-       self.p = parent
-   def write(self, data):
-       self.p.write(data.decode("utf-8"))
-
-#
 # Taken from testtools.ConncurrencyTestSuite but modified for OE use
 #
 class ConcurrentTestSuite(unittest.TestSuite):
 
     def __init__(self, suite, processes, setupfunc, removefunc, bb_vars):
-        super(ConcurrentTestSuite, self).__init__([suite])
+        super().__init__([suite])
         self.processes = processes
         self.setupfunc = setupfunc
         self.removefunc = removefunc
@@ -207,6 +216,7 @@ class ConcurrentTestSuite(unittest.TestSuite):
             queue = Queue()
             semaphore = threading.Semaphore(1)
             result.threadprogress = {}
+            result.failedtests = set()
             for i, (testserver, testnum, output) in enumerate(testservers):
                 result.threadprogress[i] = []
                 process_result = BBThreadsafeForwardingResult(

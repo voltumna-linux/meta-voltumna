@@ -81,7 +81,7 @@ class OETestDepends(OETestDiscover):
     attrs = ('depends',)
 
     def bind(self, registry, case):
-        super(OETestDepends, self).bind(registry, case)
+        super().bind(registry, case)
         if not registry.get('depends'):
             registry['depends'] = {}
         _add_depends(registry['depends'], case, self.depends)
@@ -95,4 +95,4 @@ class OETestDepends(OETestDiscover):
             return [registry['cases'][case_id] for case_id in registry['cases']]
 
     def setUpDecorator(self):
-        _skipTestDependency(self.case, self.depends)
+        _skipTestDependency(self.case, self.case.tc._registry['depends'][self.case.id()])

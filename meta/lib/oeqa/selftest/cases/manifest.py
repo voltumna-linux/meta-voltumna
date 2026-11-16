@@ -34,14 +34,13 @@ class VerifyManifest(OESelftestTestCase):
         except OSError as e:
             self.logger.debug("{}: checking of {} failed"\
                     .format(self.classname, manifest))
-            raise e
+            raise
 
         return manifest_errors
 
     #this will possibly move from here
     @classmethod
-    def get_dir_from_bb_var(self, bb_var, target = None):
-        target == self.buildtarget if target == None else target
+    def get_dir_from_bb_var(self, bb_var, target):
         directory = get_bb_var(bb_var, target);
         if not directory or not os.path.isdir(directory):
             self.logger.debug("{}: {} points to {} when target = {}"\
@@ -52,7 +51,7 @@ class VerifyManifest(OESelftestTestCase):
     @classmethod
     def setUpClass(self):
 
-        super(VerifyManifest, self).setUpClass()
+        super().setUpClass()
         self.buildtarget = 'core-image-minimal'
         self.classname = 'VerifyManifest'
 
@@ -87,14 +86,14 @@ class VerifyManifest(OESelftestTestCase):
                          host = 'nativesdk-packagegroup-sdk-host')
         try:
             mdir = self.get_dir_from_bb_var('SDK_DEPLOY', self.buildtarget)
-            for k in d_target.keys():
+            for k in d_target:
                 toolchain_outputname = get_bb_var('TOOLCHAIN_OUTPUTNAME', self.buildtarget)
                 mfilename[k] = "{}.{}.manifest".format(toolchain_outputname, k)
                 mpath[k] = os.path.join(mdir, mfilename[k])
                 if not os.path.isfile(mpath[k]):
                     self.logger.debug("{}: {} does not exist".format(
                         self.classname, mpath[k]))
-                    raise IOError
+                    raise OSError
                 m_entry[k] = ManifestEntry(mpath[k])
 
                 pkgdata_dir[k] = self.get_dir_from_bb_var('PKGDATA_DIR',
@@ -104,16 +103,16 @@ class VerifyManifest(OESelftestTestCase):
                 if not os.path.exists(reverse_dir[k]):
                     self.logger.debug("{}: {} does not exist".format(
                         self.classname, reverse_dir[k]))
-                    raise IOError
+                    raise OSError
         except OSError:
             raise self.skipTest("{}: Error in obtaining manifest dirs"\
                 .format(self.classname))
-        except IOError:
+        except OSError:
             msg = "{}: Error cannot find manifests in the specified dir:\n{}"\
                     .format(self.classname, mdir)
             self.fail(msg)
 
-        for k in d_target.keys():
+        for k in d_target:
             self.logger.debug("{}: Check manifest {}".format(
                 self.classname, m_entry[k].file))
 
@@ -137,18 +136,18 @@ class VerifyManifest(OESelftestTestCase):
             mfilename = get_bb_var("IMAGE_LINK_NAME", self.buildtarget)\
                     + ".manifest"
             mpath = os.path.join(mdir, mfilename)
-            if not os.path.isfile(mpath): raise IOError
+            if not os.path.isfile(mpath): raise OSError
             m_entry = ManifestEntry(mpath)
 
             pkgdata_dir = {}
             pkgdata_dir = self.get_dir_from_bb_var('PKGDATA_DIR',
                                                 self.buildtarget)
             revdir = os.path.join(pkgdata_dir, 'runtime-reverse')
-            if not os.path.exists(revdir): raise IOError
+            if not os.path.exists(revdir): raise OSError
         except OSError:
             raise self.skipTest("{}: Error in obtaining manifest dirs"\
                 .format(self.classname))
-        except IOError:
+        except OSError:
             msg = "{}: Error cannot find manifests in dir:\n{}"\
                     .format(self.classname, mdir)
             self.fail(msg)

@@ -16,7 +16,7 @@ class OESDKTestContext(OETestContext):
 
     def __init__(self, td=None, logger=None, sdk_dir=None, sdk_env=None,
             target_pkg_manifest=None, host_pkg_manifest=None):
-        super(OESDKTestContext, self).__init__(td, logger)
+        super().__init__(td, logger)
 
         self.sdk_dir = sdk_dir
         self.sdk_env = sdk_env
@@ -34,12 +34,12 @@ class OESDKTestContext(OETestContext):
         if regex:
             # do regex match
             pat = re.compile(pkg)
-            for p in manifest.keys():
+            for p in manifest:
                 if pat.search(p):
                     return True
         else:
             # do exact match
-            if pkg in manifest.keys():
+            if pkg in manifest:
                 return True
         return False
 
@@ -63,7 +63,7 @@ class OESDKTestContextExecutor(OETestContextExecutor):
     default_test_data = None
 
     def register_commands(self, logger, subparsers):
-        super(OESDKTestContextExecutor, self).register_commands(logger, subparsers)
+        super().register_commands(logger, subparsers)
 
         sdk_group = self.parser.add_argument_group('sdk options')
         sdk_group.add_argument('--sdk-env', action='store',
@@ -99,21 +99,20 @@ class OESDKTestContextExecutor(OETestContextExecutor):
         return pkg_manifest
 
     def _process_args(self, logger, args):
-        super(OESDKTestContextExecutor, self)._process_args(logger, args)
+        super()._process_args(logger, args)
 
-        self.tc_kwargs['init']['sdk_dir'] = args.sdk_dir
-        self.tc_kwargs['init']['sdk_env'] = self.sdk_env
-        self.tc_kwargs['init']['target_pkg_manifest'] = \
+        self.context_args['sdk_dir'] = args.sdk_dir
+        self.context_args['sdk_env'] = self.sdk_env
+        self.context_args['target_pkg_manifest'] = \
                 OESDKTestContextExecutor._load_manifest(args.target_manifest)
-        self.tc_kwargs['init']['host_pkg_manifest'] = \
+        self.context_args['host_pkg_manifest'] = \
                 OESDKTestContextExecutor._load_manifest(args.host_manifest)
-        self.tc_kwargs['run']['processes'] = args.processes
+        self.processes = args.processes
 
     @staticmethod
     def _get_sdk_environs(sdk_dir):
         sdk_env = {}
 
-        environ_pattern = sdk_dir + '/environment-setup-*'
         full_sdk_env = glob.glob(sdk_dir + '/environment-setup-*')
         for env in full_sdk_env:
             m = re.search('environment-setup-(.*)', env)
@@ -151,6 +150,6 @@ class OESDKTestContextExecutor(OETestContextExecutor):
                    "environment (%s) specified" % args.sdk_env, self.name)
 
         self.sdk_env = sdk_envs[args.sdk_env]
-        return super(OESDKTestContextExecutor, self).run(logger, args)
+        return super().run(logger, args)
 
 _executor_class = OESDKTestContextExecutor

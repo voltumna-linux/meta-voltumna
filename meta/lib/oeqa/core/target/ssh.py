@@ -9,7 +9,6 @@ import time
 import select
 import logging
 import subprocess
-import codecs
 
 from . import OETarget
 
@@ -27,7 +26,7 @@ class OESSHTarget(OETarget):
             fileHandler.setFormatter(formatter)
             logger.addHandler(fileHandler)
 
-        super(OESSHTarget, self).__init__(logger)
+        super().__init__(logger)
         self.ip = ip
         self.server_ip = server_ip
         self.server_port = server_port
@@ -293,10 +292,10 @@ def SSHCall(command, logger, timeout=None, raw=False, **opts):
                 logger.debug('No output from SSH call')
 
         # timout or not, make sure process exits and is not hanging
-        if process.returncode == None:
+        if process.returncode is None:
             try:
                 process.wait(timeout=5)
-            except TimeoutExpired:
+            except subprocess.TimeoutExpired:
                 try:
                     process.kill()
                 except OSError:
@@ -339,7 +338,7 @@ def SSHCall(command, logger, timeout=None, raw=False, **opts):
         # whilst running and ensure we don't leave a process behind.
         if process.poll() is None:
             process.kill()
-        if process.returncode == None:
+        if process.returncode is None:
             process.wait()
         logger.debug('Something went wrong, killing SSH process')
         raise

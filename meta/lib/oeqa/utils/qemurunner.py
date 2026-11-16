@@ -18,7 +18,6 @@ import select
 import errno
 import string
 import threading
-import codecs
 import tempfile
 from collections import defaultdict
 from contextlib import contextmanager
@@ -119,7 +118,7 @@ class QemuRunner:
             self.logger.debug("Created listening socket for qemu serial console on: 127.0.0.1:%s" % port)
             return (sock, port)
 
-        except socket.error:
+        except OSError:
             sock.close()
             raise
 
@@ -216,7 +215,7 @@ class QemuRunner:
             if self.serial_ports >= 2:
                 self.threadsock, threadport = self.create_socket()
             self.server_socket, self.serverport = self.create_socket()
-        except socket.error as msg:
+        except OSError as msg:
             self.logger.error("Failed to create listening socket: %s" % msg[1])
             return False
 
@@ -316,8 +315,7 @@ class QemuRunner:
                 % (self.runqemu.poll(), os.path.isfile(self.qemu_pidfile), str(qemu_pid), os.path.exists("/proc/" + str(qemu_pid))))
 
             # Dump all processes to help us to figure out what is going on...
-            ps = subprocess.Popen(['ps', 'axww', '-o', 'pid,ppid,pri,ni,command '], stdout=subprocess.PIPE).communicate()[0]
-            processes = ps.decode("utf-8")
+            processes = subprocess.Popen(['ps', 'axww', '-o', 'pid,ppid,pri,ni,command '], stdout=subprocess.PIPE, text=True).communicate()[0]
             self.logger.debug("Running processes:\n%s" % processes)
             op = getOutput(output)
             self.stop()
@@ -858,7 +856,7 @@ class LoggingThread(threading.Thread):
     def recv(self, count, sock):
         try:
             data = sock.recv(count)
-        except socket.error as e:
+        except OSError as e:
             if e.errno == errno.EAGAIN or e.errno == errno.EWOULDBLOCK:
                 return b''
             else:

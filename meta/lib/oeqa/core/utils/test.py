@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: MIT
 #
 
-import os
 import inspect
 import unittest
 
@@ -63,12 +62,6 @@ def getCaseModule(test_case):
         Returns test case module name.
     """
     return test_case.__module__
-
-def getCaseClass(test_case):
-    """
-        Returns test case class name.
-    """
-    return test_case.__class__.__name__
 
 def getCaseID(test_case):
     """
