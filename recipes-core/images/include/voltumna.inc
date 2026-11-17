@@ -10,7 +10,7 @@ IMAGE_INSTALL_append += "${MACHINE_ESSENTIAL_EXTRA_RRECOMMENDS} \
         os-release systemd-analyze systemd-journal-upload bash coreutils util-linux util-linux-sfdisk \
 	glibc-utils procps psmisc ldd less tzdata tzdata-europe lsof socat stress-ng sed tar xz \
 	grep gawk findutils file nano vim debianutils 96boards-tools dosfstools openssh-sftp-server gzip sudo \
-	nfs-utils-client iproute2 ethtool inetutils-ping inetutils-telnet net-tools curl libnss-resolve \
+	nfs-utils-client iproute2 ethtool inetutils-ping inetutils-telnet net-tools curl libcurl libnss-resolve \
 	strace ltrace gdb libasan libubsan e2fsprogs-mke2fs picocom lshw diffutils"
 IMAGE_INSTALL:append:x86 = " thermald liblsan libtsan nvme-cli"
 IMAGE_INSTALL:append:x86-64 = " thermald liblsan libtsan nvme-cli"
