@@ -34,9 +34,12 @@ PTESTS_FAST = "\
     libatomic-ops \
     libcap \
     libcheck \
+    libclass-inspector-perl \
     libconfig \
     libconvert-asn1-perl \
     libexif \
+    libfile-sharedir-install-perl \
+    libfile-sharedir-perl \
     libgpg-error\
     libksba \
     libmd \

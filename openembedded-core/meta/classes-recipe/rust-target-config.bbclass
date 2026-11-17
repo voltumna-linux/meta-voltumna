@@ -225,7 +225,7 @@ TARGET_C_INT_WIDTH[mipsel] = "32"
 MAX_ATOMIC_WIDTH[mipsel] = "32"
 
 ## mips64-unknown-linux-{gnu, musl}
-DATA_LAYOUT[mips64] = "E-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128"
+DATA_LAYOUT[mips64] = "E-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128"
 TARGET_ENDIAN[mips64] = "big"
 TARGET_POINTER_WIDTH[mips64] = "64"
 TARGET_C_INT_WIDTH[mips64] = "32"
@@ -239,7 +239,7 @@ TARGET_C_INT_WIDTH[mips64-n32] = "32"
 MAX_ATOMIC_WIDTH[mips64-n32] = "64"
 
 ## mips64el-unknown-linux-{gnu, musl}
-DATA_LAYOUT[mips64el] = "e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128"
+DATA_LAYOUT[mips64el] = "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128"
 TARGET_ENDIAN[mips64el] = "little"
 TARGET_POINTER_WIDTH[mips64el] = "64"
 TARGET_C_INT_WIDTH[mips64el] = "32"
@@ -418,6 +418,10 @@ def rust_gen_target(d, thing, wd, arch):
         tspec['llvm-abiname'] = d.getVar('TUNE_RISCV_ABI')
     if "loongarch64" in tspec['llvm-target']:
         tspec['llvm-abiname'] = "lp64d"
+    if arch_abi == "mips64-n32":
+        tspec['llvm-abiname'] = "n32"
+    elif rust_arch in ("mips64", "mips64el"):
+        tspec['llvm-abiname'] = "n64"
     if "powerpc64le" in tspec['llvm-target']:
         tspec['llvm-abiname'] = "elfv2"
     elif "powerpc64" in tspec['llvm-target']:
