@@ -1522,6 +1522,10 @@ if True:
 
     # Shows the edit project page
     def project(request, pid):
+        # without build mode there is nothing to configure
+        if not project_enable:
+            return redirect('projectbuilds', pid=pid)
+
         project = Project.objects.get(pk=pid)
 
         if '1' == os.environ.get('TOASTER_PROJECTSPECIFIC'):
@@ -1531,6 +1535,11 @@ if True:
                 return redirect("%s?%s" % (reverse(project_specific, args=(project.pk,)),params))
             else:
                 return redirect(reverse(project_specific, args=(project.pk,)))
+        # projects without a release (e.g. from TOASTER_PROJECT) only
+        # hold command line builds
+        if project.release is None:
+            return redirect('projectbuilds', pid=pid)
+
         context = {"project": project}
         return toaster_render(request, "project.html", context)
 
@@ -1815,11 +1824,15 @@ if True:
         return(vars_managed,sorted(vars_fstypes),vars_disallowed)
 
     def projectconf(request, pid):
+        if not project_enable:
+            return redirect('projectbuilds', pid=pid)
 
         try:
             prj = Project.objects.get(id = pid)
         except Project.DoesNotExist:
             return HttpResponseNotFound("<h1>Project id " + pid + " is unavailable</h1>")
+        if prj.release is None:
+            return redirect('projectbuilds', pid=pid)
 
         # remove disallowed and externally managed varaibles from this list
         vars_managed,vars_fstypes,vars_disallowed = get_project_configvars_context()
