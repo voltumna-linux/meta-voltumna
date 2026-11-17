@@ -43,7 +43,7 @@ from bb.msg import BBLogFormatter as formatter
 from django.db import models
 from pprint import pformat
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.db import transaction
 
@@ -143,7 +143,14 @@ class ORMWrapper(object):
     # pylint: disable=bad-continuation
     # we do not follow the python conventions for continuation indentation due to long lines here
 
-    def get_or_create_build_object(self, brbe):
+    def get_or_create_build_object(self, brbe, project_name=None,
+                                   started_on=None):
+        """
+        project_name: for command line builds, the project to put the build
+        into (created if needed); None or empty for the default project
+        started_on: start time of a new Build object; defaults to now
+        """
+        project_name = project_name.strip() if project_name else None
         prj = None
         buildrequest = None
         if brbe is not None:
@@ -152,6 +159,12 @@ class ORMWrapper(object):
             br, _ = brbe.split(":")
             buildrequest = BuildRequest.objects.get(pk=br)
             prj = buildrequest.project
+        elif project_name:
+            # CLI build with TOASTER_PROJECT set
+            prj = Project.objects.filter(name=project_name).first()
+            if prj is None:
+                prj = Project.objects.create_project(project_name, None)
+            logger.debug("buildinfohelper: project is %s" % prj)
         else:
             # CLI build
             prj = Project.objects.get_or_create_default_project()
@@ -164,7 +177,7 @@ class ORMWrapper(object):
             build.save()
         else:
             # create new Build object
-            now = timezone.now()
+            now = started_on or timezone.now()
             build = Build.objects.create(
                 project=prj,
                 started_on=now,
@@ -206,7 +219,8 @@ class ORMWrapper(object):
             result.append(obj)
         return result
 
-    def update_build_stats_and_outcome(self, build, errors, warnings, taskfailures):
+    def update_build_stats_and_outcome(self, build, errors, warnings, taskfailures,
+                                       completed_on=None):
         assert isinstance(build,Build)
         assert isinstance(errors, int)
         assert isinstance(warnings, int)
@@ -224,7 +238,7 @@ class ORMWrapper(object):
         if errors or taskfailures:
             outcome = Build.FAILED
 
-        build.completed_on = timezone.now()
+        build.completed_on = completed_on or timezone.now()
         build.outcome = outcome
         build.save()
 
@@ -348,8 +362,7 @@ class ORMWrapper(object):
         # and therefore we return the 'real' recipe rather than the build
         # history copy of the recipe.
         if  recipe_information['layer_version'].build is not None and \
-            recipe_information['layer_version'].build.project == \
-                Project.objects.get_or_create_default_project():
+            recipe_information['layer_version'].build.get_buildrequest() is None:
             return recipe
 
         if built_recipe is None:
@@ -394,7 +407,7 @@ class ORMWrapper(object):
         # If we're doing a command line build then associate this new layer with the
         # project to avoid it 'contaminating' toaster data
         project = None
-        if build_obj.project == Project.objects.get_or_create_default_project():
+        if build_obj.get_buildrequest() is None:
             project = build_obj.project
 
         layer_version_object, _ = Layer_Version.objects.get_or_create(
@@ -912,6 +925,10 @@ class BuildInfoHelper(object):
 
         self.project = None
 
+        # time of the latest event that has one; event logs can be replayed
+        # long after the build, so build times are taken from the events
+        self.event_time = None
+
         logger.debug("buildinfohelper: Build info helper inited %s" % vars(self))
 
 
@@ -924,9 +941,14 @@ class BuildInfoHelper(object):
         data on the bitbake server
         """
         if not 'build' in self.internal_state or not self.internal_state['build']:
-            # create the Build object
+            # create the Build object; command line builds go into the
+            # project named by TOASTER_PROJECT, if set
+            project_name = None
+            if self.brbe is None:
+                project_name, _ = self.server.runCommand(["getVariable", "TOASTER_PROJECT"])
             self.internal_state['build'] = \
-                self.orm_wrapper.get_or_create_build_object(self.brbe)
+                self.orm_wrapper.get_or_create_build_object(
+                    self.brbe, project_name, self.event_time)
 
         build = self.internal_state['build']
 
@@ -1089,6 +1111,15 @@ class BuildInfoHelper(object):
             except NotExisting as nee:
                 logger.warning("buildinfohelper: cannot identify layer exception:%s ", nee)
 
+    def update_event_time(self, event):
+        """Remember the time of events that carry one"""
+        if isinstance(event, logging.LogRecord):
+            secs = event.created
+        else:
+            secs = getattr(event, 'time', None)
+        if isinstance(secs, (int, float)):
+            self.event_time = datetime.fromtimestamp(secs, dt_timezone.utc)
+
     def store_started_build(self):
         self._ensure_build()
 
@@ -1196,7 +1227,8 @@ class BuildInfoHelper(object):
     def update_build_information(self, event, errors, warnings, taskfailures):
         self._ensure_build()
         self.orm_wrapper.update_build_stats_and_outcome(
-            self.internal_state['build'], errors, warnings, taskfailures)
+            self.internal_state['build'], errors, warnings, taskfailures,
+            self.event_time)
 
     def store_started_task(self, event):
         assert isinstance(event, (bb.runqueue.sceneQueueTaskStarted, bb.runqueue.runQueueTaskStarted, bb.runqueue.runQueueTaskSkipped))
