@@ -5,6 +5,9 @@ LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=bbea815ee2795b2f4230826c0c6b8814"
 
 DEPENDS = "rsync-native llvm-native libcap"
+# net: libbpf (elfutils, zlib), YNL code generation (python3-pyyaml-native,
+# python3-jsonschema-native), reuseport_bpf_numa (numactl) and tcp_mmap (openssl)
+DEPENDS += "elfutils numactl openssl python3-jsonschema-native python3-pyyaml-native zlib"
 
 S = "${UNPACKDIR}"
 
@@ -23,6 +26,24 @@ SRC_URI += "file://run-ptest \
             file://0001-selftests-filelock-fix-the-test-plan-count-in-ofdloc.patch \
             file://0001-selftests-cgroup-memcontrol-keep-anon-page-touches-f.patch \
             file://0001-selftests-filesystems-idmapped_tmpfile-chown-the-lay.patch \
+            file://0001-selftests-core-fix-unshare_test-with-large-fs.nr_ope.patch \
+            file://0001-selftests-proc-proc-empty-vm-treat-pkey_alloc-ENOSPC.patch \
+            file://0001-selftests-proc-read-tolerate-tasks-exiting-during-th.patch \
+            file://0001-selftests-sched-install-cs_prctl_test-from-the-outpu.patch \
+            file://0001-selftests-sched-skip-cs_prctl_test-when-core-schedul.patch \
+            file://0001-selftests-gpio-expect-gpio-mockup-to-reject-an-empty.patch \
+            file://0001-selftests-gpio-skip-the-gpio-cdev-uaf-v1-tests-witho.patch \
+            file://0001-selftests-splice-skip-the-kernfs-checks-without-test.patch \
+            file://0001-selftests-syscall_user_dispatch-build-sud_benchmark-.patch \
+            file://0001-selftests-lsm-check-lsm_get_self_attr-errno-before-a.patch \
+            file://0001-selftests-lsm-skip-correct_lsm_list_modules-without-.patch \
+            file://0001-selftests-cgroup-skip-the-cpu.max-tests-without-CONF.patch \
+            file://0001-selftests-filesystems-binderfs-skip-binderfs_stress-.patch \
+            file://0001-selftests-kvm-skip-nx_huge_pages_test.sh-without-KVM.patch \
+            file://0001-selftests-watchdog-skip-when-there-is-no-watchdog-de.patch \
+            file://0001-selftests-net-udpgro_fwd-don-t-hang-when-the-iperf3-.patch \
+            file://0001-selftests-net-udpgro_fwd-skip-the-UDP-tunnel-tests-w.patch \
+            file://0001-selftests-net-icmp-skip-without-tcpdump.patch \
             ${@bb.utils.contains('PACKAGECONFIG', 'mm', '${MM_PATCH}', '', d)} \
             "
 
@@ -49,7 +70,7 @@ PACKAGECONFIG[mm] = ",,libcap liburing numactl, libgcc bash"
 do_patch[depends] += "virtual/kernel:do_shared_workdir"
 do_compile[depends] += "virtual/kernel:do_install"
 
-inherit module-base kernel-arch ptest siteinfo
+inherit module-base kernel-arch ptest python3native siteinfo
 
 DEBUG_PREFIX_MAP:remove = "-fcanon-prefix-map"
 
@@ -123,7 +144,7 @@ EXTRA_OEMAKE = '\
     CC="${CC} ${DEBUG_PREFIX_MAP}" \
     AR="${AR}" \
     LD="${LD}" \
-    CLANG="clang -fno-stack-protector -target ${TARGET_ARCH} ${TOOLCHAIN_OPTIONS} -isystem ${S} -D__WORDSIZE=\'64\' -Wno-error=unused-command-line-argument" \
+    CLANG="clang -fno-stack-protector -target ${TARGET_ARCH} ${TOOLCHAIN_OPTIONS} ${DEBUG_PREFIX_MAP} -ffile-prefix-map=${STAGING_KERNEL_BUILDDIR}=/usr/src/kernel -isystem ${S} -D__WORDSIZE=\'64\' -Wno-error=unused-command-line-argument" \
     DESTDIR="${D}" \
     V=1 \
 '
@@ -136,6 +157,8 @@ EXTRA_OEMAKE:append:toolchain-clang = "\
 CLEANBROKEN = "1"
 
 KERNEL_SELFTEST_SRC ?= "Makefile \
+                        Documentation/netlink \
+                        MAINTAINERS \
                         include \
                         kernel \
                         lib \
@@ -187,6 +210,13 @@ do_install() {
     if [ -e ${D}/usr/kernel-selftest/bpf/test_offload.py ]; then
         sed -i -e '1s,#!.*python3,#! /usr/bin/env python3,' ${D}/usr/kernel-selftest/bpf/test_offload.py
     fi
+    # net/lib installs the whole tools/net/ynl tree, including its build
+    # artifacts and the bytecode from running it at build time; only the
+    # python library is used at runtime.
+    if [ -d ${D}/usr/kernel-selftest/net/lib/ynl ]; then
+        find ${D}/usr/kernel-selftest/net/lib/ynl \( -name '*.a' -o -name '*.o' -o -name '*.d' \) -delete
+        find ${D}/usr/kernel-selftest/net/lib/ynl -name __pycache__ -type d -prune -exec rm -rf {} +
+    fi
     chown root:root  -R ${D}/usr/kernel-selftest
 }
 
@@ -227,6 +257,16 @@ FILES:${PN} += "/usr/kernel-selftest"
 # needs to enforce per-test timeouts; busybox has no timeout applet by default.
 # mount_setattr_test creates an ext4 image with mkfs.ext4.
 RDEPENDS:${PN} += "python3 perl perl-module-io-handle bash libcap libgcc coreutils e2fsprogs-mke2fs"
+# The net python tests load netlink specs with the YNL library.
+RDEPENDS:${PN} += "python3-pyyaml"
+# Tools the net selftests use; busybox ip and ping lack most of the options
+# they need.
+RDEPENDS:${PN}-ptest += "bc ethtool iperf3 iproute2 iproute2-bridge iproute2-nstat \
+                         iproute2-ss iproute2-tc iptables iputils-arping iputils-ping iputils-ping6 jq socat \
+                         util-linux-taskset"
+# Many selftests modprobe the modules they need (gpio-mockup, netdevsim, vrf,
+# the tc qdiscs, classifiers and actions, ...) and fail without them.
+RRECOMMENDS:${PN} += "kernel-modules"
 
 INSANE_SKIP:${PN} += "libdir"
 
