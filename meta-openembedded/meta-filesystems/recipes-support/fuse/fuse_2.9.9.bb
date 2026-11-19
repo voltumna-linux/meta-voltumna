@@ -6,12 +6,12 @@ DESCRIPTION = "FUSE (Filesystem in Userspace) is a simple interface for userspac
               "
 HOMEPAGE = "https://github.com/libfuse/libfuse"
 SECTION = "libs"
-LICENSE = "GPL-2.0-only AND LGPL-2.0-only"
+LICENSE = "GPL-2.0-only AND LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263 \
                     file://COPYING.LIB;md5=4fbd65380cdd255951079008b364516c"
 
 SRC_URI = "https://github.com/libfuse/libfuse/releases/download/${BP}/${BP}.tar.gz \
-           file://aarch64.patch \
+           file://0001-fuse_kernel.h-clean-includes.patch \
            file://0001-fuse-fix-the-return-value-of-help-option.patch \
            file://fuse2-0007-util-ulockmgr_server.c-conditionally-define-closefro.patch \
            file://fuse.conf \
