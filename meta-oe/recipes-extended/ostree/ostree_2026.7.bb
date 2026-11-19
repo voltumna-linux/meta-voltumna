@@ -4,7 +4,7 @@ tools that combines a \"git-like\" model for committing and downloading \
 bootable filesystem trees, along with a layer for deploying them and managing \
 the bootloader configuration."
 HOMEPAGE = "https://ostree.readthedocs.io"
-LICENSE = "LGPL-2.1-only"
+LICENSE = "LGPL-2.0-or-later"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=5f30f0716dfdd0d91eb439ebec522ec2"
 
@@ -22,7 +22,7 @@ GITHUB_BASE_URI = "https://github.com/ostreedev/ostree/releases"
 SRC_URI = "${GITHUB_BASE_URI}/download/v${PV}/libostree-${PV}.tar.xz \
            file://run-ptest \
            "
-SRC_URI[sha256sum] = "164b8226aea6a0e6601036de02a5e3b62307bae25890ed557fb4e19020bd5974"
+SRC_URI[sha256sum] = "43e0295e869927edfd41e7cb9cdf5ca8f8515a6f1460af4b381f1f701168494c"
 
 S = "${UNPACKDIR}/libostree-${PV}"
 
