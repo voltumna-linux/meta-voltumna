@@ -18,19 +18,18 @@ SRC_URI = "http://www.python.org/ftp/python/${PV}/Python-${PV}.tar.xz \
            file://makerace.patch \
            file://0001-sysconfig.py-use-platlibdir-also-for-purelib.patch \
            file://0001-Lib-pty.py-handle-stdin-I-O-errors-same-way-as-maste.patch \
-           file://valid-dists.patch \
            file://0001-Avoid-shebang-overflow-on-python-config.py.patch \
            file://0001-Update-test_sysconfig-for-posix_user-purelib.patch \
            file://0001-prefer-valid-entrypoints.patch \
-           file://0001-gh-146207-Add-support-for-OpenSSL-4.0.0.patch \
-           file://0002-gh-148292-Update-_ssl._SSLSocket-for-OpenSSL-4.patch \
-           file://0003-gh-148292-Remove-shutdown-test-in-test_ssl.test_got_eof.patch \
+           file://0001-3.15-gh-158097-Make-test_staggered_race_with_eager_t.patch \
+           file://0001-3.15-gh-160924-Don-t-run-the-build-Python-with-RUNSH.patch \
+           file://0001-gh-160881-Fix-test_is_python_process_non_python_subp.patch \
            "
 SRC_URI:append:class-native = " \
            file://0001-Lib-sysconfig.py-use-prefix-value-from-build-configu.patch \
            "
 
-SRC_URI[sha256sum] = "de414a57119abef52784d8993e341d53aed635fc2b05c2607d9f98a2c5b72032"
+SRC_URI[sha256sum] = "8b5536d280142ecf6cdfe15d12a21ba1c65e300bbf7b28a8d0cdb849575797de"
 
 # exclude pre-releases for both python 2.x and 3.x
 UPSTREAM_CHECK_REGEX = "[Pp]ython-(?P<pver>\d+(\.\d+)+).tar"
@@ -41,7 +40,9 @@ inherit upstream-stable-release-point
 
 CVE_PRODUCT = "python:python python_software_foundation:python cpython"
 
-PYTHON_MAJMIN = "3.14"
+CVE_STATUS[CVE-2026-19672] = "fixed-version: Fixed from version 3.15.0"
+
+PYTHON_MAJMIN = "3.15"
 
 S = "${UNPACKDIR}/Python-${PV}"
 
@@ -75,7 +76,7 @@ DEPENDS = "\
 DEPENDS:append:class-target = " python3-native"
 DEPENDS:append:class-nativesdk = " python3-native"
 
-EXTRA_OECONF = " --without-ensurepip --enable-shared --with-platlibdir=${baselib} --with-system-expat"
+EXTRA_OECONF = " --without-ensurepip --enable-shared --with-platlibdir=${baselib} --with-system-expat --without-system-libmpdec"
 EXTRA_OECONF:append:class-native = " --bindir=${bindir}/${PN}"
 EXTRA_OECONF:append:class-target = " --with-build-python=nativepython3 PLATFORM_TRIPLET=${HOST_ARCH}-${HOST_OS}"
 EXTRA_OECONF:append:class-nativesdk = " --with-build-python=nativepython3"
@@ -303,20 +304,6 @@ SKIPPED_TESTS += " \
     --ignore test.test_asyncio.test_taskgroups.TestTaskGroup.test_taskgroup_23 \
 "
 
-# Intermittent failure under load - this asyncio staggered_race test starts
-# candidate coroutines 0.25s apart and expects the third one to raise
-# ValueError after an "await asyncio.sleep(0)". On loaded autobuilder hosts
-# under QEMU emulation the winning coroutine finishes and staggered_race
-# cancels the losers before the third coroutine resumes to raise, so its
-# recorded exception is CancelledError instead of ValueError. Upstream test
-# is timing-sensitive (CPython #124309). Skip both the pure-Python and
-# C-accelerated eager task factory variants.
-# Bugzilla YP 16435
-SKIPPED_TESTS += " \
-    --ignore test.test_asyncio.test_eager_task_factory.PyEagerTaskFactoryLoopTests.test_staggered_race_with_eager_tasks \
-    --ignore test.test_asyncio.test_eager_task_factory.CEagerTaskFactoryLoopTests.test_staggered_race_with_eager_tasks \
-"
-
 # Intermittent failure under load - this concurrent.futures ProcessPool test
 # starts a worker and expects it to be stranded within a 30s thread-join
 # timeout. On loaded autobuilder hosts under QEMU emulation (seen on
@@ -415,7 +402,7 @@ py_package_preprocess () {
 INCLUDE_PYCS ?= "1"
 
 python(){
-    import collections, json
+    import json
 
     filename = os.path.join(d.getVar('THISDIR'), 'python3', 'python3-manifest.json')
     # This python changes the datastore based on the contents of a file, so mark
@@ -427,7 +414,7 @@ python(){
         json_start = manifest_str.find('# EOC') + 6
         manifest_file.seek(json_start)
         manifest_str = manifest_file.read()
-        python_manifest = json.loads(manifest_str, object_pairs_hook=collections.OrderedDict)
+        python_manifest = json.loads(manifest_str)
 
     # First set RPROVIDES for -native case
     # Hardcoded since it cant be python3-native-foo, should be python3-foo-native
@@ -503,11 +490,8 @@ do_create_manifest() {
     # e.g. BerkeleyDB is an optional build dependency so it may or may not
     # be present, we must ensure it is.
 
-    cp ${UNPACKDIR}/create_manifest3.py ${WORKDIR}
-    cp ${UNPACKDIR}/python3-manifest.json ${WORKDIR}
-    cp ${UNPACKDIR}/get_module_deps3.py ${WORKDIR}
-    cd ${WORKDIR}
     # This needs to be executed by python-native and NOT by HOST's python
+    cd ${UNPACKDIR}
     nativepython3 create_manifest3.py ${PYTHON_MAJMIN}
     cp python3-manifest.json.new ${THISDIR}/python3/python3-manifest.json
 }
@@ -586,6 +570,7 @@ RDEPENDS:${PN}-tkinter += "${@bb.utils.contains('PACKAGECONFIG', 'tk', '${MLPREF
 RDEPENDS:${PN}-idle += "${@bb.utils.contains('PACKAGECONFIG', 'tk', '${PN}-tkinter ${MLPREFIX}tcl', '', d)}"
 DEV_PKG_DEPENDENCY = ""
 RDEPENDS:${PN}-pydoc += "${PN}-io"
+RDEPENDS:${PN}-ensurepip += "${PN}-compression"
 
 RDEPENDS:${PN}-tests:append:class-target = " ${MLPREFIX}bash"
 RDEPENDS:${PN}-tests:append:class-nativesdk = " ${MLPREFIX}bash"

@@ -22,7 +22,8 @@ def get_links_from_url(url, d):
     soup = BeautifulSoup(create_socket(url,d), "html.parser", parse_only=SoupStrainer("a"))
     hyperlinks = []
     for line in soup.find_all('a', href=True):
-        hyperlinks.append(line['href'].strip('/'))
+        # Some listings (e.g. MirrorCache) link to "./name/"
+        hyperlinks.append(line['href'].removeprefix('./').strip('/'))
     return hyperlinks
 
 def find_latest_numeric_release(url, d):
@@ -84,17 +85,30 @@ def get_latest_released_fedora_source_package_list(d):
     package_names |= get_source_package_list_from_url_by_letter("http://archive.fedoraproject.org/pub/fedora/linux/updates/%s/SRPMS/" % latest, "updates", d)
     return latest, package_names
 
+def find_latest_opensuse_leap_release(url, d):
+    "Find the latest Leap release on the given url, ignoring Leap 42.x, which came before 15.0"
+    releases = []
+    for link in get_links_from_url(url, d):
+        try:
+            version = tuple(int(n) for n in link.split("."))
+        except ValueError:
+            continue
+        if version[0] != 42:
+            releases.append((version, link))
+    return max(releases)[1] if releases else "_NotFound_"
+
 def get_latest_released_opensuse_source_package_list(d):
     "Returns list of all the name os packages in the latest opensuse distro"
-    latest = find_latest_numeric_release("http://download.opensuse.org/source/distribution/leap", d)
+    from urllib.error import HTTPError
+    latest = find_latest_opensuse_leap_release("http://download.opensuse.org/source/distribution/leap/", d)
 
-    package_names = get_source_package_list_from_url("http://download.opensuse.org/source/distribution/leap/%s/repo/oss/suse/src/" % latest, "main", d)
-    package_names |= get_source_package_list_from_url("http://download.opensuse.org/update/leap/%s/oss/src/" % latest, "updates", d)
-    return latest, package_names
-
-def get_latest_released_clear_source_package_list(d):
-    latest = find_latest_numeric_release("https://download.clearlinux.org/releases/", d)
-    package_names = get_source_package_list_from_url("https://download.clearlinux.org/releases/%s/clear/source/SRPMS/" % latest, "main", d)
+    package_names = get_source_package_list_from_url("http://download.opensuse.org/source/distribution/leap/%s/repo/oss/src/" % latest, "main", d)
+    # Leap 16 has no separate update repository
+    try:
+        package_names |= get_source_package_list_from_url("http://download.opensuse.org/update/leap/%s/oss/src/" % latest, "updates", d)
+    except HTTPError as e:
+        if e.code != 404:
+            raise
     return latest, package_names
 
 def find_latest_debian_release(url, d):
@@ -110,11 +124,13 @@ def find_latest_debian_release(url, d):
         return "_NotFound_"
 
 def get_debian_style_source_package_list(url, section, d):
-    "Return the list of package-names stored in the debian style Sources.gz file"
+    "Return the list of package-names stored in the debian style Sources.gz or Sources.xz file"
     import gzip
+    import lzma
 
+    opener = lzma.open if url.endswith(".xz") else gzip.open
     package_names = set()
-    for line in gzip.open(create_socket(url, d), mode="rt"):
+    for line in opener(create_socket(url, d), mode="rt"):
         if line.startswith("Package:"):
             pkg = line.split(":", 1)[1].strip()
             package_names.add(pkg + ":" + section)
@@ -125,27 +141,29 @@ def get_latest_released_debian_source_package_list(d):
     latest = find_latest_debian_release("http://ftp.debian.org/debian/dists/", d)
     url = "http://ftp.debian.org/debian/dists/stable/main/source/Sources.gz"
     package_names = get_debian_style_source_package_list(url, "main", d)
-    url = "http://ftp.debian.org/debian/dists/stable-proposed-updates/main/source/Sources.gz"
+    url = "http://ftp.debian.org/debian/dists/stable-updates/main/source/Sources.xz"
     package_names |= get_debian_style_source_package_list(url, "updates", d)
     return latest, package_names
 
-def find_latest_ubuntu_release(url, d):
+def find_latest_ubuntu_release(d):
     """
-    Find the latest listed Ubuntu release on the given ubuntu/dists/ URL.
-
-    To avoid matching development releases look for distributions that have
-    updates, so the resulting distro could be any supported release.
+    Find the latest supported Ubuntu release, from the list of releases
+    that do-release-upgrade reads. The releases are listed oldest first.
     """
-    url += "?C=M;O=D" # Descending Sort by Last Modified
-    for link in get_links_from_url(url, d):
-        if "-updates" in link:
-            distro = link.replace("-updates", "")
-            return distro
-    return "_NotFound_"
+    latest = "_NotFound_"
+    dist = None
+    listing = create_socket("https://changelogs.ubuntu.com/meta-release", d).read().decode("utf-8")
+    for line in listing.splitlines():
+        key, _, value = line.partition(":")
+        if key == "Dist":
+            dist = value.strip()
+        elif key == "Supported" and value.strip() == "1" and dist:
+            latest = dist
+    return latest
 
 def get_latest_released_ubuntu_source_package_list(d):
     "Returns list of all the name os packages in the latest ubuntu distro"
-    latest = find_latest_ubuntu_release("http://archive.ubuntu.com/ubuntu/dists/", d)
+    latest = find_latest_ubuntu_release(d)
     url = "http://archive.ubuntu.com/ubuntu/dists/%s/main/source/Sources.gz" % latest
     package_names = get_debian_style_source_package_list(url, "main", d)
     url = "http://archive.ubuntu.com/ubuntu/dists/%s-updates/main/source/Sources.gz" % latest
@@ -162,7 +180,6 @@ def create_distro_packages_list(distro_check_dir, d):
                             ("Ubuntu", get_latest_released_ubuntu_source_package_list),
                             ("Fedora", get_latest_released_fedora_source_package_list),
                             ("openSUSE", get_latest_released_opensuse_source_package_list),
-                            ("Clear", get_latest_released_clear_source_package_list),
                            )
 
     for name, fetcher_func in per_distro_functions:
@@ -170,6 +187,7 @@ def create_distro_packages_list(distro_check_dir, d):
             release, package_list = fetcher_func(d)
         except Exception as e:
             bb.warn("Cannot fetch packages for %s: %s" % (name, e))
+            continue
         bb.note("Distro: %s, Latest Release: %s, # src packages: %d" % (name, release, len(package_list)))
         if len(package_list) == 0:
             bb.error("Didn't fetch any packages for %s %s" % (name, release))
