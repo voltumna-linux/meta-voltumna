@@ -43,7 +43,6 @@ import sys
 import subprocess
 import json
 import os
-import collections
 
 if '-d' in sys.argv:
     debugFlag = '-d'
@@ -60,7 +59,7 @@ for p in sys.path:
         nativelibfolder = p[:p.find(pivot)+len(pivot)]
 
 # Empty dict to hold the whole manifest
-new_manifest = collections.OrderedDict()
+new_manifest = {}
 
 # Check for repeated files, folders and wildcards
 allfiles = []
@@ -94,6 +93,14 @@ def print_indent(msg, offset):
         msg = ' ' * offset + l
         print(msg)
 
+def is_dependency_skipped(manifest, package, dependency):
+    """
+    Check to see if this dependency should be ignored by matching substrings
+    from the optional skip_depends element in the manifest.
+    """
+    skiplist = manifest.get('skip_depends', {}).get(package, [])
+    return any((skip in dependency for skip in skiplist))
+
 
 # Read existing JSON manifest
 with open('python3-manifest.json') as manifest:
@@ -103,7 +110,7 @@ with open('python3-manifest.json') as manifest:
     manifest.seek(0)
     comments = manifest.read(json_start)
     manifest_str = manifest.read()
-    old_manifest = json.loads(manifest_str, object_pairs_hook=collections.OrderedDict)
+    old_manifest = json.loads(manifest_str)
 
 #
 # First pass to get core-package functionality, because we base everything on the fact that core is actually working
@@ -122,6 +129,8 @@ print_indent('Getting dependencies for package: core', 0)
 
 output = subprocess.check_output([sys.executable, 'get_module_deps3.py', 'python-core-package', '%s' % debugFlag]).decode('utf8')
 for coredep in output.split():
+    if is_dependency_skipped(old_manifest['core'], "core", coredep):
+        continue
     coredep = coredep.replace(pyversion,'${PYTHON_MAJMIN}')
     if isCached(coredep):
         if coredep not in old_manifest['core']['cached']:
@@ -173,6 +182,8 @@ for filedep in old_manifest['core']['files']:
 
 
     for pymodule_dep in output.split():
+        if is_dependency_skipped(old_manifest['core'], pymodule, pymodule_dep):
+            continue
         pymodule_dep = pymodule_dep.replace(pyversion,'${PYTHON_MAJMIN}')
 
         if isCached(pymodule_dep):
@@ -219,9 +230,11 @@ for pypkg in old_manifest:
 
 for pypkg in old_manifest:
     # Use an empty dict as data structure to hold data for each package and fill it up
-    new_manifest[pypkg] = collections.OrderedDict()
+    new_manifest[pypkg] = {}
     new_manifest[pypkg]['summary'] = old_manifest[pypkg]['summary']
     new_manifest[pypkg]['rdepends'] = []
+    if "skip_depends" in old_manifest[pypkg]:
+        new_manifest[pypkg]['skip_depends'] = old_manifest[pypkg]['skip_depends']
     new_manifest[pypkg]['files'] = []
     new_manifest[pypkg]['cached'] = old_manifest[pypkg]['cached']
 
@@ -299,6 +312,8 @@ for pypkg in old_manifest:
         reportRDEPS = []
 
         for pymodule_dep in output.split():
+            if is_dependency_skipped(new_manifest[pypkg], pymodule, pymodule_dep):
+                continue
 
             # Warning: This first part is ugly
             # One of the dependencies that was found, could be inside of one of the folders included by another package
