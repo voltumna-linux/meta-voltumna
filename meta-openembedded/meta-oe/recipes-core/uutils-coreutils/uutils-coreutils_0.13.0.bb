@@ -11,7 +11,7 @@ SRC_URI = " \
     git://github.com/uutils/coreutils.git;protocol=https;branch=main;tag=${PV} \
 "
 
-SRCREV = "dc1efd89948a9ca4c78c3a4b9a6ac891019a8c69"
+SRCREV = "07b76df463390fd56856725201ae52df5df0a063"
 
 require ${BPN}-crates.inc
 
@@ -88,5 +88,5 @@ do_compile:prepend() {
 
 do_install:append() {
     mkdir -p ${D}${libdir}/coreutils
-    cp ${B}/target/${CARGO_TARGET_SUBDIR}/deps/libstdbuf.so ${D}${libdir}/coreutils/libstdbuf.so
+    install -m 0755 ${B}/target/${CARGO_TARGET_SUBDIR}/build/uu_stdbuf_libstdbuf/*/out/libstdbuf.so ${D}${libdir}/coreutils/libstdbuf.so
 }
