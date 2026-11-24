@@ -65,5 +65,7 @@ IMAGE_CMD:net.tar() {
 IMAGE_CMD:os.tar() {
     tar --owner=0 --group=0 --numeric-owner \
         -cf "${IMGDEPLOYDIR}/${IMAGE_NAME}.os.tar" \
-        -C "${IMAGE_ROOTFS}/.osdir" "${IMAGE_NAME}" || [ $? -eq 1 ]
+        -C "${IMAGE_ROOTFS}/.osdir" \
+        --transform="s|^${IMAGE_NAME}|usr|" \
+        "${IMAGE_NAME}" || [ $? -eq 1 ]
 }
