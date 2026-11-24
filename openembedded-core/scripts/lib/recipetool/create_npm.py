@@ -12,6 +12,7 @@ import re
 import sys
 import tempfile
 import bb
+import oe.npm
 from bb.fetch.npm import NpmEnvironment
 from bb.fetch.npm import npm_package
 from bb.fetch.npmsw import foreach_dependencies
@@ -22,6 +23,12 @@ from recipetool.create import split_pkg_licenses
 logger = logging.getLogger('recipetool')
 
 TINFOIL = None
+
+def npm_recipe_name(package):
+    """Get a recipe or package name from an npm package name"""
+    # npm_package() keeps the "@" of a scope for unique download file names.
+    # An override cannot have it.
+    return npm_package(package).lstrip("@").strip("-")
 
 def tinfoil_init(instance):
     """Initialize tinfoil"""
@@ -147,7 +154,7 @@ class NpmRecipeHandler(RecipeHandler):
         # Handle the dependencies
         def _handle_dependency(name, params, destdir):
             deptree = destdir.split('node_modules/')
-            suffix = "-".join([npm_package(dep) for dep in deptree])
+            suffix = "-".join([npm_recipe_name(dep) for dep in deptree])
             packages["${PN}" + suffix] = destdir
             _get_package_licenses(destdir, "${PN}" + suffix)
 
@@ -171,7 +178,7 @@ class NpmRecipeHandler(RecipeHandler):
         peer_deps = packages.get("", {}).get("peerDependencies", {})
 
         for peer_dep in peer_deps:
-            peer_dep_yocto_name = npm_package(peer_dep)
+            peer_dep_yocto_name = npm_recipe_name(peer_dep)
             bb.warn(peer_dep + " is a peer dependencie of the actual package. " +
             "Please add this peer dependencie to the RDEPENDS variable as %s and generate its recipe with devtool"
             % peer_dep_yocto_name)
@@ -195,7 +202,7 @@ class NpmRecipeHandler(RecipeHandler):
         if "name" not in data or "version" not in data:
             return False
 
-        extravalues["PN"] = npm_package(data["name"])
+        extravalues["PN"] = npm_recipe_name(data["name"])
         extravalues["PV"] = data["version"]
 
         if "description" in data:
@@ -251,45 +258,62 @@ class NpmRecipeHandler(RecipeHandler):
         extravalues.setdefault("extrafiles", {})
         extravalues["extrafiles"]["npm-shrinkwrap.json"] = shrinkwrap_copy
 
-        url_local = "npmsw://%s" % shrinkwrap_file
-        url_recipe= "npmsw://${THISDIR}/${BPN}/npm-shrinkwrap.json"
+        has_dependencies = "dependencies" in shrinkwrap.get("packages", {}).get("", {})
 
-        if dev:
-            url_local += ";dev=1"
-            url_recipe += ";dev=1"
+        # The shrinkwrap file must be in ${S}, where npm.bbclass reads it
+        srcsubdir = extravalues.get("srcsubdir") or "${BP}"
+        url_recipe = "file://npm-shrinkwrap.json;subdir=%s" % srcsubdir
 
-        # Add the npmsw url in the SRC_URI of the generated recipe
+        # Add the shrinkwrap file to the SRC_URI of the generated recipe
         def _handle_srcuri(varname, origvalue, op, newlines):
-            """Update the version value and add the 'npmsw://' url"""
+            """Update the version value and add the shrinkwrap file"""
             value = origvalue.replace("version=" + data["version"], "version=${PV}")
             value = value.replace("version=latest", "version=${PV}")
             values = [line.strip() for line in value.strip('\n').splitlines()]
-            if "dependencies" in shrinkwrap.get("packages", {}).get("", {}):
+            if has_dependencies:
                 values.append(url_recipe)
             return values, None, 4, False
 
         (_, newlines) = bb.utils.edit_metadata(lines_before, ["SRC_URI"], _handle_srcuri)
         lines_before[:] = [line.rstrip('\n') for line in newlines]
 
+        try:
+            dependency_urls = oe.npm.shrinkwrap_src_uri(shrinkwrap, "", dev)
+        except ValueError as e:
+            bb.error("%s: %s" % (shrinkwrap_file, e))
+            sys.exit(14)
+
         # In order to generate correct licence checksums in the recipe the
-        # dependencies have to be fetched again using the npmsw url
+        # dependencies have to be fetched again
         bb.note("Fetching npm dependencies ...")
         bb.utils.remove(os.path.join(srctree, "node_modules"), recurse=True)
-        fetcher = bb.fetch.Fetch([url_local], d)
-        fetcher.download()
-        fetcher.unpack(srctree)
+        if dependency_urls:
+            fetcher = bb.fetch.Fetch(dependency_urls, d)
+            fetcher.download()
+            fetcher.unpack(srctree)
 
         bb.note("Handling licences ...")
         (licfiles, packages, fallback_licenses) = self._handle_licenses(srctree, shrinkwrap_file, dev)
         licvalues = match_licenses(licfiles, srctree, d)
-        split_pkg_licenses(licvalues, packages, lines_after, fallback_licenses)
-        fallback_licenses_flat = set(license for sublist in fallback_licenses.values() for license in sublist)
-        fallback_licesens_flat = sorted(fallback_licenses_flat).sort()
+        split_pkg_licenses(licvalues, packages, lines_after,
+                           {pkg: " AND ".join(lics) for pkg, lics in fallback_licenses.items()})
+        fallback_licenses_flat = sorted(set(license for sublist in fallback_licenses.values() for license in sublist))
         extravalues["LIC_FILES_CHKSUM"] = generate_common_licenses_chksums(fallback_licenses_flat, d)
-        extravalues["LICENSE"] = fallback_licenses_flat
+        extravalues["LICENSE"] = " AND ".join(fallback_licenses_flat)
 
         classes.append("npm")
         handled.append("buildsystem")
+
+        if has_dependencies:
+            # npm-update-dependencies writes the dependencies to
+            # ${BPN}-npm-deps.inc. Write a stub file, which the task replaces.
+            classes.append("npm-update-dependencies")
+            extravalues["run_tasks"] = "update_npm_deps"
+            stub = os.path.join(tempfile.mkdtemp(prefix="recipetool-npm-"), "npm-deps.inc")
+            with open(stub, "w") as f:
+                f.write("# FROM RECIPETOOL\n")
+            extravalues["extrafiles"]["../{pn}-npm-deps.inc"] = stub
+            lines_before.append("require ${BPN}-npm-deps.inc")
 
         # Check if package has peer dependencies and inform the user
         self._handle_peer_dependency(shrinkwrap_file)

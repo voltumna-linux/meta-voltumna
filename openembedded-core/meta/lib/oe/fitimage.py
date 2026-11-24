@@ -407,9 +407,11 @@ class ItsNodeRootKernel(ItsNode):
         opt_props = {
             "data": '/incbin/("' + filepath + '")',
             "arch": arch if arch is not None else self._arch,
-            "os": fit_os if fit_os is not None else self._os,
         }
 
+
+        if fit_os:
+            opt_props["os"] = fit_os
         if load:
             opt_props["load"] = f"<{load}>"
         if entry:
@@ -431,10 +433,12 @@ class ItsNodeRootKernel(ItsNode):
         conf_desc = []
         sign_entries = []
         include_kernel = 1
+        include_loadables = 1
 
-        # DTBO configuration sections do not include kernel property
+        # DTBO configuration sections do not include kernel/loadables properties
         if dtb and os.path.splitext(dtb.name)[1] == ".dtbo":
             include_kernel = 0
+            include_loadables = 0
 
         if self._kernel and include_kernel:
             conf_desc.append("Linux kernel")
@@ -468,7 +472,7 @@ class ItsNodeRootKernel(ItsNode):
             if self._sign_enable:
                 sign_entries.append("setup")
 
-        if len(self._loadables) > 0:
+        if len(self._loadables) > 0 and include_loadables:
             conf_desc.append("loadables")
             opt_props["loadables"] = [ loadable.name for loadable in self._loadables ]
             if self._sign_enable:

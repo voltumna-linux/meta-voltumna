@@ -12,7 +12,6 @@ SRC_URI = "http://www.python.org/ftp/python/${PV}/Python-${PV}.tar.xz \
            file://get_module_deps3.py \
            file://python3-manifest.json \
            file://check_build_completeness.py \
-           file://reformat_sysconfig.py \
            file://0001-Makefile.pre-use-qemu-wrapper-when-gathering-profile.patch \
            file://0001-test_locale.py-correct-the-test-output-format.patch \
            file://makerace.patch \
@@ -24,6 +23,9 @@ SRC_URI = "http://www.python.org/ftp/python/${PV}/Python-${PV}.tar.xz \
            file://0001-3.15-gh-158097-Make-test_staggered_race_with_eager_t.patch \
            file://0001-3.15-gh-160924-Don-t-run-the-build-Python-with-RUNSH.patch \
            file://0001-gh-160881-Fix-test_is_python_process_non_python_subp.patch \
+           file://0001-3.15-gh-160704-Restore-C11-C17-static_assert-fallback.patch \
+           file://0001-3.15-gh-154643-Only-use-_Py_STDC_VERSION-when-defined.patch \
+           file://no-compile-pyc.patch \
            "
 SRC_URI:append:class-native = " \
            file://0001-Lib-sysconfig.py-use-prefix-value-from-build-configu.patch \
@@ -137,24 +139,10 @@ EOF
 
 CPPFLAGS += "-I${STAGING_INCDIR}/ncursesw -I${STAGING_INCDIR}/uuid"
 
-# COMPILEALL_OPTS= ensures that .pyc are not compiled in parallel
-# This was found to lock up builds, break reproducibility, and produce strange file ownership
-# races.
-#
-# The upstream commit introducing the change was:
-# https://github.com/python/cpython/commit/1a2dd82f56bd813aacc570e172cefe55a8a41504
-#
-# The build lock up issue is reported here:
-# https://bugs.python.org/issue45945
-#
-# The repro failures are documented here:
-# https://autobuilder.yocto.io/pub/repro-fail/oe-reproducible-20211130-yr_o1a8d/packages/diff-html/
-
 EXTRA_OEMAKE = '\
   STAGING_LIBDIR=${STAGING_LIBDIR} \
   STAGING_INCDIR=${STAGING_INCDIR} \
   LIB=${baselib} \
-  COMPILEALL_OPTS= \
 '
 
 # Generate a Profile Guided Optimisation wrapper script that uses qemu-user for
@@ -194,15 +182,6 @@ do_install:append:class-native() {
         # buffer is 128 bytes long).
         ln -s python3-native/python3 ${D}${bindir}/nativepython3
 
-        # Remove the opt-1.pyc and opt-2.pyc files. There are over 3,000 of them
-        # and the overhead in each recipe-sysroot-native isn't worth it, particularly
-        # when they're only used for python called with -O or -OO.
-        #find ${D} -name *opt-*.pyc -delete
-        # Remove all pyc files. There are a ton of them and it is probably faster to let
-        # python create the ones it wants at runtime rather than manage in the sstate
-        # tarballs and sysroot creation.
-        find ${D} -name *.pyc -delete
-
         # Nothing should be looking into ${B} for python3-native
         sed -i -e 's:${B}:/build/path/unavailable/:g' \
                 ${D}/${libdir}/python${PYTHON_MAJMIN}/config-${PYTHON_MAJMIN}${PYTHON_ABI}*/Makefile
@@ -215,30 +194,20 @@ do_install:append:class-native() {
 }
 
 do_install:append() {
-        for c in ${D}/${libdir}/python${PYTHON_MAJMIN}/_sysconfigdata*.py; do
-            python3 ${UNPACKDIR}/reformat_sysconfig.py $c
-        done
-        rm -f ${D}${libdir}/python${PYTHON_MAJMIN}/__pycache__/_sysconfigdata*.cpython*
-
         mkdir -p ${D}${libdir}/python-sysconfigdata
-        sysconfigfile=`find ${D} -name _sysconfig*.py`
-        sed -i  \
-                -e "s,^ 'LIBDIR'.*, 'LIBDIR': '${STAGING_LIBDIR}'\,,g" \
-                -e "s,^ 'INCLUDEDIR'.*, 'INCLUDEDIR': '${STAGING_INCDIR}'\,,g" \
-                -e "s,^ 'CONFINCLUDEDIR'.*, 'CONFINCLUDEDIR': '${STAGING_INCDIR}'\,,g" \
-                -e "s,^ 'INCLUDEPY'.*, 'INCLUDEPY': '${STAGING_INCDIR}/python${PYTHON_MAJMIN}'\,,g" \
-                -e "s,^ 'CONFINCLUDEPY'.*, 'CONFINCLUDEPY': '${STAGING_INCDIR}/python${PYTHON_MAJMIN}'\,,g" \
-                -e "s,^ 'BUILD_GNU_TYPE'.*, 'BUILD_GNU_TYPE': '${HOST_SYS}'\,,g" \
+        sysconfigfile="${D}${libdir}/python${PYTHON_MAJMIN}/_sysconfig*.py"
+        sed -i \
+                -e "s,'LIBDIR':.*,'LIBDIR': '${STAGING_LIBDIR}'\,,g" \
+                -e "s,'INCLUDEDIR':.*,'INCLUDEDIR': '${STAGING_INCDIR}'\,,g" \
+                -e "s,'CONFINCLUDEDIR':.*,'CONFINCLUDEDIR': '${STAGING_INCDIR}'\,,g" \
+                -e "s,'INCLUDEPY':.*,'INCLUDEPY': '${STAGING_INCDIR}/python${PYTHON_MAJMIN}'\,,g" \
+                -e "s,'CONFINCLUDEPY':.*,'CONFINCLUDEPY': '${STAGING_INCDIR}/python${PYTHON_MAJMIN}'\,,g" \
+                -e "s,'BUILD_GNU_TYPE':.*,'BUILD_GNU_TYPE': '${HOST_SYS}'\,,g" \
                 -e "s,--build=${BUILD_ARCH},--build=${HOST_ARCH},g" \
                 -e "s,build_alias=${BUILD_ARCH},build_alias=${HOST_ARCH},g" \
                 -e "s,${B},/build/path/unavailable/,g" \
                 $sysconfigfile
         cp $sysconfigfile ${D}${libdir}/python-sysconfigdata/_sysconfigdata.py
-
-        # Remove the opt-1.pyc and opt-2.pyc files. They effectively waste space on embedded
-        # style targets as they're only used when python is called with the -O or -OO options
-        # which is rare.
-        find ${D} -name *opt-*.pyc -delete
 }
 
 do_install:append:class-nativesdk () {
@@ -320,9 +289,12 @@ SKIPPED_TESTS += " \
 # test_timerfd_ns_TFS_TIMER_ABSTIME was observed failing in Bugzilla YP 16470.
 # There are actually several other tests in the suite that all look prone to
 # load variability, so skip the whole test class.
-SKIPPED_TESTS:append = " \
-    --ignore TimerfdTests \
-"
+SKIPPED_TESTS += "--ignore TimerfdTests"
+
+# Skip a test that changes the system time
+# https://bugzilla.yoctoproject.org/show_bug.cgi?id=15783
+# https://github.com/python/cpython/issues/162280
+SKIPPED_TESTS += "--ignore test.test_time.TimeTestCase.test_monotonic_settime"
 
 # https://bugzilla.yoctoproject.org/show_bug.cgi?id=16348
 SKIPPED_TESTS:append:libc-musl = " \
@@ -349,6 +321,9 @@ provide_target_config_script() {
         install -d ${SYSROOT_DESTDIR}${prefix}/python-target-config/
         install ${D}/${bindir}/python3-config ${SYSROOT_DESTDIR}/${prefix}/python-target-config/
         install ${D}/${bindir}/python${PYTHON_MAJMIN}-config ${SYSROOT_DESTDIR}/${prefix}/python-target-config/
+        # Compile the sysconfigdata in the target sysroot as it will be generated if
+        # python3targetconfig is inherited.
+        python3 -mcompileall ${SYSROOT_DESTDIR}${libdir}/python${PYTHON_MAJMIN}/_sysconfigdata*.py -s ${SYSROOT_DESTDIR} -p /
 }
 SYSROOT_DIRS += "${prefix}/python-target-config/"
 
@@ -381,13 +356,6 @@ py_package_preprocess () {
                 ${PKGD}/${libdir}/python${PYTHON_MAJMIN}/_sysconfig_vars*.json \
                 ${PKGD}/${bindir}/python${PYTHON_MAJMIN}-config
 
-        # Reformat and recompile _sysconfigdata after modifying it so that it remains
-        # reproducible
-        for c in ${PKGD}/${libdir}/python${PYTHON_MAJMIN}/_sysconfigdata*.py; do
-            python3 ${UNPACKDIR}/reformat_sysconfig.py $c
-            python3 -mcompileall $c -s ${PKGD} -p /
-        done
-
         mv ${PKGD}/${bindir}/python${PYTHON_MAJMIN}-config ${PKGD}/${bindir}/python${PYTHON_MAJMIN}-config-${MULTILIB_SUFFIX}
 
         #Remove the unneeded copy of target sysconfig data
@@ -397,9 +365,33 @@ py_package_preprocess () {
         sed -i -e 's:${BUILD_ARCH}-${HOST_OS}:${HOST_ARCH}-${HOST_OS}:g' ${PKGD}/${libdir}/python${PYTHON_MAJMIN}/build-details.json
 }
 
+# Compile the .py files in PKGDEST to .pyc. This is done during do_package so the .pyc files
+# are always packaged with the .py.
+py_compile_py() {
+        if [ "${INCLUDE_PYCS}" != "0" ]; then
+            bbnote Compiling python bytecode...
+            # Need to do each package individually so we can strip the correct path prefix
+            for dir in $(find ${PKGDEST} -type d -maxdepth 1); do
+                # Currently compileall isn't deterministic when ran
+                # in parallel so we can't yet pass -j.
+                # https://github.com/python/cpython/issues/129724
+                nativepython3 -mcompileall \
+                    -f -s $dir -p / -x 'bad_coding|badsyntax' \
+                    $dir
+
+                # the rpm packaging class reads file _lists_ from packages-split/ but file _content_ from package/
+                cd $dir
+                find . -type f -name '*.pyc' -print -exec cp --target-directory=${PKGD} --link --parents {} +
+                cd -
+            done
+        fi
+}
+PACKAGESPLITFUNCS += "py_compile_py"
+
 # We want bytecode precompiled .py files (.pyc's) by default
 # but the user may set it on their own conf
 INCLUDE_PYCS ?= "1"
+INCLUDE_PYCS:class-native = "0"
 
 python(){
     import json
@@ -428,6 +420,10 @@ python(){
         pypackage = pn + '-' + key + '-native'
         if pypackage not in rprovides:
               rprovides.append(pypackage)
+        for subkey in python_manifest[key].get('rprovides', ()):
+            pypackage = pn + '-' + subkey + '-native'
+            if pypackage not in rprovides:
+                rprovides.append(pypackage)
 
     d.setVar('RPROVIDES:class-native', ' '.join(rprovides))
 
@@ -450,16 +446,16 @@ python(){
         for value in python_manifest[key]['files']:
             d.appendVar('FILES:' + pypackage, ' ' + value)
 
-        # Add cached files
-        if include_pycs == '1':
-            for value in python_manifest[key]['cached']:
-                    d.appendVar('FILES:' + pypackage, ' ' + value)
-
         for value in python_manifest[key]['rdepends']:
             # Make it work with or without $PN
             if '${PN}' in value:
                 value=value.split('-', 1)[1]
             d.appendVar('RDEPENDS:' + pypackage, ' ' + pn + '-' + value)
+
+        for value in python_manifest[key].get('rprovides', ()):
+            if '${PN}' in value:
+                value=value.split('-', 1)[1]
+            d.appendVar('RPROVIDES:' + pypackage, ' ' + pn + '-' + value)
 
         for value in python_manifest[key].get('rrecommends', ()):
             if '${PN}' in value:
@@ -471,9 +467,7 @@ python(){
     # Prepending so to avoid python-misc getting everything
     packages = newpackages + packages
     d.setVar('PACKAGES', ' '.join(packages))
-    d.setVar('ALLOW_EMPTY:${PN}-fcntl', '1')
     d.setVar('ALLOW_EMPTY:${PN}-modules', '1')
-    d.setVar('ALLOW_EMPTY:${PN}-pkgutil', '1')
 
     if "pgo" in d.getVar("PACKAGECONFIG").split() and not bb.utils.contains('MACHINE_FEATURES', 'qemu-usermode', True, False, d):
         bb.fatal("pgo cannot be enabled as there is no qemu-usermode support for this architecture/machine")
