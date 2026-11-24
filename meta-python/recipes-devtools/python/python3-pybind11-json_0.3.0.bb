@@ -1,0 +1,15 @@
+SUMMARY = "Using nlohmann::json with pybind11"
+LICENSE = "BSD-3-Clause"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=0e25ff0ec476d06d366439e1120cce98"
+
+SRCREV = "94ae3ad9693cc572c673938d84044dfd6fe22532"
+SRC_URI = "git://github.com/pybind/pybind11_json;branch=master;protocol=https \
+           file://0001-CMakeLists-drop-PYTHON_INCLUDE_DIRS-from-interface.patch"
+
+DEPENDS += "nlohmann-json python3-pybind11"
+
+EXTRA_OECMAKE += "-DPYBIND11_USE_CROSSCOMPILING=ON"
+
+inherit cmake python3native python3targetconfig
+
+BBCLASSEXTEND = "native nativesdk"
