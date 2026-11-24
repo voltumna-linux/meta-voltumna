@@ -17,7 +17,7 @@ def create_socket(url, d):
 def get_links_from_url(url, d):
     "Return all the href links found on the web location"
 
-    from bs4 import BeautifulSoup, SoupStrainer
+    from bb._vendor.bs4 import BeautifulSoup, SoupStrainer
 
     soup = BeautifulSoup(create_socket(url,d), "html.parser", parse_only=SoupStrainer("a"))
     hyperlinks = []
@@ -124,16 +124,28 @@ def find_latest_debian_release(url, d):
         return "_NotFound_"
 
 def get_debian_style_source_package_list(url, section, d):
-    "Return the list of package-names stored in the debian style Sources.gz or Sources.xz file"
+    """
+    Return the names of the source packages in a debian style Sources.gz or
+    Sources.xz file, and of the binary packages they build (e.g. Debian's
+    "brotli" builds "python3-brotli")
+    """
     import gzip
     import lzma
 
     opener = lzma.open if url.endswith(".xz") else gzip.open
     package_names = set()
+    field = None
     for line in opener(create_socket(url, d), mode="rt"):
-        if line.startswith("Package:"):
-            pkg = line.split(":", 1)[1].strip()
-            package_names.add(pkg + ":" + section)
+        if line[:1] in (" ", "\t"):
+            # Continuation of the previous field
+            names = line if field == "Binary" else ""
+        else:
+            field, _, value = line.partition(":")
+            names = value if field in ("Package", "Binary") else ""
+        for name in names.split(","):
+            name = name.strip()
+            if name:
+                package_names.add(name + ":" + section)
     return package_names
 
 def get_latest_released_debian_source_package_list(d):
@@ -164,10 +176,15 @@ def find_latest_ubuntu_release(d):
 def get_latest_released_ubuntu_source_package_list(d):
     "Returns list of all the name os packages in the latest ubuntu distro"
     latest = find_latest_ubuntu_release(d)
-    url = "http://archive.ubuntu.com/ubuntu/dists/%s/main/source/Sources.gz" % latest
-    package_names = get_debian_style_source_package_list(url, "main", d)
-    url = "http://archive.ubuntu.com/ubuntu/dists/%s-updates/main/source/Sources.gz" % latest
-    package_names |= get_debian_style_source_package_list(url, "updates", d)
+    # Ubuntu's main only holds the packages Canonical supports; most of
+    # what Debian has in main is in Ubuntu's universe.
+    # (AI-generated: Claude Opus 5.5)
+    package_names = set()
+    for component in ("main", "universe"):
+        url = "http://archive.ubuntu.com/ubuntu/dists/%s/%s/source/Sources.gz" % (latest, component)
+        package_names |= get_debian_style_source_package_list(url, component, d)
+        url = "http://archive.ubuntu.com/ubuntu/dists/%s-updates/%s/source/Sources.gz" % (latest, component)
+        package_names |= get_debian_style_source_package_list(url, "updates", d)
     return latest, package_names
 
 def create_distro_packages_list(distro_check_dir, d):
@@ -188,7 +205,7 @@ def create_distro_packages_list(distro_check_dir, d):
         except Exception as e:
             bb.warn("Cannot fetch packages for %s: %s" % (name, e))
             continue
-        bb.note("Distro: %s, Latest Release: %s, # src packages: %d" % (name, release, len(package_list)))
+        bb.note("Distro: %s, Latest Release: %s, # packages: %d" % (name, release, len(package_list)))
         if len(package_list) == 0:
             bb.error("Didn't fetch any packages for %s %s" % (name, release))
 
