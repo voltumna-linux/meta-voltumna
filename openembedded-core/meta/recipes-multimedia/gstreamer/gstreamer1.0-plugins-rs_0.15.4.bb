@@ -5,13 +5,14 @@ LICENSE = "Apache-2.0 OR MPL-2.0"
 
 SRC_URI += "\
 git://gitlab.freedesktop.org/gstreamer/gst-plugins-rs;protocol=https;tag=${PV};nobranch=1;name=default \
+file://0001-Update-Cargo.lock-for-non-git-dependencies.patch \
 "
-SRCREV = "6302bea23b53e6461c104f9543df887a63b2d6ec"
-UPSTREAM_CHECK_GITTAGREGEX = "^(?P<pver>\d+(\.\d+)+)"
+SRCREV = "1afff3711855238433862c0ce3bf34918e500386"
+UPSTREAM_CHECK_GITTAGREGEX = "^(?P<pver>\d+(\.\d+)+)(\^\{\})?$"
 
 LIC_FILES_CHKSUM =  " \
-    file://${BPN}-${PV}/LICENSE-MPL-2.0;md5=815ca599c9df247a0c7f619bab123dad \
-    file://${BPN}-${PV}/LICENSE-APACHE;md5=1836efb2eb779966696f473ee8540542 \
+    file://LICENSE-MPL-2.0;md5=815ca599c9df247a0c7f619bab123dad \
+    file://LICENSE-APACHE;md5=1836efb2eb779966696f473ee8540542 \
 "
 
 inherit cargo_c cargo-update-recipe-crates
@@ -45,11 +46,8 @@ DEPENDS = " \
     gtk4 \
 "
 
-S = "${UNPACKDIR}"
-
 # Remove the `flavors` and `ffv1` plugins that are not actively maintained in the
 # gst-plugins-rs upstream
-CARGO_MANIFEST_PATH = "${S}/${CARGO_SRC_DIR}/${BPN}-${PV}/Cargo.toml"
 do_configure:prepend() {
     sed -i '/"mux\/flavors"/d' ${CARGO_MANIFEST_PATH}
     sed -i '/"video\/ffv1"/d' ${CARGO_MANIFEST_PATH}
