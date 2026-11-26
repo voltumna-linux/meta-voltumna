@@ -1,0 +1,28 @@
+SUMMARY = "Extremely fast, in memory, JSON and reflection library for modern C++. BEVE, CBOR, CSV, MessagePack, TOML, EETF "
+HOMEPAGE = "https://stephenberry.github.io/glaze/"
+LICENSE = "MIT"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=ea4d29875d83fbbf50485c846dbbbed8"
+
+SRC_URI = "git://github.com/stephenberry/glaze;protocol=https;branch=main;tag=v${PV}"
+
+SRCREV = "43b175e7446862b84ed07b2e5f5138433777680e"
+
+UPSTREAM_CHECK_GITTAGREGEX = "v(?P<pver>\d+(\.\d+)+)"
+
+inherit cmake
+
+# For some odd reason, glaze_INSTALL_CMAKEDIR must be relative, or the installed
+# files will not work as intended when cross-compiling.
+EXTRA_OECMAKE = " \
+    -Dglaze_BUILD_EXAMPLES=OFF \
+    -DBUILD_TESTING=OFF \
+    -Dglaze_ENABLE_FUZZING=OFF \
+    -Dglaze_DEVELOPER_MODE=OFF \
+    -DCMAKE_BUILD_TYPE=Release \
+    -Dglaze_INSTALL_CMAKEDIR:PATH=${baselib}/cmake/${BPN} \
+"
+
+# Glaze is a header-only C++ library, so the main package will be empty.
+ALLOW_EMPTY:${PN} = "1"
+
+BBCLASSEXTEND = "native"
