@@ -4,7 +4,15 @@
 
 case "$1" in
 	deconfig) ;;
-	renew|bound) env | sed 's/\(.*\)=\(.*\)/\1="\2"/' | while read line; do echo "export ${line}"; done; ;;
+	renew|bound)
+		# Print one "export KEY=\"VALUE\"" assignment per environment
+		# variable. Split KEY and VALUE on the first '=' only, so values
+		# containing '=' are preserved.
+		env | while IFS= read -r line; do
+			case "$line" in
+				*=*) printf 'export %s="%s"\n' "${line%%=*}" "${line#*=}" ;;
+			esac
+		done ;;
 esac
 
 exit 0
