@@ -32,6 +32,8 @@ SRC_URI = "https://ftp.postgresql.org/pub/source/v${PV}/${BP}.tar.bz2 \
     file://run-ptest \
     file://pg_config \
 "
+UPSTREAM_CHECK_URI = "https://ftp.postgresql.org/pub/source/"
+UPSTREAM_CHECK_REGEX = "v(?P<pver>\d+(\.\d+)+)/"
 
 LEAD_SONAME = "libpq.so"
 
@@ -234,7 +236,7 @@ do_install_ptest() {
     chown -R postgres:postgres ${D}${PTEST_PATH}
 }
 
-RDEPENDS:${PN}-ptest += "${PN}-client ${PN}-contrib perl"
+RDEPENDS:${PN}-ptest += "${PN}-client ${PN}-contrib perl ${PN}-locale-es"
 FILES:${PN}-ptest += "${libdir}/${BPN}/regress.so"
 
 # server needs to configure user and group
