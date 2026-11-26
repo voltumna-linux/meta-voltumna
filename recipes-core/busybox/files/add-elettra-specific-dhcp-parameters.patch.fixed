@@ -1,0 +1,47 @@
+Upstream-Status: Inappropriate
+
+diff --git a/networking/udhcp/common.c b/networking/udhcp/common.c
+index ad580f38d..0adb69b4b 100644
+--- a/networking/udhcp/common.c
++++ b/networking/udhcp/common.c
+@@ -27,7 +27,7 @@
+ //	{ OPTION_IP | OPTION_LIST                 , 0x04 }, /* DHCP_TIME_SERVER   */
+ //	{ OPTION_IP | OPTION_LIST                 , 0x05 }, /* DHCP_NAME_SERVER   */
+ 	{ OPTION_IP | OPTION_LIST     | OPTION_REQ, 0x06 }, /* DHCP_DNS_SERVER    */
+-//	{ OPTION_IP | OPTION_LIST                 , 0x07 }, /* DHCP_LOG_SERVER    */
++	{ OPTION_IP | OPTION_LIST                 , 0x07 }, /* DHCP_LOG_SERVER    */
+ //	{ OPTION_IP | OPTION_LIST                 , 0x08 }, /* DHCP_COOKIE_SERVER */
+ 	{ OPTION_IP | OPTION_LIST                 , 0x09 }, /* DHCP_LPR_SERVER    */
+ 	{ OPTION_STRING_HOST          | OPTION_REQ, 0x0c }, /* DHCP_HOST_NAME     */
+@@ -70,6 +70,10 @@
+ 	{ OPTION_STRING                           , 0xd2 }, /* DHCP_PXE_PATH_PREFIX */
+ 	{ OPTION_U32                              , 0xd3 }, /* DHCP_REBOOT_TIME   */
+ 	{ OPTION_6RD                              , 0xd4 }, /* DHCP_6RD           */
++	{ OPTION_STRING                           , 0xe0 }, /* DHCP_USR_PATH      */
++	{ OPTION_STRING                           , 0xe1 }, /* DHCP_RUNTIME_PATH  */
++	{ OPTION_STRING                           , 0xe2 }, /* DHCP_RUNTIME_SITE_PATH */
++	{ OPTION_STRING                           , 0xe3 }, /* DHCP_HOME_PATH     */
+ 	{ OPTION_STATIC_ROUTES | OPTION_LIST      , 0xf9 }, /* DHCP_MS_STATIC_ROUTES */
+ 	{ OPTION_STRING                           , 0xfc }, /* DHCP_WPAD          */
+ 
+@@ -101,7 +105,7 @@
+ //	"timesrv" "\0"          /* DHCP_TIME_SERVER     */
+ //	"namesrv" "\0"          /* DHCP_NAME_SERVER     */
+ 	"dns" "\0"              /* DHCP_DNS_SERVER      */
+-//	"logsrv" "\0"           /* DHCP_LOG_SERVER      */
++	"logsrv" "\0"           /* DHCP_LOG_SERVER      */
+ //	"cookiesrv" "\0"        /* DHCP_COOKIE_SERVER   */
+ 	"lprsrv" "\0"           /* DHCP_LPR_SERVER      */
+ 	"hostname" "\0"         /* DHCP_HOST_NAME       */
+@@ -141,6 +145,10 @@
+ 	"pxepathprefix" "\0"    /* DHCP_PXE_PATH_PREFIX */
+ 	"reboottime" "\0"       /* DHCP_REBOOT_TIME     */
+ 	"ip6rd" "\0"            /* DHCP_6RD             */
++	"usrpath" "\0"          /* DHCP_USR_PATH        */
++	"runtimepath" "\0"      /* DHCP_RUNTIME_PATH    */
++	"runtimesitepath" "\0"  /* DHCP_RUNTIME_SITE_PATH */
++	"homepath" "\0"         /* DHCP_HOME_PATH       */
+ 	"msstaticroutes" "\0"   /* DHCP_MS_STATIC_ROUTES*/
+ 	"wpad" "\0"             /* DHCP_WPAD            */
+ 	;
+

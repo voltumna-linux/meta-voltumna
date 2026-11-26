@@ -71,6 +71,15 @@ EOF
     chmod "$cda_mode" "$2" || return 1
 }
 
+# True when /etc/passwd of the new rootfs defines a user with this name.
+# This is the only criterion for copying a home directory to RAM.
+user_exists() {
+    while IFS=: read -r ue_name ue_rest || [ -n "$ue_name" ]; do
+        [ "$ue_name" = "$1" ] && return 0
+    done < /mnt/rootfs/etc/passwd
+    return 1
+}
+
 # Do not repeat mounts if a pre-existing initramfs already mounted them.
 is_mounted() {
     [ -r /proc/mounts ] || return 1
@@ -193,17 +202,23 @@ parse_dhcp_output() {
             *) continue ;;
         esac
         case "$key" in
-            rootpath|usrpath|homepath|runtimepath|runtimesitepath|siaddr|ip|mask|router|hostname|dns1|dns2|ntp|logsrv) ;;
+            rootpath|usrpath|homepath|runtimepath|runtimesitepath|siaddr|ip|mask|router|hostname|dns|dns1|dns2|ntp|ntpsrv|logsrv) ;;
             *) continue ;;
         esac
         case "$value" in
             \"*\") value=${value#\"}; value=${value%\"} ;;
             \'*\') value=${value#\'}; value=${value%\'} ;;
         esac
-        # DHCP may advertise multiple routers or NTP servers. Use the first
-        # one without evaluating shell syntax or expanding wildcard characters.
+        # DHCP may advertise multiple routers, DNS or NTP servers. Use the
+        # first ones without evaluating shell syntax or expanding wildcard
+        # characters. A second DNS server is kept in dns2.
         case "$key" in
-            router|ntp)
+            dns)
+                IFS=' 	' read -r value dns2 unused <<EOF
+$value
+EOF
+                ;;
+            router|ntp|ntpsrv|logsrv)
                 IFS=' 	' read -r value unused <<EOF
 $value
 EOF
@@ -223,9 +238,10 @@ EOF
             mask)        mask=$value ;;
             router)      router=$value ;;
             hostname)    hostname=$value ;;
+            dns)         dns1=$value ;;
             dns1)        dns1=$value ;;
             dns2)        dns2=$value ;;
-            ntp)         ntp=$value ;;
+            ntp|ntpsrv)  ntp=$value ;;
             logsrv)      logsrv=$value ;;
         esac
     done <<EOF
@@ -314,8 +330,10 @@ hostname "$short_hostname" || fail 'set hostname'
 
 # A runtime site export is independent of the common runtime export. The DHCP
 # hook must supply it explicitly; never construct a remote path from a hostname.
+# The runtime exports are NFS mounts and work with any root and /usr type.
 case "$runtimepath" in
     ''|0)
+        log 'runtimepath not provided: skipping /runtime'
         case "$runtimesitepath" in
             ''|0) ;;
             *) fail 'runtimesitepath requires runtimepath' ;;
@@ -323,10 +341,6 @@ case "$runtimepath" in
     *)
         case "$runtimesitepath" in
             ''|0) fail 'DHCP runtimesitepath is required when runtimepath is enabled' ;;
-        esac
-        case "$usrfstype" in
-            nfs|tmpfs) ;;
-            *) fail "runtime is unsupported with mount.usrfstype=$usrfstype" ;;
         esac ;;
 esac
 mkdir -p /mnt/rootfs /mnt/nfs || fail 'create temporary mountpoints'
@@ -425,22 +439,27 @@ case "$usrfstype" in
         fi ;;
 esac
 
-# Optional /home. NFS live mount with /usr on NFS, RAM copy with tmpfs.
+# Optional /home. The home export is a writable NFS mount and works with any
+# root and /usr type; with tmpfs /usr the homes are copied to RAM instead.
 if [ -n "$homepath" ] && [ "$homepath" != 0 ]; then
     require_server home
     mkdir -p /mnt/rootfs/home || fail 'create /home'
     case "$usrfstype" in
-        nfs)
-            mount -t nfs "$siaddr:$homepath" /mnt/rootfs/home \
-                -o "nfsvers=3,$usrflags,rw,nolock" || fail 'mount /home NFS' ;;
         tmpfs)
             mount -t nfs "$siaddr:$homepath" /mnt/nfs -o nfsvers=3,ro,nolock || fail 'mount NFS source for /home'
             mount -t tmpfs tmpfs /mnt/rootfs/home -o "$usrflags,rw" || fail 'mount /home tmpfs'
             # Copy each user directory separately and skip the ones over the size limit
             command -v du >/dev/null 2>&1 || fail 'du is unavailable'
+            [ -r /mnt/rootfs/etc/passwd ] || fail '/etc/passwd of the new rootfs is unavailable'
             for entry in /mnt/nfs/* /mnt/nfs/.[!.]* /mnt/nfs/..?*; do
                 [ -e "$entry" ] || continue
                 name=${entry##*/}
+                # Copy only the homes of users that can access the system:
+                # a home without a matching /etc/passwd entry is not copied.
+                user_exists "$name" || {
+                    log "skip /home/$name: no matching user in /etc/passwd"
+                    continue
+                }
                 if [ -d "$entry" ]; then
                     dir_kb=$(du -sk "$entry" 2>/dev/null | sed -n '1s/[^0-9].*//p')
                     skip_home=
@@ -474,22 +493,21 @@ if [ -n "$homepath" ] && [ "$homepath" != 0 ]; then
             done
             umount /mnt/nfs || fail 'unmount NFS source for /home' ;;
         *)
-            fail "mount.home is unsupported with mount.usrfstype=$usrfstype" ;;
+            mount -t nfs "$siaddr:$homepath" /mnt/rootfs/home \
+                -o "nfsvers=3,$usrflags,rw,nolock" || fail 'mount /home NFS' ;;
     esac
+else
+    log 'homepath not provided: skipping /home'
 fi
 
-# Optional runtime and site-specific writable directory.
+# Optional runtime and site-specific writable directory. The common runtime
+# export is read-only, the site-specific one is writable. With tmpfs /usr the
+# common directories are copied to RAM; with any other root and /usr type the
+# exports are mounted live.
 if [ -n "$runtimepath" ] && [ "$runtimepath" != 0 ]; then
     require_server runtime
     mkdir -p /mnt/rootfs/runtime || fail 'create /runtime'
     case "$usrfstype" in
-        nfs)
-            mount -t nfs "$siaddr:$runtimepath" /mnt/rootfs/runtime \
-                -o "nfsvers=3,$usrflags,ro,nolock" || fail 'mount /runtime NFS'
-            [ -d "/mnt/rootfs/runtime/site/$short_hostname" ] || \
-                fail 'runtime/site/host directory is missing from the NFS export'
-            mount -t nfs "$siaddr:$runtimesitepath" "/mnt/rootfs/runtime/site/$short_hostname" \
-                -o "nfsvers=3,$usrflags,rw,nolock" || fail 'mount runtime/site NFS' ;;
         tmpfs)
             mount -t nfs "$siaddr:$runtimepath" /mnt/nfs -o nfsvers=3,ro,nolock || fail 'mount NFS source for runtime'
             mount -t tmpfs tmpfs /mnt/rootfs/runtime -o "$usrflags,rw" || fail 'mount runtime tmpfs'
@@ -511,7 +529,12 @@ if [ -n "$runtimepath" ] && [ "$runtimepath" != 0 ]; then
                 fail 'copy runtime/site from NFS to tmpfs'
             umount /mnt/nfs || fail 'unmount NFS source for runtime/site' ;;
         *)
-            fail "runtime is unsupported with mount.usrfstype=$usrfstype" ;;
+            mount -t nfs "$siaddr:$runtimepath" /mnt/rootfs/runtime \
+                -o "nfsvers=3,$usrflags,ro,nolock" || fail 'mount /runtime NFS'
+            [ -d "/mnt/rootfs/runtime/site/$short_hostname" ] || \
+                fail 'runtime/site/host directory is missing from the NFS export'
+            mount -t nfs "$siaddr:$runtimesitepath" "/mnt/rootfs/runtime/site/$short_hostname" \
+                -o "nfsvers=3,$usrflags,rw,nolock" || fail 'mount runtime/site NFS' ;;
     esac
 fi
 
