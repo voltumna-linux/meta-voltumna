@@ -2,6 +2,15 @@ DESCRIPTION = "Provides the Non-Volatile Memory (NVM) Update Utility for Intel E
 HOMEPAGE = "https://www.intel.com/content/www/us/en/download/18190/non-volatile-memory-nvm-update-utility-for-intel-ethernet-network-adapter-700-series.html"
 LICENSE = "CLOSED"
 
+# The Intel page exposes the download URL (and hence the version) inside a
+# data-href attribute, not in a link the standard check can see: scrape the
+# page text through upstream-page-check. NUM and the checksum below are per
+# release and cannot be derived from the version: update them by hand together
+# with PV when the check reports a newer version.
+inherit upstream-page-check
+UPSTREAM_CHECK_URI = "${HOMEPAGE}"
+UPSTREAM_CHECK_REGEX = "700Series_NVMUpdatePackage_v(?P<pver>\d+_\d+)"
+
 PV_MAJOR = "${@d.getVar('PV').split('.')[0]}"
 PV_MINOR = "${@d.getVar('PV').split('.')[1]}"
 NUM = "930899"

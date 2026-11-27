@@ -2,6 +2,13 @@ DESCRIPTION = "Basler's Pylon camera software"
 HOMEPAGE = "https://www.baslerweb.com/en/sales-support/downloads/software-downloads/#type=pylonsoftware;language=all;version=all"
 LICENSE = "CLOSED"
 
+# Basler serves its download pages through a JavaScript application which
+# cannot be scraped from a build (the tarball is mirrored on the intranet
+# anyway), so track this one by hand and bump PV/BUILDNUMBER together with the
+# tarball and its checksum. Set RECIPE_UPSTREAM_VERSION (and CHECK_DATE, e.g.
+# "Nov 27, 2026") to record what the last manual check found.
+RECIPE_NO_UPDATE_REASON = "Basler's pylon downloads are only listed in a JavaScript page, see the HOMEPAGE and check manually"
+
 BUILDNUMBER = "19861"
 SRC_URI = " \
 	https://www.elettra.eu/images/Documents/Voltumna/intranet/predownloaded-tarballs/pylon_${PV}.${BUILDNUMBER}_x86_64.tar.gz;subdir=${BPN}-${PV} \

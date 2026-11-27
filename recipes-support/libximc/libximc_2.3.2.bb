@@ -9,6 +9,10 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=6370da19fa5b48405ba554721dfb00ab"
 SRCREV = "09e6fd0c910d9f59e3288f352ca6b59acc7ffd5c"
 SRC_URI = "git://gitlab.elettra.eu/cs/lib/libximc.git;protocol=https;branch=master"
 
+# The repository only carries a stale 1.0.0 tag and the recipe tracks master:
+# track new commits instead and let devtool update SRCREV.
+UPSTREAM_CHECK_COMMITS = "1"
+
 TARGET_CC_ARCH += "${LDFLAGS}"
 
 do_install() {

@@ -14,6 +14,11 @@ SRC_URI = " \
 SRC_URI[md5sum] = "99c00a331276dae7b733067dd540e093"
 SRC_URI[sha256sum] = "15333863c837dba1a0b3e6e84b5a2394e44bb62e3b751521b94f9b65bbf0ad91"
 
+# The upstream version listing is a plain directory index of version
+# directories.
+UPSTREAM_CHECK_URI = "https://sourceforge.net/projects/itpp/files/itpp/"
+UPSTREAM_CHECK_REGEX = "itpp/(?P<pver>\d+(\.\d+)+)/"
+
 do_install:append() {
     sed -i "s,${RECIPE_SYSROOT},,g" ${D}${bindir}/itpp-config ${D}${libdir}/pkgconfig/itpp.pc
 }

@@ -34,7 +34,11 @@ EXTRA_OECMAKE = " \
 FILES:${PN} += "${libdir}/libpqxx-*.so"
 FILES_SOLIBSDEV = "${libdir}/libpqxx.so"
 
-UPSTREAM_CHECK_URI = "https://github.com/jtv/libpqxx/tags"
-UPSTREAM_CHECK_REGEX = "archive/refs/tags/(?P<pver>\d+(\.\d+)+)\.tar"
+# The sources are a git checkout, so the check runs on the tags of the SRC_URI
+# repository (UPSTREAM_CHECK_URI would only be used for tarballs). Keep the
+# check on the 7.10 series pinned by branch=7.10 above: 7.11/8.x would need a
+# branch change in SRC_URI too. The trailing ^{} also matches the peeled entry
+# of annotated tags so that devtool picks their commit as the new SRCREV.
+UPSTREAM_CHECK_GITTAGREGEX = "^(?P<pver>7\.10\.\d+)(\^\{\})?$"
 
 BBCLASSEXTEND = "nativesdk"
