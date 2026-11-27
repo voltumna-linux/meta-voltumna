@@ -8,6 +8,13 @@ SRC_URI = " \
 	"
 SRCREV = "2662f9f60babbed581d149554da030f25508b838"
 
+# Tags are vMAJOR.MINOR.PATCH. The check runs against the fork fetched by
+# SRC_URI, which is expected to carry the same tags as the upstream
+# tiagocoutinho/sinstruments repository. The trailing ^{} also matches the
+# peeled entry of annotated tags so that devtool picks their commit as the new
+# SRCREV.
+UPSTREAM_CHECK_GITTAGREGEX = "^v(?P<pver>\d+(\.\d+)+)(\^\{\})?$"
+
 DEPENDS += "${PYTHON_PN}-pytest-runner-native"
 RDEPENDS:${PN} += "\
 	${PYTHON_PN}-gevent \

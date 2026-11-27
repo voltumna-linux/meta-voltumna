@@ -3,6 +3,15 @@ HOMEPAGE = "https://www.intel.com/content/www/us/en/download/19358/non-volatile-
 LICENSE = "LicenseRef-intel-ethernet-550-firmware-CLOSED"
 LIC_FILES_CHKSUM = "file://X550/Linux_x64/license.txt;md5=e475236e1d192f96e69473e79f969226"
 
+# The Intel page exposes the download URL (and hence the version) inside a
+# data-href attribute, not in a link the standard check can see: scrape the
+# page text through upstream-page-check. NUM and the checksum below are per
+# release and cannot be derived from the version: update them by hand together
+# with PV when the check reports a newer version.
+inherit upstream-page-check
+UPSTREAM_CHECK_URI = "${HOMEPAGE}"
+UPSTREAM_CHECK_REGEX = "X550_NVMUpdatePackage_v(?P<pver>\d+_\d+)"
+
 PV_MAJOR = "${@d.getVar('PV').split('.')[0]}"
 PV_MINOR = "${@d.getVar('PV').split('.')[1]}"
 NUM = "843854"

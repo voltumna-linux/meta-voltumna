@@ -8,6 +8,15 @@ LIC_FILES_CHKSUM = "file://SAA_UserGuide.pdf;md5=b30a5bdb1d4693e37b22ff9277a9c8c
 
 COMPATIBLE_HOST = "x86_64.*-linux"
 
+# The Supermicro download center lists versions in <span> markup, not in
+# links, so scrape the page text through upstream-page-check (the regex picks
+# the SAA entry, not "SAA for UEFI" nor the SAA Service). DIR, DATE and the
+# checksum below are per release and cannot be derived from the version:
+# update them by hand together with PV when the check reports a newer version.
+inherit upstream-page-check
+UPSTREAM_CHECK_URI = "https://www.supermicro.com/en/support/resources/downloadcenter/smsdownload"
+UPSTREAM_CHECK_REGEX = "<h5[^>]*>SuperServer Automation Assistant \(SAA\)</h5>.{0,4000}?Version: (?P<pver>\d+(\.\d+)+)"
+
 DIR = "1182"
 SUFFIX = "Linux_x86_64"
 DATE = "20260910"

@@ -16,6 +16,13 @@ SRC_URI = "https://ftp.postgresql.org/pub/source/v${PV}/postgresql-${PV}.tar.bz2
 "
 SRC_URI[sha256sum] = "dd27f2b3c59e73ed14aa3324901242bf69a032a6347805f274e6260322d42979"
 
+# The upstream version listing is a plain directory index of v<version>/
+# directories. Restrict the check to the 17.x series so the SDK variant stays
+# in lockstep with the postgresql recipe (meta-oe) it mirrors; widen the regex
+# to (?P<pver>\d+(\.\d+)+) to follow all series.
+UPSTREAM_CHECK_URI = "https://ftp.postgresql.org/pub/source/"
+UPSTREAM_CHECK_REGEX = "v(?P<pver>17\.\d+)/"
+
 # The upstream tarball unpacks to postgresql-${PV}, not ${BP}.
 S = "${UNPACKDIR}/postgresql-${PV}"
 

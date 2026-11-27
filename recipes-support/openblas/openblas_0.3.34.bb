@@ -17,6 +17,12 @@ RDEPENDS:${PN}:remove:class-native = "libgomp"
 SRCREV = "e0166008be8e466242aa76b2ff75ce3f0fbf574a"
 SRC_URI = "git://github.com/xianyi/OpenBLAS.git;protocol=https;branch=release-0.3.0"
 
+# Restrict the check to the 0.3.x series pinned by branch=release-0.3.0 above:
+# tags of other series are not reachable from it. The trailing ^{} also
+# matches the peeled entry of annotated tags so that devtool picks their
+# commit as the new SRCREV.
+UPSTREAM_CHECK_GITTAGREGEX = "^v(?P<pver>0\.3\.\d+)(\^\{\})?$"
+
 # Full BLAS plus the bundled netlib LAPACK/LAPACKE inside libopenblas, LP64
 # interface. NUM_THREADS is only the runtime thread cap (256 = EPYC 9755 hw
 # threads); left unset it would default to the build host core count.

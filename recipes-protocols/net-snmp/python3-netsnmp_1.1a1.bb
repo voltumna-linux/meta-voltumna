@@ -9,6 +9,11 @@ inherit pypi setuptools3_legacy
 
 PYPI_PACKAGE = "python3-netsnmp"
 
+# The pypi.bbclass default regex would read 1.1a1 as 1.1 (and then fail to
+# match the file at all): include the PEP 440 style suffix in the captured
+# version instead.
+UPSTREAM_CHECK_REGEX = "${UPSTREAM_CHECK_PYPI_PACKAGE}-(?P<pver>\d+\.\d+[a-z]?\d*)\.tar\.gz"
+
 DEPENDS += "\
     net-snmp \
     "

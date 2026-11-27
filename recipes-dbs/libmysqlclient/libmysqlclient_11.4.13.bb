@@ -17,7 +17,13 @@ LIC_FILES_CHKSUM = "file://COPYING.LIB;md5=4fbd65380cdd255951079008b364516c"
 SRC_URI = "https://archive.mariadb.org/mariadb-${PV}/source/mariadb-${PV}.tar.gz"
 SRC_URI[sha256sum] = "1bb254b106d0a7ca871cfa18fa6e18d4b80a7430f9ec9d1571ec4271a13def96"
 
-UPSTREAM_CHECK_URI = "https://github.com/MariaDB/server/tags"
+# The upstream version listing is a plain directory index of the tarballs.
+# Restrict the check to the 11.4 LTS series so the SDK variant stays in
+# lockstep with the mariadb recipe (meta-oe) it mirrors; widen the regex to
+# (?P<pver>\d+(\.\d+)+) and point UPSTREAM_CHECK_URI one directory up to
+# follow all series.
+UPSTREAM_CHECK_URI = "https://archive.mariadb.org/mariadb-11.4/source/"
+UPSTREAM_CHECK_REGEX = "mariadb-(?P<pver>11\.4\.\d+)\.tar\.gz"
 
 # libmariadb/ is the mariadb-connector-c sub-project embedded in the server
 # source tree: it has its own top-level CMakeLists.txt and builds standalone,

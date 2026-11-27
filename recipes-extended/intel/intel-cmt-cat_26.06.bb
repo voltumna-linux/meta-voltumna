@@ -11,6 +11,11 @@ SRC_URI = " \
 	"
 SRCREV = "dae129762e411d0d4709c74bc143d93475aeea11"
 
+# Tags are vYY.MM (occasionally vYY.MM.PATCH); the old v4.x tags do not match
+# the two digit pattern. The trailing ^{} also matches the peeled entry of
+# annotated tags so that devtool picks their commit as the new SRCREV.
+UPSTREAM_CHECK_GITTAGREGEX = "^v(?P<pver>\d{2}\.\d{2}(\.\d+)?)(\^\{\})?$"
+
 COMPATIBLE_HOST = '(x86_64).*-linux'
 COMPATIBLE_HOST:libc-musl = "null"
 

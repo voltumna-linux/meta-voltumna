@@ -3,6 +3,13 @@ HOMEPAGE = "https://www.baslerweb.com/en/sales-support/downloads/software-downlo
 LICENSE = "LicenseRef-pylon-CLOSED"
 LIC_FILES_CHKSUM = "file://share/pylon/licenses/License.html;md5=b966523debb4b5dc8429530d00d2e8be"
 
+# Basler serves its download pages through a JavaScript application which
+# cannot be scraped from a build (the tarball is mirrored on the intranet
+# anyway), so track this one by hand and bump PV/BUILDNUMBER together with the
+# tarball and its checksum. Set RECIPE_UPSTREAM_VERSION (and CHECK_DATE, e.g.
+# "Nov 27, 2026") to record what the last manual check found.
+RECIPE_NO_UPDATE_REASON = "Basler's pylon downloads are only listed in a JavaScript page, see the HOMEPAGE and check manually"
+
 BUILDNUMBER = "19861"
 SRC_URI = " \
 	https://www.elettra.eu/images/Documents/Voltumna/intranet/predownloaded-tarballs/pylon_${PV}.${BUILDNUMBER}_x86_64.tar.gz;subdir=${BPN}-${PV} \

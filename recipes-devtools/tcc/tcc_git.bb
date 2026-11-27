@@ -11,6 +11,11 @@ SRC_URI = " \
     "
 SRCREV = "904e95cbdf0248a57e5f8675ff10d17c59f5adbe"
 
+# Upstream's release_0_9_XX tags do not follow the 1.0 version of this recipe
+# and the mob branch carries no usable tags at all: track new commits instead
+# and let devtool update SRCREV.
+UPSTREAM_CHECK_COMMITS = "1"
+
 PACKAGES =+ "libtcc"
 FILES:libtcc += "${libdir}/libtcc.so.1"
 

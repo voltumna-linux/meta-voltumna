@@ -8,6 +8,12 @@ SRC_URI = " \
     "
 SRCREV = "67886519fcec58546be316b3846b1edcb2c829f5"
 
+# Tags are MAJOR.MINOR.PATCH-N (the -N suffix is not part of the recipe
+# version); the old vN and vN.M tags do not match the three component pattern.
+# The trailing ^{} also matches the peeled entry of annotated tags so that
+# devtool picks their commit as the new SRCREV.
+UPSTREAM_CHECK_GITTAGREGEX = "^(v)?(?P<pver>\d+\.\d+\.\d+)(-\d+)?(\^\{\})?$"
+
 PACKAGES =+ "${PN}-bin"
 do_install:append() {
     install -d ${D}${bindir}
